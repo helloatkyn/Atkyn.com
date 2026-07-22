@@ -1,5 +1,0 @@
-name = "hello"
-compatibility_date = "2024-01-01"
-
-[vars]
-GROQ_API_KEY = "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"

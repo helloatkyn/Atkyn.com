@@ -1,0 +1,1029 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content">
+  <title>Atkyn</title>
+  <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#1c1c1e" media="(prefers-color-scheme: dark)">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+    html, body { height: 100%; overflow: hidden; }
+
+    body {
+      position: fixed; inset: 0;
+      overscroll-behavior: none;
+      background: #fff;
+      color: #1a1a1a;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+      display: flex; flex-direction: column;
+    }
+    @media (prefers-color-scheme: dark) {
+      body { background: #1c1c1e; color: #f0f0f2; }
+    }
+
+    /* ── scroll host ── */
+    .scroll-host {
+      flex: 1; min-height: 0;
+      overflow-y: auto;
+      overflow-x: hidden;
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior-y: none;
+      scroll-behavior: auto;
+    }
+    .scroll-host::-webkit-scrollbar { display: none; }
+
+    /* ── logo header ── */
+    .logo-header {
+      flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      position: relative;
+      padding: 16px 18px 10px;
+      height: 76px;
+      overflow: hidden;
+      opacity: 1;
+      transition: height 0.18s cubic-bezier(0.4,0,0.2,1),
+                  padding 0.18s cubic-bezier(0.4,0,0.2,1),
+                  opacity 0.15s ease;
+    }
+    .logo-header img {
+      height: 48px; width: auto; object-fit: contain;
+    }
+    .logo-header.collapsed {
+      height: 0;
+      padding-top: 0;
+      padding-bottom: 0;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    /* ── hamburger ── */
+    .hamburger-btn {
+      position: absolute; right: 14px; top: 50%;
+      transform: translateY(-50%);
+      border: none; background: none; cursor: pointer;
+      display: flex; flex-direction: column; justify-content: center; align-items: flex-end; gap: 5.5px;
+      width: 40px; height: 40px; padding: 8px;
+      border-radius: 10px;
+      -webkit-tap-highlight-color: transparent;
+      transition: background 0.15s;
+    }
+    .hamburger-btn span { display: block; height: 1.5px; border-radius: 99px; background: #1a1a1a; }
+    .hamburger-btn span:nth-child(1) { width: 22px; }
+    .hamburger-btn span:nth-child(2) { width: 15px; }
+    .hamburger-btn span:nth-child(3) { width: 22px; }
+    .hamburger-btn:active { background: rgba(0,0,0,0.06); }
+    @media (prefers-color-scheme: dark) {
+      .hamburger-btn span { background: #e5e5e7; }
+    }
+
+    /* ── tab bar ── */
+    .tab-bar {
+      flex-shrink: 0;
+      display: flex; align-items: center;
+      overflow-x: auto; overflow-y: hidden;
+      padding: 0 14px;
+      gap: 0;
+      height: 38px;
+      border-bottom: 1px solid rgba(0,0,0,0.09);
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+      position: sticky; top: 0; z-index: 20;
+      background: rgba(255,255,255,0.95);
+      -webkit-backdrop-filter: blur(12px) saturate(1.4);
+      backdrop-filter: blur(12px) saturate(1.4);
+      /* GPU promotion: own compositor layer — no layout cost on transform change */
+      will-change: transform;
+      transform: translateY(0) translateZ(0);   /* translateZ(0) forces GPU layer */
+      backface-visibility: hidden;              /* eliminate subpixel flicker */
+      -webkit-backface-visibility: hidden;
+      transform-origin: top center;
+      /* Transition ONLY transform — box-shadow transition handled separately
+         via .scrolled to avoid any accidental reflow-triggering properties */
+      transition: transform 0.25s cubic-bezier(0.4,0,0.2,1);
+    }
+    .tab-bar.hide  { transform: translateY(-100%) translateZ(0); }
+    .tab-bar.scrolled { box-shadow: 0 1px 6px rgba(0,0,0,0.08); transition: transform 0.25s cubic-bezier(0.4,0,0.2,1), box-shadow 0.2s ease; }
+    .tab-bar::-webkit-scrollbar { display: none; }
+    @media (prefers-color-scheme: dark) {
+      .tab-bar { border-bottom-color: rgba(255,255,255,0.08); background: rgba(28,28,30,0.95); }
+      .tab-bar.scrolled { box-shadow: 0 1px 6px rgba(0,0,0,0.3); }
+    }
+
+    .tab {
+      flex-shrink: 0;
+      padding: 6px 16px;
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: #888;
+      cursor: pointer;
+      letter-spacing: 0.01em;
+      white-space: nowrap;
+      border: none; background: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+    @media (prefers-color-scheme: dark) {
+      .tab { color: #666; }
+    }
+
+    .tab.active {
+      color: #1a1a1a;
+      font-weight: 700;
+    }
+    @media (prefers-color-scheme: dark) {
+      .tab.active { color: #f0f0f2; }
+    }
+
+    /* ── chat area ── */
+    .chat-area {
+      padding: 14px 16px 48px;   /* 48px bottom: generous Claude-style space above chatbar */
+      display: flex; flex-direction: column;
+    }
+
+    /* messages start from TOP not bottom */
+    .msg-wrap {
+      display: flex; flex-direction: column;
+      gap: 6px;
+    }
+
+    .msg { display: flex; flex-direction: column; }
+    .msg.user { align-items: flex-end; }
+    .msg.bot  { align-items: flex-start; }
+
+    /* user: light grey pill */
+    .msg.user .bubble {
+      max-width: 78%;
+      background: #efefef;
+      color: #1a1a1a;
+      padding: 9px 14px;
+      border-radius: 18px;
+      border-bottom-right-radius: 4px;
+      font-size: 0.97rem;
+      line-height: 1.45;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+      animation: bubbleIn 0.17s cubic-bezier(0.34,1.2,0.64,1) both;
+    }
+    @media (prefers-color-scheme: dark) {
+      .msg.user .bubble { background: #2c2c2e; color: #f0f0f2; }
+    }
+
+    /* bot: NO container, mixed serif */
+    .msg.bot .bubble {
+      max-width: 96%;
+      background: none;
+      border: none;
+      padding: 1px 2px;
+      font-family: Georgia, 'Times New Roman', serif;
+      font-style: normal;
+      font-size: 1.01rem;
+      line-height: 1.62;
+      color: #1a1a1a;
+      animation: botIn 0.32s cubic-bezier(0.22, 1, 0.36, 1) both;
+    }
+    @media (prefers-color-scheme: dark) {
+      .msg.bot .bubble { color: #d0d0d2; }
+    }
+    .msg.bot .bubble p { margin: 0 0 10px; }
+    .msg.bot .bubble p:last-child { margin-bottom: 0; }
+
+    /* rich content inside bot bubble */
+    .msg.bot .bubble h4,
+    .msg.bot .bubble h5 {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+      font-size: 1rem; font-weight: 700;
+      margin: 10px 0 4px; color: #1a1a1a;
+    }
+    @media (prefers-color-scheme: dark) {
+      .msg.bot .bubble h4,
+      .msg.bot .bubble h5 { color: #f0f0f2; }
+    }
+    .msg.bot .bubble ul,
+    .msg.bot .bubble ol { padding-left: 20px; margin: 0 0 10px; }
+    .msg.bot .bubble li { margin-bottom: 4px; }
+    .msg.bot .bubble code {
+      font-family: 'SF Mono', 'Fira Code', ui-monospace, monospace;
+      font-size: 0.88em;
+      background: rgba(0,0,0,0.06);
+      padding: 1px 5px; border-radius: 4px;
+    }
+    @media (prefers-color-scheme: dark) {
+      .msg.bot .bubble code { background: rgba(255,255,255,0.1); color: #e5e5e7; }
+    }
+
+    /* entrance animations */
+    @keyframes bubbleIn {
+      from { opacity: 0; transform: scale(0.96) translateY(4px); }
+      to   { opacity: 1; transform: scale(1)    translateY(0);   }
+    }
+    @keyframes botIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to   { opacity: 1; transform: translateY(0);   }
+    }
+
+    /* typing dots */
+    .typing { display: flex; align-items: center; gap: 5px; padding: 6px 4px; }
+    .typing span { width: 6px; height: 6px; border-radius: 50%; background: #aaa; animation: tBounce 1.2s ease-in-out infinite; }
+    .typing span:nth-child(2) { animation-delay: 0.2s; }
+    .typing span:nth-child(3) { animation-delay: 0.4s; }
+    @keyframes tBounce {
+      0%,60%,100% { transform: translateY(0); opacity: 0.4; }
+      30%          { transform: translateY(-5px); opacity: 1; }
+    }
+
+    /* ── bot action bar (Claude-style) ── */
+    .bot-actions {
+      display: flex; align-items: center;
+      gap: 2px; padding: 4px 2px 2px;
+      opacity: 0; transform: translateY(4px);
+      animation: fadeUp 0.22s ease 0.1s forwards;
+    }
+    @keyframes fadeUp {
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .bot-actions button {
+      display: flex; align-items: center; justify-content: center;
+      width: 36px; height: 36px;
+      border: none; background: none; cursor: pointer;
+      border-radius: 8px; color: #888;
+      -webkit-tap-highlight-color: transparent;
+      transition: background 0.13s, color 0.13s; padding: 0;
+    }
+
+    .bot-actions button:active { background: rgba(0,0,0,0.07); }
+    .bot-actions button svg { width: 20px; height: 20px; stroke-width: 1.75; }
+    /* play button thoda bada */
+    .bot-actions button:nth-child(3) svg { width: 22px; height: 22px; }
+    .bot-actions button.active-like    { color: #2da44e; }
+    .bot-actions button.active-dislike { color: #F34655; }
+    @media (prefers-color-scheme: dark) {
+      .bot-actions button { color: #666; }
+      .bot-actions button:active { background: rgba(255,255,255,0.08); }
+      .bot-actions button.active-like    { color: #3fb950; }
+      .bot-actions button.active-dislike { color: #F34655; }
+    }
+
+    /* ── chatbar ── */
+    .chatbar-wrap {
+      flex-shrink: 0;
+      padding: 10px 16px calc(14px + env(safe-area-inset-bottom));
+      background: #fff;
+      position: relative; z-index: 10;
+      /* No CSS transition here — keyboard positioning is driven by JS via
+         visualViewport. A static CSS transition lags behind the keyboard's
+         own animation, causing a visible gap on every frame.
+         JS sets the transition property dynamically: instant snap on open,
+         smooth ease-out on close to match Android keyboard animation. */
+      will-change: transform;
+    }
+    @media (prefers-color-scheme: dark) {
+      .chatbar-wrap { background: #1c1c1e; }
+    }
+
+    .overlay-pill {
+      width: 100%; display: flex; align-items: center;
+      background: #fff;
+      border: 2px solid #F34655; border-radius: 100px;
+      padding: 0 18px 0 20px; height: 66px; gap: 12px;
+      flex-shrink: 0;
+      transition: border-color 0.18s;
+    }
+    .overlay-pill:focus-within { border-color: #e02235; }
+    @media (prefers-color-scheme: dark) {
+      .overlay-pill { background: #2c2c2e; border-color: #F34655; }
+    }
+
+    .ico-plus {
+      flex-shrink: 0; color: #F34655;
+      display: flex; align-items: center;
+      border: none; background: none; cursor: pointer;
+      padding: 4px; border-radius: 50%; transition: background 0.12s;
+    }
+    .ico-plus:active { background: rgba(243,70,85,0.10); }
+    .ico-plus svg { width: 24px; height: 24px; }
+
+    .overlay-input-wrap { flex: 1; position: relative; height: 100%; display: flex; align-items: center; }
+
+    .search-input {
+      position: absolute; inset: 0; width: 100%; height: 100%;
+      border: none; outline: none; background: transparent;
+      font-size: 1.08rem; font-weight: 400; font-family: inherit;
+      color: #1a1a1a; padding: 0; z-index: 2;
+      caret-color: #F34655; letter-spacing: 0.01em;
+    }
+    .search-input::placeholder { color: transparent; }
+    @media (prefers-color-scheme: dark) { .search-input { color: #e5e5e7; } }
+
+    .shimmer-overlay {
+      position: absolute; inset: 0; display: flex; align-items: center;
+      pointer-events: none; z-index: 1; overflow: hidden;
+    }
+    .shimmer-overlay span {
+      font-size: 1.08rem; white-space: nowrap; letter-spacing: 0.01em;
+      background: linear-gradient(90deg,
+        #b0bec5 0%, #b0bec5 25%,
+        #F34655 48%, #F34655 52%,
+        #b0bec5 75%, #b0bec5 100%);
+      background-size: 300% auto;
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+      animation: sweep 3.5s 1s linear infinite;
+    }
+    @keyframes sweep {
+      0%   { background-position: 150% center; }
+      100% { background-position: -150% center; }
+    }
+    .search-input:not(:placeholder-shown) + .shimmer-overlay { display: none; }
+
+    .ico-camera {
+      flex-shrink: 0; border: none; background: none; cursor: pointer;
+      color: #F34655; display: flex; align-items: center;
+      padding: 4px; border-radius: 50%; transition: background 0.12s;
+    }
+    .ico-camera:active { background: rgba(243,70,85,0.10); }
+    .ico-camera svg { width: 24px; height: 24px; }
+
+    .send-btn {
+      flex-shrink: 0; display: none;
+      align-items: center; justify-content: center;
+      width: 40px; height: 40px; border-radius: 50%;
+      border: none; background: #F34655; cursor: pointer;
+      transition: transform 0.15s ease;
+    }
+    .send-btn:active { transform: scale(0.88); }
+    .send-btn svg { width: 17px; height: 17px; }
+    .overlay-pill.has-text .ico-camera { display: none; }
+    .overlay-pill.has-text .send-btn   { display: flex; }
+  </style>
+</head>
+<body>
+  <div class="scroll-host" id="scrollHost">
+    <div class="logo-header">
+      <img src="Logo.png" alt="Atkyn" />
+      <button class="hamburger-btn" aria-label="Menu">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+    <div class="tab-bar" id="tabBar">
+      <button class="tab active" data-tab="ai">Answer</button>
+      <button class="tab" data-tab="web">Web</button>
+      <button class="tab" data-tab="images">Images</button>
+      <button class="tab" data-tab="videos">Videos</button>
+      <button class="tab" data-tab="news">News</button>
+      <button class="tab" data-tab="maps">Maps</button>
+    </div>
+    <div class="chat-area" id="chatArea">
+      <div class="msg-wrap" id="msgWrap"></div>
+    </div>
+  </div>
+
+  <div class="chatbar-wrap">
+    <div class="overlay-pill" id="pill">
+      <button class="ico-plus" aria-label="Add">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+          <line x1="12" y1="5" x2="12" y2="19"/>
+          <line x1="5" y1="12" x2="19" y2="12"/>
+        </svg>
+      </button>
+      <div class="overlay-input-wrap">
+        <input class="search-input" type="text" id="cbInput" placeholder=" "
+          autocomplete="off" enterkeyhint="search" />
+        <div class="shimmer-overlay"><span>Ask Atkyn</span></div>
+      </div>
+      <button class="ico-camera" aria-label="Visual search">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+          <circle cx="12" cy="13" r="4"/>
+        </svg>
+      </button>
+      <button class="send-btn" id="sendBtn" aria-label="Send">
+        <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="12" y1="20" x2="12" y2="4"/>
+          <polyline points="5 11 12 4 19 11"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+
+<script>
+  const input      = document.getElementById('cbInput');
+  const sendBtn    = document.getElementById('sendBtn');
+  const pill       = document.getElementById('pill');
+  const msgWrap    = document.getElementById('msgWrap');
+  const chatArea   = document.getElementById('chatArea');
+  const scrollHost = document.getElementById('scrollHost');
+
+  /* ── Shared state: declared here so ALL handlers below can reference them ── */
+  let viewportResizing = false;  // true while keyboard/layout resize is settling
+  let rafPending       = false;  // RAF dedup for scroll header handler
+  let lastScrollY      = 0;      // last-seen scrollTop (baseline)
+  let accumDown        = 0;      // accumulated downward px (since last up-motion)
+  let accumUp          = 0;      // accumulated upward px (since last down-motion)
+  let _keyboardOpen    = false;  // true when on-screen keyboard is currently up
+  // Header DOM class mirrors — avoid redundant classList writes
+  let isLogoCollapsed  = false;
+  let isTabHidden      = false;
+  let isTabScrolled    = false;
+
+  /* ── Pin-to-bottom scroll system ──────────────────────────────────────────
+   *
+   * Goals:
+   *   1. After user sends: instant snap to bottom, no animation.
+   *   2. During streaming: stay pinned only if user hasn't scrolled up.
+   *   3. If user manually scrolls up: never force-scroll them back down.
+   *   4. One RAF per frame maximum — no duplicate scroll calls.
+   *   5. No competing animations between DOM updates and scroll.
+   *
+   * How it works:
+   *   - _pinnedToBottom: tracks whether the chat is "at bottom".
+   *     Computed as: scrollTop + clientHeight >= scrollHeight - SLACK_PX
+   *   - _scrollRafId: dedup guard — only one RAF queued at a time.
+   *   - scrollDown(instant): used after user sends (instant=true) or during
+   *     streaming (instant=false, but still snaps if pinned).
+   *   - The scroll listener updates _pinnedToBottom on user scroll.
+   *     viewportResizing flag suppresses false positives from layout shifts.
+   *
+   * IMPORTANT: scroll-behavior is already `auto` in CSS — we never set
+   * behavior:'smooth' anywhere so there's no competing animation.
+   * ─────────────────────────────────────────────────────────────────────── */
+
+  const SLACK_PX = 8;           // px from bottom that still counts as "at bottom"
+  let _pinnedToBottom    = true;   // start pinned (empty chat)
+  let _scrollRafId       = null;   // RAF dedup guard
+  let _programmaticScroll = false; // suppresses header hide during auto-scroll
+  let _lastUserMsgEl     = null;   // reference to the last sent user message element
+
+  function _isAtBottom() {
+    return (scrollHost.scrollTop + scrollHost.clientHeight) >= (scrollHost.scrollHeight - SLACK_PX);
+  }
+
+  /*
+   * scrollToMsg(el)
+   * ── Claude-AI style: scroll just enough to show the element. ──
+   *
+   * NOT scrollHeight (pura neeche) — that causes over-scroll when keyboard is open.
+   * Instead: compute the element's offsetTop and scroll so it appears at the
+   * TOP of the visible area with a small gap. This is exactly what Claude AI does:
+   * sent message appears near the top of the screen, old messages scroll away above.
+   *
+   * Uses instant scroll — no smooth, no animation competing with keyboard.
+   */
+  function scrollToMsg(el) {
+    if (!el) return;
+    if (_scrollRafId !== null) cancelAnimationFrame(_scrollRafId);
+    _scrollRafId = requestAnimationFrame(() => {
+      _scrollRafId = null;
+      _programmaticScroll = true;
+      // 16px gap above the message — breathing room below the tab bar
+      const GAP = 16;
+      const target = el.offsetTop - GAP;
+      scrollHost.scrollTop = Math.max(0, target);
+      _pinnedToBottom = _isAtBottom();
+      lastScrollY = scrollHost.scrollTop;
+      accumDown = 0; accumUp = 0;
+      requestAnimationFrame(() => {
+        _programmaticScroll = false;
+      });
+    });
+  }
+
+  /*
+   * scrollToBottom(smooth)
+   * ── Used during streaming / bot response — stay pinned if user is at bottom ──
+   * smooth=true  → smooth scroll (streaming chunks feel fluid)
+   * smooth=false → instant snap
+   */
+  function scrollToBottom(smooth) {
+    if (!_pinnedToBottom) return;   // user scrolled up — respect it
+    if (_scrollRafId !== null) return;  // already queued
+    _scrollRafId = requestAnimationFrame(() => {
+      _scrollRafId = null;
+      _programmaticScroll = true;
+      if (smooth) {
+        scrollHost.scrollTo({ top: scrollHost.scrollHeight, behavior: 'smooth' });
+      } else {
+        scrollHost.scrollTop = scrollHost.scrollHeight;
+      }
+      _pinnedToBottom = true;
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          lastScrollY = scrollHost.scrollTop;
+          accumDown = 0; accumUp = 0;
+          _programmaticScroll = false;
+        });
+      });
+    });
+  }
+
+  // Legacy alias so old call sites still work
+  function scrollDown(force, smooth) {
+    if (force) {
+      // force=true means "scroll to show last user message" — Claude style
+      scrollToMsg(_lastUserMsgEl);
+    } else {
+      scrollToBottom(smooth);
+    }
+  }
+
+  function _updatePinState() {
+    if (viewportResizing || _programmaticScroll) return;
+    _pinnedToBottom = _isAtBottom();
+  }
+
+  // ── Idempotent pill tap handler ──
+  // IMPORTANT: Do NOT scroll here. Scrolling before the keyboard opens causes
+  // a double-scroll: once from us, once from the viewport shrink. This is the
+  // root cause of the "page jumps up on tap" bounce.
+  // Just focus the input — the _applyViewport handler will pin us to bottom
+  // after the keyboard finishes opening.
+  pill.addEventListener('pointerdown', (e) => {
+    // Taps on buttons inside pill (camera, plus, send) — don't interfere
+    if (e.target !== pill && e.target !== input &&
+        e.target.closest('button, .overlay-input-wrap')) return;
+
+    // Dual guard: input already focused OR keyboard already up → idempotent
+    if (document.activeElement === input || _keyboardOpen) return;
+
+    e.preventDefault();
+    // Focus only — no scroll. _applyViewport fires when keyboard opens and
+    // pads + snaps the chat to bottom at the right moment.
+    requestAnimationFrame(() => { input.focus(); });
+  }, { passive: false });
+
+  // ── Input blur: keyboard dismissed ──
+  // Do NOT scroll here. fixViewport/_applyViewport fires on keyboard close
+  // and handles the padding removal + repositioning. A competing scrollTo
+  // here races against the viewport resize and causes visible jitter.
+  input.addEventListener('blur', () => {
+    // intentionally empty — viewport handler owns this
+  }, { passive: true });
+
+  input.addEventListener('input', () => {
+    pill.classList.toggle('has-text', input.value.trim().length > 0);
+  });
+
+  // ── Enter key guard: debounce rapid Enter presses ──
+  // Rapid Enter taps can stack multiple send() calls (one per keydown).
+  // Guard: only one send in flight at a time via the existing streamAbort check,
+  // but also preventDefault on the keydown to stop the synthetic click.
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); send(); }
+  });
+  sendBtn.addEventListener('click', send);
+
+  /* ── abort controller: cancels previous stream when new query fires ── */
+  let streamAbort = null;
+
+  async function send() {
+    const q = input.value.trim();
+    if (!q) return;
+    input.value = '';
+    pill.classList.remove('has-text');
+    addMsg('user', q);   // force=true inside addMsg for user messages
+    showTyping();
+
+    if (streamAbort) { streamAbort.abort(); streamAbort = null; }
+    streamAbort = new AbortController();
+
+    try {
+      const resp = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: q }),
+        signal: streamAbort.signal,
+      });
+
+      removeTyping();
+
+      if (!resp.ok) {
+        addMsg('bot', 'Something went wrong. Please try again.');
+        streamAbort = null;
+        return;
+      }
+
+      /* create bot bubble once — never recreated during stream */
+      const botEl    = document.createElement('div');
+      botEl.className = 'msg bot';
+      const bubbleEl = document.createElement('div');
+      bubbleEl.className = 'bubble';
+      botEl.appendChild(bubbleEl);
+      msgWrap.appendChild(botEl);
+      // Scroll to bottom: bot response starts here, user is pinned
+      scrollToBottom(false);
+
+      const reader  = resp.body.getReader();
+      const decoder = new TextDecoder();
+      let sseBuffer = '';
+      let fullText  = '';
+      let rafId     = null;
+
+      /*
+       * RAF-batched render
+       * All SSE chunks that arrive within one animation frame (~16 ms)
+       * are collapsed into a SINGLE innerHTML update.
+       * On fast connections: many tokens render per frame → big smooth chunks.
+       * On slow connections: each token renders within 16 ms of arrival → no perceptible delay.
+       * Either way, scrollHeight is only read once per frame → zero layout thrashing.
+       */
+      function scheduleRender() {
+        if (rafId !== null) return;            // already queued for this frame
+        rafId = requestAnimationFrame(() => {
+          rafId = null;
+          bubbleEl.innerHTML = renderMarkdown(fullText);
+          // Streaming: smooth scroll to bottom if user is still pinned
+          scrollToBottom(true);
+        });
+      }
+
+      /* read SSE stream */
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        sseBuffer += decoder.decode(value, { stream: true });
+        const lines = sseBuffer.split('\n');
+        sseBuffer = lines.pop();               // keep incomplete line for next read
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue;
+          const data = line.slice(6).trim();
+          if (data === '[DONE]') break;
+          try {
+            const json  = JSON.parse(data);
+            const delta = json.choices?.[0]?.delta?.content || '';
+            if (!delta) continue;
+            fullText += delta;
+            scheduleRender();                  // queue, not immediate
+          } catch (_) { /* skip malformed SSE chunk */ }
+        }
+      }
+
+      /* stream done — cancel any queued RAF and do one final authoritative render */
+      if (rafId !== null) { cancelAnimationFrame(rafId); rafId = null; }
+      bubbleEl.innerHTML = renderMarkdown(fullText);
+      // Final render: smooth to bottom if still pinned
+      scrollToBottom(true);
+      appendBotActions(botEl, fullText);
+      streamAbort = null;
+
+    } catch (err) {
+      if (err.name === 'AbortError') return;   // silently discard superseded request
+      removeTyping();
+      addMsg('bot', 'Network error. Please try again.');
+      streamAbort = null;
+    }
+  }
+
+  /* ── markdown renderer ── */
+  /* inlineFormat: escape HTML first, then apply inline spans */
+  function inlineFormat(text) {
+    return text
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/`([^`]+)`/g,   '<code>$1</code>')
+      .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\*(.+?)\*/g,     '<em>$1</em>');
+  }
+
+  function renderMarkdown(text) {
+    return text
+      .split('\n\n')
+      .map(block => {
+        const t = block.trim();
+        if (!t) return '';
+
+        /* headings: # / ## / ### */
+        const hm = t.match(/^(#{1,3}) (.+)/);
+        if (hm) {
+          const tag = 'h' + (hm[1].length + 2);   // → h3 / h4 / h5
+          return `<${tag}>${inlineFormat(hm[2])}</${tag}>`;
+        }
+
+        /* unordered list */
+        if (/^[-*•] /m.test(t)) {
+          const items = t.split('\n').filter(Boolean)
+            .map(l => `<li>${inlineFormat(l.replace(/^[-*•] /, ''))}</li>`)
+            .join('');
+          return `<ul>${items}</ul>`;
+        }
+
+        /* ordered list */
+        if (/^\d+[.)]\s/m.test(t)) {
+          const items = t.split('\n').filter(Boolean)
+            .map(l => `<li>${inlineFormat(l.replace(/^\d+[.)]\s/, ''))}</li>`)
+            .join('');
+          return `<ol>${items}</ol>`;
+        }
+
+        /* paragraph — each line formatted individually, joined with <br> */
+        const lines = t.split('\n').map(inlineFormat);
+        return `<p>${lines.join('<br>')}</p>`;
+      })
+      .join('');
+  }
+
+  function addMsg(role, text) {
+    const d    = document.createElement('div');
+    d.className = `msg ${role}`;
+    const html  = role === 'bot'
+      ? renderMarkdown(text)
+      : text.replace(/&/g, '&amp;').replace(/</g, '&lt;');
+    d.innerHTML = `<div class="bubble">${html}</div>`;
+    msgWrap.appendChild(d);
+    if (role === 'bot') appendBotActions(d, text);
+    if (role === 'user') {
+      // Store ref — scrollToMsg will use this after keyboard padding is applied
+      _lastUserMsgEl = d;
+      // Scroll to show the sent message (Claude-style: message near top, not pura neeche)
+      scrollToMsg(d);
+    } else {
+      scrollToBottom(false);
+    }
+  }
+
+  function appendBotActions(msgEl, fullText) {
+    const bar = document.createElement('div');
+    bar.className = 'bot-actions';
+    const actions = [
+      { key: 'copy',    label: 'Copy',    svg: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>` },
+      { key: 'retry',   label: 'Retry',   svg: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>` },
+      { key: 'play',    label: 'Read',    svg: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 5.2 C6.5 5.2 6 4.8 5.5 5.1 C5 5.4 5 5.9 5 6 L5 18 C5 18.1 5 18.6 5.5 18.9 C6 19.2 6.5 18.8 6.5 18.8 L18.2 12.8 C18.2 12.8 18.8 12.5 18.8 12 C18.8 11.5 18.2 11.2 18.2 11.2 Z"/></svg>` },
+      { key: 'like',    label: 'Like',    svg: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M7 10v12"/><path d="M15 5.88 14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.76a2 2 0 0 0 1.79-1.11L12 2a3.13 3.13 0 0 1 3 3.88Z"/></svg>` },
+      { key: 'dislike', label: 'Dislike', svg: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M17 14V2"/><path d="M9 18.12 10 14H4.17a2 2 0 0 1-1.92-2.56l2.33-8A2 2 0 0 1 6.5 2H20a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-2.76a2 2 0 0 0-1.79 1.11L12 22a3.13 3.13 0 0 1-3-3.88Z"/></svg>` },
+      { key: 'refresh', label: 'Refresh', svg: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6"/><path d="M2.5 12a10 10 0 0 1 17.8-6.3L21.5 8"/><path d="M2.5 22v-6h6"/><path d="M21.5 12a10 10 0 0 1-17.8 6.3L2.5 16"/></svg>` },
+    ];
+    actions.forEach(({ key, label, svg }) => {
+      const btn = document.createElement('button');
+      btn.setAttribute('aria-label', label);
+      btn.innerHTML = svg;
+      btn.addEventListener('click', () => {
+        if (key === 'copy') {
+          navigator.clipboard.writeText(msgEl.querySelector('.bubble')?.innerText || fullText).catch(() => {});
+          btn.style.color = '#2da44e';
+          setTimeout(() => btn.style.color = '', 1200);
+        } else if (key === 'like') {
+          btn.classList.toggle('active-like');
+          bar.querySelector('[aria-label="Dislike"]')?.classList.remove('active-dislike');
+        } else if (key === 'dislike') {
+          btn.classList.toggle('active-dislike');
+          bar.querySelector('[aria-label="Like"]')?.classList.remove('active-like');
+        } else if (key === 'refresh' || key === 'retry') {
+          btn.style.transition = 'transform 0.45s ease';
+          btn.style.transform  = 'rotate(360deg)';
+          setTimeout(() => { btn.style.transform = ''; btn.style.transition = ''; }, 500);
+        }
+      });
+      bar.appendChild(btn);
+    });
+    msgEl.appendChild(bar);
+    // Smooth scroll to bottom to reveal action bar if pinned
+    scrollToBottom(true);
+  }
+
+  let typingEl = null;
+  function showTyping() {
+    typingEl = document.createElement('div');
+    typingEl.className = 'msg bot';
+    typingEl.innerHTML = `<div class="bubble typing"><span></span><span></span><span></span></div>`;
+    msgWrap.appendChild(typingEl);
+    // Scroll to bottom to show typing dots (they're small, scrollToBottom is right here)
+    scrollToBottom(false);
+  }
+  function removeTyping() { if (typingEl) { typingEl.remove(); typingEl = null; } }
+
+  /* ── keyboard / viewport positioning ── */
+  //
+  // Goal: chatbar-wrap always sits exactly above the keyboard.
+  //
+  // How Android keyboard works with position:fixed body:
+  //   - visualViewport.height shrinks by the keyboard height
+  //   - visualViewport.offsetTop may shift (scrolled-behind-keyboard scenarios)
+  //   - window.innerHeight stays fixed (it's the layout viewport)
+  //
+  // Correct keyboard height = window.innerHeight - vvp.height - vvp.offsetTop
+  // We translateY the chatbar-wrap UP by exactly that amount.
+  //
+  // Transition strategy:
+  //   - Keyboard OPENING: no transition (snap instantly with keyboard frame 0)
+  //     A CSS transition here causes the bar to chase the keyboard upward,
+  //     creating a visible gap on every frame. Snap = zero gap.
+  //   - Keyboard CLOSING: 280ms ease-out (matches Android keyboard dismiss curve)
+  //     Without transition, the bar snaps to bottom before keyboard is fully down,
+  //     creating a jarring jump. The ease-out makes it glide down together.
+  //
+  // Focus bounce guard (Issue 1 integration):
+  //   - _keyboardOpen flag lets the pill pointerdown handler skip scroll/focus
+  //     on repeated taps — see pill handler above.
+
+  const chatbarWrap = document.querySelector('.chatbar-wrap');
+  let _vvpRafId   = 0;    // dedup: only one RAF queued at a time
+  let _prevOffset = -1;   // last committed kbHeight — skip no-op writes
+  // _keyboardOpen declared above in shared state block
+
+  function fixViewport() {
+    // Batch: if we already have a RAF pending, let it run — don't stack writes
+    if (_vvpRafId) return;
+    _vvpRafId = requestAnimationFrame(_applyViewport);
+  }
+
+  function _applyViewport() {
+    _vvpRafId = 0;
+
+    const vvp = window.visualViewport;
+    if (!vvp) return;
+
+    // Keyboard height = gap between layout viewport bottom and visual viewport bottom.
+    // Clamp to 0: on some Android browsers vvp.offsetTop can produce tiny negatives
+    // during orientation change due to rounding.
+    const kbHeight = Math.max(0, window.innerHeight - vvp.height - vvp.offsetTop);
+
+    // No real change → bail (avoids redundant style writes and repaints)
+    if (Math.round(kbHeight) === Math.round(_prevOffset)) return;
+
+    const wasOpen   = _keyboardOpen;
+    _keyboardOpen   = kbHeight > 50;   // >50px = keyboard is meaningfully open
+    _prevOffset     = kbHeight;
+
+    // Set the viewport-resize flag so the scroll listener ignores this layout event
+    viewportResizing = true;
+
+    // Transition control: snap on open (zero lag), glide on close (smooth)
+    if (_keyboardOpen && !wasOpen) {
+      // Keyboard just opened → disable transition so bar moves with keyboard
+      chatbarWrap.style.transition = 'none';
+    } else if (!_keyboardOpen && wasOpen) {
+      // Keyboard just closed → re-enable transition to glide back down
+      chatbarWrap.style.transition = 'transform 0.28s cubic-bezier(0.0, 0.0, 0.2, 1)';
+    }
+
+    // Apply GPU-accelerated translateY to lift the chatbar above the keyboard.
+    chatbarWrap.style.transform = kbHeight > 0
+      ? `translateY(-${kbHeight}px) translateZ(0)`
+      : '';
+
+    // ── Dynamic bottom padding trick ──────────────────────────────────────────
+    // Problem: when keyboard opens, the chatbar lifts UP via translateY, but the
+    // scroll-host content doesn't know about this — the last message stays at its
+    // natural bottom position, which is now hidden BEHIND the keyboard.
+    //
+    // Fix: pad the chat-area bottom by kbHeight so the content "grows" upward,
+    // making the last message visible above the keyboard. Then instant-snap to
+    // the new bottom. On keyboard close, remove the extra padding.
+    //
+    // We use chat-area's padding-bottom rather than a separate spacer element
+    // to avoid any layout shift or extra DOM nodes.
+    // BASE_CHAT_PADDING = 28px (set in CSS) + any additional breathing room.
+    const BASE_BOTTOM_PAD = 48;  // must match .chat-area padding-bottom in CSS
+    chatArea.style.paddingBottom = kbHeight > 0
+      ? `${BASE_BOTTOM_PAD + kbHeight}px`
+      : `${BASE_BOTTOM_PAD}px`;
+
+    // After padding change, scroll to show the last user message.
+    // Use scrollToMsg not scrollHeight — avoids over-scrolling past the message.
+    // If no user message yet (fresh state), fall back to scrollHeight.
+    if (kbHeight > 0) {
+      _programmaticScroll = true;
+      if (_lastUserMsgEl) {
+        const GAP = 16;
+        scrollHost.scrollTop = Math.max(0, _lastUserMsgEl.offsetTop - GAP);
+      } else {
+        scrollHost.scrollTop = scrollHost.scrollHeight;
+      }
+      _pinnedToBottom = _isAtBottom();
+    }
+
+    // Clear viewportResizing flag after layout has settled (2 rAFs)
+    cancelAnimationFrame(_vvpRafId);
+    _vvpRafId = requestAnimationFrame(() => {
+      _vvpRafId = requestAnimationFrame(() => {
+        _vvpRafId = 0;
+        lastScrollY = scrollHost.scrollTop;
+        accumDown   = 0;
+        accumUp     = 0;
+        viewportResizing    = false;
+        _programmaticScroll = false;
+      });
+    });
+  }
+
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', fixViewport, { passive: true });
+    window.visualViewport.addEventListener('scroll', fixViewport, { passive: true });
+    _applyViewport();   // baseline on load (no RAF delay needed)
+  } else {
+    // Legacy fallback (no VisualViewport API — older Android WebView)
+    // Best effort: resize body to innerHeight. No header interference
+    // expected on these old browsers.
+    function _legacyFix() {
+      const h = window.innerHeight + 'px';
+      if (document.body.style.height !== h) document.body.style.height = h;
+    }
+    window.addEventListener('resize', _legacyFix, { passive: true });
+    _legacyFix();
+  }
+
+  /* ── auto-send from URL param ── */
+  const q = new URLSearchParams(location.search).get('q');
+  if (q) { input.value = q; pill.classList.add('has-text'); send(); }
+
+  /* ── Production-grade sticky header ── */
+  const logoHeader = document.querySelector('.logo-header');
+  const tabBar     = document.getElementById('tabBar');
+
+  // Thresholds: accumulated px of intentional scroll before state flips.
+  // These are NOT per-frame deltas — they are distances accumulated since
+  // the last direction change, preventing noise / micro-scroll triggering.
+  const HIDE_ACCUM  = 18;   // px down-scroll before tab hides
+  const SHOW_ACCUM  = 12;   // px up-scroll before tab shows
+  const LOGO_THRESH = 10;   // px from top before logo collapses
+
+  function updateHeader() {
+    rafPending = false;
+
+    // If a viewport resize just happened (keyboard open/close, layout shift),
+    // OR a programmatic scrollDown() is in progress — skip entirely.
+    // These are not real user scrolls; suppressing prevents spurious tab-hide.
+    if (viewportResizing || _programmaticScroll) {
+      lastScrollY = scrollHost.scrollTop;  // re-baseline silently
+      accumDown = 0;
+      accumUp   = 0;
+      return;
+    }
+
+    const sy    = scrollHost.scrollTop;
+    const delta = sy - lastScrollY;
+    lastScrollY = sy;
+
+    // ── At top: always fully show everything, reset accumulators ──
+    if (sy <= LOGO_THRESH) {
+      accumDown = 0;
+      accumUp   = 0;
+
+      if (isLogoCollapsed) {
+        logoHeader.classList.remove('collapsed');
+        isLogoCollapsed = false;
+      }
+      if (isTabHidden) {
+        tabBar.classList.remove('hide');
+        isTabHidden = false;
+      }
+      if (isTabScrolled) {
+        tabBar.classList.remove('scrolled');
+        isTabScrolled = false;
+      }
+      return;
+    }
+
+    // ── Past logo threshold: collapse logo & add shadow ──
+    if (!isLogoCollapsed) {
+      logoHeader.classList.add('collapsed');
+      isLogoCollapsed = true;
+    }
+    if (!isTabScrolled) {
+      tabBar.classList.add('scrolled');
+      isTabScrolled = true;
+    }
+
+    // ── Accumulate intentional scroll direction ──
+    // Reset the opposite accumulator when direction changes,
+    // so micro-oscillations don't accumulate toward a state flip.
+    if (delta > 0) {
+      // Scrolling down
+      accumDown += delta;
+      if (accumUp > 0) accumUp = 0;   // direction changed — reset up counter
+
+      if (!isTabHidden && accumDown >= HIDE_ACCUM) {
+        tabBar.classList.add('hide');
+        isTabHidden = true;
+        accumDown   = 0;              // reset after flip
+      }
+    } else if (delta < 0) {
+      // Scrolling up
+      accumUp += -delta;             // accumUp is always positive
+      if (accumDown > 0) accumDown = 0;  // direction changed — reset down counter
+
+      if (isTabHidden && accumUp >= SHOW_ACCUM) {
+        tabBar.classList.remove('hide');
+        isTabHidden = false;
+        accumUp     = 0;              // reset after flip
+      }
+    }
+    // delta === 0: no-op (spurious event), accumulators untouched
+  }
+
+  scrollHost.addEventListener('scroll', () => {
+    // Update pin state on every scroll event (debounced via viewportResizing guard)
+    _updatePinState();
+
+    if (!rafPending) {
+      rafPending = true;
+      requestAnimationFrame(updateHeader);
+    }
+  }, { passive: true });
+
+  /* ── tab switching ── */
+  document.getElementById('tabBar').addEventListener('click', e => {
+    const tab = e.target.closest('.tab');
+    if (!tab) return;
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+  }, { passive: true });
+</script>
+</body>
+</html>

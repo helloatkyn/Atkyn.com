@@ -1,0 +1,1377 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content">
+    <title>Atkyn</title>
+    <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#1c1c1e" media="(prefers-color-scheme: dark)">
+    <style>
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            -webkit-tap-highlight-color: transparent;
+        }
+        html,
+        body {
+            height: 100%;
+            overflow: hidden;
+        }
+        body {
+            position: fixed;
+            inset: 0;
+            overscroll-behavior: none;
+            background: #fff;
+            color: #1a1a1a;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            transform: translateZ(0);
+            backface-visibility: hidden;
+            -webkit-backface-visibility: hidden;
+        }
+        @media (prefers-color-scheme: dark) {
+            body {
+                background: #1c1c1e;
+                color: #f0f0f2;
+            }
+        }
+
+        .scroll-host {
+            flex: 1;
+            min-height: 0;
+            overflow-y: auto;
+            overflow-x: hidden;
+            -webkit-overflow-scrolling: touch;
+            overscroll-behavior-y: none;
+            scroll-behavior: auto;
+            contain: strict;
+            will-change: scroll-position;
+        }
+        .scroll-host::-webkit-scrollbar {
+            display: none;
+        }
+
+        .logo-header {
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            padding: 16px 18px 10px;
+            height: 76px;
+            overflow: hidden;
+            opacity: 1;
+            transition: height 0.18s cubic-bezier(0.4, 0, 0.2, 1), padding 0.18s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.15s ease;
+            will-change: height, opacity;
+            contain: layout style;
+        }
+        .logo-header img {
+            height: 48px;
+            width: auto;
+            object-fit: contain;
+        }
+        .logo-header.collapsed {
+            height: 0;
+            padding-top: 0;
+            padding-bottom: 0;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .hamburger-btn {
+            position: absolute;
+            right: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            border: none;
+            background: none;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: flex-end;
+            gap: 5.5px;
+            width: 40px;
+            height: 40px;
+            padding: 8px;
+            border-radius: 10px;
+            -webkit-tap-highlight-color: transparent;
+            transition: background 0.15s;
+        }
+        .hamburger-btn span {
+            display: block;
+            height: 1.5px;
+            border-radius: 99px;
+            background: #1a1a1a;
+        }
+        .hamburger-btn span:nth-child(1) {
+            width: 22px;
+        }
+        .hamburger-btn span:nth-child(2) {
+            width: 15px;
+        }
+        .hamburger-btn span:nth-child(3) {
+            width: 22px;
+        }
+        .hamburger-btn:active {
+            background: rgba(0, 0, 0, 0.06);
+        }
+        @media (prefers-color-scheme: dark) {
+            .hamburger-btn span {
+                background: #e5e5e7;
+            }
+        }
+
+        .dots-btn {
+            position: absolute;
+            left: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            border: none;
+            background: none;
+            cursor: pointer;
+            display: grid;
+            grid-template-columns: repeat(3, 4px);
+            gap: 4px;
+            align-content: center;
+            justify-content: center;
+            width: 40px;
+            height: 40px;
+            border-radius: 12px;
+            -webkit-tap-highlight-color: transparent;
+            transition: background 0.15s;
+        }
+        .dots-btn span {
+            display: block;
+            width: 4px;
+            height: 4px;
+            border-radius: 50%;
+            background: #1a1a1a;
+            transition: background 0.2s;
+        }
+        .dots-btn:active {
+            background: rgba(0, 0, 0, 0.06);
+        }
+        .dots-btn:active span {
+            background: #F34655;
+        }
+        @media (prefers-color-scheme: dark) {
+            .dots-btn span {
+                background: #e5e5e7;
+            }
+        }
+
+        .tab-bar {
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            overflow-x: auto;
+            overflow-y: hidden;
+            padding: 0 14px;
+            gap: 0;
+            height: 38px;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.09);
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: none;
+            position: sticky;
+            top: 0;
+            z-index: 20;
+            background: rgba(255, 255, 255, 0.95);
+            -webkit-backdrop-filter: blur(12px) saturate(1.4);
+            backdrop-filter: blur(12px) saturate(1.4);
+            will-change: transform;
+            transform: translateZ(0);
+            backface-visibility: hidden;
+            -webkit-backface-visibility: hidden;
+            transition: transform 0.26s cubic-bezier(0.4, 0, 0.2, 1);
+            contain: layout style;
+        }
+        .tab-bar.hide {
+            transform: translateY(-100%) translateZ(0);
+        }
+        .tab-bar.scrolled {
+            box-shadow: 0 1px 6px rgba(0, 0, 0, 0.08);
+        }
+        .tab-bar::-webkit-scrollbar {
+            display: none;
+        }
+        @media (prefers-color-scheme: dark) {
+            .tab-bar {
+                border-bottom-color: rgba(255, 255, 255, 0.08);
+                background: rgba(28, 28, 30, 0.95);
+            }
+            .tab-bar.scrolled {
+                box-shadow: 0 1px 6px rgba(0, 0, 0, 0.3);
+            }
+        }
+
+        .tab {
+            flex-shrink: 0;
+            padding: 6px 16px;
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: #888;
+            cursor: pointer;
+            letter-spacing: 0.01em;
+            white-space: nowrap;
+            border: none;
+            background: none;
+            -webkit-tap-highlight-color: transparent;
+            transition: color 0.12s;
+        }
+        @media (prefers-color-scheme: dark) {
+            .tab {
+                color: #666;
+            }
+        }
+        .tab.active {
+            color: #1a1a1a;
+            font-weight: 700;
+        }
+        @media (prefers-color-scheme: dark) {
+            .tab.active {
+                color: #f0f0f2;
+            }
+        }
+
+        .chat-area {
+            padding: 14px 16px 0;
+            display: flex;
+            flex-direction: column;
+            contain: layout style;
+        }
+
+        #chatSpacer {
+            flex-shrink: 0;
+            width: 100%;
+            height: 0;
+        }
+
+        .msg-wrap {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            contain: layout style;
+        }
+
+        .msg {
+            display: flex;
+            flex-direction: column;
+        }
+        .msg.user {
+            align-items: flex-end;
+        }
+        .msg.bot {
+            align-items: flex-start;
+        }
+
+        .msg.user .bubble {
+            max-width: 78%;
+            background: #efefef;
+            color: #1a1a1a;
+            padding: 9px 14px;
+            border-radius: 18px;
+            border-bottom-right-radius: 4px;
+            font-size: 0.97rem;
+            line-height: 1.45;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+            animation: bubbleIn 0.18s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
+            will-change: transform, opacity;
+        }
+        @media (prefers-color-scheme: dark) {
+            .msg.user .bubble {
+                background: #2c2c2e;
+                color: #f0f0f2;
+            }
+        }
+
+        .msg.bot .bubble {
+            max-width: 96%;
+            background: none;
+            border: none;
+            padding: 1px 2px;
+            font-family: Georgia, 'Times New Roman', serif;
+            font-style: normal;
+            font-size: 1.01rem;
+            line-height: 1.62;
+            color: #1a1a1a;
+            animation: botIn 0.32s cubic-bezier(0.22, 1, 0.36, 1) both;
+            will-change: transform, opacity;
+        }
+        @media (prefers-color-scheme: dark) {
+            .msg.bot .bubble {
+                color: #d0d0d2;
+            }
+        }
+        .msg.bot .bubble p {
+            margin: 0 0 10px;
+        }
+        .msg.bot .bubble p:last-child {
+            margin-bottom: 0;
+        }
+
+        .msg.bot .bubble h4,
+        .msg.bot .bubble h5 {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+            font-size: 1rem;
+            font-weight: 700;
+            margin: 10px 0 4px;
+            color: #1a1a1a;
+        }
+        @media (prefers-color-scheme: dark) {
+            .msg.bot .bubble h4,
+            .msg.bot .bubble h5 {
+                color: #f0f0f2;
+            }
+        }
+        .msg.bot .bubble ul,
+        .msg.bot .bubble ol {
+            padding-left: 20px;
+            margin: 0 0 10px;
+        }
+        .msg.bot .bubble li {
+            margin-bottom: 4px;
+        }
+        .msg.bot .bubble code {
+            font-family: 'SF Mono', 'Fira Code', ui-monospace, monospace;
+            font-size: 0.88em;
+            background: rgba(0, 0, 0, 0.06);
+            padding: 1px 5px;
+            border-radius: 4px;
+        }
+        @media (prefers-color-scheme: dark) {
+            .msg.bot .bubble code {
+                background: rgba(255, 255, 255, 0.1);
+                color: #e5e5e7;
+            }
+        }
+
+        @keyframes bubbleIn {
+            from {
+                opacity: 0;
+                transform: translateY(5px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        @keyframes botIn {
+            from {
+                opacity: 0;
+                transform: translateY(8px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .typing {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            padding: 6px 4px;
+        }
+        .typing span {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: #aaa;
+            animation: tBounce 1.2s ease-in-out infinite;
+        }
+        .typing span:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+        .typing span:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+        @keyframes tBounce {
+            0%,
+            60%,
+            100% {
+                transform: translateY(0);
+                opacity: 0.4;
+            }
+            30% {
+                transform: translateY(-5px);
+                opacity: 1;
+            }
+        }
+
+        .bot-actions {
+            display: flex;
+            align-items: center;
+            gap: 2px;
+            padding: 4px 2px 2px;
+            opacity: 0;
+            transform: translateY(4px);
+            animation: fadeUp 0.22s ease 0.1s forwards;
+        }
+        @keyframes fadeUp {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        .bot-actions button {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 36px;
+            height: 36px;
+            border: none;
+            background: none;
+            cursor: pointer;
+            border-radius: 8px;
+            color: #888;
+            -webkit-tap-highlight-color: transparent;
+            transition: background 0.13s, color 0.13s;
+            padding: 0;
+        }
+        .bot-actions button:active {
+            background: rgba(0, 0, 0, 0.07);
+        }
+        .bot-actions button svg {
+            width: 20px;
+            height: 20px;
+            stroke-width: 1.75;
+        }
+        .bot-actions button:nth-child(3) svg {
+            width: 22px;
+            height: 22px;
+        }
+        .bot-actions button.active-like {
+            color: #2da44e;
+        }
+        .bot-actions button.active-dislike {
+            color: #F34655;
+        }
+        @media (prefers-color-scheme: dark) {
+            .bot-actions button {
+                color: #666;
+            }
+            .bot-actions button:active {
+                background: rgba(255, 255, 255, 0.08);
+            }
+            .bot-actions button.active-like {
+                color: #3fb950;
+            }
+            .bot-actions button.active-dislike {
+                color: #F34655;
+            }
+        }
+
+        .chatbar-wrap {
+            flex-shrink: 0;
+            padding: 10px 16px calc(14px + env(safe-area-inset-bottom));
+            background: #fff;
+            position: relative;
+            z-index: 10;
+            will-change: transform;
+            transform: translateZ(0);
+            backface-visibility: hidden;
+            -webkit-backface-visibility: hidden;
+            contain: layout style;
+        }
+        @media (prefers-color-scheme: dark) {
+            .chatbar-wrap {
+                background: #1c1c1e;
+            }
+        }
+
+        .overlay-pill {
+            width: 100%;
+            display: flex;
+            align-items: center;
+            background: #fff;
+            border: 2px solid #F34655;
+            border-radius: 100px;
+            padding: 0 18px 0 20px;
+            height: 66px;
+            gap: 12px;
+            flex-shrink: 0;
+            transition: border-color 0.18s;
+            contain: layout style;
+        }
+        .overlay-pill:focus-within {
+            border-color: #e02235;
+        }
+        @media (prefers-color-scheme: dark) {
+            .overlay-pill {
+                background: #2c2c2e;
+                border-color: #F34655;
+            }
+        }
+
+        .ico-plus {
+            flex-shrink: 0;
+            color: #F34655;
+            display: flex;
+            align-items: center;
+            border: none;
+            background: none;
+            cursor: pointer;
+            padding: 4px;
+            border-radius: 50%;
+            transition: background 0.12s;
+        }
+        .ico-plus:active {
+            background: rgba(243, 70, 85, 0.10);
+        }
+        .ico-plus svg {
+            width: 24px;
+            height: 24px;
+        }
+
+        .overlay-input-wrap {
+            flex: 1;
+            position: relative;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            contain: layout style;
+        }
+
+        .search-input {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            border: none;
+            outline: none;
+            background: transparent;
+            font-size: 1.08rem;
+            font-weight: 400;
+            font-family: inherit;
+            color: #1a1a1a;
+            padding: 0;
+            z-index: 2;
+            caret-color: #F34655;
+            letter-spacing: 0.01em;
+        }
+        .search-input::placeholder {
+            color: transparent;
+        }
+        @media (prefers-color-scheme: dark) {
+            .search-input {
+                color: #e5e5e7;
+            }
+        }
+
+        .shimmer-overlay {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            pointer-events: none;
+            z-index: 1;
+            overflow: hidden;
+        }
+        .shimmer-overlay span {
+            font-size: 1.08rem;
+            white-space: nowrap;
+            letter-spacing: 0.01em;
+            background: linear-gradient(90deg,
+                    #b0bec5 0%, #b0bec5 25%,
+                    #F34655 48%, #F34655 52%,
+                    #b0bec5 75%, #b0bec5 100%);
+            background-size: 300% auto;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            animation: sweep 3.5s 1s linear infinite;
+        }
+        @keyframes sweep {
+            0% {
+                background-position: 150% center;
+            }
+            100% {
+                background-position: -150% center;
+            }
+        }
+        .search-input:not(:placeholder-shown)+.shimmer-overlay {
+            display: none;
+        }
+
+        .ico-camera {
+            flex-shrink: 0;
+            border: none;
+            background: none;
+            cursor: pointer;
+            color: #F34655;
+            display: flex;
+            align-items: center;
+            padding: 4px;
+            border-radius: 50%;
+            transition: background 0.12s;
+        }
+        .ico-camera:active {
+            background: rgba(243, 70, 85, 0.10);
+        }
+        .ico-camera svg {
+            width: 24px;
+            height: 24px;
+        }
+
+        .send-btn {
+            flex-shrink: 0;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border: none;
+            background: #F34655;
+            cursor: pointer;
+            transition: transform 0.15s ease;
+            will-change: transform;
+        }
+        .send-btn:active {
+            transform: scale(0.88);
+        }
+        .send-btn svg {
+            width: 17px;
+            height: 17px;
+        }
+        .overlay-pill.has-text .ico-camera {
+            display: none;
+        }
+        .overlay-pill.has-text .send-btn {
+            display: flex;
+        }
+
+        .markdown-block {
+            contain: layout style;
+        }
+        .markdown-block:last-child {
+            contain: layout style;
+        }
+        .msg.bot .bubble .markdown-block:first-child {
+            margin-top: 0;
+        }
+        .msg.bot .bubble .markdown-block:last-child {
+            margin-bottom: 0;
+        }
+    </style>
+  </head>
+  <body>
+    <div class="scroll-host" id="scrollHost">
+        <div class="logo-header" id="logoHeader">
+            <button class="dots-btn" aria-label="Options">
+                <span></span><span></span><span></span>
+                <span></span><span></span><span></span>
+                <span></span><span></span><span></span>
+            </button>
+            <img src="Logo.png" alt="Atkyn" />
+            <button class="hamburger-btn" aria-label="Menu">
+                <span></span><span></span><span></span>
+            </button>
+        </div>
+        <div class="tab-bar" id="tabBar">
+            <button class="tab active" data-tab="ai">Answer</button>
+            <button class="tab" data-tab="web">Web</button>
+            <button class="tab" data-tab="images">Images</button>
+            <button class="tab" data-tab="videos">Videos</button>
+            <button class="tab" data-tab="news">News</button>
+            <button class="tab" data-tab="maps">Maps</button>
+        </div>
+        <div class="chat-area" id="chatArea">
+            <div class="msg-wrap" id="msgWrap"></div>
+            <div id="chatSpacer"></div>
+        </div>
+    </div>
+
+    <div class="chatbar-wrap" id="chatbarWrap">
+        <div class="overlay-pill" id="pill">
+            <button class="ico-plus" aria-label="Add">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+                    <line x1="12" y1="5" x2="12" y2="19"/>
+                    <line x1="5" y1="12" x2="19" y2="12"/>
+                </svg>
+            </button>
+            <div class="overlay-input-wrap">
+                <input class="search-input" type="text" id="cbInput" placeholder=" " autocomplete="off" enterkeyhint="search" />
+                <div class="shimmer-overlay"><span>Ask Atkyn</span></div>
+            </div>
+            <button class="ico-camera" aria-label="Visual search">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                    <circle cx="12" cy="13" r="4"/>
+                </svg>
+            </button>
+            <button class="send-btn" id="sendBtn" aria-label="Send">
+                <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="12" y1="20" x2="12" y2="4"/>
+                    <polyline points="5 11 12 4 19 11"/>
+                </svg>
+            </button>
+        </div>
+    </div>
+
+    <script>
+        (function() {
+            'use strict';
+          var input = document.getElementById('cbInput');
+var sendBtn = document.getElementById('sendBtn');
+var pill = document.getElementById('pill');
+var msgWrap = document.getElementById('msgWrap');
+var scrollHost = document.getElementById('scrollHost');
+var logoHeader = document.getElementById('logoHeader');
+var tabBar = document.getElementById('tabBar');
+var chatbarWrap = document.getElementById('chatbarWrap');
+var chatSpacer = document.getElementById('chatSpacer');
+
+var viewportResizing = false;
+var rafPending = false;
+var lastScrollY = 0;
+var accumDown = 0;
+var accumUp = 0;
+var _keyboardOpen = false;
+
+var isLogoCollapsed = false;
+var isTabHidden = false;
+var isTabScrolled = false;
+
+var SLACK_PX = 8;
+var FOLLOW_MARGIN = 24;
+
+var _pinnedToBottom = true;
+var _scrollRafId = null;
+var _programmaticScroll = false;
+var _lastUserMsgEl = null;
+
+var _streamFollowing = false;
+var _followBubbleEl = null;
+var _followRafId = null;
+
+function _isAtBottom() {
+    return (scrollHost.scrollTop + scrollHost.clientHeight) >=
+        (scrollHost.scrollHeight - SLACK_PX);
+}
+
+function scrollToMsg(el) {
+    if (!el) return;
+    if (_scrollRafId !== null) cancelAnimationFrame(_scrollRafId);
+    _scrollRafId = requestAnimationFrame(function() {
+        _scrollRafId = null;
+        _programmaticScroll = true;
+        var GAP = 16;
+        var target = Math.max(0, el.offsetTop - GAP);
+        scrollHost.scrollTop = target;
+        _pinnedToBottom = _isAtBottom();
+        lastScrollY = scrollHost.scrollTop;
+        accumDown = 0;
+        accumUp = 0;
+        requestAnimationFrame(function() { _programmaticScroll = false; });
+    });
+}
+
+function startFollowing(bubbleEl) {
+    _followBubbleEl = bubbleEl;
+    _streamFollowing = true;
+    _pinnedToBottom = true;
+    if (_followRafId === null) {
+        _followRafId = requestAnimationFrame(_followLoop);
+    }
+}
+
+function stopFollowing() {
+    _streamFollowing = false;
+    _followBubbleEl = null;
+    if (_followRafId !== null) {
+        cancelAnimationFrame(_followRafId);
+        _followRafId = null;
+    }
+}
+
+function _followLoop() {
+    _followRafId = null;
+    if (!_streamFollowing || !_followBubbleEl) {
+        stopFollowing();
+        return;
+    }
+    if (_pinnedToBottom) {
+        _programmaticScroll = true;
+        var bubbleBottom = _followBubbleEl.offsetTop + _followBubbleEl.offsetHeight;
+        var clientH = scrollHost.clientHeight;
+        var target = Math.max(0, bubbleBottom - clientH + FOLLOW_MARGIN);
+        if (target > scrollHost.scrollTop) {
+            scrollHost.scrollTop = target;
+            lastScrollY = target;
+            accumDown = 0;
+            accumUp = 0;
+        }
+        requestAnimationFrame(function() { _programmaticScroll = false; });
+    }
+    _followRafId = requestAnimationFrame(_followLoop);
+}
+
+function _updatePinState() {
+    if (viewportResizing || _programmaticScroll) return;
+    _pinnedToBottom = _isAtBottom();
+}
+
+pill.addEventListener('pointerdown', function(e) {
+    if (e.target !== pill && e.target !== input &&
+        e.target.closest('button, .overlay-input-wrap')) return;
+    if (document.activeElement === input || _keyboardOpen) return;
+    e.preventDefault();
+    requestAnimationFrame(function() { input.focus(); });
+}, { passive: false });
+
+input.addEventListener('input', function() {
+    pill.classList.toggle('has-text', input.value.trim().length > 0);
+});
+
+input.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') { e.preventDefault();
+        send(); }
+});
+sendBtn.addEventListener('click', send);
+
+function inlineFormat(text) {
+    return text
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/`([^`]+)`/g, '<code>$1</code>')
+        .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+        .replace(/\*(.+?)\*/g, '<em>$1</em>');
+}
+
+function renderMarkdown(text) {
+    return text
+        .split('\n\n')
+        .map(function(block) {
+            var t = block.trim();
+            if (!t) return '';
+            var hm = t.match(/^(#{1,3}) (.+)/);
+            if (hm) {
+                var tag = 'h' + (hm[1].length + 2);
+                return '<' + tag + '>' + inlineFormat(hm[2]) + '</' + tag + '>';
+            }
+            if (/^[-*•] /m.test(t)) {
+                var items = t.split('\n').filter(Boolean)
+                    .map(function(l) { return '<li>' + inlineFormat(l.replace(/^[-*•] /, '')) +
+                            '</li>'; })
+                    .join('');
+                return '<ul>' + items + '</ul>';
+            }
+            if (/^\d+[.)]\s/m.test(t)) {
+                var oitems = t.split('\n').filter(Boolean)
+                    .map(function(l) { return '<li>' + inlineFormat(l.replace(/^\d+[.)]\s/, '')) +
+                            '</li>'; })
+                    .join('');
+                return '<ol>' + oitems + '</ol>';
+            }
+            var lines = t.split('\n').map(inlineFormat);
+            return '<p>' + lines.join('<br>') + '</p>';
+        })
+        .join('');
+}
+
+function IncrementalMarkdownRenderer(container) {
+    this.container = container;
+    this.blocks = [];
+    this.fullText = '';
+}
+
+IncrementalMarkdownRenderer.prototype.update = function(text) {
+    this.fullText = text;
+    var rawBlocks = text.split('\n\n');
+    var nonEmpty = [];
+    for (var i = 0; i < rawBlocks.length; i++) {
+        if (rawBlocks[i].trim() !== '') {
+            nonEmpty.push(rawBlocks[i]);
+        }
+    }
+    if (nonEmpty.length === 0) {
+        this._clearAll();
+        return;
+    }
+    var currentBlockCount = this.blocks.length;
+    var completeCount = nonEmpty.length - 1;
+
+    if (completeCount < currentBlockCount - 1) {
+        for (var j = this.blocks.length - 1; j >= completeCount; j--) {
+            var oldEl = this.blocks[j].element;
+            if (oldEl && oldEl.parentNode) oldEl.parentNode.removeChild(oldEl);
+            this.blocks.pop();
+        }
+        currentBlockCount = this.blocks.length;
+    }
+
+    for (var k = 0; k < completeCount && k < currentBlockCount; k++) {
+        var blockText = nonEmpty[k];
+        var existing = this.blocks[k];
+        if (existing.text !== blockText) {
+            var html = renderMarkdown(blockText);
+            var wrapper = document.createElement('div');
+            wrapper.className = 'markdown-block';
+            wrapper.innerHTML = html;
+            existing.element.replaceWith(wrapper);
+            existing.element = wrapper;
+            existing.text = blockText;
+        }
+    }
+
+    for (var m = currentBlockCount; m < completeCount; m++) {
+        var newText = nonEmpty[m];
+        var newHtml = renderMarkdown(newText);
+        var newWrapper = document.createElement('div');
+        newWrapper.className = 'markdown-block';
+        newWrapper.innerHTML = newHtml;
+        this.container.appendChild(newWrapper);
+        this.blocks.push({ element: newWrapper, text: newText });
+    }
+
+    var lastText = nonEmpty[nonEmpty.length - 1];
+    var lastHtml = renderMarkdown(lastText);
+    var lastWrapper;
+    if (this.blocks.length > 0 && this.blocks[this.blocks.length - 1].text === lastText) {
+        lastWrapper = this.blocks[this.blocks.length - 1].element;
+    } else if (this.blocks.length > 0 && this.blocks[this.blocks.length - 1].text !== lastText) {
+        lastWrapper = this.blocks[this.blocks.length - 1].element;
+        if (lastWrapper.innerHTML !== lastHtml) {
+            lastWrapper.innerHTML = lastHtml;
+        }
+        this.blocks[this.blocks.length - 1].text = lastText;
+    } else {
+        lastWrapper = document.createElement('div');
+        lastWrapper.className = 'markdown-block';
+        lastWrapper.innerHTML = lastHtml;
+        this.container.appendChild(lastWrapper);
+        this.blocks.push({ element: lastWrapper, text: lastText });
+    }
+
+    var lastEl = this.blocks[this.blocks.length - 1].element;
+    if (this.container.lastElementChild !== lastEl) {
+        this.container.appendChild(lastEl);
+    }
+};
+
+IncrementalMarkdownRenderer.prototype._clearAll = function() {
+    for (var i = 0; i < this.blocks.length; i++) {
+        var el = this.blocks[i].element;
+        if (el && el.parentNode) el.parentNode.removeChild(el);
+    }
+    this.blocks = [];
+    this.fullText = '';
+};
+
+IncrementalMarkdownRenderer.prototype.destroy = function() {
+    this._clearAll();
+    this.container = null;
+};
+
+function addMsg(role, text) {
+    var d = document.createElement('div');
+    d.className = 'msg ' + role;
+    var bubble = document.createElement('div');
+    bubble.className = 'bubble';
+    if (role === 'bot') {
+        var renderer = new IncrementalMarkdownRenderer(bubble);
+        renderer.update(text);
+        bubble._renderer = renderer;
+    } else {
+        bubble.textContent = text;
+    }
+    d.appendChild(bubble);
+    msgWrap.appendChild(d);
+    if (role === 'bot') {
+        appendBotActions(d, text);
+    }
+    if (role === 'user') {
+        _lastUserMsgEl = d;
+        scrollToMsg(d);
+    }
+    return d;
+}
+
+function updateBotBubble(bubbleEl, fullText) {
+    if (!bubbleEl || !bubbleEl._renderer) {
+        var renderer = new IncrementalMarkdownRenderer(bubbleEl);
+        renderer.update(fullText);
+        bubbleEl._renderer = renderer;
+        return;
+    }
+    bubbleEl._renderer.update(fullText);
+}
+
+function appendBotActions(msgEl, fullText) {
+    var bar = document.createElement('div');
+    bar.className = 'bot-actions';
+    var actions = [
+        { key: 'copy', label: 'Copy',
+            svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>' },
+        { key: 'retry', label: 'Retry',
+            svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>' },
+        { key: 'play', label: 'Read',
+            svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 5.2 C6.5 5.2 6 4.8 5.5 5.1 C5 5.4 5 5.9 5 6 L5 18 C5 18.1 5 18.6 5.5 18.9 C6 19.2 6.5 18.8 6.5 18.8 L18.2 12.8 C18.2 12.8 18.8 12.5 18.8 12 C18.8 11.5 18.2 11.2 18.2 11.2 Z"/></svg>' },
+        { key: 'like', label: 'Like',
+            svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M7 10v12"/><path d="M15 5.88 14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.76a2 2 0 0 0 1.79-1.11L12 2a3.13 3.13 0 0 1 3 3.88Z"/></svg>' },
+        { key: 'dislike', label: 'Dislike',
+            svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M17 14V2"/><path d="M9 18.12 10 14H4.17a2 2 0 0 1-1.92-2.56l2.33-8A2 2 0 0 1 6.5 2H20a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-2.76a2 2 0 0 0-1.79 1.11L12 22a3.13 3.13 0 0 1-3-3.88Z"/></svg>' },
+        { key: 'refresh', label: 'Refresh',
+            svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6"/><path d="M2.5 12a10 10 0 0 1 17.8-6.3L21.5 8"/><path d="M2.5 22v-6h6"/><path d="M21.5 12a10 10 0 0 1-17.8 6.3L2.5 16"/></svg>' },
+    ];
+    var fullTextRef = fullText;
+    actions.forEach(function(item) {
+        var btn = document.createElement('button');
+        btn.setAttribute('aria-label', item.label);
+        btn.innerHTML = item.svg;
+        btn.addEventListener('click', function() {
+            var key = item.key;
+            if (key === 'copy') {
+                var bubbleEl = msgEl.querySelector('.bubble');
+                var textToCopy = bubbleEl ? bubbleEl.innerText : fullTextRef;
+                navigator.clipboard.writeText(textToCopy).catch(function() {});
+                btn.style.color = '#2da44e';
+                setTimeout(function() { btn.style.color = ''; }, 1200);
+            } else if (key === 'like') {
+                btn.classList.toggle('active-like');
+                var dislikeBtn = bar.querySelector('[aria-label="Dislike"]');
+                if (dislikeBtn) dislikeBtn.classList.remove('active-dislike');
+            } else if (key === 'dislike') {
+                btn.classList.toggle('active-dislike');
+                var likeBtn = bar.querySelector('[aria-label="Like"]');
+                if (likeBtn) likeBtn.classList.remove('active-like');
+            } else if (key === 'refresh' || key === 'retry') {
+                btn.style.transition = 'transform 0.45s ease';
+                btn.style.transform = 'rotate(360deg)';
+                setTimeout(function() {
+                    btn.style.transform = '';
+                    btn.style.transition = '';
+                }, 500);
+            }
+        });
+        bar.appendChild(btn);
+    });
+    msgEl.appendChild(bar);
+}
+
+var typingEl = null;
+
+function showTyping() {
+    typingEl = document.createElement('div');
+    typingEl.className = 'msg bot';
+    typingEl.innerHTML =
+        '<div class="bubble typing"><span></span><span></span><span></span></div>';
+    msgWrap.appendChild(typingEl);
+}
+
+function removeTyping() {
+    if (typingEl) {
+        typingEl.remove();
+        typingEl = null;
+    }
+}
+
+var streamAbort = null;
+                      function send() {
+                var q = input.value.trim();
+                if (!q) return;
+                input.value = '';
+                pill.classList.remove('has-text');
+                addMsg('user', q);
+                showTyping();
+
+                if (streamAbort) { streamAbort.abort();
+                    streamAbort = null; }
+                streamAbort = new AbortController();
+
+                (function doFetch() {
+                    fetch('/api/chat', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ query: q }),
+                            signal: streamAbort.signal,
+                        })
+                        .then(function(resp) {
+                            removeTyping();
+
+                            if (!resp.ok) {
+                                addMsg('bot', 'Something went wrong. Please try again.');
+                                streamAbort = null;
+                                return;
+                            }
+
+                            var botEl = document.createElement('div');
+                            botEl.className = 'msg bot';
+                            var bubbleEl = document.createElement('div');
+                            bubbleEl.className = 'bubble';
+                            botEl.appendChild(bubbleEl);
+                            msgWrap.appendChild(botEl);
+
+                            startFollowing(bubbleEl);
+
+                            var reader = resp.body.getReader();
+                            var decoder = new TextDecoder();
+                            var sseBuffer = '';
+                            var fullText = '';
+                            var renderPending = false;
+
+                            var renderer = new IncrementalMarkdownRenderer(bubbleEl);
+                            bubbleEl._renderer = renderer;
+
+                            function scheduleRender() {
+                                if (renderPending) return;
+                                renderPending = true;
+                                requestAnimationFrame(function() {
+                                    renderPending = false;
+                                    renderer.update(fullText);
+                                });
+                            }
+
+                            function readStream() {
+                                reader.read().then(function(result) {
+                                    if (result.done) {
+                                        stopFollowing();
+                                        renderer.update(fullText);
+                                        appendBotActions(botEl, fullText);
+                                        streamAbort = null;
+                                        return;
+                                    }
+                                    sseBuffer += decoder.decode(result.value, { stream: true });
+                                    var lines = sseBuffer.split('\n');
+                                    sseBuffer = lines.pop() || '';
+                                    for (var i = 0; i < lines.length; i++) {
+                                        var line = lines[i];
+                                        if (!line.startsWith('data: ')) continue;
+                                        var data = line.slice(6).trim();
+                                        if (data === '[DONE]') {
+                                            stopFollowing();
+                                            renderer.update(fullText);
+                                            appendBotActions(botEl, fullText);
+                                            streamAbort = null;
+                                            return;
+                                        }
+                                        try {
+                                            var json = JSON.parse(data);
+                                            var delta = json.choices && json.choices[0] && json.choices[0]
+                                                .delta && json.choices[0].delta.content || '';
+                                            if (delta) {
+                                                fullText += delta;
+                                                scheduleRender();
+                                            }
+                                        } catch (_) { /* skip */ }
+                                    }
+                                    readStream();
+                                }).catch(function(err) {
+                                    if (err.name === 'AbortError') return;
+                                    stopFollowing();
+                                    removeTyping();
+                                    addMsg('bot', 'Network error. Please try again.');
+                                    streamAbort = null;
+                                });
+                            }
+
+                            readStream();
+
+                        })
+                        .catch(function(err) {
+                            stopFollowing();
+                            if (err.name === 'AbortError') return;
+                            removeTyping();
+                            addMsg('bot', 'Network error. Please try again.');
+                            streamAbort = null;
+                        });
+                })();
+            }
+
+            var _lastSpacerH = -1;
+
+            function updateSpacer(kbHeight) {
+                var barH = chatbarWrap.offsetHeight;
+                var spacerH = barH + (kbHeight || 0);
+                if (spacerH === _lastSpacerH) return;
+                _lastSpacerH = spacerH;
+                chatSpacer.style.height = spacerH + 'px';
+            }
+
+            var _barResizeObserver = new ResizeObserver(function() {
+                updateSpacer(_keyboardOpen ? Math.max(0, window.innerHeight - (window.visualViewport ? window
+                    .visualViewport.height : 0) - (window.visualViewport ? window.visualViewport.offsetTop :
+                    0)) : 0);
+            });
+            _barResizeObserver.observe(chatbarWrap);
+
+            var _vvpRafId = 0;
+            var _prevOffset = -1;
+
+            function fixViewport() {
+                if (_vvpRafId) return;
+                _vvpRafId = requestAnimationFrame(_applyViewport);
+            }
+
+            function _applyViewport() {
+                _vvpRafId = 0;
+
+                var vvp = window.visualViewport;
+                if (!vvp) return;
+
+                var kbHeight = Math.max(0, window.innerHeight - vvp.height - vvp.offsetTop);
+
+                if (Math.round(kbHeight) === Math.round(_prevOffset)) return;
+
+                var wasOpen = _keyboardOpen;
+                _keyboardOpen = kbHeight > 50;
+                _prevOffset = kbHeight;
+
+                viewportResizing = true;
+
+                if (_keyboardOpen && !wasOpen) {
+                    chatbarWrap.style.transition = 'none';
+                } else if (!_keyboardOpen && wasOpen) {
+                    chatbarWrap.style.transition = 'transform 0.28s cubic-bezier(0.0, 0.0, 0.2, 1)';
+                }
+
+                chatbarWrap.style.transform = kbHeight > 0 ?
+                    'translateY(-' + kbHeight + 'px) translateZ(0)' :
+                    '';
+
+                updateSpacer(kbHeight);
+
+                if (kbHeight > 0) {
+                    _programmaticScroll = true;
+                    if (_lastUserMsgEl) {
+                        var GAP = 16;
+                        scrollHost.scrollTop = Math.max(0, _lastUserMsgEl.offsetTop - GAP);
+                    } else {
+                        scrollHost.scrollTop = scrollHost.scrollHeight;
+                    }
+                    _pinnedToBottom = _isAtBottom();
+                }
+
+                cancelAnimationFrame(_vvpRafId);
+                _vvpRafId = requestAnimationFrame(function() {
+                    _vvpRafId = requestAnimationFrame(function() {
+                        _vvpRafId = 0;
+                        lastScrollY = scrollHost.scrollTop;
+                        accumDown = 0;
+                        accumUp = 0;
+                        viewportResizing = false;
+                        _programmaticScroll = false;
+                    });
+                });
+            }
+
+            if (window.visualViewport) {
+                window.visualViewport.addEventListener('resize', fixViewport, { passive: true });
+                window.visualViewport.addEventListener('scroll', fixViewport, { passive: true });
+                updateSpacer(0);
+                _applyViewport();
+            } else {
+                function _legacyFix() {
+                    var h = window.innerHeight + 'px';
+                    if (document.body.style.height !== h) document.body.style.height = h;
+                }
+                window.addEventListener('resize', _legacyFix, { passive: true });
+                _legacyFix();
+                updateSpacer(0);
+            }
+
+            var qParam = new URLSearchParams(location.search).get('q');
+            if (qParam) {
+                input.value = qParam;
+                pill.classList.add('has-text');
+                send();
+            }
+
+            var HEADER_RAF = false;
+
+            function updateHeader() {
+                HEADER_RAF = false;
+
+                if (viewportResizing || _programmaticScroll) {
+                    lastScrollY = scrollHost.scrollTop;
+                    accumDown = 0;
+                    accumUp = 0;
+                    return;
+                }
+
+                var sy = scrollHost.scrollTop;
+                var delta = sy - lastScrollY;
+                if (delta === 0) return;
+
+                lastScrollY = sy;
+
+                if (sy <= 10) {
+                    accumDown = 0;
+                    accumUp = 0;
+                    if (isLogoCollapsed) { logoHeader.classList.remove('collapsed');
+                        isLogoCollapsed = false; }
+                    if (isTabHidden) { tabBar.classList.remove('hide');
+                        isTabHidden = false; }
+                    if (isTabScrolled) { tabBar.classList.remove('scrolled');
+                        isTabScrolled = false; }
+                    return;
+                }
+
+                if (!isLogoCollapsed) { logoHeader.classList.add('collapsed');
+                    isLogoCollapsed = true; }
+                if (!isTabScrolled) { tabBar.classList.add('scrolled');
+                    isTabScrolled = true; }
+
+                if (delta > 0) {
+                    accumDown += delta;
+                    if (accumUp > 0) accumUp = 0;
+                    if (!isTabHidden && accumDown >= 18) {
+                        tabBar.classList.add('hide');
+                        isTabHidden = true;
+                        accumDown = 0;
+                    }
+                } else {
+                    accumUp += -delta;
+                    if (accumDown > 0) accumDown = 0;
+                    if (isTabHidden && accumUp >= 12) {
+                        tabBar.classList.remove('hide');
+                        isTabHidden = false;
+                        accumUp = 0;
+                    }
+                }
+            }
+
+            scrollHost.addEventListener('scroll', function() {
+                _updatePinState();
+                if (!HEADER_RAF) {
+                    HEADER_RAF = true;
+                    requestAnimationFrame(updateHeader);
+                }
+            }, { passive: true });
+
+            var _allTabs = tabBar.querySelectorAll('.tab');
+            tabBar.addEventListener('click', function(e) {
+                var tab = e.target.closest('.tab');
+                if (!tab) return;
+                for (var i = 0; i < _allTabs.length; i++) {
+                    _allTabs[i].classList.remove('active');
+                }
+                tab.classList.add('active');
+            }, { passive: true });
+
+            window.addEventListener('beforeunload', function() {
+                if (_barResizeObserver) _barResizeObserver.disconnect();
+                if (streamAbort) { streamAbort.abort();
+                    streamAbort = null; }
+                stopFollowing();
+                if (_scrollRafId) cancelAnimationFrame(_scrollRafId);
+                if (_followRafId) cancelAnimationFrame(_followRafId);
+                if (_vvpRafId) cancelAnimationFrame(_vvpRafId);
+                var bubbles = msgWrap.querySelectorAll('.msg.bot .bubble');
+                for (var i = 0; i < bubbles.length; i++) {
+                    if (bubbles[i]._renderer) {
+                        bubbles[i]._renderer.destroy();
+                        bubbles[i]._renderer = null;
+                    }
+                }
+            }, { passive: true });
+
+        })();
+    </script>
+</body>
+</html>

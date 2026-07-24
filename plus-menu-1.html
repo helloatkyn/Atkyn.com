@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Plus Menu</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+    .backdrop {
+      position: fixed; inset: 0;
+      background: transparent;
+      z-index: 100;
+      opacity: 0;
+      transition: opacity 0.2s ease;
+      pointer-events: none;
+    }
+    .backdrop.open {
+      opacity: 1;
+      pointer-events: all;
+    }
+
+    .plus-menu {
+      position: fixed;
+      bottom: 90px;
+      left: 16px;
+      width: 200px;
+
+      background: #ffffff;
+      border-radius: 18px;
+      box-shadow:
+        0 0 0 0.5px rgba(0,0,0,0.07),
+        0 8px 28px rgba(0,0,0,0.13),
+        0 2px 6px rgba(0,0,0,0.05);
+
+      overflow: hidden;
+      z-index: 101;
+
+      transform: translateY(10px) scale(0.96);
+      transform-origin: bottom left;
+      opacity: 0;
+      pointer-events: none;
+      transition:
+        transform 0.22s cubic-bezier(0.22, 1, 0.36, 1),
+        opacity   0.18s ease;
+    }
+    .plus-menu.open {
+      transform: translateY(0) scale(1);
+      opacity: 1;
+      pointer-events: all;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .plus-menu {
+        background: #1c1c1e;
+        box-shadow:
+          0 0 0 0.5px rgba(255,255,255,0.08),
+          0 8px 32px rgba(0,0,0,0.55),
+          0 2px 8px rgba(0,0,0,0.3);
+      }
+    }
+
+    .menu-item {
+      display: flex;
+      align-items: center;
+      gap: 13px;
+      padding: 15px 18px;
+      cursor: pointer;
+      border: none;
+      background: none;
+      width: 100%;
+      text-align: left;
+      color: #0d0d0d;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+      font-size: 1rem;
+      font-weight: 400;
+      letter-spacing: 0.005em;
+      transition: background 0.1s;
+    }
+    .menu-item:active { background: rgba(0,0,0,0.05); }
+
+    @media (prefers-color-scheme: dark) {
+      .menu-item { color: #f2f2f7; }
+      .menu-item:active { background: rgba(255,255,255,0.07); }
+    }
+
+    .menu-icon {
+      flex-shrink: 0;
+      width: 22px; height: 22px;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .menu-icon svg {
+      width: 22px; height: 22px;
+      stroke: #0d0d0d;
+      fill: none;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .menu-icon svg { stroke: #f2f2f7; }
+    }
+
+    .menu-label { flex: 1; }
+
+    /* demo scaffold */
+    body {
+      background: rgba(0,0,0,0.3);
+      height: 100vh;
+      display: flex; align-items: flex-end;
+      padding-bottom: 80px;
+    }
+    .demo-trigger {
+      margin: 0 16px;
+      width: 44px; height: 44px;
+      border-radius: 50%;
+      border: none;
+      background: #F34655;
+      color: #fff;
+      font-size: 1.5rem;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer;
+      box-shadow: 0 2px 8px rgba(243,70,85,0.35);
+    }
+  </style>
+</head>
+<body>
+
+  <div class="backdrop" id="backdrop"></div>
+
+  <div class="plus-menu" id="plusMenu">
+
+    <button class="menu-item" onclick="handleAction('camera')">
+      <span class="menu-icon">
+        <svg viewBox="0 0 24 24" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+          <circle cx="12" cy="13" r="4"/>
+        </svg>
+      </span>
+      <span class="menu-label">Camera</span>
+    </button>
+
+    <button class="menu-item" onclick="handleAction('photo')">
+      <span class="menu-icon">
+        <svg viewBox="0 0 24 24" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="3" width="18" height="18" rx="3"/>
+          <circle cx="8.5" cy="8.5" r="1.5"/>
+          <polyline points="21 15 16 10 5 21"/>
+        </svg>
+      </span>
+      <span class="menu-label">Gallery</span>
+    </button>
+
+    <button class="menu-item" onclick="handleAction('file')">
+      <span class="menu-icon">
+        <svg viewBox="0 0 24 24" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+          <polyline points="14 2 14 8 20 8"/>
+        </svg>
+      </span>
+      <span class="menu-label">Files</span>
+    </button>
+
+    <button class="menu-item" onclick="handleAction('connectors')">
+      <span class="menu-icon">
+        <svg viewBox="0 0 24 24" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="3" width="7" height="7" rx="1"/>
+          <rect x="14" y="3" width="7" height="7" rx="1"/>
+          <rect x="3" y="14" width="7" height="7" rx="1"/>
+          <path d="M14 17.5h7M17.5 14v7"/>
+        </svg>
+      </span>
+      <span class="menu-label">Connectors</span>
+    </button>
+
+  </div>
+
+  <button class="demo-trigger" id="demoTrigger" onclick="toggleMenu()">+</button>
+
+<script>
+  const menu     = document.getElementById('plusMenu');
+  const backdrop = document.getElementById('backdrop');
+  let isOpen = false;
+
+  function openMenu() {
+    isOpen = true;
+    menu.classList.add('open');
+    backdrop.classList.add('open');
+  }
+
+  function closeMenu() {
+    isOpen = false;
+    menu.classList.remove('open');
+    backdrop.classList.remove('open');
+  }
+
+  function toggleMenu() {
+    isOpen ? closeMenu() : openMenu();
+  }
+
+  backdrop.addEventListener('click', closeMenu);
+
+  function handleAction(type) {
+    closeMenu();
+    console.log('Action:', type);
+  }
+
+  window.PlusMenu = { open: openMenu, close: closeMenu, toggle: toggleMenu };
+</script>
+</body>
+</html>

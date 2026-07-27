@@ -154,7 +154,7 @@ STRICT RULES:
         'Authorization': `Bearer ${env.GROQ_API_KEY}`,
       },
       body: JSON.stringify({
-        model: 'llama-3.1-8b-instant',
+        model: 'llama-3.3-70b-versatile',
         messages,
         stream: true,
         max_tokens: 1024,

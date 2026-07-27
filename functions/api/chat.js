@@ -193,51 +193,73 @@ export async function onRequestPost(context) {
 
   const doSearch = needsSearch(query);
 
-  // ── 1. LangSearch (only if needed) ────────────────────────────────────────
+  // ── 1. Serper.dev (web + images, parallel) ────────────────────────────────
   let sources = [];
+  let imageResults = [];
   let contextBlock = '';
 
   if (doSearch) {
     try {
-      const lsResp = await fetch('https://api.langsearch.com/v1/web-search', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${env.LANGSEARCH_API_KEY}`,
-        },
-        body: JSON.stringify({
-          query,
-          freshness: 'noLimit',
-          summary: false,
-          count: 5,
-          mkt: 'en-IN',
+      const [webResp, imgResp] = await Promise.all([
+        fetch('https://google.serper.dev/search', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-API-KEY': env.SERPER_API_KEY,
+          },
+          body: JSON.stringify({
+            q: query,
+            num: 10,
+            gl: 'in',
+            hl: 'en',
+          }),
         }),
-      });
+        fetch('https://google.serper.dev/images', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-API-KEY': env.SERPER_API_KEY,
+          },
+          body: JSON.stringify({
+            q: query,
+            num: 100,
+            gl: 'in',
+            hl: 'en',
+          }),
+        }),
+      ]);
 
-      if (lsResp.ok) {
-        const lsData = await lsResp.json();
-        const pages  = lsData?.data?.webPages?.value || [];
-
-        // Filter Chinese/irrelevant domains
-        const enPages = pages.filter(p => {
+      if (webResp.ok) {
+        const webData = await webResp.json();
+        const pages = (webData.organic || []).filter(p => {
           try {
-            const hostname = new URL(p.url).hostname.replace(/^www\./, '');
+            const hostname = new URL(p.link).hostname.replace(/^www\./, '');
             return !BLOCKED_DOMAINS.includes(hostname);
           } catch (_) { return true; }
         });
 
-        sources = enPages.slice(0, 5).map(p => ({
-          name:       p.name,
-          url:        p.url,
-          displayUrl: p.displayUrl || p.url,
+        sources = pages.slice(0, 10).map(p => ({
+          name:       p.title,
+          url:        p.link,
+          displayUrl: p.link,
         }));
 
-        contextBlock = enPages.slice(0, 5)
-          .map((p, i) => `[${i + 1}] ${p.name}\n${(p.snippet || '').slice(0, 400)}`)
+        contextBlock = pages.slice(0, 10)
+          .map((p, i) => `[${i + 1}] ${p.title}\n${(p.snippet || '').slice(0, 400)}`)
           .join('\n\n');
       }
+
+      if (imgResp.ok) {
+        const imgData = await imgResp.json();
+        imageResults = (imgData.images || []).slice(0, 100).map(img => ({
+          title:        img.title,
+          imageUrl:     img.imageUrl,
+          thumbnailUrl: img.thumbnailUrl,
+          sourceUrl:    img.link,
+        }));
+      }
     } catch (_) {
-      // LangSearch failed — answer without context
+      // Serper failed — answer without context
     }
   }
 
@@ -255,15 +277,15 @@ export async function onRequestPost(context) {
     { role: 'user', content: query },
   ];
 
-  // ── 3. Stream: sources event + Groq SSE ───────────────────────────────────
+  // ── 3. Stream: sources + images event, then Groq SSE ─────────────────────
   const { readable, writable } = new TransformStream();
   const writer  = writable.getWriter();
   const encoder = new TextEncoder();
   const write   = chunk => writer.write(encoder.encode(chunk));
 
   (async () => {
-    // First event: sources (empty array if no search)
-    await write(`data: ${JSON.stringify({ sources })}\n\n`);
+    // First event: sources + images (empty arrays if no search)
+    await write(`data: ${JSON.stringify({ sources, images: imageResults })}\n\n`);
 
     const groqResp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',

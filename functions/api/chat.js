@@ -2,14 +2,11 @@
 function needsSearch(query) {
   const q = query.trim().toLowerCase();
 
-  // Bohot choti queries (1-2 words)
   if (q.split(/\s+/).length <= 2) return false;
 
-  // Always search if user says "search kar / phir se search / dobara search"
   if (/search\s*(kar|karo|karna|phir|dobara|again)/i.test(q)) return true;
   if (/phir\sse\ssearch/i.test(q)) return true;
 
-  // Pure greetings
   const greetings = [
     /^(hi|hello|hey|hola|namaste|namaskar|salam)\b/,
     /^(kya haal|kaisa hai|kaise ho|kya chal)\b/,
@@ -19,7 +16,6 @@ function needsSearch(query) {
   ];
   if (greetings.some(r => r.test(q))) return false;
 
-  // Factual / search signals
   const searchSignals = [
     /\b(kya hai|what is|who is|kaun hai|kab|when|kaha|where|kyun|why|kaun|how|kitna|kitne)\b/,
     /\b(price|cost|rate|value|worth)\b/,
@@ -32,11 +28,9 @@ function needsSearch(query) {
   ];
   if (searchSignals.some(r => r.test(q))) return true;
 
-  // 5+ word queries default search
   return q.split(/\s+/).length >= 5;
 }
 
-// Chinese/irrelevant domains blacklist
 const BLOCKED_DOMAINS = [
   'm.163.com', '163.com', 'csdn.net', 'baidu.com', 'weibo.com',
   'zhihu.com', 'bilibili.com', 'sina.com', 'sohu.com', 'qq.com',
@@ -103,7 +97,6 @@ export async function onRequestPost(context) {
 
   const doSearch = needsSearch(query);
 
-  // ── 1. Serper.dev web search ──────────────────────────────────────────────
   let sources = [];
   let contextBlock = '';
 
@@ -147,7 +140,6 @@ export async function onRequestPost(context) {
     }
   }
 
-  // ── 2. Build messages with history ────────────────────────────────────────
   const systemPrompt = contextBlock
     ? SYSTEM_WITH_SEARCH(contextBlock)
     : SYSTEM_WITHOUT_SEARCH;
@@ -160,7 +152,6 @@ export async function onRequestPost(context) {
     { role: 'user', content: query },
   ];
 
-  // ── 3. Stream response ────────────────────────────────────────────────────
   const { readable, writable } = new TransformStream();
   const writer  = writable.getWriter();
   const encoder = new TextEncoder();
@@ -176,7 +167,7 @@ export async function onRequestPost(context) {
         'Authorization': `Bearer ${env.GROQ_API_KEY}`,
       },
       body: JSON.stringify({
-        model: 'openai/gpt-oss-120b',
+        model: 'qwen/qwen3.6-27b',
         messages,
         stream: true,
         max_tokens: 1024,

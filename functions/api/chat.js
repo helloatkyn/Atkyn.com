@@ -268,7 +268,7 @@ export async function onRequestPost(context) {
         'Authorization': `Bearer ${env.GROQ_API_KEY}`,
       },
       body: JSON.stringify({
-        model: 'llama-4-scout-17b-16e-instruct',
+        model: 'openai/gpt-oss-20b',
         messages,
         stream: true,
         max_tokens: 1024,

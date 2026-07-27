@@ -47,9 +47,12 @@ export async function onRequestPost(context) {
         displayUrl: p.displayUrl || p.url,
       }));
 
-      // Build context for Groq
+      // Build context for Groq — cap each source at 400 chars to stay within token limit
       contextBlock = pages
-        .map((p, i) => `[${i + 1}] ${p.name}\nURL: ${p.url}\n${p.summary || p.snippet || ''}`)
+        .map((p, i) => {
+          const text = (p.snippet || '').slice(0, 400);
+          return `[${i + 1}] ${p.name}\nURL: ${p.url}\n${text}`;
+        })
         .join('\n\n');
     }
   } catch (_) {
@@ -106,6 +109,7 @@ export async function onRequestPost(context) {
       await write(decoder.decode(value, { stream: true }));
     }
 
+    await write('data: [DONE]\n\n');
     await writer.close();
   })();
 
@@ -128,3 +132,5 @@ export async function onRequestOptions() {
     },
   });
 }
+
+    

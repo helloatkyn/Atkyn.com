@@ -2,36 +2,47 @@
 function needsSearch(query) {
   const q = query.trim().toLowerCase();
 
-  // Bohot choti queries
-  if (q.split(/\s+/).length < 3) return false;
+  // Bohot choti queries (1-2 words)
+  if (q.split(/\s+/).length <= 2) return false;
 
-  // Greetings / conversational
-  const conversational = [
+  // Always search if user says "search kar / phir se search / dobara search"
+  if (/search\s*(kar|karo|karna|phir|dobara|again)/i.test(q)) return true;
+  if (/phir\s*se\s*search/i.test(q)) return true;
+
+  // Pure greetings
+  const greetings = [
     /^(hi|hello|hey|hola|namaste|namaskar|salam)\b/,
-    /kya haal/,  /kaisa hai/, /kaise ho/, /kya chal/,
-    /shukriya/, /thanks/, /thank you/, /dhanyawad/,
-    /acha|achha|ok|okay|theek|bilkul|haan|nahi|nope/,
-    /bhai\s+(sun|ek|koi|kuch|mat|kya|mujhe|mere|mera|tu)/,
-    /^(ha|hm+|hmm+|lol|lmao|xd)$/,
-    /^(aur|or|phir|then|so|bas|done|finish)/,
+    /^(kya haal|kaisa hai|kaise ho|kya chal)\b/,
+    /^(shukriya|thanks|thank you|dhanyawad|bahut accha|wah)\b/,
+    /^(haan|nahi|ok|okay|theek|bilkul|accha|achha)\b/,
+    /^(ha|hm+|hmm+|lol)\b/,
   ];
-  if (conversational.some(r => r.test(q))) return false;
+  if (greetings.some(r => r.test(q))) return false;
 
-  // Factual / search-worthy signals
+  // Factual / search signals
   const searchSignals = [
-    /\b(kya hai|what is|who is|kab|when|kaha|where|kyun|why|kaun|how)\b/,
-    /\b(price|cost|rate|kitna|kitne|kitni)\b/,
-    /\b(news|khabar|latest|abhi|aaj|today|kal|tomorrow)\b/,
-    /\b(weather|mausam|temperature)\b/,
-    /\b(best|top|review|compare|vs|difference)\b/,
-    /\b(net worth|salary|income)\b/,
-    /\b(result|score|match|winner)\b/,
+    /\b(kya hai|what is|who is|kaun hai|kab|when|kaha|where|kyun|why|kaun|how|kitna|kitne)\b/,
+    /\b(price|cost|rate|value|worth)\b/,
+    /\b(news|khabar|latest|abhi|aaj|today|kal|tomorrow|recent|2024|2025|2026)\b/,
+    /\b(weather|mausam|temperature|barish)\b/,
+    /\b(best|top|review|compare|vs|difference|better)\b/,
+    /\b(net worth|salary|income|ameer|richest|sabse)\b/,
+    /\b(result|score|match|winner|game)\b/,
+    /\b(galat|galt|wrong|incorrect|sahi nahi|mistake)\b/,
   ];
   if (searchSignals.some(r => r.test(q))) return true;
 
-  // Default: 5+ word queries search karo
+  // 5+ word queries default search
   return q.split(/\s+/).length >= 5;
 }
+
+// Chinese/irrelevant domains blacklist
+const BLOCKED_DOMAINS = [
+  'm.163.com', '163.com', 'csdn.net', 'baidu.com', 'weibo.com',
+  'zhihu.com', 'bilibili.com', 'sina.com', 'sohu.com', 'qq.com',
+  'taobao.com', 'jd.com', 'aliexpress.com', 'douban.com',
+  'naver.com', 'yahoo.co.jp', 'nicovideo.jp',
+];
 
 export async function onRequestPost(context) {
   const { request, env } = context;
@@ -80,10 +91,12 @@ export async function onRequestPost(context) {
         const lsData = await lsResp.json();
         const pages  = lsData?.data?.webPages?.value || [];
 
-        // Filter non-English results
+        // Filter Chinese/irrelevant domains
         const enPages = pages.filter(p => {
-          const url = p.url || '';
-          return !url.match(/\/(zh|cn|ja|ko|ar|ru|de|fr|es|pt)\//);
+          try {
+            const hostname = new URL(p.url).hostname.replace(/^www\./, '');
+            return !BLOCKED_DOMAINS.includes(hostname);
+          } catch (_) { return true; }
         });
 
         sources = enPages.slice(0, 5).map(p => ({
@@ -108,8 +121,12 @@ export async function onRequestPost(context) {
 Web search results:
 ${contextBlock}
 
-Use these results to give a clear, accurate answer. Bold key terms with **text**. Cite sources as [1], [2] etc. Be concise.`
-    : `You are Atkyn, a helpful AI assistant. Answer in the same language the user writes in — if they write in Hindi, reply in Hindi; Hinglish in Hinglish; English in English. Be conversational and concise.`;
+STRICT RULES:
+- Only use facts clearly stated in the search results above
+- NEVER mix facts between different people — if a number belongs to person X, only say it about X, not person Y
+- If sources contradict each other, mention the range
+- Bold key terms with **text**. Cite as [1], [2] etc. Be concise.`
+    : `You are Atkyn, a helpful AI assistant. Answer in the same language the user writes in — Hindi to Hindi, Hinglish to Hinglish, English to English. Be conversational and concise.`;
 
   // history = [{role, content}, ...] last 6 messages
   const recentHistory = Array.isArray(history) ? history.slice(-6) : [];

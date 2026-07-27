@@ -1,35 +1,16 @@
-// Queries jo search nahi karni — LLM seedha answer kare
 function needsSearch(query) {
-  const q = query.trim().toLowerCase();
+  const q = query.trim();
 
-  if (q.split(/\s+/).length <= 2) return false;
-
-  if (/search\s*(kar|karo|karna|phir|dobara|again)/i.test(q)) return true;
-  if (/phir\sse\ssearch/i.test(q)) return true;
-
-  const greetings = [
-    /\b(hi|hello|hey|hola|namaste|namaskar|salam)\b/,
-    /\b(kya haal|kaisa hai|kaise ho|kya chal raha|kya ho raha)\b/,
-    /\b(shukriya|thanks|thank you|dhanyawad|bahut accha|wah)\b/,
-    /\b(haan|nahi|ok|okay|theek|bilkul|accha|achha)\b/,
-    /\b(ha|hm+|hmm+|lol)\b/,
-    /\b(baat karo|baat kar|kuch baat|thodi baat|bas baat)\b/,
+  const explicitSearch = [
+    /search\s*(kar|karo|karna)/i,
+    /\b(dhundh|dhundo|dhundho|dekh|dekho)\b/i,
+    /\b(latest|abhi ka|aaj ka|recent|current|abhi bata|news)\b/i,
+    /\b(price|rate|stock|weather|mausam|score|result)\b/i,
+    /phir\s*se\s*search/i,
+    /\b(kitne mein|kitna hai|kab aaya|kab hua)\b/i,
   ];
-  if (greetings.some(r => r.test(q))) return false;
 
-  const searchSignals = [
-    /\b(kya hai|what is|who is|kaun hai|kab|when|kaha|where|kyun|why|kaun|how|kitna|kitne)\b/,
-    /\b(price|cost|rate|value|worth)\b/,
-    /\b(news|khabar|latest|abhi|aaj|today|kal|tomorrow|recent|2024|2025|2026)\b/,
-    /\b(weather|mausam|temperature|barish)\b/,
-    /\b(best|top|review|compare|vs|difference|better)\b/,
-    /\b(net worth|salary|income|ameer|richest|sabse)\b/,
-    /\b(result|score|match|winner|game)\b/,
-    /\b(galat|galt|wrong|incorrect|sahi nahi|mistake)\b/,
-  ];
-  if (searchSignals.some(r => r.test(q))) return true;
-
-  return q.split(/\s+/).length >= 5;
+  return explicitSearch.some(r => r.test(q));
 }
 
 const BLOCKED_DOMAINS = [
@@ -39,14 +20,12 @@ const BLOCKED_DOMAINS = [
   'naver.com', 'yahoo.co.jp', 'nicovideo.jp',
 ];
 
-// ── System prompts ─────────────────────────────────────────────────────────
-
 const SYSTEM_WITH_SEARCH = (contextBlock) => `\
 You are Atkyn — a smart, friendly AI who talks like a real person, not a robot.
 
 LANGUAGE: Always match the user's language and style exactly.
 - Hinglish in → Hinglish out
-- Hindi in → Hindi out  
+- Hindi in → Hindi out
 - English in → English out
 - Never switch languages unless the user does first.
 
@@ -62,7 +41,7 @@ PERSONALITY:
 SEARCH DATA (use this naturally, don't announce it):
 ${contextBlock}
 
-Weave this info into your reply like you just know it. Never say "according to search" or "based on results". Just talk. If citing a source feels helpful, do it casually like "haan, X ne bola tha ki...".
+Weave this info into your reply like you just know it. Never say "according to search" or "based on results". Just talk naturally.
 
 RULES:
 - Never start with "Sure!", "Great!", "Of course!", "Certainly!" — ever.
@@ -92,10 +71,8 @@ RULES:
 - Never start with "Sure!", "Great!", "Of course!", "Certainly!" — ever.
 - No robotic bullet points for normal conversation. Use them only for actual lists.
 - Never pad replies with filler. Get to the point fast.
-- If you don't know something recent, say it casually — "yaar ye toh mujhe search karna padega".
+- If you don't know something recent, say casually — "yaar ye toh search karna padega, bol dun?".
 - If something's unclear, ask — don't assume and write an essay.`;
-
-// ── Main handler ───────────────────────────────────────────────────────────
 
 export async function onRequestPost(context) {
   const { request, env } = context;
@@ -166,7 +143,6 @@ export async function onRequestPost(context) {
     ? SYSTEM_WITH_SEARCH(contextBlock)
     : SYSTEM_WITHOUT_SEARCH;
 
-  // Last 10 messages for better context memory
   const recentHistory = Array.isArray(history) ? history.slice(-10) : [];
 
   const messages = [
@@ -236,4 +212,4 @@ export async function onRequestOptions() {
       'Access-Control-Allow-Headers': 'Content-Type',
     },
   });
-}
+  }

@@ -195,39 +195,23 @@ export async function onRequestPost(context) {
 
   // ── 1. Serper.dev (web + images, parallel) ────────────────────────────────
   let sources = [];
-  let imageResults = [];
   let contextBlock = '';
 
   if (doSearch) {
     try {
-      const [webResp, imgResp] = await Promise.all([
-        fetch('https://google.serper.dev/search', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-API-KEY': env.SERPER_API_KEY,
-          },
-          body: JSON.stringify({
-            q: query,
-            num: 10,
-            gl: 'in',
-            hl: 'en',
-          }),
+      const webResp = await fetch('https://google.serper.dev/search', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-API-KEY': env.SERPER_API_KEY,
+        },
+        body: JSON.stringify({
+          q: query,
+          num: 10,
+          gl: 'in',
+          hl: 'en',
         }),
-        fetch('https://google.serper.dev/images', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-API-KEY': env.SERPER_API_KEY,
-          },
-          body: JSON.stringify({
-            q: query,
-            num: 100,
-            gl: 'in',
-            hl: 'en',
-          }),
-        }),
-      ]);
+      });
 
       if (webResp.ok) {
         const webData = await webResp.json();
@@ -247,16 +231,6 @@ export async function onRequestPost(context) {
         contextBlock = pages.slice(0, 10)
           .map((p, i) => `[${i + 1}] ${p.title}\n${(p.snippet || '').slice(0, 400)}`)
           .join('\n\n');
-      }
-
-      if (imgResp.ok) {
-        const imgData = await imgResp.json();
-        imageResults = (imgData.images || []).slice(0, 100).map(img => ({
-          title:        img.title,
-          imageUrl:     img.imageUrl,
-          thumbnailUrl: img.thumbnailUrl,
-          sourceUrl:    img.link,
-        }));
       }
     } catch (_) {
       // Serper failed — answer without context
@@ -285,7 +259,7 @@ export async function onRequestPost(context) {
 
   (async () => {
     // First event: sources + images (empty arrays if no search)
-    await write(`data: ${JSON.stringify({ sources, images: imageResults })}\n\n`);
+    await write(`data: ${JSON.stringify({ sources })}\n\n`);
 
     const groqResp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
@@ -294,7 +268,7 @@ export async function onRequestPost(context) {
         'Authorization': `Bearer ${env.GROQ_API_KEY}`,
       },
       body: JSON.stringify({
-        model: 'llama-3.1-8b-instant',
+        model: 'llama-4-scout-17b-16e-instruct',
         messages,
         stream: true,
         max_tokens: 1024,

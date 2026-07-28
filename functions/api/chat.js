@@ -50,14 +50,14 @@ RULES:
     { role: 'user', content: query },
   ];
 
-  const groqResp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+  const mistralResp = await fetch('https://api.mistral.ai/v1/chat/completions', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${env.GROQ_API_KEY}`,
+      'Authorization': `Bearer ${env.MISTRAL_API_KEY}`,
     },
     body: JSON.stringify({
-      model: 'llama-3.1-8b-instant',
+      model: 'open-mistral-nemo',
       messages,
       stream: true,
       max_tokens: 1024,
@@ -65,15 +65,15 @@ RULES:
     }),
   });
 
-  if (!groqResp.ok) {
-    const err = await groqResp.text();
+  if (!mistralResp.ok) {
+    const err = await mistralResp.text();
     return new Response(JSON.stringify({ error: err }), {
-      status: groqResp.status,
+      status: mistralResp.status,
       headers: { 'Content-Type': 'application/json' },
     });
   }
 
-  return new Response(groqResp.body, {
+  return new Response(mistralResp.body, {
     headers: {
       'Content-Type': 'text/event-stream',
       'Cache-Control': 'no-cache',

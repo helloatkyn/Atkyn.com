@@ -118,7 +118,7 @@ export async function onRequestPost(context) {
       'Authorization': `Bearer ${env.MISTRAL_API_KEY}`,
     },
     body: JSON.stringify({
-      model: 'mistral-small-2506',
+      model: 'open-mistral-nemo-2407',
       messages,
       stream: true,
       max_tokens: 2048,

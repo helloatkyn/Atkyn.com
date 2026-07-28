@@ -25,7 +25,7 @@ export async function onRequestPost(context) {
       'Authorization': `Bearer ${env.MISTRAL_API_KEY}`,
     },
     body: JSON.stringify({
-      model: 'mistral-small-2603',
+      model: 'ministral-8b-latest',
       messages: [
         {
           role: 'system',

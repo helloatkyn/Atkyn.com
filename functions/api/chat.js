@@ -57,7 +57,7 @@ RULES:
       'Authorization': `Bearer ${env.DEEPSEEK_API_KEY}`,
     },
     body: JSON.stringify({
-      model: 'deepseek-chat',
+      model: 'deepseek-v4-flash',
       messages,
       stream: true,
       max_tokens: 1024,

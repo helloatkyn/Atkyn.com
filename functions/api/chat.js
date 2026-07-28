@@ -50,14 +50,14 @@ RULES:
     { role: 'user', content: query },
   ];
 
-  const mistralResp = await fetch('https://api.mistral.ai/v1/chat/completions', {
+  const resp = await fetch('https://api.deepinfra.com/v1/openai/chat/completions', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${env.MISTRAL_API_KEY}`,
+      'Authorization': `Bearer ${env.DEEPINFRA_API_KEY}`,
     },
     body: JSON.stringify({
-      model: 'mistral-small-2506',
+      model: 'deepseek-ai/DeepSeek-V4-Flash',
       messages,
       stream: true,
       max_tokens: 1024,
@@ -65,15 +65,15 @@ RULES:
     }),
   });
 
-  if (!mistralResp.ok) {
-    const err = await mistralResp.text();
+  if (!resp.ok) {
+    const err = await resp.text();
     return new Response(JSON.stringify({ error: err }), {
-      status: mistralResp.status,
+      status: resp.status,
       headers: { 'Content-Type': 'application/json' },
     });
   }
 
-  return new Response(mistralResp.body, {
+  return new Response(resp.body, {
     headers: {
       'Content-Type': 'text/event-stream',
       'Cache-Control': 'no-cache',

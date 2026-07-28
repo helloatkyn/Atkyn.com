@@ -118,7 +118,7 @@ export async function onRequestPost(context) {
       'Authorization': `Bearer ${env.MISTRAL_API_KEY}`,
     },
     body: JSON.stringify({
-      model: 'mistral-large-2512',
+      model: 'mistral-small-2506',
       messages,
       stream: true,
       max_tokens: 2048,
@@ -153,4 +153,4 @@ export async function onRequestOptions() {
       'Access-Control-Allow-Headers': 'Content-Type',
     },
   });
-}
+} Bhai is code me mistral ka nemo model replacement karke do baaki kuchh touch mat karna search karlo naam pehle 

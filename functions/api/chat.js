@@ -25,7 +25,7 @@ export async function onRequestPost(context) {
       'Authorization': `Bearer ${env.GROQ_API_KEY}`,
     },
     body: JSON.stringify({
-      model: 'gemma2-9b-it',
+      model: 'qwen/qwen3.6-27b',
       messages: [
         {
           role: 'system',

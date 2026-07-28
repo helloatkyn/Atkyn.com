@@ -234,7 +234,7 @@ Your goal is to give the user the same confidence and natural experience they ex
       'Authorization': `Bearer ${env.MISTRAL_API_KEY}`,
     },
     body: JSON.stringify({
-      model: 'mistral-small-2506',
+      model: 'mistral-small-2603',
       messages,
       stream: true,
       max_tokens: 2048,

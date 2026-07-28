@@ -57,7 +57,7 @@ RULES:
       'Authorization': `Bearer ${env.MISTRAL_API_KEY}`,
     },
     body: JSON.stringify({
-      model: 'mistral-small-latest',
+      model: 'mistral-small-3.2-24b-instruct-2506',
       messages,
       stream: true,
       max_tokens: 1024,

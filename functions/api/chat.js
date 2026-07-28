@@ -25,8 +25,8 @@ export async function onRequestPost(context) {
       'Authorization': `Bearer ${env.GROQ_API_KEY}`,
     },
     body: JSON.stringify({
-      model: 'qwen/qwen3.6-27b',
-      reasoning_effort: 'none',
+      model: 'openai/gpt-oss-20b',
+      include_reasoning: false,
       messages: [
         {
           role: 'system',

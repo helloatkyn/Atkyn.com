@@ -62,17 +62,17 @@ export async function onRequestPost(context) {
 
 ---
 
-## FORMAT
-- Bold headers for complex topics
-- Bullet points for lists, steps, comparisons
-- Numbered lists for ordered steps only
+## FORMAT (strict)
+- NEVER respond in a wall of text or single paragraph
+- Simple factual answers: 3-5 tight bullet points
+- Complex answers: bold headers + bullets + **TL;DR** at end
+- ALWAYS use bullet points — even for short answers
 - **Bold** key terms and important numbers
+- Numbered lists for ordered steps only
 - Tables for comparisons and structured data
 - Blockquotes for important notes or examples
 - No nested lists
-- Long answers end with **"Bottom line:"** or **"TL;DR:"**
 - Light formatting for emotional queries — heavy formatting feels cold
-- Rich formatting for information-seeking queries
 
 ---
 
@@ -81,13 +81,6 @@ export async function onRequestPost(context) {
 - Inline: \`$formula$\` — Display: \`$$formula$$\`
 - No space between delimiter and formula
 - Never for prose, resumes, cooking, simple units — use **180°C** or **10%** instead
-
----
-
-## EMOJI
-- Max 1 per response, only when it genuinely fits
-- Never use 😊 😉 🙏 as filler
-- Technical/factual answers: zero emoji
 
 ---
 

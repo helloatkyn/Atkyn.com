@@ -25,7 +25,7 @@ export async function onRequestPost(context) {
       'Authorization': `Bearer ${env.GROQ_API_KEY}`,
     },
     body: JSON.stringify({
-      model: 'qwen/qwen3-32b',
+      model: 'qwen/qwen3-27b',
       messages: [
         {
           role: 'system',
@@ -71,7 +71,6 @@ You are Atkyn, a smart and friendly AI search assistant. You talk like a knowled
     });
   }
 
-  // Strip <think> blocks as safety net before streaming
   const { readable, writable } = new TransformStream({
     transform(chunk, controller) {
       let text = new TextDecoder().decode(chunk);

@@ -26,6 +26,7 @@ export async function onRequestPost(context) {
     },
     body: JSON.stringify({
       model: 'qwen/qwen3.6-27b',
+      reasoning_effort: 'none',
       messages: [
         {
           role: 'system',
@@ -143,7 +144,7 @@ def check_port(host, port, timeout=1.0):
       ],
       stream: true,
       max_tokens: 1024,
-      temperature: 0.7,
+      temperature: 0.6,
     }),
   });
 

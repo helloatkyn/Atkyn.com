@@ -18,14 +18,14 @@ export async function onRequestPost(context) {
     });
   }
 
-  const mistralResp = await fetch('https://api.mistral.ai/v1/chat/completions', {
+  const mistralResp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${env.MISTRAL_API_KEY}`,
+      'Authorization': `Bearer ${env.GROQ_API_KEY}`,
     },
     body: JSON.stringify({
-      model: 'ministral-8b-latest',
+      model: 'qwen/qwen3.6-27b',
       messages: [
         {
           role: 'system',
@@ -202,4 +202,4 @@ export async function onRequestOptions() {
       'Access-Control-Allow-Headers': 'Content-Type',
     },
   });
-}
+      }

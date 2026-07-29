@@ -18,14 +18,14 @@ export async function onRequestPost(context) {
     });
   }
 
-  const mistralResp = await fetch('https://api.mistral.ai/v1/chat/completions', {
+  const openRouterResp = await fetch('https://openrouter.ai/api/v1/chat/completions', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${env.MISTRAL_API_KEY}`,
+      'Authorization': `Bearer ${env.OPENROUTER_API_KEY}`,
     },
     body: JSON.stringify({
-      model: 'ministral-8b-latest',
+      model: 'google/gemma-4-26b-a4b-it:free',
       messages: [
         {
           role: 'system',
@@ -157,19 +157,18 @@ def check_port(host, port, timeout=1.0):
       ],
       stream: true,
       max_tokens: 1024,
-      temperature: 0.6,
     }),
   });
 
-  if (!mistralResp.ok) {
-    const err = await mistralResp.text();
+  if (!openRouterResp.ok) {
+    const err = await openRouterResp.text();
     return new Response(JSON.stringify({ error: err }), {
-      status: mistralResp.status,
+      status: openRouterResp.status,
       headers: { 'Content-Type': 'application/json' },
     });
   }
 
-  return new Response(mistralResp.body, {
+  return new Response(openRouterResp.body, {
     headers: {
       'Content-Type': 'text/event-stream',
       'Cache-Control': 'no-cache',

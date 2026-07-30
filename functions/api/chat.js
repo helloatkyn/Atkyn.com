@@ -18,14 +18,14 @@ export async function onRequestPost(context) {
     });
   }
 
-  const zaiResp = await fetch('https://api.z.ai/api/openai/v1/chat/completions', {
+  const qwenResp = await fetch('https://dashscope-intl.aliyuncs.com/compatible-mode/v1/chat/completions', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${env.ZAI_API_KEY}`,
+      'Authorization': `Bearer ${env.QWEN_API_KEY}`,
     },
     body: JSON.stringify({
-      model: 'glm-4.7-flash',
+      model: 'qwen-flash',
       messages: [
         {
           role: 'system',
@@ -177,15 +177,15 @@ Atkyn: I'm just here to help — what can I do for you?`,
     }),
   });
 
-  if (!zaiResp.ok) {
-    const err = await zaiResp.text();
+  if (!qwenResp.ok) {
+    const err = await qwenResp.text();
     return new Response(JSON.stringify({ error: err }), {
-      status: zaiResp.status,
+      status: qwenResp.status,
       headers: { 'Content-Type': 'application/json' },
     });
   }
 
-  return new Response(zaiResp.body, {
+  return new Response(qwenResp.body, {
     headers: {
       'Content-Type': 'text/event-stream',
       'Cache-Control': 'no-cache',

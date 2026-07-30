@@ -18,14 +18,14 @@ export async function onRequestPost(context) {
     });
   }
 
-  const qwenResp = await fetch('https://dashscope-intl.aliyuncs.com/compatible-mode/v1/chat/completions', {
+  const mistralResp = await fetch('https://api.mistral.ai/v1/chat/completions', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${env.QWEN_API_KEY}`,
+      'Authorization': `Bearer ${env.MISTRAL_API_KEY}`,
     },
     body: JSON.stringify({
-      model: 'qwen-flash',
+      model: 'ministral-8b-latest',
       messages: [
         {
           role: 'system',
@@ -177,15 +177,15 @@ Atkyn: I'm just here to help — what can I do for you?`,
     }),
   });
 
-  if (!qwenResp.ok) {
-    const err = await qwenResp.text();
+  if (!mistralResp.ok) {
+    const err = await mistralResp.text();
     return new Response(JSON.stringify({ error: err }), {
-      status: qwenResp.status,
+      status: mistralResp.status,
       headers: { 'Content-Type': 'application/json' },
     });
   }
 
-  return new Response(qwenResp.body, {
+  return new Response(mistralResp.body, {
     headers: {
       'Content-Type': 'text/event-stream',
       'Cache-Control': 'no-cache',

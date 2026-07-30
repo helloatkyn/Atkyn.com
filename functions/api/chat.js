@@ -18,7 +18,7 @@ export async function onRequestPost(context) {
     });
   }
 
-  const zaiResp = await fetch('https://api.z.ai/api/paas/v4/chat/completions', {
+  const zaiResp = await fetch('https://api.z.ai/api/openai/v1/chat/completions', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

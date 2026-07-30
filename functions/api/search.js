@@ -1,5 +1,3 @@
-const SEARXNG_URL = 'https://searxng-production-2dd9.up.railway.app';
-
 export async function onRequestPost(context) {
   const { request, env } = context;
 
@@ -23,8 +21,9 @@ export async function onRequestPost(context) {
   // ── 1. SearXNG se web results fetch karo ──
   let webResults = [];
   try {
+    const searxngUrl = env.SEARXNG_URL;
     const searchResp = await fetch(
-      `${SEARXNG_URL}/search?q=${encodeURIComponent(query)}&format=json&categories=general&language=auto`,
+      `${searxngUrl}/search?q=${encodeURIComponent(query)}&format=json&categories=general&language=auto`,
       { headers: { 'Accept': 'application/json' } }
     );
     if (searchResp.ok) {
@@ -46,7 +45,7 @@ export async function onRequestPost(context) {
       webResults.map((r, i) => `[${i + 1}] ${r.title}\nURL: ${r.url}\n${r.snippet}`).join('\n\n')
     : '';
 
-  // ── 3. Mistral ko stream karo — sirf history + context, koi system prompt nahi ──
+  // ── 3. Mistral stream ──
   const mistralResp = await fetch('https://api.mistral.ai/v1/chat/completions', {
     method: 'POST',
     headers: {
@@ -79,15 +78,13 @@ export async function onRequestPost(context) {
     });
   }
 
-  // ── 4. Pehle results event bhejo, phir AI stream ──
+  // ── 4. Pehle results event, phir AI stream ──
   const encoder = new TextEncoder();
   const { readable, writable } = new TransformStream();
   const writer = writable.getWriter();
 
-  // Frontend ko results cards ke liye
   writer.write(encoder.encode(`event: results\ndata: ${JSON.stringify(webResults)}\n\n`));
 
-  // Mistral stream pipe karo
   (async () => {
     const reader = mistralResp.body.getReader();
     try {

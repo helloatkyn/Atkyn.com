@@ -378,6 +378,28 @@ document.addEventListener('click', function(e) {
 });
 
 /* ════════════════════════════════
+   WEB RESULT CARDS
+   ════════════════════════════════ */
+
+function _renderWebCards(results) {
+  const wrap = document.createElement('div');
+  wrap.className = 'msg bot';
+  const bubble = document.createElement('div');
+  bubble.className = 'bubble web-results';
+  bubble.innerHTML = results.map(r => {
+    let hostname = r.url;
+    try { hostname = new URL(r.url).hostname; } catch (_) {}
+    return `<a class="web-card" href="${r.url}" target="_blank" rel="noopener noreferrer">
+      <div class="web-card-title">${r.title}</div>
+      <div class="web-card-url">${hostname}</div>
+      <div class="web-card-snippet">${r.snippet}</div>
+    </a>`;
+  }).join('');
+  wrap.appendChild(bubble);
+  msgWrap.appendChild(wrap);
+}
+
+/* ════════════════════════════════
    SEND / STREAM
    ════════════════════════════════ */
 
@@ -395,8 +417,12 @@ async function send() {
   if (streamAbort) { streamAbort.abort(); streamAbort = null; }
   streamAbort = new AbortController();
 
+  /* Answer tab pe /api/search, baaki pe /api/chat */
+  const activeTab = tabBar.querySelector('.tab.active')?.dataset?.tab;
+  const endpoint  = activeTab === 'ai' ? '/api/search' : '/api/chat';
+
   try {
-    const resp = await fetch('/api/chat', {
+    const resp = await fetch(endpoint, {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
       body:    JSON.stringify({ query: q, history: _history.slice(0, -1) }),
@@ -414,6 +440,7 @@ async function send() {
     const decoder = new TextDecoder('utf-8', { fatal: false });
     let sseBuffer = '';
     let fullText  = '';
+    let eventType = '';
 
     outer: while (true) {
       const { done, value } = await reader.read();
@@ -422,9 +449,29 @@ async function send() {
       const lines = sseBuffer.split('\n');
       sseBuffer = lines.pop();
       for (const line of lines) {
-        if (!line.startsWith('data: ')) continue;
+        if (line.startsWith('event: ')) {
+          eventType = line.slice(7).trim();
+          continue;
+        }
+        if (!line.startsWith('data: ')) { eventType = ''; continue; }
         const data = line.slice(6).trim();
         if (data === '[DONE]') break outer;
+
+        /* Web results event */
+        if (eventType === 'results') {
+          try {
+            const results = JSON.parse(data);
+            if (results.length) {
+              removeTyping();
+              _renderWebCards(results);
+              showTyping();
+            }
+          } catch (_) {}
+          eventType = '';
+          continue;
+        }
+
+        /* Normal AI stream */
         try {
           const json  = JSON.parse(data);
           const delta = json.choices?.[0]?.delta?.content || '';
@@ -468,4 +515,4 @@ async function send() {
 
 const _qParam = new URLSearchParams(location.search).get('q');
 if (_qParam) { input.value = _qParam; pill.classList.add('has-text'); send(); }
-                                        
+     

@@ -18,14 +18,14 @@ export async function onRequestPost(context) {
     });
   }
 
-  const mistralResp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+  const zaiResp = await fetch('https://api.z.ai/api/paas/v4/chat/completions', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${env.GROQ_API_KEY}`,
+      'Authorization': `Bearer ${env.ZAI_API_KEY}`,
     },
     body: JSON.stringify({
-      model: 'llama-3.1-8b-instant',
+      model: 'glm-4.7-flash',
       messages: [
         {
           role: 'system',
@@ -177,15 +177,15 @@ Atkyn: I'm just here to help — what can I do for you?`,
     }),
   });
 
-  if (!mistralResp.ok) {
-    const err = await mistralResp.text();
+  if (!zaiResp.ok) {
+    const err = await zaiResp.text();
     return new Response(JSON.stringify({ error: err }), {
-      status: mistralResp.status,
+      status: zaiResp.status,
       headers: { 'Content-Type': 'application/json' },
     });
   }
 
-  return new Response(mistralResp.body, {
+  return new Response(zaiResp.body, {
     headers: {
       'Content-Type': 'text/event-stream',
       'Cache-Control': 'no-cache',

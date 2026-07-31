@@ -89,6 +89,7 @@ function syntaxHighlight(code, lang) {
 /* ── Tokenizer regexes ── */
 const _RX = {
   jsKw:        /\b(const|let|var|function|return|if|else|for|while|do|switch|case|break|continue|new|delete|typeof|instanceof|in|of|class|extends|super|import|export|default|from|async|await|try|catch|finally|throw|yield|static|get|set|this)\b/g,
+  dartKw:      /\b(void|final|late|required|abstract|implements|mixin|with|extension|typedef|enum|factory|operator|covariant|external|dynamic|const|var|return|if|else|for|while|do|switch|case|break|continue|new|class|extends|super|import|export|async|await|try|catch|finally|throw|yield|static|get|set|this|in|is|as|null|true|false)\b/g,
   jsBool:      /\b(true|false|null|undefined|NaN|Infinity)\b/g,
   pyKw:        /\b(def|class|return|if|elif|else|for|while|in|not|and|or|import|from|as|with|try|except|finally|raise|pass|break|continue|lambda|yield|global|nonlocal|del|assert|is|True|False|None)\b/g,
   dqStr:       /"(?:[^"\\]|\\.)*"/g,
@@ -104,9 +105,9 @@ const _RX = {
 };
 
 function _tokenizeLine(line, lang) {
-  const { jsKw, jsBool, pyKw, dqStr, sqStr, btStr, lineComment,
+  const { jsKw, jsBool, pyKw, dartKw, dqStr, sqStr, btStr, lineComment,
           hashComment, blockComment, numLit, fnCall, clsName, propKey } = _RX;
-  for (const r of [jsKw, jsBool, pyKw, dqStr, sqStr, btStr,
+  for (const r of [jsKw, jsBool, pyKw, dartKw, dqStr, sqStr, btStr,
                    lineComment, hashComment, blockComment,
                    numLit, fnCall, clsName, propKey]) r.lastIndex = 0;
 
@@ -122,15 +123,18 @@ function _tokenizeLine(line, lang) {
   }
   s = s.replace(btStr,   m     => protect(`<span class="tk-str">${_esc(m)}</span>`));
   s = s.replace(dqStr,   m     => protect(`<span class="tk-str">${_esc(m)}</span>`));
-  s = s.replace(sqStr,   m     => protect(`<span class="tk-str">${_esc(m)}</span>`));
+  // sqStr: only protect if content is non-empty (avoids eating lone apostrophes)
+  s = s.replace(/'([^'\n\\]|\\.)+'/g, m => protect(`<span class="tk-str">${_esc(m)}</span>`));
   s = _esc(s);
   s = s.replace(numLit,  m     => protect(`<span class="tk-num">${m}</span>`));
   s = s.replace(clsName, (m,p) => protect(`<span class="tk-cls">${p}</span>`));
   s = s.replace(fnCall,  (m,p) => protect(`<span class="tk-fn">${p}</span>`));
   if (lang === 'python' || lang === 'py') {
-    s = s.replace(pyKw,  m => protect(`<span class="tk-kw">${m}</span>`));
+    s = s.replace(pyKw,   m => protect(`<span class="tk-kw">${m}</span>`));
+  } else if (lang === 'dart') {
+    s = s.replace(dartKw, m => protect(`<span class="tk-kw">${m}</span>`));
   } else {
-    s = s.replace(jsKw,  m => protect(`<span class="tk-kw">${m}</span>`));
+    s = s.replace(jsKw,   m => protect(`<span class="tk-kw">${m}</span>`));
   }
   s = s.replace(jsBool,  m     => protect(`<span class="tk-bool">${m}</span>`));
   s = s.replace(propKey, (m,p) => protect(`<span class="tk-prop">${p}</span>`));
@@ -261,4 +265,4 @@ function renderMarkdown(rawText) {
 
 /* renderMathBubble — no-op for call-site compatibility */
 function renderMathBubble(_el) {}
-           
+     

@@ -2,7 +2,7 @@
    renderer.js — Atkyn Search
    Markdown · KaTeX math · Syntax highlighting · Table rendering
 
-   Audit & Hardening (v4) – Block‑aware tokenizer
+   Audit & Hardening (v4) — Block‑aware tokenizer
    ────────────────────────────────────────────────────────────
    • Newline normalisation (CRLF / CR → LF)
    • Safe Unicode‑based placeholder markers
@@ -15,7 +15,7 @@
    • Fenced‑code regex relaxed
    • Ordered lists use <ol>
    • Block tokenizer (no longer dependent on blank‑line splits)
-   • Malformed tables fallback silently
+   • Mid‑line heading markers split into separate heading blocks
    ═══════════════════════════════════════════════════════════════ */
 
 /* ── HTML escape (user‑facing text → safe HTML attribute / content) ── */
@@ -241,6 +241,7 @@ function _tokenizeLine(line, lang) {
 
   return s || ' ';
 }
+
 /* ────────────────────────────────────────────────────────────────
    Heading level map  (# → h3, ## → h3, ### → h4, ####+ → h5)
    ──────────────────────────────────────────────────────────────── */
@@ -312,8 +313,7 @@ function _splitBlocks(text) {
   }
   push();
   return blocks;
-}
-
+     }
 /* ────────────────────────────────────────────────────────────────
    renderMarkdown(rawText) → HTML string
    Pipeline:
@@ -323,6 +323,7 @@ function _splitBlocks(text) {
      3. Extract fenced code blocks (→ placeholders)
      4. Extract inline code spans (shield from math / tables)
      5. Extract math placeholders
+    5.5 Detect & split mid‑line heading markers (before restoring inline code)
      6. Restore inline code spans
      7. Split into homogeneous blocks with _splitBlocks()
      8. Render each block
@@ -362,7 +363,13 @@ function renderMarkdown(rawText) {
   const { text: mathText, math } = _extractMath(text);
   text = mathText;
 
-  /* 6. Restore inline code (math placeholders now safe) */
+  /* 5.5 Split paragraphs that contain heading markers (####, etc.)
+     At this point inline code & math are placeholders, so # inside them is invisible.
+     Only genuine mid‑line heading markers are affected. */
+  text = text.replace(/(\S)\s+(#{2,4})\s(?=[^\s])/g, '$1\n$2 ');
+  text = text.replace(/(\S)\s+(#{2,4})\s*$/gm, '$1\n$2');
+
+  /* 6. Restore inline code (math placeholders still present) */
   text = _restoreInlineCode(text, inlineCode.codes);
 
   /* 7. Block tokenization */

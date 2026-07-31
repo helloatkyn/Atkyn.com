@@ -29,18 +29,7 @@ function _katexRender(tex, display) {
 
 /*
  * _extractMath(text)
- * ------------------
- * Scans the full raw text once before any line/paragraph splitting.
- * Extracts every math region — closed OR unclosed — into a lookup table.
- * Returns { text: string with \x00M{n}\x00 placeholders, math: Array }
- *
- * Handles:
- *   \[...\]   display (closed)
- *   \[...EOF  display (unclosed — stream cut off)
- *   $$...$$   display (closed)
- *   $$...EOF  display (unclosed)
- *   \(...\)   inline  (closed)
- *   $...$     inline  (closed, single-line)
+ * Extracts math regions into placeholders before any splitting.
  */
 function _extractMath(text) {
   const math = [];
@@ -49,24 +38,28 @@ function _extractMath(text) {
     math.push({ inner, display });
     return `\x00M${idx}\x00`;
   }
-  /* display: \[...\] — greedy to EOF if unclosed */
-  text = text.replace(/\\\[([\s\S]*?)(?:\\\]|$)/g,   (_, inner) => placeholder(inner, true));
-  /* display: $$...$$ — greedy to EOF if unclosed */
-  text = text.replace(/\$\$([\s\S]*?)(?:\$\$|$)/g,   (_, inner) => placeholder(inner, true));
-  /* inline: \(...\) */
-  text = text.replace(/\\\(([\s\S]*?)\\\)/g,          (_, inner) => placeholder(inner, false));
-  /* inline: $...$ — single-line, not $$ */
-  text = text.replace(/\$([^\$\n]+?)\$/g,             (_, inner) => placeholder(inner, false));
+  text = text.replace(/\\\[([\s\S]*?)(?:\\\]|$)/g,  (_, inner) => placeholder(inner, true));
+  text = text.replace(/\$\$([\s\S]*?)(?:\$\$|$)/g,  (_, inner) => placeholder(inner, true));
+  text = text.replace(/\\\(([\s\S]*?)\\\)/g,         (_, inner) => placeholder(inner, false));
+  text = text.replace(/\$([^\$\n]+?)\$/g,            (_, inner) => placeholder(inner, false));
   return { text, math };
 }
 
-/* ── Inline formatter (bold / italic / inline-code + math restore) ── */
+/* ── Inline formatter (bold / italic / code / links + math restore) ── */
 function _fmt(line, math) {
   let s = _he(line);
-  s = s.replace(/`([^`]+)`/g,           (_, c) => `<code>${c}</code>`);
-  s = s.replace(/\*\*([^*\n]+?)\*\*/g,  '<strong>$1</strong>');
-  s = s.replace(/\*([^*\n]+?)\*/g,      '<em>$1</em>');
-  /* restore math placeholders AFTER HTML-escape so KaTeX HTML passes through */
+  // inline code
+  s = s.replace(/`([^`]+)`/g,          (_, c) => `<code>${c}</code>`);
+  // bold
+  s = s.replace(/\*\*([^*\n]+?)\*\*/g, '<strong>$1</strong>');
+  // italic
+  s = s.replace(/\*([^*\n]+?)\*/g,     '<em>$1</em>');
+  // links [text](url)
+  s = s.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_, text, url) => {
+    const safeUrl = url.startsWith('http') ? url : '#';
+    return `<a href="${safeUrl}" target="_blank" rel="noopener noreferrer">${text}</a>`;
+  });
+  // restore math placeholders
   s = s.replace(/\x00M(\d+)\x00/g, (_, i) => {
     const { inner, display } = math[+i];
     const html = _katexRender(inner.trim(), display);
@@ -92,69 +85,54 @@ function syntaxHighlight(code, lang) {
   return `<div class="code-lines">${linesHtml}</div>`;
 }
 
+/* ── Tokenizer regexes — compiled once ── */
+const _RX = {
+  jsKw:        /\b(const|let|var|function|return|if|else|for|while|do|switch|case|break|continue|new|delete|typeof|instanceof|in|of|class|extends|super|import|export|default|from|async|await|try|catch|finally|throw|yield|static|get|set|this)\b/g,
+  jsBool:      /\b(true|false|null|undefined|NaN|Infinity)\b/g,
+  pyKw:        /\b(def|class|return|if|elif|else|for|while|in|not|and|or|import|from|as|with|try|except|finally|raise|pass|break|continue|lambda|yield|global|nonlocal|del|assert|is|True|False|None)\b/g,
+  dqStr:       /"(?:[^"\\]|\\.)*"/g,
+  sqStr:       /'(?:[^'\\]|\\.)*'/g,
+  btStr:       /`(?:[^`\\]|\\.)*`/g,
+  lineComment: /\/\/.*/g,
+  hashComment: /#.*/g,
+  blockComment:/\/\*[\s\S]*?\*\//g,
+  numLit:      /\b\d+(\.\d+)?\b/g,
+  fnCall:      /\b([a-zA-Z_$][a-zA-Z0-9_$]*)(?=\s*\()/g,
+  clsName:     /\b([A-Z][a-zA-Z0-9_]*)\b/g,
+  propKey:     /([a-zA-Z_$][a-zA-Z0-9_$]*)(?=\s*:)/g,
+};
+
 function _tokenizeLine(line, lang) {
-  /* Patterns */
-  const jsKw       = /\b(const|let|var|function|return|if|else|for|while|do|switch|case|break|continue|new|delete|typeof|instanceof|in|of|class|extends|super|import|export|default|from|async|await|try|catch|finally|throw|yield|static|get|set|this)\b/g;
-  const jsBool     = /\b(true|false|null|undefined|NaN|Infinity)\b/g;
-  const pyKw       = /\b(def|class|return|if|elif|else|for|while|in|not|and|or|import|from|as|with|try|except|finally|raise|pass|break|continue|lambda|yield|global|nonlocal|del|assert|is|True|False|None)\b/g;
-  const dqStr      = /"(?:[^"\\]|\\.)*"/g;
-  const sqStr      = /'(?:[^'\\]|\\.)*'/g;
-  const btStr      = /`(?:[^`\\]|\\.)*`/g;
-  const lineComment = /\/\/.*/g;
-  const hashComment = /#.*/g;
-  const blockComment = /\/\*[\s\S]*?\*\//g;
-  const numLit     = /\b\d+(\.\d+)?\b/g;
-  const fnCall     = /\b([a-zA-Z_$][a-zA-Z0-9_$]*)(?=\s*\()/g;
-  const clsName    = /\b([A-Z][a-zA-Z0-9_]*)\b/g;
-  const propKey    = /([a-zA-Z_$][a-zA-Z0-9_$]*)(?=\s*:)/g;
+  const { jsKw, jsBool, pyKw, dqStr, sqStr, btStr, lineComment,
+          hashComment, blockComment, numLit, fnCall, clsName, propKey } = _RX;
+  for (const r of [jsKw, jsBool, pyKw, dqStr, sqStr, btStr,
+                   lineComment, hashComment, blockComment,
+                   numLit, fnCall, clsName, propKey]) r.lastIndex = 0;
 
   const ph = [];
-  function protect(html) {
-    const i = ph.length;
-    ph.push(html);
-    return `\x01${i}\x01`;
-  }
+  const protect = html => { const i = ph.length; ph.push(html); return `\x01${i}\x01`; };
 
   let s = line;
-
-  /* 1. Block comments */
   s = s.replace(blockComment, m => protect(`<span class="tk-cmt">${_esc(m)}</span>`));
-
-  /* 2. Line comments */
-  if (lang === 'python' || lang === 'py' || lang === 'bash' || lang === 'sh' || lang === 'yaml' || lang === 'yml') {
+  if (['python','py','bash','sh','yaml','yml'].includes(lang)) {
     s = s.replace(hashComment, m => protect(`<span class="tk-cmt">${_esc(m)}</span>`));
   } else {
     s = s.replace(lineComment, m => protect(`<span class="tk-cmt">${_esc(m)}</span>`));
   }
-
-  /* 3. Template literals */
-  s = s.replace(btStr, m => protect(`<span class="tk-str">${_esc(m)}</span>`));
-  /* 4. Double-quoted strings */
-  s = s.replace(dqStr, m => protect(`<span class="tk-str">${_esc(m)}</span>`));
-  /* 5. Single-quoted strings */
-  s = s.replace(sqStr, m => protect(`<span class="tk-str">${_esc(m)}</span>`));
-
-  /* 6. Escape remaining raw chars */
+  s = s.replace(btStr,   m     => protect(`<span class="tk-str">${_esc(m)}</span>`));
+  s = s.replace(dqStr,   m     => protect(`<span class="tk-str">${_esc(m)}</span>`));
+  s = s.replace(sqStr,   m     => protect(`<span class="tk-str">${_esc(m)}</span>`));
   s = _esc(s);
-
-  /* 7. Numbers */
-  s = s.replace(numLit, m => protect(`<span class="tk-num">${m}</span>`));
-  /* 8. Class names (CapitalCase) */
-  s = s.replace(clsName, (m, p1) => protect(`<span class="tk-cls">${p1}</span>`));
-  /* 9. Function calls */
-  s = s.replace(fnCall, (m, p1) => protect(`<span class="tk-fn">${p1}</span>`));
-  /* 10. Keywords */
+  s = s.replace(numLit,  m     => protect(`<span class="tk-num">${m}</span>`));
+  s = s.replace(clsName, (m,p) => protect(`<span class="tk-cls">${p}</span>`));
+  s = s.replace(fnCall,  (m,p) => protect(`<span class="tk-fn">${p}</span>`));
   if (lang === 'python' || lang === 'py') {
     s = s.replace(pyKw,  m => protect(`<span class="tk-kw">${m}</span>`));
   } else {
     s = s.replace(jsKw,  m => protect(`<span class="tk-kw">${m}</span>`));
   }
-  /* 11. Booleans / null */
-  s = s.replace(jsBool, m => protect(`<span class="tk-bool">${m}</span>`));
-  /* 12. Object keys */
-  s = s.replace(propKey, (m, p1) => protect(`<span class="tk-prop">${p1}</span>`));
-
-  /* Restore placeholders */
+  s = s.replace(jsBool,  m     => protect(`<span class="tk-bool">${m}</span>`));
+  s = s.replace(propKey, (m,p) => protect(`<span class="tk-prop">${p}</span>`));
   s = s.replace(/\x01(\d+)\x01/g, (_, i) => ph[+i]);
   return s || ' ';
 }
@@ -177,7 +155,7 @@ function renderMarkdown(rawText) {
     return `\x00CODE${idx}\x00`;
   });
 
-  /* 2. Extract all math (closed + unclosed) */
+  /* 2. Extract all math */
   const { text: mathText, math } = _extractMath(text);
   text = mathText;
 
@@ -228,14 +206,14 @@ function renderMarkdown(rawText) {
       return `<ul>${items}</ul>`;
     }
 
-    /* Ordered list */
+    /* Ordered list — render as ul for consistent bullet styling */
     if (/^\d+[.)]\s/m.test(t)) {
       const items = t.split('\n').filter(Boolean)
         .map(l => `<li>${_fmt(l.replace(/^\d+[.)]\s/, ''), math)}</li>`).join('');
-      return `<ol>${items}</ol>`;
+      return `<ul>${items}</ul>`;
     }
 
-    /* Paragraph — line-by-line so display math breaks out cleanly */
+    /* Paragraph */
     const lineHtml = t.split('\n').map(line => {
       const lt = line.trim();
       if (/^\x00M\d+\x00$/.test(lt)) {
@@ -254,6 +232,6 @@ function renderMarkdown(rawText) {
   return html;
 }
 
-/* renderMathBubble — kept as no-op for call-site compatibility */
+/* renderMathBubble — no-op for call-site compatibility */
 function renderMathBubble(_el) {}
-      
+                           

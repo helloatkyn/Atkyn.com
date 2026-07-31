@@ -27,73 +27,40 @@ function _katexRender(tex, display) {
   }
 }
 
-/*
- * _extractMath(text)
- *
- * MUST run BEFORE any HTML escaping.
- * Handles ALL KaTeX/LaTeX delimiter styles:
- *   $$...$$   display (possibly multiline)
- *   \[...\]   display (possibly multiline)
- *   $...$     inline  (no newlines allowed inside)
- *   \(...\)   inline  (no newlines allowed inside)
- *
- * Also handles the model's common mistake of mixing styles in one
- * expression, e.g.  \( a_n = p $a_{n-1}$ + q $a_{n-2}$ \)
- * by stripping inner $…$ delimiters inside a \(…\) region.
- *
- * Returns { text, math } where text has placeholders \x00M<n>\x00
- * and math[n] = { inner, display }.
- */
 function _extractMath(text) {
   const math = [];
 
   function placeholder(inner, display) {
-    // strip leftover $ signs that crept inside \(…\) regions
     const cleaned = inner.replace(/\$/g, '').trim();
     const idx = math.length;
     math.push({ inner: cleaned, display });
     return `\x00M${idx}\x00`;
   }
 
-  // 1. \[ ... \]  display — multiline OK
   text = text.replace(/\\\[([\s\S]*?)(?:\\\]|$)/g,
     (_, inner) => placeholder(inner, true));
-
-  // 2. $$ ... $$  display — multiline OK
   text = text.replace(/\$\$([\s\S]*?)(?:\$\$|$)/g,
     (_, inner) => placeholder(inner, true));
-
-  // 3. \( ... \)  inline — may contain stray $…$ from model
   text = text.replace(/\\\(([\s\S]*?)(?:\\\)|$)/g,
     (_, inner) => placeholder(inner, false));
-
-  // 4. $ ... $  inline — single line only, not already protected
   text = text.replace(/\$([^\$\n]+?)\$/g,
     (_, inner) => placeholder(inner, false));
 
   return { text, math };
 }
 
-/* ── Inline formatter (bold / italic / code / links + math restore) ── */
+/* ── Inline formatter ── */
 function _fmt(line, math) {
-  // HTML-escape FIRST, then apply markup
   let s = _he(line);
-  // restore literal <br> tags that the model outputs inside cell content
   s = s.replace(/&lt;br&gt;/gi, '<br>');
-  // inline code
   s = s.replace(/`([^`]+)`/g,          (_, c) => `<code>${c}</code>`);
-  // bold
   s = s.replace(/\*\*([^*\n]+?)\*\*/g, '<strong>$1</strong>');
-  // single asterisks — strip them, model misuses *text* as headings
   s = s.replace(/\*([^*\n]+?)\*/g, '$1');
-  // also strip any remaining lone asterisks
   s = s.replace(/(?<!\*|\w)\*(?!\*)/g, '');
-  // links [text](url)
   s = s.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_, text, url) => {
     const safeUrl = url.startsWith('http') ? url : '#';
     return `<a href="${safeUrl}" target="_blank" rel="noopener noreferrer">${text}</a>`;
   });
-  // restore math placeholders
   s = s.replace(/\x00M(\d+)\x00/g, (_, i) => {
     const { inner, display } = math[+i];
     const html = _katexRender(inner, display);
@@ -119,7 +86,7 @@ function syntaxHighlight(code, lang) {
   return `<div class="code-lines">${linesHtml}</div>`;
 }
 
-/* ── Tokenizer regexes — compiled once ── */
+/* ── Tokenizer regexes ── */
 const _RX = {
   jsKw:        /\b(const|let|var|function|return|if|else|for|while|do|switch|case|break|continue|new|delete|typeof|instanceof|in|of|class|extends|super|import|export|default|from|async|await|try|catch|finally|throw|yield|static|get|set|this)\b/g,
   jsBool:      /\b(true|false|null|undefined|NaN|Infinity)\b/g,
@@ -180,13 +147,12 @@ function renderMarkdown(rawText) {
     .replace(/^-{3,}\s*$/gm, '')
     .replace(/^\*{2}\s*$/gm, '')
     .replace(/^\*([^*\n]+)\*$/gm, '$1')
-    .replace(/^#{4,}\s+(.+)$/gm, '**$1**')
-    .replace(/^###\s+(.+)$/gm, '**$1**')
+    .replace(/^#{4,}\s*\**\s*(.+?)\**\s*$/gm, '**$1**')
+    .replace(/^###\s*\**\s*(.+?)\**\s*$/gm,   '**$1**')
     .replace(/^##\s+(.+)$/gm, '## $1')
     .replace(/^#\s+(.+)$/gm,  '## $1');
 
   // ── Step 2: extract code blocks BEFORE math extraction ───────
-  // (code blocks may legitimately contain $ signs)
   const codeBlocks = [];
   text = text.replace(/```(\w*)\r?\n?([\s\S]*?)(?:```|$)/g, (_, lang, code) => {
     const idx = codeBlocks.length;
@@ -194,7 +160,7 @@ function renderMarkdown(rawText) {
     return `\x00CODE${idx}\x00`;
   });
 
-  // ── Step 3: extract math (BEFORE any HTML escaping) ──────────
+  // ── Step 3: extract math ──────────────────────────────────────
   const { text: mathText, math } = _extractMath(text);
   text = mathText;
 
@@ -227,7 +193,6 @@ function renderMarkdown(rawText) {
       if (display) {
         return `<div class="math-display-block">${_katexRender(inner, true)}</div>`;
       }
-      // inline math on its own line — wrap in paragraph
       return `<p>${_katexRender(inner, false)}</p>`;
     }
 
@@ -273,10 +238,9 @@ function renderMarkdown(rawText) {
       return `<ul>${items}</ul>`;
     }
 
-    // paragraph (with possible inline/display math restoration)
+    // paragraph
     const lineHtml = t.split('\n').map(line => {
       const lt = line.trim();
-      // standalone display-math placeholder on its own line within a para
       if (/^\x00M\d+\x00$/.test(lt)) {
         const { inner, display } = math[+lt.match(/\x00M(\d+)\x00/)[1]];
         if (display) {
@@ -297,4 +261,4 @@ function renderMarkdown(rawText) {
 
 /* renderMathBubble — no-op for call-site compatibility */
 function renderMathBubble(_el) {}
-         
+           

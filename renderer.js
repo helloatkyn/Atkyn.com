@@ -19,12 +19,42 @@ function _katexRender(tex, display) {
     return katex.renderToString(tex, {
       displayMode: display,
       throwOnError: false,
-      errorColor: '#cc0000',
+      errorColor: '#888888',
       trust: false,
     });
   } catch (_) {
     return `<span class="math-fallback">${_he(tex)}</span>`;
   }
+}
+
+/*
+ * _wrapBareLaTeX(text)
+ * Wraps bare LaTeX expressions (no $ delimiters) into $...$ or $$...$$
+ * so KaTeX can render them. Runs before _extractMath.
+ */
+function _wrapBareLaTeX(text) {
+  // Display-mode: lines that are purely a LaTeX expression (start with \, contain math commands)
+  // e.g. "S_\infty^{(AGP)} = a_0 b_0 \, _3F_2(...)"
+  // Heuristic: line has \cmd or ^{ or _{ and no surrounding $
+  text = text.replace(/^([^\$`\n]*(?:\\[a-zA-Z]+|[_^]\{)[^\$`\n]*)$/gm, (match) => {
+    // Skip if already has $ or is inside code
+    if (/\$/.test(match)) return match;
+    // Skip pure text lines (no LaTeX indicators)
+    if (!/\\[a-zA-Z]|[_^]\{|\^[a-zA-Z0-9]|_[a-zA-Z0-9]/.test(match)) return match;
+    // Skip markdown headings/bullets
+    if (/^[\s]*[-*#>]/.test(match)) return match;
+    const trimmed = match.trim();
+    if (!trimmed) return match;
+    return `$$${trimmed}$$`;
+  });
+
+  // Inline: fragments within prose that look like LaTeX but lack $
+  // e.g. "where a_k = a_0 + kd_b" — wrap sub/superscript sequences
+  text = text.replace(/(?<!\$)(?<![`\\])([A-Za-z][_^]\{[^}]+\}(?:[_^]\{[^}]+\})*)/g, (match) => {
+    return `$${match}$`;
+  });
+
+  return text;
 }
 
 /*
@@ -52,8 +82,8 @@ function _fmt(line, math) {
   s = s.replace(/`([^`]+)`/g,          (_, c) => `<code>${c}</code>`);
   // bold
   s = s.replace(/\*\*([^*\n]+?)\*\*/g, '<strong>$1</strong>');
-  // italic
-  s = s.replace(/\*([^*\n]+?)\*/g,     '<em>$1</em>');
+  // single asterisks — strip them, model misuses *text* as headings
+  s = s.replace(/\*([^*\n]+?)\*/g, '$1');
   // links [text](url)
   s = s.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_, text, url) => {
     const safeUrl = url.startsWith('http') ? url : '#';
@@ -155,6 +185,9 @@ function renderMarkdown(rawText) {
     .replace(/^###\s+(.+)$/gm, '**$1**')      // ### → bold
     .replace(/^##\s+(.+)$/gm, '## $1')        // ## stays as ## (→ h4 below)
     .replace(/^#\s+(.+)$/gm,  '## $1');       // # → ## (→ h4 below)
+
+  /* 0b. Wrap bare LaTeX (no $ delimiters) */
+  text = _wrapBareLaTeX(text);
 
   /* 1. Extract fenced code blocks (closed and unclosed) */
   const codeBlocks = [];
@@ -260,4 +293,4 @@ function renderMarkdown(rawText) {
 
 /* renderMathBubble — no-op for call-site compatibility */
 function renderMathBubble(_el) {}
-           
+     

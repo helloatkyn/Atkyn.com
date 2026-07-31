@@ -18,14 +18,14 @@ export async function onRequestPost(context) {
     });
   }
 
-  const qwenResp = await fetch('https://dashscope-intl.aliyuncs.com/compatible-mode/v1/chat/completions', {
+  const qwenResp = await fetch('https://api.mistral.ai/v1/chat/completions', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${env.QWEN_API_KEY}`,
+      'Authorization': `Bearer ${env.MISTRAL_API_KEY}`,
     },
     body: JSON.stringify({
-      model: 'qwen-plus-latest',
+      model: 'ministral-8b-latest',
       messages: [
         {
           role: 'system',

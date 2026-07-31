@@ -28,47 +28,55 @@ function _katexRender(tex, display) {
 }
 
 /*
- * _wrapBareLaTeX(text)
- * Wraps bare LaTeX expressions (no $ delimiters) into $...$ or $$...$$
- * so KaTeX can render them. Runs before _extractMath.
- */
-function _wrapBareLaTeX(text) {
-  text = text.replace(/^([^\$`\n]*(?:\\[a-zA-Z]+|[_^]\{)[^\$`\n]*)$/gm, (match) => {
-    if (/\$/.test(match)) return match;
-    if (!/\\[a-zA-Z]|[_^]\{|\^[a-zA-Z0-9]|_[a-zA-Z0-9]/.test(match)) return match;
-    if (/^[\s]*[-*#>]/.test(match)) return match;
-    const trimmed = match.trim();
-    if (!trimmed) return match;
-    return `$$${trimmed}$$`;
-  });
-
-  text = text.replace(/(?<!\$)(?<![`\\])([A-Za-z][_^]\{[^}]+\}(?:[_^]\{[^}]+\})*)/g, (match) => {
-    return `$${match}$`;
-  });
-
-  return text;
-}
-
-/*
  * _extractMath(text)
- * Extracts math regions into placeholders before any splitting.
+ *
+ * MUST run BEFORE any HTML escaping.
+ * Handles ALL KaTeX/LaTeX delimiter styles:
+ *   $$...$$   display (possibly multiline)
+ *   \[...\]   display (possibly multiline)
+ *   $...$     inline  (no newlines allowed inside)
+ *   \(...\)   inline  (no newlines allowed inside)
+ *
+ * Also handles the model's common mistake of mixing styles in one
+ * expression, e.g.  \( a_n = p $a_{n-1}$ + q $a_{n-2}$ \)
+ * by stripping inner $…$ delimiters inside a \(…\) region.
+ *
+ * Returns { text, math } where text has placeholders \x00M<n>\x00
+ * and math[n] = { inner, display }.
  */
 function _extractMath(text) {
   const math = [];
+
   function placeholder(inner, display) {
+    // strip leftover $ signs that crept inside \(…\) regions
+    const cleaned = inner.replace(/\$/g, '').trim();
     const idx = math.length;
-    math.push({ inner, display });
+    math.push({ inner: cleaned, display });
     return `\x00M${idx}\x00`;
   }
-  text = text.replace(/\\\[([\s\S]*?)(?:\\\]|$)/g,  (_, inner) => placeholder(inner, true));
-  text = text.replace(/\$\$([\s\S]*?)(?:\$\$|$)/g,  (_, inner) => placeholder(inner, true));
-  text = text.replace(/\\\(([\s\S]*?)\\\)/g,         (_, inner) => placeholder(inner, false));
-  text = text.replace(/\$([^\$\n]+?)\$/g,            (_, inner) => placeholder(inner, false));
+
+  // 1. \[ ... \]  display — multiline OK
+  text = text.replace(/\\\[([\s\S]*?)(?:\\\]|$)/g,
+    (_, inner) => placeholder(inner, true));
+
+  // 2. $$ ... $$  display — multiline OK
+  text = text.replace(/\$\$([\s\S]*?)(?:\$\$|$)/g,
+    (_, inner) => placeholder(inner, true));
+
+  // 3. \( ... \)  inline — may contain stray $…$ from model
+  text = text.replace(/\\\(([\s\S]*?)(?:\\\)|$)/g,
+    (_, inner) => placeholder(inner, false));
+
+  // 4. $ ... $  inline — single line only, not already protected
+  text = text.replace(/\$([^\$\n]+?)\$/g,
+    (_, inner) => placeholder(inner, false));
+
   return { text, math };
 }
 
 /* ── Inline formatter (bold / italic / code / links + math restore) ── */
 function _fmt(line, math) {
+  // HTML-escape FIRST, then apply markup
   let s = _he(line);
   // inline code
   s = s.replace(/`([^`]+)`/g,          (_, c) => `<code>${c}</code>`);
@@ -86,7 +94,7 @@ function _fmt(line, math) {
   // restore math placeholders
   s = s.replace(/\x00M(\d+)\x00/g, (_, i) => {
     const { inner, display } = math[+i];
-    const html = _katexRender(inner.trim(), display);
+    const html = _katexRender(inner, display);
     return display ? `</p><div class="math-display-block">${html}</div><p>` : html;
   });
   return s;
@@ -165,6 +173,7 @@ function _tokenizeLine(line, lang) {
    renderMarkdown(rawText) → HTML
    ════════════════════════════════ */
 function renderMarkdown(rawText) {
+  // ── Step 1: normalise heading levels and strip junk ──────────
   let text = rawText
     .replace(/^-{3,}\s*$/gm, '')
     .replace(/^\*{2}\s*$/gm, '')
@@ -174,8 +183,8 @@ function renderMarkdown(rawText) {
     .replace(/^##\s+(.+)$/gm, '## $1')
     .replace(/^#\s+(.+)$/gm,  '## $1');
 
-  text = _wrapBareLaTeX(text);
-
+  // ── Step 2: extract code blocks BEFORE math extraction ───────
+  // (code blocks may legitimately contain $ signs)
   const codeBlocks = [];
   text = text.replace(/```(\w*)\r?\n?([\s\S]*?)(?:```|$)/g, (_, lang, code) => {
     const idx = codeBlocks.length;
@@ -183,6 +192,11 @@ function renderMarkdown(rawText) {
     return `\x00CODE${idx}\x00`;
   });
 
+  // ── Step 3: extract math (BEFORE any HTML escaping) ──────────
+  const { text: mathText, math } = _extractMath(text);
+  text = mathText;
+
+  // ── Step 4: mixed pipe/prose table splitting ──────────────────
   text = text.split('\n\n').map(block => {
     const lines = block.split('\n');
     const isPipeLine = l => (l.match(/\|/g) || []).length >= 2;
@@ -200,18 +214,22 @@ function renderMarkdown(rawText) {
     return out.trim();
   }).join('\n\n');
 
-  const { text: mathText, math } = _extractMath(text);
-  text = mathText;
-
+  // ── Step 5: render blocks ─────────────────────────────────────
   const html = text.split('\n\n').map(block => {
     const t = block.trim();
     if (!t) return '';
 
+    // standalone display-math placeholder
     if (/^\x00M\d+\x00$/.test(t)) {
-      const { inner } = math[+t.match(/\x00M(\d+)\x00/)[1]];
-      return `<div class="math-display-block">${_katexRender(inner.trim(), true)}</div>`;
+      const { inner, display } = math[+t.match(/\x00M(\d+)\x00/)[1]];
+      if (display) {
+        return `<div class="math-display-block">${_katexRender(inner, true)}</div>`;
+      }
+      // inline math on its own line — wrap in paragraph
+      return `<p>${_katexRender(inner, false)}</p>`;
     }
 
+    // code block
     const cm = t.match(/^\x00CODE(\d+)\x00$/);
     if (cm) {
       const { lang, code } = codeBlocks[+cm[1]];
@@ -221,11 +239,13 @@ function renderMarkdown(rawText) {
       return `<div class="code-block" id="${blockId}"><div class="code-block-header"><span class="code-block-lang">${_he(langLabel)}</span><button class="code-copy-btn" data-target="${blockId}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> Copy</button></div><pre>${highlighted}</pre></div>`;
     }
 
+    // heading ## …
     const hm = t.match(/^(##) ([\s\S]+)/);
     if (hm) {
       return `<h4>${_fmt(hm[2], math)}</h4>`;
     }
 
+    // table
     if (/^\|.+\|/m.test(t)) {
       const rows = t.split('\n').filter(r => r.trim() && !/^[\s|:-]+$/.test(r));
       if (rows.length >= 1) {
@@ -237,23 +257,29 @@ function renderMarkdown(rawText) {
       }
     }
 
+    // unordered list
     if (/^[-*•] /m.test(t)) {
       const items = t.split('\n').filter(Boolean)
         .map(l => `<li>${_fmt(l.replace(/^[-*•] /, ''), math)}</li>`).join('');
       return `<ul>${items}</ul>`;
     }
 
+    // ordered list
     if (/^\d+[.)]\s/m.test(t)) {
       const items = t.split('\n').filter(Boolean)
         .map(l => `<li>${_fmt(l.replace(/^\d+[.)]\s/, ''), math)}</li>`).join('');
       return `<ul>${items}</ul>`;
     }
 
+    // paragraph (with possible inline/display math restoration)
     const lineHtml = t.split('\n').map(line => {
       const lt = line.trim();
+      // standalone display-math placeholder on its own line within a para
       if (/^\x00M\d+\x00$/.test(lt)) {
-        const { inner } = math[+lt.match(/\x00M(\d+)\x00/)[1]];
-        return `</p><div class="math-display-block">${_katexRender(inner.trim(), true)}</div><p>`;
+        const { inner, display } = math[+lt.match(/\x00M(\d+)\x00/)[1]];
+        if (display) {
+          return `</p><div class="math-display-block">${_katexRender(inner, true)}</div><p>`;
+        }
       }
       return _fmt(line, math);
     });

@@ -156,9 +156,9 @@ function renderMarkdown(rawText) {
     .replace(/^##\s+(.+)$/gm, '## $1')        // ## stays as ## (→ h4 below)
     .replace(/^#\s+(.+)$/gm,  '## $1');       // # → ## (→ h4 below)
 
-  /* 1. Extract fenced code blocks */
+  /* 1. Extract fenced code blocks (closed and unclosed) */
   const codeBlocks = [];
-  text = text.replace(/```(\w*)\n?([\s\S]*?)```/g, (_, lang, code) => {
+  text = text.replace(/```(\w*)\r?\n?([\s\S]*?)(?:```|$)/g, (_, lang, code) => {
     const idx = codeBlocks.length;
     codeBlocks.push({ lang: lang.trim(), code: code.trimEnd() });
     return `\x00CODE${idx}\x00`;
@@ -260,4 +260,4 @@ function renderMarkdown(rawText) {
 
 /* renderMathBubble — no-op for call-site compatibility */
 function renderMathBubble(_el) {}
-         
+           

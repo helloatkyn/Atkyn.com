@@ -5,8 +5,6 @@
 
 /* ────────────────────────────────────────────────────────────────
    RESET
-   Merged into one universal block. font-family: inherit ensures
-   buttons/inputs follow the body font without explicit overrides.
 ──────────────────────────────────────────────────────────────── */
 *, *::before, *::after {
   box-sizing: border-box;
@@ -39,7 +37,6 @@ body {
 ──────────────────────────────────────────────────────────────── */
 .katex { font-size: 1.08em; }
 
-/* Shared scroll container for both display math types */
 .katex-display,
 .math-display-block {
   overflow-x: auto;
@@ -48,7 +45,6 @@ body {
   margin: 8px 0;
   -webkit-overflow-scrolling: touch;
 }
-/* math-display-block has a tighter margin than katex-display */
 .math-display-block { margin: 6px 0; }
 .katex-display      { text-align: center; }
 
@@ -66,7 +62,6 @@ body {
 
 /* ────────────────────────────────────────────────────────────────
    SCROLL HOST
-   Main content scroll container inside body flex column.
 ──────────────────────────────────────────────────────────────── */
 .scroll-host {
   flex: 1;
@@ -91,7 +86,6 @@ body {
   padding: 16px 18px 10px;
   height: 76px;
   overflow: hidden;
-  /* opacity:1 omitted — browser default */
   transition:
     height  0.18s cubic-bezier(0.4, 0, 0.2, 1),
     padding 0.18s cubic-bezier(0.4, 0, 0.2, 1),
@@ -111,7 +105,7 @@ body {
 }
 
 /* ────────────────────────────────────────────────────────────────
-   HAMBURGER BUTTON (top-right)
+   HAMBURGER BUTTON
 ──────────────────────────────────────────────────────────────── */
 .hamburger-btn {
   position: absolute;
@@ -147,7 +141,7 @@ body {
 }
 
 /* ────────────────────────────────────────────────────────────────
-   NINE-DOT GRID BUTTON (top-left)
+   NINE-DOT GRID BUTTON
 ──────────────────────────────────────────────────────────────── */
 .dots-btn {
   position: absolute;
@@ -183,7 +177,6 @@ body {
 
 /* ────────────────────────────────────────────────────────────────
    TAB BAR
-   Sticky, blurred, GPU-composited for smooth hide/show on scroll.
 ──────────────────────────────────────────────────────────────── */
 .tab-bar {
   flex-shrink: 0;
@@ -293,20 +286,31 @@ body {
   line-height: 1.75;
   color: #1a1a1a;
   animation: botIn 0.18s cubic-bezier(0.22, 1, 0.36, 1) both;
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 @media (prefers-color-scheme: dark) {
   .msg.bot .bubble { color: #d4d4d6; }
-}
-
+   }
 /* ────────────────────────────────────────────────────────────────
    BOT BUBBLE — TYPOGRAPHY
 ──────────────────────────────────────────────────────────────── */
 
-/* Paragraphs — line-height inherited from .bubble, no need to repeat */
 .msg.bot .bubble p            { margin: 0 0 10px; }
 .msg.bot .bubble p:last-child { margin-bottom: 0; }
 
-/* Headings — h3/h4 color inherits #1a1a1a from .bubble; h5 differs */
+.msg.bot .bubble h1 {
+  font-size: 1.4rem;
+  font-weight: 700;
+  margin: 20px 0 8px;
+  letter-spacing: -0.01em;
+}
+.msg.bot .bubble h2 {
+  font-size: 1.2rem;
+  font-weight: 700;
+  margin: 18px 0 6px;
+  letter-spacing: -0.01em;
+}
 .msg.bot .bubble h3 {
   font-size: 1.05rem;
   font-weight: 700;
@@ -324,13 +328,21 @@ body {
   margin: 10px 0 3px;
   color: #555;
 }
+.msg.bot .bubble h6 {
+  font-size: 0.88rem;
+  font-weight: 600;
+  margin: 8px 0 3px;
+  color: #777;
+}
 @media (prefers-color-scheme: dark) {
+  .msg.bot .bubble h1,
+  .msg.bot .bubble h2,
   .msg.bot .bubble h3,
   .msg.bot .bubble h4 { color: #f0f0f2; }
   .msg.bot .bubble h5 { color: #aaa; }
+  .msg.bot .bubble h6 { color: #888; }
 }
 
-/* Lists — no forced bullet markers, ordered lists use native numbers */
 .msg.bot .bubble ul,
 .msg.bot .bubble ol {
   padding-left: 0;
@@ -339,17 +351,14 @@ body {
 }
 .msg.bot .bubble li {
   margin-bottom: 6px;
-  /* line-height and padding-left:0 inherited/defaulted — not needed */
 }
 
-/* Ordered list: native decimal numbers */
 .msg.bot .bubble ol {
   list-style: decimal;
   padding-left: 20px;
 }
 .msg.bot .bubble ol > li { padding-left: 4px; }
 
-/* Nested lists */
 .msg.bot .bubble li > ul,
 .msg.bot .bubble li > ol {
   margin: 4px 0 0;
@@ -359,7 +368,6 @@ body {
 .msg.bot .bubble strong { font-weight: 650; }
 .msg.bot .bubble em     { font-style: italic; }
 
-/* Links */
 .msg.bot .bubble a {
   color: #0066cc;
   text-decoration: none;
@@ -373,7 +381,28 @@ body {
   }
 }
 
-/* Inline code */
+.msg.bot .bubble blockquote {
+  margin: 10px 0;
+  padding: 0 0 0 14px;
+  border-left: 3px solid #F34655;
+  color: #555;
+  font-style: italic;
+}
+.msg.bot .bubble blockquote p:last-child { margin-bottom: 0; }
+@media (prefers-color-scheme: dark) {
+  .msg.bot .bubble blockquote {
+    color: #aaa;
+    border-left-color: #F34655;
+  }
+}
+
+.msg.bot .bubble img,
+.msg.bot .bubble video {
+  max-width: 100%;
+  height: auto;
+  border-radius: 8px;
+}
+
 .msg.bot .bubble code {
   font-family: 'SFMono-Regular', 'SF Mono', 'Menlo', 'Consolas',
                'Liberation Mono', monospace;
@@ -383,6 +412,8 @@ body {
   padding: 2px 6px;
   border-radius: 5px;
   border: 1px solid rgba(0, 0, 0, 0.08);
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 @media (prefers-color-scheme: dark) {
   .msg.bot .bubble code {
@@ -391,7 +422,6 @@ body {
     color: #c9d1d9;
   }
 }
-
 /* ────────────────────────────────────────────────────────────────
    TABLE
 ──────────────────────────────────────────────────────────────── */
@@ -413,9 +443,7 @@ body {
 .msg.bot .bubble th {
   padding: 10px 16px 10px 0;
   text-align: left;
-  /* font-size inherited from table */
   font-weight: 700;
-  /* text-transform:none and letter-spacing:0 are browser defaults — omitted */
   color: #1a1a1a;
   border-bottom: 1.5px solid rgba(0, 0, 0, 0.12);
   white-space: normal;
@@ -431,7 +459,6 @@ body {
   border-bottom: 1px solid rgba(0, 0, 0, 0.09);
   vertical-align: top;
   line-height: 1.55;
-  /* color inherits #1a1a1a from .bubble — omitted */
 }
 .msg.bot .bubble td:first-child { padding-left: 0; }
 .msg.bot .bubble td:last-child  { padding-right: 0; padding-left: 0; }
@@ -452,7 +479,6 @@ body {
    CODE BLOCK
 ════════════════════════════════════════════════════════════════ */
 
-/* ── Container ── */
 .code-block {
   margin: 12px 0 18px;
   border-radius: 14px;
@@ -473,7 +499,6 @@ body {
   }
 }
 
-/* ── Header bar ── */
 .code-block-header {
   display: flex;
   align-items: center;
@@ -490,7 +515,6 @@ body {
   }
 }
 
-/* ── Language badge ── */
 .code-block-lang {
   font-family: 'SFMono-Regular', 'SF Mono', 'Menlo', 'Consolas',
                'Liberation Mono', monospace;
@@ -510,8 +534,6 @@ body {
   }
 }
 
-/* ── Copy button ── */
-/* font-family omitted — inherits body font via the universal rule */
 .code-copy-btn {
   display: flex;
   align-items: center;
@@ -546,7 +568,6 @@ body {
   background: rgba(45, 164, 78, 0.10);
 }
 
-/* Hover — pointer devices only (light + dark combined) */
 @media (hover: hover) {
   .code-copy-btn:hover {
     background: rgba(0, 0, 0, 0.07);
@@ -566,7 +587,6 @@ body {
     background: rgba(78, 201, 148, 0.12);
   }
 }
-/* Dark + hover — same level as light hover rule above */
 @media (prefers-color-scheme: dark) and (hover: hover) {
   .code-copy-btn:hover {
     background: rgba(255, 255, 255, 0.09);
@@ -574,13 +594,12 @@ body {
   }
 }
 
-/* ── Pre / scroll container ── */
 .code-block pre {
   margin: 0;
   padding: 0;
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
-  background: transparent; /* don't inherit .code-block background */
+  background: transparent;
 }
 .code-block pre::-webkit-scrollbar       { height: 4px; }
 .code-block pre::-webkit-scrollbar-track { background: transparent; }
@@ -594,11 +613,9 @@ body {
   }
 }
 
-/* ── Lines table (display:table layout for line numbers) ── */
 .code-block .code-lines { display: table; min-width: 100%; padding: 16px 0; }
 .code-line              { display: table-row; }
 
-/* ── Line numbers ── */
 .code-line-num {
   display: table-cell;
   padding: 0 14px 0 18px;
@@ -620,7 +637,6 @@ body {
   }
 }
 
-/* ── Code content cell ── */
 .code-line-content {
   display: table-cell;
   padding: 0 20px 0 14px;
@@ -638,7 +654,6 @@ body {
   .code-line-content { color: #cdd9e5; }
 }
 
-/* ── Fallback pre > code (when line rendering is unavailable) ── */
 .code-block pre code {
   display: block;
   padding: 16px 20px;
@@ -656,7 +671,6 @@ body {
   .code-block pre code { color: #cdd9e5; }
 }
 
-/* ── Syntax token colours ── */
 .tk-kw   { color: #8250df; }
 .tk-fn   { color: #0550ae; }
 .tk-str  { color: #0a7a3e; }
@@ -676,7 +690,6 @@ body {
   .tk-bool { color: #d19a66; }
 }
 
-/* ── Mobile adjustments (code block) ── */
 @media (max-width: 480px) {
   .code-block {
     border-radius: 12px;
@@ -685,8 +698,7 @@ body {
   .code-block-header  { padding: 9px 10px 9px 14px; }
   .code-line-num      { padding: 0 10px 0 14px; min-width: 30px; }
   .code-line-content  { padding: 0 14px 0 10px; }
-}
-
+   }
 /* ────────────────────────────────────────────────────────────────
    ENTRANCE ANIMATIONS
 ──────────────────────────────────────────────────────────────── */
@@ -725,7 +737,7 @@ body {
 }
 
 /* ────────────────────────────────────────────────────────────────
-   BOT ACTION BAR (copy / like / dislike / read)
+   BOT ACTION BAR
 ──────────────────────────────────────────────────────────────── */
 .bot-actions {
   display: flex;
@@ -795,7 +807,6 @@ body {
   padding: 0 18px 0 20px;
   height: 66px;
   gap: 12px;
-  /* flex-shrink:0 omitted — chatbar-wrap is not a flex container */
   transition: border-color 0.18s;
 }
 .overlay-pill:focus-within { border-color: #e02235; }
@@ -803,7 +814,6 @@ body {
   .overlay-pill { background: #2c2c2e; border-color: #F34655; }
 }
 
-/* Plus / attach button */
 .ico-plus {
   flex-shrink: 0;
   color: #F34655;
@@ -819,7 +829,6 @@ body {
 .ico-plus:active { background: rgba(243, 70, 85, 0.10); }
 .ico-plus svg    { width: 24px; height: 24px; }
 
-/* Input wrapper */
 .overlay-input-wrap {
   flex: 1;
   position: relative;
@@ -849,7 +858,6 @@ body {
   .search-input { color: #e5e5e7; }
 }
 
-/* Animated shimmer placeholder (visible when input is empty) */
 .shimmer-overlay {
   position: absolute;
   inset: 0;
@@ -877,10 +885,8 @@ body {
   0%   { background-position:  150% center; }
   100% { background-position: -150% center; }
 }
-/* Hide shimmer once user has typed */
 .search-input:not(:placeholder-shown) + .shimmer-overlay { display: none; }
 
-/* Camera / send button */
 .ico-camera {
   flex-shrink: 0;
   border: none;
@@ -912,12 +918,11 @@ body {
 .send-btn:active { transform: scale(0.88); }
 .send-btn svg    { width: 17px; height: 17px; }
 
-/* Toggle camera ↔ send based on input state */
 .overlay-pill.has-text .ico-camera { display: none; }
 .overlay-pill.has-text .send-btn   { display: flex; }
 
 /* ────────────────────────────────────────────────────────────────
-   PLUS MENU (attach sheet)
+   PLUS MENU
 ──────────────────────────────────────────────────────────────── */
 .plus-menu-backdrop {
   position: fixed;
@@ -947,7 +952,6 @@ body {
     transform 0.2s cubic-bezier(0.22, 1, 0.36, 1),
     opacity   0.15s ease;
 }
-/* pointer-events:all → auto (all is SVG-specific; auto is correct for HTML) */
 .plus-menu.open {
   transform: translateY(0) scale(1);
   opacity: 1;
@@ -976,23 +980,18 @@ body {
   font-size: 0.97rem;
   font-weight: 400;
   letter-spacing: 0;
-  /* position:relative omitted — no absolutely-positioned children */
   transition: background 0.1s;
 }
 .pm-item:active { background: rgba(0, 0, 0, 0.06); }
 .pm-item + .pm-item {
   border-top: 0.5px solid rgba(0, 0, 0, 0.08);
 }
-/* .pm-item + .pm-item::before { display:none } omitted — no ::before is ever set */
 @media (prefers-color-scheme: dark) {
   .pm-item              { color: #f0f0f2; }
   .pm-item:active       { background: rgba(255, 255, 255, 0.07); }
   .pm-item + .pm-item   { border-top-color: rgba(255, 255, 255, 0.08); }
 }
 
-/* Icon container — border-radius:0 omitted (browser default) */
-/* background:none !important on .pm-icon covers all variants;
-   the 4 individual .pm-icon-* classes are removed as dead CSS */
 .pm-icon {
   flex-shrink: 0;
   width: 22px;
@@ -1058,4 +1057,36 @@ body {
   .web-card-title         { color: #f0f0f2; }
   .web-card-url           { color: #4da6ff; }
   .web-card-snippet       { color: #aaa; }
+}
+
+/* ────────────────────────────────────────────────────────────────
+   ACCESSIBILITY & REDUCED MOTION
+──────────────────────────────────────────────────────────────── */
+
+button:focus-visible,
+input:focus-visible,
+a:focus-visible,
+.tab:focus-visible,
+.pm-item:focus-visible {
+  outline: 2px solid #F34655;
+  outline-offset: 2px;
+}
+
+::selection {
+  background: #F34655;
+  color: #fff;
+}
+::-moz-selection {
+  background: #F34655;
+  color: #fff;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

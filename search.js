@@ -1,272 +1,515 @@
 /* ═══════════════════════════════════════════════════════════════
-   renderer.js — Atkyn Search
-   Markdown · KaTeX math · Syntax highlighting · Table rendering
+   search.js — Atkyn Search
+   UI logic · scroll · header animation · tab animation
+   input · plus menu · chat rendering · stream handling
+   API interaction · typing animation · copy buttons
+   event listeners · application state
    ═══════════════════════════════════════════════════════════════ */
 
-/* ── HTML escape helper ── */
-function _he(s) {
-  return String(s)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
-}
+/* ── Cached DOM references ── */
+const input       = document.getElementById('cbInput');
+const sendBtn     = document.getElementById('sendBtn');
+const pill        = document.getElementById('pill');
+const msgWrap     = document.getElementById('msgWrap');
+const scrollHost  = document.getElementById('scrollHost');
+const logoHeader  = document.querySelector('.logo-header');
+const tabBar      = document.getElementById('tabBar');
+const chatbarWrap = document.querySelector('.chatbar-wrap');
+const chatSpacer  = document.getElementById('chatSpacer');
+const plusBtn     = document.getElementById('plusBtn');
+const plusMenu    = document.getElementById('plusMenu');
+const plusBackdrop = document.getElementById('plusBackdrop');
 
-/* ── KaTeX render wrapper ── */
-function _katexRender(tex, display) {
-  if (typeof katex === 'undefined') return `<span class="math-fallback">${_he(tex)}</span>`;
-  try {
-    return katex.renderToString(tex, {
-      displayMode: display,
-      throwOnError: false,
-      errorColor: '#888888',
-      trust: false,
+/* ── Application state ── */
+let viewportResizing    = false;
+let rafPending          = false;
+let lastScrollY         = 0;
+let accumDown           = 0;
+let accumUp             = 0;
+let _keyboardOpen       = false;
+let isLogoCollapsed     = false;
+let isTabHidden         = false;
+let isTabScrolled       = false;
+let _scrollRafId        = null;
+let _programmaticScroll = false;
+let _lastUserMsgEl      = null;
+let _pinnedToBottom     = true;
+let streamAbort         = null;
+let _plusOpen           = false;
+
+/* Viewport RAF IDs */
+let _vvpRafId     = 0;
+let _cleanupRafId = 0;
+let _prevOffset   = -1;
+
+/* Spacer dedup */
+let _lastSpacerH  = -1;
+
+/* Conversation history: max 100 turns */
+const MAX_HISTORY = 100;
+const _history    = [];
+
+/* ── Typing indicator state ── */
+let typingEl = null;
+
+/* ════════════════════════════════
+   SCROLL HELPERS
+   ════════════════════════════════ */
+
+function scrollToMsg(el) {
+  if (!el) return;
+  if (_scrollRafId !== null) cancelAnimationFrame(_scrollRafId);
+  _scrollRafId = requestAnimationFrame(() => {
+    _scrollRafId = requestAnimationFrame(() => {
+      _scrollRafId = null;
+      _programmaticScroll = true;
+      const tabH   = tabBar.offsetHeight;
+      const target = Math.max(0, el.offsetTop - tabH - 8);
+      scrollHost.scrollTop = target;
+      lastScrollY = scrollHost.scrollTop;
+      accumDown = 0;
+      accumUp   = 0;
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => { _programmaticScroll = false; });
+      });
     });
-  } catch (_) {
-    return `<span class="math-fallback">${_he(tex)}</span>`;
-  }
-}
-
-/*
- * _wrapBareLaTeX(text)
- * Wraps bare LaTeX expressions (no $ delimiters) into $...$ or $$...$$
- * so KaTeX can render them. Runs before _extractMath.
- */
-function _wrapBareLaTeX(text) {
-  text = text.replace(/^([^\$`\n]*(?:\\[a-zA-Z]+|[_^]\{)[^\$`\n]*)$/gm, (match) => {
-    if (/\$/.test(match)) return match;
-    if (!/\\[a-zA-Z]|[_^]\{|\^[a-zA-Z0-9]|_[a-zA-Z0-9]/.test(match)) return match;
-    if (/^[\s]*[-*#>]/.test(match)) return match;
-    const trimmed = match.trim();
-    if (!trimmed) return match;
-    return `$$${trimmed}$$`;
   });
-
-  text = text.replace(/(?<!\$)(?<![`\\])([A-Za-z][_^]\{[^}]+\}(?:[_^]\{[^}]+\})*)/g, (match) => {
-    return `$${match}$`;
-  });
-
-  return text;
-}
-
-/*
- * _extractMath(text)
- * Extracts math regions into placeholders before any splitting.
- */
-function _extractMath(text) {
-  const math = [];
-  function placeholder(inner, display) {
-    const idx = math.length;
-    math.push({ inner, display });
-    return `\x00M${idx}\x00`;
-  }
-  text = text.replace(/\\\[([\s\S]*?)(?:\\\]|$)/g,  (_, inner) => placeholder(inner, true));
-  text = text.replace(/\$\$([\s\S]*?)(?:\$\$|$)/g,  (_, inner) => placeholder(inner, true));
-  text = text.replace(/\\\(([\s\S]*?)\\\)/g,         (_, inner) => placeholder(inner, false));
-  text = text.replace(/\$([^\$\n]+?)\$/g,            (_, inner) => placeholder(inner, false));
-  return { text, math };
-}
-
-/* ── Inline formatter (bold / italic / code / links + math restore) ── */
-function _fmt(line, math) {
-  let s = _he(line);
-  // inline code
-  s = s.replace(/`([^`]+)`/g,          (_, c) => `<code>${c}</code>`);
-  // bold
-  s = s.replace(/\*\*([^*\n]+?)\*\*/g, '<strong>$1</strong>');
-  // single asterisks — strip them, model misuses *text* as headings
-  s = s.replace(/\*([^*\n]+?)\*/g, '$1');
-  // also strip any remaining lone asterisks
-  s = s.replace(/(?<!\*|\w)\*(?!\*)/g, '');
-  // links [text](url)
-  s = s.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_, text, url) => {
-    const safeUrl = url.startsWith('http') ? url : '#';
-    return `<a href="${safeUrl}" target="_blank" rel="noopener noreferrer">${text}</a>`;
-  });
-  // restore math placeholders
-  s = s.replace(/\x00M(\d+)\x00/g, (_, i) => {
-    const { inner, display } = math[+i];
-    const html = _katexRender(inner.trim(), display);
-    return display ? `</p><div class="math-display-block">${html}</div><p>` : html;
-  });
-  return s;
-}
-
-/* ── HTML escape for syntax highlighter ── */
-function _esc(s) {
-  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-}
-
-/* ── Syntax highlighter ── */
-function syntaxHighlight(code, lang) {
-  const lines = code.split('\n');
-  let linesHtml = '';
-  const l = (lang || '').toLowerCase();
-  for (let i = 0; i < lines.length; i++) {
-    const highlighted = _tokenizeLine(lines[i], l);
-    linesHtml += `<div class="code-line"><span class="code-line-num">${i + 1}</span><span class="code-line-content">${highlighted}</span></div>`;
-  }
-  return `<div class="code-lines">${linesHtml}</div>`;
-}
-
-/* ── Tokenizer regexes — compiled once ── */
-const _RX = {
-  jsKw:        /\b(const|let|var|function|return|if|else|for|while|do|switch|case|break|continue|new|delete|typeof|instanceof|in|of|class|extends|super|import|export|default|from|async|await|try|catch|finally|throw|yield|static|get|set|this)\b/g,
-  jsBool:      /\b(true|false|null|undefined|NaN|Infinity)\b/g,
-  pyKw:        /\b(def|class|return|if|elif|else|for|while|in|not|and|or|import|from|as|with|try|except|finally|raise|pass|break|continue|lambda|yield|global|nonlocal|del|assert|is|True|False|None)\b/g,
-  dqStr:       /"(?:[^"\\]|\\.)*"/g,
-  sqStr:       /'(?:[^'\\]|\\.)*'/g,
-  btStr:       /`(?:[^`\\]|\\.)*`/g,
-  lineComment: /\/\/.*/g,
-  hashComment: /#.*/g,
-  blockComment:/\/\*[\s\S]*?\*\//g,
-  numLit:      /\b\d+(\.\d+)?\b/g,
-  fnCall:      /\b([a-zA-Z_$][a-zA-Z0-9_$]*)(?=\s*\()/g,
-  clsName:     /\b([A-Z][a-zA-Z0-9_]*)\b/g,
-  propKey:     /([a-zA-Z_$][a-zA-Z0-9_$]*)(?=\s*:)/g,
-};
-
-function _tokenizeLine(line, lang) {
-  const { jsKw, jsBool, pyKw, dqStr, sqStr, btStr, lineComment,
-          hashComment, blockComment, numLit, fnCall, clsName, propKey } = _RX;
-  for (const r of [jsKw, jsBool, pyKw, dqStr, sqStr, btStr,
-                   lineComment, hashComment, blockComment,
-                   numLit, fnCall, clsName, propKey]) r.lastIndex = 0;
-
-  const ph = [];
-  const protect = html => { const i = ph.length; ph.push(html); return `\x01${i}\x01`; };
-
-  let s = line;
-  s = s.replace(blockComment, m => protect(`<span class="tk-cmt">${_esc(m)}</span>`));
-  if (['python','py','bash','sh','yaml','yml'].includes(lang)) {
-    s = s.replace(hashComment, m => protect(`<span class="tk-cmt">${_esc(m)}</span>`));
-  } else {
-    s = s.replace(lineComment, m => protect(`<span class="tk-cmt">${_esc(m)}</span>`));
-  }
-  s = s.replace(btStr,   m     => protect(`<span class="tk-str">${_esc(m)}</span>`));
-  s = s.replace(dqStr,   m     => protect(`<span class="tk-str">${_esc(m)}</span>`));
-  s = s.replace(sqStr,   m     => protect(`<span class="tk-str">${_esc(m)}</span>`));
-  s = _esc(s);
-  s = s.replace(numLit,  m     => protect(`<span class="tk-num">${m}</span>`));
-  s = s.replace(clsName, (m,p) => protect(`<span class="tk-cls">${p}</span>`));
-  s = s.replace(fnCall,  (m,p) => protect(`<span class="tk-fn">${p}</span>`));
-  if (lang === 'python' || lang === 'py') {
-    s = s.replace(pyKw,  m => protect(`<span class="tk-kw">${m}</span>`));
-  } else {
-    s = s.replace(jsKw,  m => protect(`<span class="tk-kw">${m}</span>`));
-  }
-  s = s.replace(jsBool,  m     => protect(`<span class="tk-bool">${m}</span>`));
-  s = s.replace(propKey, (m,p) => protect(`<span class="tk-prop">${p}</span>`));
-  s = s.replace(/\x01(\d+)\x01/g, (_, i) => ph[+i]);
-  return s || ' ';
 }
 
 /* ════════════════════════════════
-   renderMarkdown(rawText) → HTML
+   CHATBAR / KEYBOARD POSITIONING
    ════════════════════════════════ */
-function renderMarkdown(rawText) {
-  let text = rawText
-    .replace(/^-{3,}\s*$/gm, '')
-    .replace(/^\*{2}\s*$/gm, '')
-    .replace(/^\*([^*\n]+)\*$/gm, '$1')
-    .replace(/^#{4,}\s+(.+)$/gm, '**$1**')
-    .replace(/^###\s+(.+)$/gm, '**$1**')
-    .replace(/^##\s+(.+)$/gm, '## $1')
-    .replace(/^#\s+(.+)$/gm,  '## $1');
 
-  text = _wrapBareLaTeX(text);
-
-  const codeBlocks = [];
-  text = text.replace(/```(\w*)\r?\n?([\s\S]*?)(?:```|$)/g, (_, lang, code) => {
-    const idx = codeBlocks.length;
-    codeBlocks.push({ lang: lang.trim(), code: code.trimEnd() });
-    return `\x00CODE${idx}\x00`;
-  });
-
-  text = text.split('\n\n').map(block => {
-    const lines = block.split('\n');
-    const isPipeLine = l => (l.match(/\|/g) || []).length >= 2;
-    const hasPipe  = lines.some(isPipeLine);
-    const allPipe  = lines.filter(l => l.trim()).every(isPipeLine);
-    if (!hasPipe || allPipe) return block;
-    let out = '', tableBuf = [], proseBuf = [];
-    const flushProse = () => { if (proseBuf.length) { out += proseBuf.join('\n') + '\n\n'; proseBuf = []; } };
-    const flushTable = () => { if (tableBuf.length) { out += tableBuf.join('\n') + '\n\n'; tableBuf = []; } };
-    for (const line of lines) {
-      if (isPipeLine(line)) { flushProse(); tableBuf.push(line); }
-      else                  { flushTable(); proseBuf.push(line); }
-    }
-    flushProse(); flushTable();
-    return out.trim();
-  }).join('\n\n');
-
-  const { text: mathText, math } = _extractMath(text);
-  text = mathText;
-
-  const html = text.split('\n\n').map(block => {
-    const t = block.trim();
-    if (!t) return '';
-
-    if (/^\x00M\d+\x00$/.test(t)) {
-      const { inner } = math[+t.match(/\x00M(\d+)\x00/)[1]];
-      return `<div class="math-display-block">${_katexRender(inner.trim(), true)}</div>`;
-    }
-
-    const cm = t.match(/^\x00CODE(\d+)\x00$/);
-    if (cm) {
-      const { lang, code } = codeBlocks[+cm[1]];
-      const langLabel   = lang || 'code';
-      const highlighted = syntaxHighlight(code, lang);
-      const blockId     = 'cb' + Math.random().toString(36).slice(2, 8);
-      return `<div class="code-block" id="${blockId}"><div class="code-block-header"><span class="code-block-lang">${_he(langLabel)}</span><button class="code-copy-btn" data-target="${blockId}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> Copy</button></div><pre>${highlighted}</pre></div>`;
-    }
-
-    const hm = t.match(/^(##) ([\s\S]+)/);
-    if (hm) {
-      return `<h4>${_fmt(hm[2], math)}</h4>`;
-    }
-
-    if (/^\|.+\|/m.test(t)) {
-      const rows = t.split('\n').filter(r => r.trim() && !/^[\s|:-]+$/.test(r));
-      if (rows.length >= 1) {
-        const parseRow = r => r.replace(/^\||\|$/g, '').split('|').map(c => _fmt(c.trim(), math));
-        const [header, ...body] = rows;
-        const hCells = parseRow(header).map(c => `<th>${c}</th>`).join('');
-        const bRows  = body.map(r => `<tr>${parseRow(r).map(c => `<td>${c}</td>`).join('')}</tr>`).join('');
-        return `<div class="table-wrap"><table><thead><tr>${hCells}</tr></thead><tbody>${bRows}</tbody></table></div>`;
-      }
-    }
-
-    if (/^[-*•] /m.test(t)) {
-      const items = t.split('\n').filter(Boolean)
-        .map(l => `<li>${_fmt(l.replace(/^[-*•] /, ''), math)}</li>`).join('');
-      return `<ul>${items}</ul>`;
-    }
-
-    if (/^\d+[.)]\s/m.test(t)) {
-      const items = t.split('\n').filter(Boolean)
-        .map(l => `<li>${_fmt(l.replace(/^\d+[.)]\s/, ''), math)}</li>`).join('');
-      return `<ul>${items}</ul>`;
-    }
-
-    const lineHtml = t.split('\n').map(line => {
-      const lt = line.trim();
-      if (/^\x00M\d+\x00$/.test(lt)) {
-        const { inner } = math[+lt.match(/\x00M(\d+)\x00/)[1]];
-        return `</p><div class="math-display-block">${_katexRender(inner.trim(), true)}</div><p>`;
-      }
-      return _fmt(line, math);
-    });
-
-    const inner = lineHtml.join('<br>')
-      .replace(/<br><\/p>/g, '</p>')
-      .replace(/<p><br>/g,   '<p>');
-    return `<p>${inner}</p>`;
-  }).join('');
-
-  return html;
+function updateSpacer(kbHeight) {
+  const barH    = chatbarWrap.offsetHeight;
+  const spacerH = barH + (kbHeight || 0);
+  if (spacerH === _lastSpacerH) return;
+  _lastSpacerH = spacerH;
+  chatSpacer.style.height = spacerH + 'px';
 }
 
-/* renderMathBubble — no-op for call-site compatibility */
-function renderMathBubble(_el) {}
-       
+const _barResizeObserver = new ResizeObserver(() => {
+  const kbH = _keyboardOpen
+    ? Math.max(0, window.innerHeight - (window.visualViewport?.height ?? 0) - (window.visualViewport?.offsetTop ?? 0))
+    : 0;
+  updateSpacer(kbH);
+});
+_barResizeObserver.observe(chatbarWrap);
+
+function fixViewport() {
+  if (_vvpRafId) return;
+  _vvpRafId = requestAnimationFrame(_applyViewport);
+}
+
+function _applyViewport() {
+  _vvpRafId = 0;
+  const vvp = window.visualViewport;
+  if (!vvp) return;
+  const kbHeight = Math.max(0, window.innerHeight - vvp.height - vvp.offsetTop);
+  if (Math.round(kbHeight) === Math.round(_prevOffset)) return;
+  const wasOpen = _keyboardOpen;
+  _keyboardOpen = kbHeight > 50;
+  _prevOffset   = kbHeight;
+  viewportResizing = true;
+
+  if (_keyboardOpen && !wasOpen) {
+    chatbarWrap.style.transition = 'none';
+  } else if (!_keyboardOpen && wasOpen) {
+    chatbarWrap.style.transition = 'transform 0.28s cubic-bezier(0.0, 0.0, 0.2, 1)';
+  }
+
+  chatbarWrap.style.transform = kbHeight > 0
+    ? `translateY(-${kbHeight}px) translateZ(0)` : '';
+  updateSpacer(kbHeight);
+
+  if (kbHeight > 0) {
+    _programmaticScroll = true;
+    if (_lastUserMsgEl) {
+      scrollHost.scrollTop = Math.max(0, _lastUserMsgEl.offsetTop - 16);
+    } else {
+      scrollHost.scrollTop = scrollHost.scrollHeight;
+    }
+    _pinnedToBottom = (scrollHost.scrollTop + scrollHost.clientHeight) >= (scrollHost.scrollHeight - 8);
+  }
+
+  cancelAnimationFrame(_cleanupRafId);
+  _cleanupRafId = requestAnimationFrame(() => {
+    _cleanupRafId = requestAnimationFrame(() => {
+      _cleanupRafId = 0;
+      lastScrollY = scrollHost.scrollTop;
+      accumDown   = 0;
+      accumUp     = 0;
+      viewportResizing    = false;
+      _programmaticScroll = false;
+    });
+  });
+}
+
+if (window.visualViewport) {
+  window.visualViewport.addEventListener('resize', fixViewport, { passive: true });
+  window.visualViewport.addEventListener('scroll', fixViewport, { passive: true });
+  updateSpacer(0);
+  _applyViewport();
+} else {
+  function _legacyFix() {
+    const h = window.innerHeight + 'px';
+    if (document.body.style.height !== h) document.body.style.height = h;
+  }
+  window.addEventListener('resize', _legacyFix, { passive: true });
+  _legacyFix();
+  updateSpacer(0);
+}
+
+/* ════════════════════════════════
+   HEADER / TAB ANIMATION
+   ════════════════════════════════ */
+
+const HIDE_ACCUM  = 40;
+const SHOW_ACCUM  = 55;
+const LOGO_THRESH = 10;
+
+function updateHeader() {
+  rafPending = false;
+  if (viewportResizing || _programmaticScroll) {
+    lastScrollY = scrollHost.scrollTop;
+    accumDown = 0;
+    accumUp   = 0;
+    return;
+  }
+  const sy    = scrollHost.scrollTop;
+  const delta = sy - lastScrollY;
+  if (delta === 0) return;
+  lastScrollY = sy;
+
+  if (sy <= LOGO_THRESH) {
+    accumDown = 0; accumUp = 0;
+    if (isLogoCollapsed) { logoHeader.classList.remove('collapsed'); isLogoCollapsed = false; }
+    if (isTabHidden)     { tabBar.classList.remove('hide');          isTabHidden      = false; }
+    if (isTabScrolled)   { tabBar.classList.remove('scrolled');      isTabScrolled    = false; }
+    return;
+  }
+
+  if (!isLogoCollapsed) { logoHeader.classList.add('collapsed'); isLogoCollapsed = true; }
+  if (!isTabScrolled)   { tabBar.classList.add('scrolled');      isTabScrolled    = true; }
+
+  if (delta > 0) {
+    accumDown += delta;
+    if (accumUp > 0) accumUp = 0;
+    if (!isTabHidden && accumDown >= HIDE_ACCUM) {
+      tabBar.classList.add('hide'); isTabHidden = true; accumDown = 0;
+    }
+  } else {
+    accumUp += -delta;
+    if (accumDown > 0) accumDown = 0;
+    if (isTabHidden && accumUp >= SHOW_ACCUM) {
+      tabBar.classList.remove('hide'); isTabHidden = false; accumUp = 0;
+    }
+  }
+}
+
+scrollHost.addEventListener('scroll', () => {
+  if (!rafPending) { rafPending = true; requestAnimationFrame(updateHeader); }
+}, { passive: true });
+
+/* ════════════════════════════════
+   INPUT & PILL
+   ════════════════════════════════ */
+
+pill.addEventListener('pointerdown', (e) => {
+  if (e.target !== pill && e.target !== input &&
+      e.target.closest('button, .overlay-input-wrap')) return;
+  if (document.activeElement === input || _keyboardOpen) return;
+  e.preventDefault();
+  requestAnimationFrame(() => { input.focus(); });
+}, { passive: false });
+
+input.addEventListener('input', () => {
+  pill.classList.toggle('has-text', input.value.trim().length > 0);
+});
+
+input.addEventListener('keydown', e => {
+  if (e.key === 'Enter') { e.preventDefault(); send(); }
+});
+
+sendBtn.addEventListener('click', send);
+
+/* ════════════════════════════════
+   PLUS MENU
+   ════════════════════════════════ */
+
+function openPlusMenu() {
+  const rect = plusBtn.getBoundingClientRect();
+  plusMenu.style.bottom = (window.innerHeight - rect.top + 8) + 'px';
+  _plusOpen = true;
+  plusBackdrop.classList.add('open');
+  requestAnimationFrame(() => plusMenu.classList.add('open'));
+}
+
+function closePlusMenu() {
+  _plusOpen = false;
+  plusMenu.classList.remove('open');
+  plusBackdrop.classList.remove('open');
+}
+
+plusBtn.addEventListener('click', (e) => {
+  e.stopPropagation();
+  _plusOpen ? closePlusMenu() : openPlusMenu();
+});
+plusBackdrop.addEventListener('click', closePlusMenu);
+
+document.getElementById('pmPhoto').addEventListener('click',    () => { closePlusMenu(); });
+document.getElementById('pmCamera').addEventListener('click',   () => { closePlusMenu(); });
+document.getElementById('pmFile').addEventListener('click',     () => { closePlusMenu(); });
+document.getElementById('pmLocation').addEventListener('click', () => { closePlusMenu(); });
+
+/* ════════════════════════════════
+   TAB BAR
+   ════════════════════════════════ */
+
+const _allTabs = tabBar.querySelectorAll('.tab');
+tabBar.addEventListener('click', e => {
+  const tab = e.target.closest('.tab');
+  if (!tab) return;
+  _allTabs.forEach(t => t.classList.remove('active'));
+  tab.classList.add('active');
+}, { passive: true });
+
+/* ════════════════════════════════
+   TYPING INDICATOR
+   ════════════════════════════════ */
+
+function showTyping() {
+  typingEl = document.createElement('div');
+  typingEl.className = 'msg bot';
+  typingEl.innerHTML = `<div class="bubble typing"><span></span><span></span><span></span><span></span></div>`;
+  msgWrap.appendChild(typingEl);
+}
+
+function removeTyping() {
+  if (typingEl) { typingEl.remove(); typingEl = null; }
+}
+
+/* ════════════════════════════════
+   MESSAGE RENDERING
+   ════════════════════════════════ */
+
+function addMsg(role, text) {
+  const d = document.createElement('div');
+  d.className = `msg ${role}`;
+  const html = role === 'bot'
+    ? renderMarkdown(text)
+    : text.replace(/&/g, '&amp;').replace(/</g, '&lt;');
+  d.innerHTML = `<div class="bubble">${html}</div>`;
+  msgWrap.appendChild(d);
+  if (role === 'bot')  appendBotActions(d, text);
+  if (role === 'user') { _lastUserMsgEl = d; scrollToMsg(d); }
+}
+
+function appendBotActions(msgEl, fullText) {
+  const bar = document.createElement('div');
+  bar.className = 'bot-actions';
+
+  const actions = [
+    { key: 'copy',    label: 'Copy',    svg: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>` },
+    { key: 'retry',   label: 'Retry',   svg: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>` },
+    { key: 'like',    label: 'Like',    svg: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5.88 14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.76a2 2 0 0 0 1.79-1.11L12 2a3.13 3.13 0 0 1 3 3.88Z"/><path d="M7 10v12"/></svg>` },
+    { key: 'dislike', label: 'Dislike', svg: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M17 14V2"/><path d="M9 18.12 10 14H4.17a2 2 0 0 1-1.92-2.56l2.33-8A2 2 0 0 1 6.5 2H20a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-2.76a2 2 0 0 0-1.79 1.11L12 22a3.13 3.13 0 0 1-3-3.88Z"/></svg>` },
+    { key: 'refresh', label: 'Refresh', svg: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6"/><path d="M2.5 12a10 10 0 0 1 17.8-6.3L21.5 8"/><path d="M2.5 22v-6h6"/><path d="M21.5 12a10 10 0 0 1-17.8 6.3L2.5 16"/></svg>` },
+  ];
+
+  const btnRefs = {};
+  actions.forEach(({ key, label, svg }) => {
+    const btn = document.createElement('button');
+    btn.setAttribute('aria-label', label);
+    btn.innerHTML = svg;
+    btnRefs[key] = btn;
+    bar.appendChild(btn);
+  });
+
+  Object.entries(btnRefs).forEach(([key, btn]) => {
+    btn.addEventListener('click', () => {
+      if (key === 'copy') {
+        navigator.clipboard.writeText(msgEl.querySelector('.bubble')?.innerText || fullText).catch(() => {});
+        btn.style.color = '#2da44e';
+        setTimeout(() => btn.style.color = '', 1200);
+      } else if (key === 'like') {
+        btn.classList.toggle('active-like');
+        btnRefs['dislike']?.classList.remove('active-dislike');
+      } else if (key === 'dislike') {
+        btn.classList.toggle('active-dislike');
+        btnRefs['like']?.classList.remove('active-like');
+      } else if (key === 'refresh' || key === 'retry') {
+        btn.style.transition = 'transform 0.45s ease';
+        btn.style.transform  = 'rotate(360deg)';
+        setTimeout(() => { btn.style.transform = ''; btn.style.transition = ''; }, 500);
+      }
+    });
+  });
+
+  msgEl.appendChild(bar);
+}
+
+/* ════════════════════════════════
+   CODE COPY — delegated listener
+   ════════════════════════════════ */
+
+document.addEventListener('click', function(e) {
+  const btn = e.target.closest('.code-copy-btn');
+  if (!btn) return;
+  const blockId = btn.getAttribute('data-target');
+  const block   = document.getElementById(blockId);
+  if (!block) return;
+
+  const contentSpans = block.querySelectorAll('.code-line-content');
+  let rawCode = '';
+  contentSpans.forEach((span, i) => {
+    rawCode += (i > 0 ? '\n' : '') + span.innerText;
+  });
+  if (!rawCode) rawCode = block.querySelector('pre')?.innerText || '';
+
+  navigator.clipboard.writeText(rawCode).then(() => {
+    btn.classList.add('copied');
+    btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Copied`;
+    setTimeout(() => {
+      btn.classList.remove('copied');
+      btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> Copy`;
+    }, 1800);
+  }).catch(() => {});
+});
+
+/* ════════════════════════════════
+   WEB RESULT CARDS
+   ════════════════════════════════ */
+
+function _renderWebCards(results) {
+  const wrap = document.createElement('div');
+  wrap.className = 'msg bot';
+  const bubble = document.createElement('div');
+  bubble.className = 'bubble web-results';
+  bubble.innerHTML = results.map(r => {
+    let hostname = r.url;
+    try { hostname = new URL(r.url).hostname; } catch (_) {}
+    return `<a class="web-card" href="${r.url}" target="_blank" rel="noopener noreferrer">
+      <div class="web-card-title">${r.title}</div>
+      <div class="web-card-url">${hostname}</div>
+      <div class="web-card-snippet">${r.snippet}</div>
+    </a>`;
+  }).join('');
+  wrap.appendChild(bubble);
+  msgWrap.appendChild(wrap);
+}
+
+/* ════════════════════════════════
+   SEND / STREAM
+   ════════════════════════════════ */
+
+async function send() {
+  const q = input.value.trim();
+  if (!q) return;
+  input.value = '';
+  pill.classList.remove('has-text');
+  addMsg('user', q);
+  showTyping();
+
+  _history.push({ role: 'user', content: q });
+  if (_history.length > MAX_HISTORY) _history.splice(0, _history.length - MAX_HISTORY);
+
+  if (streamAbort) { streamAbort.abort(); streamAbort = null; }
+  streamAbort = new AbortController();
+
+  const activeTab = tabBar.querySelector('.tab.active')?.dataset?.tab;
+  const endpoint  = activeTab === 'ai' ? '/api/search' : '/api/chat';
+
+  try {
+    const resp = await fetch(endpoint, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ query: q, history: _history.slice(0, -1) }),
+      signal:  streamAbort.signal,
+    });
+
+    if (!resp.ok) {
+      removeTyping();
+      addMsg('bot', 'Something went wrong. Please try again.');
+      streamAbort = null;
+      return;
+    }
+
+    const reader  = resp.body.getReader();
+    const decoder = new TextDecoder('utf-8', { fatal: false });
+    let sseBuffer = '';
+    let fullText  = '';
+    let eventType = '';
+
+    outer: while (true) {
+      const { done, value } = await reader.read();
+      sseBuffer += done ? decoder.decode() : decoder.decode(value, { stream: true });
+      if (done) break;
+      const lines = sseBuffer.split('\n');
+      sseBuffer = lines.pop();
+      for (const line of lines) {
+        if (line.startsWith('event: ')) {
+          eventType = line.slice(7).trim();
+          continue;
+        }
+        if (!line.startsWith('data: ')) { eventType = ''; continue; }
+        const data = line.slice(6).trim();
+        if (data === '[DONE]') break outer;
+
+        if (eventType === 'results') {
+          try {
+            const results = JSON.parse(data);
+            if (results.length) {
+              removeTyping();
+              _renderWebCards(results);
+              showTyping();
+            }
+          } catch (_) {}
+          eventType = '';
+          continue;
+        }
+
+        try {
+          const json  = JSON.parse(data);
+          const delta = json.choices?.[0]?.delta?.content || '';
+          if (delta) fullText += delta;
+        } catch (_) {}
+      }
+    }
+
+    streamAbort = null;
+
+    if (fullText) {
+      _history.push({ role: 'assistant', content: fullText });
+      if (_history.length > MAX_HISTORY) _history.splice(0, _history.length - MAX_HISTORY);
+    }
+
+    requestAnimationFrame(() => {
+      removeTyping();
+      if (fullText) {
+        const botEl    = document.createElement('div');
+        botEl.className = 'msg bot';
+        const bubbleEl = document.createElement('div');
+        bubbleEl.className = 'bubble';
+        bubbleEl.innerHTML = renderMarkdown(fullText);
+        botEl.appendChild(bubbleEl);
+        msgWrap.appendChild(botEl);
+        appendBotActions(botEl, fullText);
+      }
+    });
+
+  } catch (err) {
+    if (err.name === 'AbortError') return;
+    removeTyping();
+    addMsg('bot', 'Network error. Please try again.');
+    streamAbort = null;
+  }
+}
+
+/* ════════════════════════════════
+   URL PARAM AUTO-SEND
+   ════════════════════════════════ */
+
+const _qParam = new URLSearchParams(location.search).get('q');
+if (_qParam) { input.value = _qParam; pill.classList.add('has-text'); send(); }
+           

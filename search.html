@@ -395,19 +395,84 @@
   }
 
   function renderMarkdown(text) {
-    return text
-      .split('\n\n')
-      .map(p => '<p>' + p.replace(/\n/g, '<br>').replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>') + '</p>')
-      .join('');
+    const blocks = text.split('\n\n');
+    
+    return blocks.map(block => {
+      // Skip completely empty blocks
+      if (block.trim() === '') return '';
+      
+      const lines = block.split('\n');
+      const result = [];
+      let currentParagraphLines = [];
+      
+      for (const line of lines) {
+        const headingMatch = line.match(/^(#{1,6})\s+(.+)$/);
+        
+        if (headingMatch) {
+          if (currentParagraphLines.length > 0) {
+            const paraText = currentParagraphLines.join('\n');
+            result.push('<p>' + paraText.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>') + '</p>');
+            currentParagraphLines = [];
+          }
+          const level = headingMatch[1].length;
+          const content = headingMatch[2];
+          result.push('<h' + level + '>' + content + '</h' + level + '>');
+        } else {
+          currentParagraphLines.push(line);
+        }
+      }
+      
+      if (currentParagraphLines.length > 0) {
+        const paraText = currentParagraphLines.join('\n');
+        result.push('<p>' + paraText.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br>') + '</p>');
+      }
+      
+      return result.join('');
+    }).filter(s => s !== '').join('');
   }
 
   function addMsg(role, text) {
     const d = document.createElement('div');
     d.className = `msg ${role}`;
     const safe = text.replace(/&/g,'&amp;').replace(/</g,'&lt;');
-    const html = role === 'bot'
-      ? safe.split('\n\n').map(p => `<p>${p.replace(/\n/g,'<br>').replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')}</p>`).join('')
-      : safe;
+    let html;
+    if (role === 'bot') {
+      const blocks = safe.split('\n\n');
+      html = blocks.map(block => {
+        // Skip completely empty blocks
+        if (block.trim() === '') return '';
+        
+        const lines = block.split('\n');
+        const result = [];
+        let currentParagraphLines = [];
+        
+        for (const line of lines) {
+          const headingMatch = line.match(/^(#{1,6})\s+(.+)$/);
+          
+          if (headingMatch) {
+            if (currentParagraphLines.length > 0) {
+              const paraText = currentParagraphLines.join('\n');
+              result.push('<p>' + paraText.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>') + '</p>');
+              currentParagraphLines = [];
+            }
+            const level = headingMatch[1].length;
+            const content = headingMatch[2];
+            result.push('<h' + level + '>' + content + '</h' + level + '>');
+          } else {
+            currentParagraphLines.push(line);
+          }
+        }
+        
+        if (currentParagraphLines.length > 0) {
+          const paraText = currentParagraphLines.join('\n');
+          result.push('<p>' + paraText.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br>') + '</p>');
+        }
+        
+        return result.join('');
+      }).filter(s => s !== '').join('');
+    } else {
+      html = safe;
+    }
     d.innerHTML = `<div class="bubble">${html}</div>`;
     msgWrap.appendChild(d);
     scrollHost.scrollTop = scrollHost.scrollHeight;

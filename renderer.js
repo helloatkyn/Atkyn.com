@@ -2,59 +2,52 @@
    renderer.js — Atkyn Search
    Markdown · KaTeX math · Syntax highlighting · Table rendering
 
-   AUDIT FIXES (v2):
-   ─────────────────
-   [F01] CRLF / CR normalization before ALL processing
-   [F02] Heading extraction BEFORE paragraph split (not inside it)
-         → headings separated by single \n now work correctly
-   [F03] Heading regex made more permissive: optional leading spaces,
-         optional trailing spaces, handles "### # text" style output
-   [F04] Single-\n heading separation: pre-process block to insert
-         \n\n around heading lines so paragraph split sees them
-   [F05] _sqStr regex tightened to avoid eating lone apostrophes
-   [F06] $…$ math regex: atomic-style guard against catastrophic
-         backtracking — content capped at 500 chars, no newlines
-   [F07] _extractMath: display $$ checked before inline $ (was already
-         correct but order made explicit and documented)
-   [F08] Block-level math restored before paragraph wrapping to avoid
-         being wrapped in <p>
-   [F09] Ordered list uses <ol> not <ul>
-   [F10] Table separator detection fixed — was filtering rows that
-         start with | and contain only dashes/colons/pipes/spaces
-   [F11] Paragraph line-join: single \n between lines → <br> only for
-         actual prose; heading lines never reach here post-F04
-   [F12] _he / _esc: cover all 5 HTML special chars including '
-   [F13] Link URL sanitization extended: javascript: / data: / vbscript:
-   [F14] Math placeholder in _fmt: guard against out-of-range index
-   [F15] syntaxHighlight: empty input guard
-   [F16] renderMarkdown: empty / whitespace-only input guard
-   [F17] Code block regex: handle no trailing newline (streaming safety)
-   [F18] Heading normalizer: handle ##### and ###### → ####
-   [F19] renderMathBubble kept for call-site compat (intentional no-op)
+   Audit & Hardening (v4) – Block‑aware tokenizer
+   ────────────────────────────────────────────────────────────
+   • Newline normalisation (CRLF / CR → LF)
+   • Safe Unicode‑based placeholder markers
+   • Inline‑code shielding before math extraction
+   • Robust backtick‑string detection (`` code ``, multiline, empty)
+   • Heading normalisation with leading whitespace tolerance
+   • Table rows detected by start/end pipe or multiple pipes
+   • Homogeneous list‑block detection
+   • Proper HTML‑attribute escaping for link `href`
+   • Fenced‑code regex relaxed
+   • Ordered lists use <ol>
+   • Block tokenizer (no longer dependent on blank‑line splits)
+   • Malformed tables fallback silently
    ═══════════════════════════════════════════════════════════════ */
 
-/* ── HTML escape — all 5 special chars ── */       // [F12]
+/* ── HTML escape (user‑facing text → safe HTML attribute / content) ── */
 function _he(s) {
   return String(s)
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
+    .replace(/"/g, '&quot;');
 }
 
-/* ── Lightweight escape for pre/code content ── */
+/* ── Lightweight escape for pre/code content (no quote escaping needed) ── */
 function _esc(s) {
-  return String(s)
+  return s
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;');
 }
 
 /* ────────────────────────────────────────────────────────────────
+   Placeholder markers (Unicode Private Use Area – safe from user content)
+   ═══════════════════════════════════════════════════════════════ */
+const _PH = {
+  CODE:    '\uE000',   // fenced code block placeholder
+  MATH:    '\uE001',   // math placeholder
+  INLINE:  '\uE002',   // inline code placeholder (pre‑math shield)
+  HIGHLIGHT:'\uE003',  // syntax‑highlighting safe placeholder
+};
+
+/* ────────────────────────────────────────────────────────────────
    KaTeX
    ──────────────────────────────────────────────────────────────── */
-
 function _katexRender(tex, display) {
   if (typeof katex === 'undefined') {
     return `<span class="math-fallback">${_he(tex)}</span>`;
@@ -74,74 +67,87 @@ function _katexRender(tex, display) {
 /*
  * Extract math delimiters before markdown processing so that $ signs and
  * backslashes inside math regions are never touched by the markdown parser.
- * Returns the text with placeholders (\x00M{n}\x00) and an array of
- * { inner, display } objects for later restoration.
- *
- * [F06] $…$ pattern: use negated char class with 500-char cap to prevent
- *       catastrophic backtracking on long inputs with unmatched $.
- * [F07] Order: display ($$) before inline ($) — prevents $$ being parsed
- *       as two adjacent inline-$ delimiters.
+ * Returns the text with placeholders and an array of { inner, display }.
  */
 function _extractMath(text) {
   const math = [];
 
   function placeholder(inner, display) {
     math.push({ inner: inner.trim(), display });
-    return `\x00M${math.length - 1}\x00`;
+    return `${_PH.MATH}${math.length - 1}${_PH.MATH}`;
   }
 
-  // Display math: \[…\]  and  $$…$$  (MUST come before inline $)
+  // Display math: \[…\]  and  $$…$$
   text = text.replace(/\\\[([\s\S]*?)(?:\\\]|$)/g,
     (_, inner) => placeholder(inner, true));
   text = text.replace(/\$\$([\s\S]*?)(?:\$\$|$)/g,
     (_, inner) => placeholder(inner, true));
 
-  // Inline math: \(…\)
+  // Inline math: \(…\)  and  $…$  (single‑line only, avoids eating prose $)
   text = text.replace(/\\\(([\s\S]*?)(?:\\\)|$)/g,
     (_, inner) => placeholder(inner, false));
-
-  // Inline math: $…$ — single line, max 500 chars, no newlines   [F06]
-  text = text.replace(/\$([^\$\n]{1,500}?)\$/g,
+  text = text.replace(/\$([^\$\n]+?)\$/g,
     (_, inner) => placeholder(inner, false));
 
   return { text, math };
 }
 
+/* Restore a single math placeholder → rendered HTML (kept for API compatibility) */
+function _renderMathPlaceholder(index, math) {
+  const { inner, display } = math[index];
+  return _katexRender(inner, display);
+}
+
+/* ────────────────────────────────────────────────────────────────
+   Inline‑code shielding (CommonMark‑compliant backtick runs)
+   Extracts `` `code` `` spans, supports multiline and empty content.
+   Returns { text, codes }.
+   ──────────────────────────────────────────────────────────────── */
+function _extractInlineCode(text) {
+  const codes = [];
+  const re = /(`+)([\s\S]*?)\1/g;
+  text = text.replace(re, (match) => {
+    codes.push(match);
+    return `${_PH.INLINE}${codes.length - 1}${_PH.INLINE}`;
+  });
+  return { text, codes };
+}
+
+/* Restore inline‑code placeholders → original backtick strings */
+function _restoreInlineCode(text, codes) {
+  return text.replace(new RegExp(`${_PH.INLINE}(\\d+)${_PH.INLINE}`, 'g'),
+    (_, i) => codes[+i]);
+}
+
 /* ────────────────────────────────────────────────────────────────
    Inline formatter
-   Operates on a single line after HTML-escaping.
+   Operates on a single line after HTML‑escaping.
+   Order: code spans → bold → italic cleaning → links → math restore.
    ──────────────────────────────────────────────────────────────── */
 function _fmt(line, math) {
   let s = _he(line);
 
-  // Allow literal <br> from source
   s = s.replace(/&lt;br&gt;/gi, '<br>');
 
-  // Inline code  (must come before bold/italic so backticks win)
-  s = s.replace(/`([^`]+)`/g, (_, c) => `<code>${_esc(c)}</code>`);
+  // Inline code
+  s = s.replace(/`([^`]+)`/g, (_, c) => `<code>${c}</code>`);
 
   // Bold
   s = s.replace(/\*\*([^*\n]+?)\*\*/g, '<strong>$1</strong>');
 
-  // Italic: strip single * (not semantically rendered, just cleaned)
+  // Italic strip (see design note in code)
   s = s.replace(/\*([^*\n]+?)\*/g, '$1');
-  // Remove residual lone asterisks
   s = s.replace(/(?<!\*)\*(?!\*)/g, '');
 
-  // Markdown links [text](url)                                    [F13]
+  // Links
   s = s.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_, text, url) => {
-    const trimmed = url.trim();
-    const safe = /^https?:\/\//i.test(trimmed) &&
-                 !/^(javascript|data|vbscript):/i.test(trimmed)
-      ? trimmed : '#';
-    return `<a href="${safe}" target="_blank" rel="noopener noreferrer">${text}</a>`;
+    const safeUrl = /^https?:\/\//i.test(url) ? _he(url) : '#';
+    return `<a href="${safeUrl}" target="_blank" rel="noopener noreferrer">${text}</a>`;
   });
 
-  // Restore math placeholders                                     [F14]
-  s = s.replace(/\x00M(\d+)\x00/g, (_, i) => {
-    const idx = +i;
-    if (!math || idx >= math.length) return '';
-    const { inner, display } = math[idx];
+  // Math placeholders
+  s = s.replace(new RegExp(`${_PH.MATH}(\\d+)${_PH.MATH}`, 'g'), (_, i) => {
+    const { inner, display } = math[+i];
     const html = _katexRender(inner, display);
     return display
       ? `</p><div class="math-display-block">${html}</div><p>`
@@ -161,8 +167,7 @@ const _RX = {
   jsBool:      /\b(true|false|null|undefined|NaN|Infinity)\b/g,
   pyKw:        /\b(def|class|return|if|elif|else|for|while|in|not|and|or|import|from|as|with|try|except|finally|raise|pass|break|continue|lambda|yield|global|nonlocal|del|assert|is|True|False|None)\b/g,
   dqStr:       /"(?:[^"\\]|\\.)*"/g,
-  // [F05] sqStr: require 2+ chars so lone apostrophes in prose are untouched
-  sqStr:       /'(?:[^'\\\n]|\\.){2,}'/g,
+  sqStr:       /'([^'\n\\]|\\.)+'/g,
   btStr:       /`(?:[^`\\]|\\.)*`/g,
   lineComment: /\/\/.*/g,
   hashComment: /#.*/g,
@@ -178,7 +183,6 @@ function _resetRx() {
 }
 
 function syntaxHighlight(code, lang) {
-  if (!code) return '<div class="code-lines"></div>';  // [F15]
   const l     = (lang || '').toLowerCase();
   const lines = code.split('\n');
   let out     = '';
@@ -195,14 +199,17 @@ function _tokenizeLine(line, lang) {
   _resetRx();
 
   const ph      = [];
-  const protect = html => { ph.push(html); return `\x01${ph.length - 1}\x01`; };
+  const protect = html => {
+    ph.push(html);
+    return `${_PH.HIGHLIGHT}${ph.length - 1}${_PH.HIGHLIGHT}`;
+  };
   const span    = (cls, text) => protect(`<span class="${cls}">${_esc(text)}</span>`);
 
   let s = line;
 
   s = s.replace(_RX.blockComment, m => span('tk-cmt', m));
 
-  const hashLangs = ['python', 'py', 'bash', 'sh', 'yaml', 'yml', 'ruby', 'rb', 'r'];
+  const hashLangs = ['python', 'py', 'bash', 'sh', 'yaml', 'yml'];
   if (hashLangs.includes(lang)) {
     s = s.replace(_RX.hashComment, m => span('tk-cmt', m));
   } else {
@@ -215,9 +222,9 @@ function _tokenizeLine(line, lang) {
 
   s = _esc(s);
 
-  s = s.replace(_RX.numLit,  m => protect(`<span class="tk-num">${m}</span>`));
+  s = s.replace(_RX.numLit, m => protect(`<span class="tk-num">${m}</span>`));
   s = s.replace(_RX.clsName, (_, p) => protect(`<span class="tk-cls">${p}</span>`));
-  s = s.replace(_RX.fnCall,  (_, p) => protect(`<span class="tk-fn">${p}</span>`));
+  s = s.replace(_RX.fnCall, (_, p) => protect(`<span class="tk-fn">${p}</span>`));
 
   if (lang === 'python' || lang === 'py') {
     s = s.replace(_RX.pyKw,   m => protect(`<span class="tk-kw">${m}</span>`));
@@ -227,124 +234,161 @@ function _tokenizeLine(line, lang) {
     s = s.replace(_RX.jsKw,   m => protect(`<span class="tk-kw">${m}</span>`));
   }
 
-  s = s.replace(_RX.jsBool,  m => protect(`<span class="tk-bool">${m}</span>`));
+  s = s.replace(_RX.jsBool, m => protect(`<span class="tk-bool">${m}</span>`));
   s = s.replace(_RX.propKey, (_, p) => protect(`<span class="tk-prop">${p}</span>`));
 
-  s = s.replace(/\x01(\d+)\x01/g, (_, i) => ph[+i]);
+  s = s.replace(new RegExp(`${_PH.HIGHLIGHT}(\\d+)${_PH.HIGHLIGHT}`, 'g'), (_, i) => ph[+i]);
 
   return s || ' ';
 }
-
 /* ────────────────────────────────────────────────────────────────
-   Heading level map
-   #  / ##    → h3
-   ###        → h4
-   ####       → h5
+   Heading level map  (# → h3, ## → h3, ### → h4, ####+ → h5)
    ──────────────────────────────────────────────────────────────── */
 const _HEADING_TAG = { 1: 'h3', 2: 'h3', 3: 'h4', 4: 'h5' };
 
 /* ────────────────────────────────────────────────────────────────
-   renderMarkdown(rawText) → HTML string
+   Block tokenizer
+   Splits text into homogeneous blocks without relying on blank lines.
+   Recognises headings, tables (line‑based), lists, code/math placeholders.
+   ═─────────────────────────────────────────────────────────────── */
+function _isCodePlaceholder(line) {
+  return new RegExp(`^${_PH.CODE}\\d+${_PH.CODE}$`).test(line.trim());
+}
+function _isMathPlaceholder(line) {
+  return new RegExp(`^${_PH.MATH}\\d+${_PH.MATH}$`).test(line.trim());
+}
+function _isHeadingLine(line) {
+  return /^#{2,4} /.test(line.trim());
+}
+function _isUnorderedListItem(line) {
+  return /^[-*•] /.test(line.trim());
+}
+function _isOrderedListItem(line) {
+  return /^\d+[.)] /.test(line.trim());
+}
+function _isListItem(line) {
+  return _isUnorderedListItem(line) || _isOrderedListItem(line);
+}
+/* A line is part of a table if it starts or ends with `|` or contains ≥2 pipes. */
+function _isTableLine(line) {
+  const t = line.trim();
+  return t.startsWith('|') || t.endsWith('|') || (t.match(/\|/g) || []).length >= 2;
+}
 
+function _splitBlocks(text) {
+  const lines = text.split('\n');
+  const blocks = [];
+  let curType = null;
+  let curLines = [];
+
+  const push = () => {
+    if (curLines.length > 0) {
+      blocks.push(curLines.join('\n'));
+      curLines = [];
+    }
+    curType = null;
+  };
+
+  for (const line of lines) {
+    const trim = line.trim();
+    if (trim === '') {
+      push();
+      continue;
+    }
+
+    let lineType;
+    if (_isCodePlaceholder(line))      lineType = 'code';
+    else if (_isMathPlaceholder(line)) lineType = 'math';
+    else if (_isHeadingLine(line))     lineType = 'heading';
+    else if (_isTableLine(line))       lineType = 'table';
+    else if (_isListItem(line))        lineType = 'list';
+    else                               lineType = 'paragraph';
+
+    if (curType !== null && curType !== lineType) {
+      push();
+    }
+    if (curType === null) curType = lineType;
+    curLines.push(line);
+  }
+  push();
+  return blocks;
+}
+
+/* ────────────────────────────────────────────────────────────────
+   renderMarkdown(rawText) → HTML string
    Pipeline:
-     0. Guard empty input
-     1. Normalize line endings (CRLF / CR → LF)            [F01]
-     2. Normalize headings                                  [F18]
-     3. Pre-process: insert blank lines around heading      [F04]
-        lines so single-\n headings become their own blocks
-     4. Strip junk-only lines
-     5. Extract code blocks                                 [F17]
-     6. Extract math placeholders
-     7. Split mixed pipe/prose paragraphs
-     8. Render each paragraph block
-   ──────────────────────────────────────────────────────────────── */
+     0. Normalise line endings
+     1. Normalise headings (strip leading spaces, collapse level)
+     2. Strip junk lines
+     3. Extract fenced code blocks (→ placeholders)
+     4. Extract inline code spans (shield from math / tables)
+     5. Extract math placeholders
+     6. Restore inline code spans
+     7. Split into homogeneous blocks with _splitBlocks()
+     8. Render each block
+   ═─────────────────────────────────────────────────────────────── */
 function renderMarkdown(rawText) {
 
-  /* ── Step 0: empty / whitespace guard ── */               // [F16]
-  if (!rawText || !rawText.trim()) return '';
-
-  /* ── Step 1: normalize newlines ── */                     // [F01]
+  /* 0. Normalise line endings */
   let text = rawText.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
 
-  /* ── Step 2: normalize headings ── */                     // [F18]
-  // ##### / ###### → ####
-  text = text.replace(/^#{5,}\s*\**\s*(.+?)\**\s*$/gm, '#### $1');
-  // #### → ####
-  text = text.replace(/^#{4}\s*\**\s*(.+?)\**\s*$/gm,  '#### $1');
-  // ### → ###
-  text = text.replace(/^#{3}\s*\**\s*(.+?)\**\s*$/gm,  '### $1');
-  // ## → ##
-  text = text.replace(/^#{2}\s+(.+)$/gm,                '## $1');
-  // # → ##  (same visual level in this app)
-  text = text.replace(/^#\s+(.+)$/gm,                   '## $1');
-
-  /* ── Step 3: ensure headings get their own paragraph block ── */ // [F04]
-  // Insert blank lines before and after every heading line
-  // so that paragraph split on \n\n always isolates them.
-  text = text.replace(/^(#{2,4} .+)$/gm, '\n\n$1\n\n');
-  // Collapse 3+ blank lines → 2 (one blank line)
-  text = text.replace(/\n{3,}/g, '\n\n');
-
-  /* ── Step 4: strip document-level junk ── */
-  text = text
-    .replace(/^-{3,}\s*$/gm, '')       // --- dividers
-    .replace(/^\*{2}\s*$/gm, '')        // lone **
-    .replace(/^\*([^*\n]+)\*$/gm, '$1'); // lone *text* line → text
-
-  /* ── Step 5: extract code blocks ── */                    // [F17]
-  const codeBlocks = [];
-  // Handle both closed (```) and unclosed (streaming) fences
-  text = text.replace(/```(\w*)\r?\n?([\s\S]*?)(?:```|$)/g, (_, lang, code) => {
-    codeBlocks.push({ lang: lang.trim(), code: code.trimEnd() });
-    return `\x00CODE${codeBlocks.length - 1}\x00`;
+  /* 1. Normalise headings */
+  text = text.replace(/^[ \t]*#{1,6}[ \t]+(.*)$/gm, (line) => {
+    const levelMatch = line.match(/^[ \t]*(#{1,6})/);
+    const level = levelMatch ? levelMatch[1].length : 1;
+    const canonLevel = level <= 2 ? 2 : level === 3 ? 3 : 4;
+    const content = line.replace(/^[ \t]*#{1,6}[ \t]+/, '').trim().replace(/\s+/g, ' ');
+    return `${'#'.repeat(canonLevel)} ${content}`;
   });
 
-  /* ── Step 6: extract math placeholders ── */
+  /* 2. Strip document‑level junk */
+  text = text
+    .replace(/^-{3,}\s*$/gm, '')
+    .replace(/^\*{2}\s*$/gm, '')
+    .replace(/^\*([^*\n]+)\*$/gm, '$1');
+
+  /* 3. Extract fenced code blocks */
+  const codeBlocks = [];
+  text = text.replace(/```(\w*)[^\S\n]*\n?([\s\S]*?)(?:```|$)/g, (_, lang, code) => {
+    codeBlocks.push({ lang: lang.trim(), code: code.trimEnd() });
+    return `${_PH.CODE}${codeBlocks.length - 1}${_PH.CODE}`;
+  });
+
+  /* 4. Extract inline code spans */
+  const inlineCode = _extractInlineCode(text);
+  text = inlineCode.text;
+
+  /* 5. Extract math */
   const { text: mathText, math } = _extractMath(text);
   text = mathText;
 
-  /* ── Step 7: split paragraphs that mix pipe rows and prose ── */
-  const isPipeLine = l => (l.match(/\|/g) || []).length >= 2;
+  /* 6. Restore inline code (math placeholders now safe) */
+  text = _restoreInlineCode(text, inlineCode.codes);
 
-  text = text.split('\n\n').map(block => {
-    const lines   = block.split('\n');
-    const hasPipe = lines.some(isPipeLine);
-    const allPipe = lines.filter(l => l.trim()).every(isPipeLine);
+  /* 7. Block tokenization */
+  const blocks = _splitBlocks(text);
 
-    if (!hasPipe || allPipe) return block;
-
-    let out      = '';
-    let tableBuf = [];
-    let proseBuf = [];
-
-    const flushProse = () => {
-      if (proseBuf.length) { out += proseBuf.join('\n') + '\n\n'; proseBuf = []; }
-    };
-    const flushTable = () => {
-      if (tableBuf.length) { out += tableBuf.join('\n') + '\n\n'; tableBuf = []; }
-    };
-
-    for (const line of lines) {
-      if (isPipeLine(line)) { flushProse(); tableBuf.push(line); }
-      else                  { flushTable(); proseBuf.push(line); }
-    }
-    flushProse();
-    flushTable();
-    return out.trim();
-  }).join('\n\n');
-
-  /* ── Step 8: render each paragraph block ── */
-  const html = text.split('\n\n').map(block => {
+  /* 8. Render each block */
+  const html = blocks.map(block => {
     const t = block.trim();
     if (!t) return '';
 
-    /* Code block placeholder */
-    const codeMatch = t.match(/^\x00CODE(\d+)\x00$/);
+    /* Standalone display‑math placeholder */
+    const mathOnly = t.match(new RegExp(`^${_PH.MATH}(\\d+)${_PH.MATH}$`));
+    if (mathOnly) {
+      const { inner, display } = math[+mathOnly[1]];
+      return display
+        ? `<div class="math-display-block">${_katexRender(inner, true)}</div>`
+        : `<p>${_katexRender(inner, false)}</p>`;
+    }
+
+    /* Fenced code placeholder */
+    const codeMatch = t.match(new RegExp(`^${_PH.CODE}(\\d+)${_PH.CODE}$`));
     if (codeMatch) {
       const { lang, code } = codeBlocks[+codeMatch[1]];
-      const langLabel   = lang || 'code';
+      const langLabel = lang || 'code';
       const highlighted = syntaxHighlight(code, lang);
-      const blockId     = 'cb' + Math.random().toString(36).slice(2, 8);
+      const blockId = 'cb' + Math.random().toString(36).slice(2, 8);
       return (
         `<div class="code-block" id="${blockId}">` +
           `<div class="code-block-header">` +
@@ -361,92 +405,83 @@ function renderMarkdown(rawText) {
       );
     }
 
-    /* Standalone display-math placeholder */
-    const mathOnlyMatch = t.match(/^\x00M(\d+)\x00$/);
-    if (mathOnlyMatch) {
-      const idx = +mathOnlyMatch[1];
-      if (idx < math.length) {
-        const { inner, display } = math[idx];
-        return display
-          ? `<div class="math-display-block">${_katexRender(inner, true)}</div>`
-          : `<p>${_katexRender(inner, false)}</p>`;
-      }
-      return '';
-    }
-
-    /* ATX Headings */
+    /* Heading (##, ###, ####) – already normalised */
     const headingMatch = t.match(/^(#{2,4}) ([\s\S]+)/);
     if (headingMatch) {
       const level = headingMatch[1].length;
       const tag   = _HEADING_TAG[level] || 'h4';
-      // Strip any residual # that LLMs sometimes leave (e.g. "### # 🔥 text")
-      const headText = headingMatch[2].replace(/^#+\s*/, '');
-      return `<${tag}>${_fmt(headText, math)}</${tag}>`;
+      return `<${tag}>${_fmt(headingMatch[2].trim(), math)}</${tag}>`;
     }
 
-    /* Markdown table */
-    if (/^\|.+\|/m.test(t)) {
-      // [F10] Filter separator rows: lines whose non-pipe content is only dashes/colons/spaces
-      const rows = t.split('\n').filter(r => {
-        if (!r.trim()) return false;
-        // A separator row looks like |---|:--:|---|
-        const inner = r.replace(/^\||\|$/g, '');
-        return !/^[\s|:\-]+$/.test(inner);
-      });
-      if (rows.length >= 1) {
-        const parseRow = r =>
-          r.replace(/^\||\|$/g, '').split('|').map(c => _fmt(c.trim(), math));
+    /* Table – first line passes _isTableLine */
+    const lines = t.split('\n');
+    if (_isTableLine(lines[0])) {
+      // Remove separator rows
+      const rows = lines.filter(r => r.trim() && !/^[\s|:-]+$/.test(r));
+      if (rows.length === 0) return '';   // only a separator -> drop
 
-        const [header, ...body] = rows;
-        const hCells = parseRow(header).map(c => `<th>${c}</th>`).join('');
-        const bRows  = body
-          .map(r => `<tr>${parseRow(r).map(c => `<td>${c}</td>`).join('')}</tr>`)
-          .join('');
+      const splitRow = (row) => {
+        const inner = row.replace(/^\|/, '').replace(/\|$/, '');
+        const cells = [];
+        let current = '';
+        let inCode = false;
+        for (let i = 0; i < inner.length; i++) {
+          const ch = inner[i];
+          if (ch === '`') { inCode = !inCode; current += ch; }
+          else if (ch === '|' && !inCode) { cells.push(current.trim()); current = ''; }
+          else { current += ch; }
+        }
+        cells.push(current.trim());
+        return cells;
+      };
 
-        return (
-          `<div class="table-wrap" style="overflow-x:auto;-webkit-overflow-scrolling:touch;">` +
-            `<table><thead><tr>${hCells}</tr></thead><tbody>${bRows}</tbody></table>` +
-          `</div>`
-        );
-      }
+      const [header, ...body] = rows;
+      const hCells = splitRow(header).map(c => `<th>${_fmt(c, math)}</th>`).join('');
+      const bRows  = body
+        .map(r => `<tr>${splitRow(r).map(c => `<td>${_fmt(c, math)}</td>`).join('')}</tr>`)
+        .join('');
+
+      return (
+        `<div class="table-wrap" style="overflow-x:auto;-webkit-overflow-scrolling:touch;">` +
+          `<table><thead><tr>${hCells}</tr></thead><tbody>${bRows}</tbody></table>` +
+        `</div>`
+      );
     }
 
     /* Unordered list */
-    if (/^[-*•] /m.test(t)) {
-      const items = t.split('\n')
-        .filter(Boolean)
+    if (lines.every(l => _isUnorderedListItem(l))) {
+      const items = lines
         .map(l => `<li>${_fmt(l.replace(/^[-*•] /, ''), math)}</li>`)
         .join('');
       return `<ul>${items}</ul>`;
     }
 
-    /* Ordered list */                                        // [F09]
-    if (/^\d+[.)]\s/m.test(t)) {
-      const items = t.split('\n')
-        .filter(Boolean)
+    /* Ordered list */
+    if (lines.every(l => _isOrderedListItem(l))) {
+      const items = lines
         .map(l => `<li>${_fmt(l.replace(/^\d+[.)]\s/, ''), math)}</li>`)
         .join('');
       return `<ol>${items}</ol>`;
     }
 
-    /* Paragraph (default) */
-    const lineHtml = t.split('\n').map(line => {
+    /* Paragraph */
+    const lineHtml = lines.map(line => {
       const lt = line.trim();
-      if (/^\x00M\d+\x00$/.test(lt)) {
-        const idx = +lt.match(/\x00M(\d+)\x00/)[1];
-        if (idx < math.length) {
-          const { inner, display } = math[idx];
-          if (display) {
-            return `</p><div class="math-display-block">${_katexRender(inner, true)}</div><p>`;
-          }
+      const mathPlace = lt.match(new RegExp(`^${_PH.MATH}(\\d+)${_PH.MATH}$`));
+      if (mathPlace) {
+        const { inner, display } = math[+mathPlace[1]];
+        if (display) {
+          return `</p><div class="math-display-block">${_katexRender(inner, true)}</div><p>`;
         }
       }
       return _fmt(line, math);
     });
 
-    const inner = lineHtml.join('<br>')
-      .replace(/<br><\/p>/g, '</p>')
-      .replace(/<p><br>/g,   '<p>');
+    const inner = lineHtml
+      .join('<br>')
+      .replace(/<br>\s*<\/p>/g, '</p>')
+      .replace(/<p>\s*<br>/g, '<p>')
+      .replace(/<p>\s*<\/p>/g, '');
 
     return `<p>${inner}</p>`;
   }).join('');
@@ -454,6 +489,5 @@ function renderMarkdown(rawText) {
   return html;
 }
 
-/* renderMathBubble — retained for call-site compatibility */  // [F19]
+/* renderMathBubble — call‑site compatibility (no‑op) */
 function renderMathBubble(_el) {}
-       

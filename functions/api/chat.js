@@ -192,7 +192,7 @@ function debounce(fn, delay) {
         { role: 'user', content: query },
       ],
       stream: true,
-      max_tokens: 1500,
+      max_tokens: 10000,
       temperature: 0.6,
     }),
   });

@@ -155,6 +155,26 @@ function renderMarkdown(rawText) {
     return `\x00CODE${idx}\x00`;
   });
 
+  /* 1b. Pre-process: separate table rows embedded inside prose paragraphs.
+     Split blocks where some lines are pipe-rows and others are prose. */
+  text = text.split('\n\n').map(block => {
+    const lines = block.split('\n');
+    const isPipeLine = l => (l.match(/\|/g) || []).length >= 2;
+    const hasPipe  = lines.some(isPipeLine);
+    const allPipe  = lines.filter(l => l.trim()).every(isPipeLine);
+    if (!hasPipe || allPipe) return block; // nothing to separate
+    // Mixed: separate pipe-rows from prose into distinct blocks
+    let out = '', tableBuf = [], proseBuf = [];
+    const flushProse = () => { if (proseBuf.length) { out += proseBuf.join('\n') + '\n\n'; proseBuf = []; } };
+    const flushTable = () => { if (tableBuf.length) { out += tableBuf.join('\n') + '\n\n'; tableBuf = []; } };
+    for (const line of lines) {
+      if (isPipeLine(line)) { flushProse(); tableBuf.push(line); }
+      else                  { flushTable(); proseBuf.push(line); }
+    }
+    flushProse(); flushTable();
+    return out.trim();
+  }).join('\n\n');
+
   /* 2. Extract all math */
   const { text: mathText, math } = _extractMath(text);
   text = mathText;
@@ -234,4 +254,4 @@ function renderMarkdown(rawText) {
 
 /* renderMathBubble — no-op for call-site compatibility */
 function renderMathBubble(_el) {}
-                           
+     

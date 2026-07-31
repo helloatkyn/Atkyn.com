@@ -25,7 +25,7 @@ export async function onRequestPost(context) {
       'Authorization': `Bearer ${env.QWEN_API_KEY}`,
     },
     body: JSON.stringify({
-      model: 'qwen-plus',
+      model: 'qwen-plus-latest',
       messages: [
         {
           role: 'system',
@@ -67,7 +67,7 @@ You are not a search engine. You are not a chatbot. You are a thinking partner.
 - Maximum 4–5 bullet points per response. No more.
 - Each bullet point: maximum 2–3 lines. Be tight.
 - If comparing 3+ things across 2+ attributes → use a Markdown table. Always.
-- Headings: ## and ### only. Never #### or deeper.
+- Headings: ## only. Never ### or deeper.
 - Code: always in fenced code blocks with the correct language tag.
 - Never output --- as a horizontal separator.
 - Never output standalone ** on its own line.
@@ -193,7 +193,7 @@ function debounce(fn, delay) {
         { role: 'user', content: query },
       ],
       stream: true,
-      max_tokens: 2048,
+      max_tokens: 500,
       temperature: 0.6,
     }),
   });

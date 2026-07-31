@@ -12,6 +12,44 @@ function _he(s) {
     .replace(/"/g, '&quot;');
 }
 
+/* ── Strip Markdown syntax → plain text ── */
+function stripMarkdown(raw) {
+  return raw
+    // Fenced code blocks: keep the code content, drop the fences
+    .replace(/```[\w]*\r?\n?([\s\S]*?)```/g, (_, c) => c.trimEnd())
+    // Headings: # / ## / ### / #### etc. → plain text
+    .replace(/^#{1,6}\s+(.+)$/gm, '$1')
+    // Horizontal rules
+    .replace(/^[-*_]{3,}\s*$/gm, '')
+    // Bold+italic: ***text***
+    .replace(/\*{3}([^*\n]+?)\*{3}/g, '$1')
+    // Bold: **text**
+    .replace(/\*{2}([^*\n]+?)\*{2}/g, '$1')
+    // Italic: *text*
+    .replace(/\*([^*\n]+?)\*/g, '$1')
+    // Inline code: `text`
+    .replace(/`([^`]+)`/g, '$1')
+    // Strikethrough: ~~text~~
+    .replace(/~~([^~\n]+?)~~/g, '$1')
+    // Links: [text](url) → text
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+    // Images: ![alt](url) → alt
+    .replace(/!\[([^\]]*)\]\([^)]+\)/g, '$1')
+    // Table separator rows (|---|---| style) → drop entirely
+    .replace(/^\|[\s|:-]+\|?\s*$/gm, '')
+    // Table rows: strip pipes, keep cell content spaced
+    .replace(/^\|(.+)\|?\s*$/gm, (_, r) =>
+      r.split('|').map(c => c.trim()).filter(Boolean).join('  ')
+    )
+    // Blockquote markers
+    .replace(/^>\s?/gm, '')
+    // Stray asterisks left over
+    .replace(/\*(?!\s)/g, '')
+    // Collapse 3+ blank lines → 2
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
 /* ── KaTeX render wrapper ── */
 function _katexRender(tex, display) {
   if (typeof katex === 'undefined') return `<span class="math-fallback">${_he(tex)}</span>`;

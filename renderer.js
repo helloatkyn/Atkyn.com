@@ -181,6 +181,7 @@ function renderMarkdown(rawText) {
   let text = rawText
     .replace(/^-{3,}\s*$/gm, '')
     .replace(/^\*{2}\s*$/gm, '')
+    .replace(/^\*([^*\n]+)\*$/gm, '$1')
     .replace(/^#{4,}\s+(.+)$/gm, '**$1**')   // #### → bold
     .replace(/^###\s+(.+)$/gm, '**$1**')      // ### → bold
     .replace(/^##\s+(.+)$/gm, '## $1')        // ## stays as ## (→ h4 below)
@@ -293,4 +294,4 @@ function renderMarkdown(rawText) {
 
 /* renderMathBubble — no-op for call-site compatibility */
 function renderMathBubble(_el) {}
-     
+                              

@@ -84,6 +84,8 @@ function _fmt(line, math) {
   s = s.replace(/\*\*([^*\n]+?)\*\*/g, '<strong>$1</strong>');
   // single asterisks — strip them, model misuses *text* as headings
   s = s.replace(/\*([^*\n]+?)\*/g, '$1');
+  // also strip any remaining lone asterisks
+  s = s.replace(/(?<!\*|\w)\*(?!\*)/g, '');
   // links [text](url)
   s = s.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_, text, url) => {
     const safeUrl = url.startsWith('http') ? url : '#';
@@ -294,4 +296,3 @@ function renderMarkdown(rawText) {
 
 /* renderMathBubble — no-op for call-site compatibility */
 function renderMathBubble(_el) {}
-                              

@@ -78,6 +78,8 @@ function _extractMath(text) {
 function _fmt(line, math) {
   // HTML-escape FIRST, then apply markup
   let s = _he(line);
+  // restore literal <br> tags that the model outputs inside cell content
+  s = s.replace(/&lt;br&gt;/gi, '<br>');
   // inline code
   s = s.replace(/`([^`]+)`/g,          (_, c) => `<code>${c}</code>`);
   // bold
@@ -253,7 +255,7 @@ function renderMarkdown(rawText) {
         const [header, ...body] = rows;
         const hCells = parseRow(header).map(c => `<th>${c}</th>`).join('');
         const bRows  = body.map(r => `<tr>${parseRow(r).map(c => `<td>${c}</td>`).join('')}</tr>`).join('');
-        return `<div class="table-wrap"><table><thead><tr>${hCells}</tr></thead><tbody>${bRows}</tbody></table></div>`;
+        return `<div class="table-wrap" style="overflow-x:auto;-webkit-overflow-scrolling:touch;"><table><thead><tr>${hCells}</tr></thead><tbody>${bRows}</tbody></table></div>`;
       }
     }
 
@@ -295,4 +297,4 @@ function renderMarkdown(rawText) {
 
 /* renderMathBubble — no-op for call-site compatibility */
 function renderMathBubble(_el) {}
-           
+         

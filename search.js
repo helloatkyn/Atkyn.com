@@ -297,7 +297,7 @@ function addMsg(role, text) {
   const d = document.createElement('div');
   d.className = `msg ${role}`;
   const html = role === 'bot'
-    ? renderMarkdown(text)
+    ? stripMarkdown(text)
     : text.replace(/&/g, '&amp;').replace(/</g, '&lt;');
   d.innerHTML = `<div class="bubble">${html}</div>`;
   msgWrap.appendChild(d);
@@ -494,7 +494,7 @@ async function send() {
         botEl.className = 'msg bot';
         const bubbleEl = document.createElement('div');
         bubbleEl.className = 'bubble';
-        bubbleEl.innerHTML = renderMarkdown(fullText);
+        bubbleEl.textContent = stripMarkdown(fullText);
         botEl.appendChild(bubbleEl);
         msgWrap.appendChild(botEl);
         appendBotActions(botEl, fullText);
@@ -515,4 +515,4 @@ async function send() {
 
 const _qParam = new URLSearchParams(location.search).get('q');
 if (_qParam) { input.value = _qParam; pill.classList.add('has-text'); send(); }
-     
+                        

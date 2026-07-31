@@ -190,7 +190,7 @@ Clears previous timer on every call — fn only fires after delay ms of silence.
         { role: 'user', content: query },
       ],
       stream: true,
-      max_tokens: 10000,
+      max_tokens: 2048,
       temperature: 0.6,
     }),
   });

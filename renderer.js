@@ -141,11 +141,20 @@ function _tokenizeLine(line, lang) {
    renderMarkdown(rawText) → HTML
    ════════════════════════════════ */
 function renderMarkdown(rawText) {
-  /* 0. Strip model artifacts */
+  /* 0. Strip model artifacts + normalize headings:
+        - Remove standalone --- and ** lines
+        - #### and deeper → strip entirely (render as bold paragraph)
+        - ### → render as bold text (not a heading tag)
+        - ## → h4 (small section heading)
+        - # → h4 (same, top-level headings look too large in chat)
+  */
   let text = rawText
     .replace(/^-{3,}\s*$/gm, '')
     .replace(/^\*{2}\s*$/gm, '')
-    .replace(/^#{4,6}\s+/gm, '### ');
+    .replace(/^#{4,}\s+(.+)$/gm, '**$1**')   // #### → bold
+    .replace(/^###\s+(.+)$/gm, '**$1**')      // ### → bold
+    .replace(/^##\s+(.+)$/gm, '## $1')        // ## stays as ## (→ h4 below)
+    .replace(/^#\s+(.+)$/gm,  '## $1');       // # → ## (→ h4 below)
 
   /* 1. Extract fenced code blocks */
   const codeBlocks = [];
@@ -155,15 +164,13 @@ function renderMarkdown(rawText) {
     return `\x00CODE${idx}\x00`;
   });
 
-  /* 1b. Pre-process: separate table rows embedded inside prose paragraphs.
-     Split blocks where some lines are pipe-rows and others are prose. */
+  /* 1b. Pre-process: separate table rows embedded inside prose paragraphs. */
   text = text.split('\n\n').map(block => {
     const lines = block.split('\n');
     const isPipeLine = l => (l.match(/\|/g) || []).length >= 2;
     const hasPipe  = lines.some(isPipeLine);
     const allPipe  = lines.filter(l => l.trim()).every(isPipeLine);
-    if (!hasPipe || allPipe) return block; // nothing to separate
-    // Mixed: separate pipe-rows from prose into distinct blocks
+    if (!hasPipe || allPipe) return block;
     let out = '', tableBuf = [], proseBuf = [];
     const flushProse = () => { if (proseBuf.length) { out += proseBuf.join('\n') + '\n\n'; proseBuf = []; } };
     const flushTable = () => { if (tableBuf.length) { out += tableBuf.join('\n') + '\n\n'; tableBuf = []; } };
@@ -200,11 +207,10 @@ function renderMarkdown(rawText) {
       return `<div class="code-block" id="${blockId}"><div class="code-block-header"><span class="code-block-lang">${_he(langLabel)}</span><button class="code-copy-btn" data-target="${blockId}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> Copy</button></div><pre>${highlighted}</pre></div>`;
     }
 
-    /* Heading */
-    const hm = t.match(/^(#{1,3}) ([\s\S]+)/);
+    /* Heading — only ## maps to h4 now (# and ### are already converted above) */
+    const hm = t.match(/^(##) ([\s\S]+)/);
     if (hm) {
-      const tag = 'h' + (hm[1].length + 2);
-      return `<${tag}>${_fmt(hm[2], math)}</${tag}>`;
+      return `<h4>${_fmt(hm[2], math)}</h4>`;
     }
 
     /* Table */
@@ -226,7 +232,7 @@ function renderMarkdown(rawText) {
       return `<ul>${items}</ul>`;
     }
 
-    /* Ordered list — render as ul for consistent bullet styling */
+    /* Ordered list — rendered as <ul> so CSS hollow-circle bullets apply */
     if (/^\d+[.)]\s/m.test(t)) {
       const items = t.split('\n').filter(Boolean)
         .map(l => `<li>${_fmt(l.replace(/^\d+[.)]\s/, ''), math)}</li>`).join('');
@@ -254,3 +260,4 @@ function renderMarkdown(rawText) {
 
 /* renderMathBubble — no-op for call-site compatibility */
 function renderMathBubble(_el) {}
+         

@@ -1,1 +1,1 @@
-(search.html is a source file, so no need to ignore it)
+Nothing needs to be added to the .gitignore file since only a single HTML file (`search.html`) was modified, which is a source file that should be tracked in version control. No build artifacts, dependencies, temporary files, or other ignorable content were detected in the changes.

@@ -12,44 +12,6 @@ function _he(s) {
     .replace(/"/g, '&quot;');
 }
 
-/* ── Strip Markdown syntax → plain text ── */
-function stripMarkdown(raw) {
-  return raw
-    // Fenced code blocks: keep the code content, drop the fences
-    .replace(/```[\w]*\r?\n?([\s\S]*?)```/g, (_, c) => c.trimEnd())
-    // Headings: # / ## / ### / #### etc. → plain text
-    .replace(/^#{1,6}\s+(.+)$/gm, '$1')
-    // Horizontal rules
-    .replace(/^[-*_]{3,}\s*$/gm, '')
-    // Bold+italic: ***text***
-    .replace(/\*{3}([^*\n]+?)\*{3}/g, '$1')
-    // Bold: **text**
-    .replace(/\*{2}([^*\n]+?)\*{2}/g, '$1')
-    // Italic: *text*
-    .replace(/\*([^*\n]+?)\*/g, '$1')
-    // Inline code: `text`
-    .replace(/`([^`]+)`/g, '$1')
-    // Strikethrough: ~~text~~
-    .replace(/~~([^~\n]+?)~~/g, '$1')
-    // Links: [text](url) → text
-    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
-    // Images: ![alt](url) → alt
-    .replace(/!\[([^\]]*)\]\([^)]+\)/g, '$1')
-    // Table separator rows (|---|---| style) → drop entirely
-    .replace(/^\|[\s|:-]+\|?\s*$/gm, '')
-    // Table rows: strip pipes, keep cell content spaced
-    .replace(/^\|(.+)\|?\s*$/gm, (_, r) =>
-      r.split('|').map(c => c.trim()).filter(Boolean).join('  ')
-    )
-    // Blockquote markers
-    .replace(/^>\s?/gm, '')
-    // Stray asterisks left over
-    .replace(/\*(?!\s)/g, '')
-    // Collapse 3+ blank lines → 2
-    .replace(/\n{3,}/g, '\n\n')
-    .trim();
-}
-
 /* ── KaTeX render wrapper ── */
 function _katexRender(tex, display) {
   if (typeof katex === 'undefined') return `<span class="math-fallback">${_he(tex)}</span>`;
@@ -71,23 +33,15 @@ function _katexRender(tex, display) {
  * so KaTeX can render them. Runs before _extractMath.
  */
 function _wrapBareLaTeX(text) {
-  // Display-mode: lines that are purely a LaTeX expression (start with \, contain math commands)
-  // e.g. "S_\infty^{(AGP)} = a_0 b_0 \, _3F_2(...)"
-  // Heuristic: line has \cmd or ^{ or _{ and no surrounding $
   text = text.replace(/^([^\$`\n]*(?:\\[a-zA-Z]+|[_^]\{)[^\$`\n]*)$/gm, (match) => {
-    // Skip if already has $ or is inside code
     if (/\$/.test(match)) return match;
-    // Skip pure text lines (no LaTeX indicators)
     if (!/\\[a-zA-Z]|[_^]\{|\^[a-zA-Z0-9]|_[a-zA-Z0-9]/.test(match)) return match;
-    // Skip markdown headings/bullets
     if (/^[\s]*[-*#>]/.test(match)) return match;
     const trimmed = match.trim();
     if (!trimmed) return match;
     return `$$${trimmed}$$`;
   });
 
-  // Inline: fragments within prose that look like LaTeX but lack $
-  // e.g. "where a_k = a_0 + kd_b" — wrap sub/superscript sequences
   text = text.replace(/(?<!\$)(?<![`\\])([A-Za-z][_^]\{[^}]+\}(?:[_^]\{[^}]+\})*)/g, (match) => {
     return `$${match}$`;
   });
@@ -211,26 +165,17 @@ function _tokenizeLine(line, lang) {
    renderMarkdown(rawText) → HTML
    ════════════════════════════════ */
 function renderMarkdown(rawText) {
-  /* 0. Strip model artifacts + normalize headings:
-        - Remove standalone --- and ** lines
-        - #### and deeper → strip entirely (render as bold paragraph)
-        - ### → render as bold text (not a heading tag)
-        - ## → h4 (small section heading)
-        - # → h4 (same, top-level headings look too large in chat)
-  */
   let text = rawText
     .replace(/^-{3,}\s*$/gm, '')
     .replace(/^\*{2}\s*$/gm, '')
     .replace(/^\*([^*\n]+)\*$/gm, '$1')
-    .replace(/^#{4,}\s+(.+)$/gm, '**$1**')   // #### → bold
-    .replace(/^###\s+(.+)$/gm, '**$1**')      // ### → bold
-    .replace(/^##\s+(.+)$/gm, '## $1')        // ## stays as ## (→ h4 below)
-    .replace(/^#\s+(.+)$/gm,  '## $1');       // # → ## (→ h4 below)
+    .replace(/^#{4,}\s+(.+)$/gm, '**$1**')
+    .replace(/^###\s+(.+)$/gm, '**$1**')
+    .replace(/^##\s+(.+)$/gm, '## $1')
+    .replace(/^#\s+(.+)$/gm,  '## $1');
 
-  /* 0b. Wrap bare LaTeX (no $ delimiters) */
   text = _wrapBareLaTeX(text);
 
-  /* 1. Extract fenced code blocks (closed and unclosed) */
   const codeBlocks = [];
   text = text.replace(/```(\w*)\r?\n?([\s\S]*?)(?:```|$)/g, (_, lang, code) => {
     const idx = codeBlocks.length;
@@ -238,7 +183,6 @@ function renderMarkdown(rawText) {
     return `\x00CODE${idx}\x00`;
   });
 
-  /* 1b. Pre-process: separate table rows embedded inside prose paragraphs. */
   text = text.split('\n\n').map(block => {
     const lines = block.split('\n');
     const isPipeLine = l => (l.match(/\|/g) || []).length >= 2;
@@ -256,22 +200,18 @@ function renderMarkdown(rawText) {
     return out.trim();
   }).join('\n\n');
 
-  /* 2. Extract all math */
   const { text: mathText, math } = _extractMath(text);
   text = mathText;
 
-  /* 3. Split on blank lines and render each block */
   const html = text.split('\n\n').map(block => {
     const t = block.trim();
     if (!t) return '';
 
-    /* Lone math placeholder */
     if (/^\x00M\d+\x00$/.test(t)) {
       const { inner } = math[+t.match(/\x00M(\d+)\x00/)[1]];
       return `<div class="math-display-block">${_katexRender(inner.trim(), true)}</div>`;
     }
 
-    /* Code block */
     const cm = t.match(/^\x00CODE(\d+)\x00$/);
     if (cm) {
       const { lang, code } = codeBlocks[+cm[1]];
@@ -281,13 +221,11 @@ function renderMarkdown(rawText) {
       return `<div class="code-block" id="${blockId}"><div class="code-block-header"><span class="code-block-lang">${_he(langLabel)}</span><button class="code-copy-btn" data-target="${blockId}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> Copy</button></div><pre>${highlighted}</pre></div>`;
     }
 
-    /* Heading — only ## maps to h4 now (# and ### are already converted above) */
     const hm = t.match(/^(##) ([\s\S]+)/);
     if (hm) {
       return `<h4>${_fmt(hm[2], math)}</h4>`;
     }
 
-    /* Table */
     if (/^\|.+\|/m.test(t)) {
       const rows = t.split('\n').filter(r => r.trim() && !/^[\s|:-]+$/.test(r));
       if (rows.length >= 1) {
@@ -299,21 +237,18 @@ function renderMarkdown(rawText) {
       }
     }
 
-    /* Unordered list */
     if (/^[-*•] /m.test(t)) {
       const items = t.split('\n').filter(Boolean)
         .map(l => `<li>${_fmt(l.replace(/^[-*•] /, ''), math)}</li>`).join('');
       return `<ul>${items}</ul>`;
     }
 
-    /* Ordered list — rendered as <ul> so CSS hollow-circle bullets apply */
     if (/^\d+[.)]\s/m.test(t)) {
       const items = t.split('\n').filter(Boolean)
         .map(l => `<li>${_fmt(l.replace(/^\d+[.)]\s/, ''), math)}</li>`).join('');
       return `<ul>${items}</ul>`;
     }
 
-    /* Paragraph */
     const lineHtml = t.split('\n').map(line => {
       const lt = line.trim();
       if (/^\x00M\d+\x00$/.test(lt)) {
@@ -334,3 +269,4 @@ function renderMarkdown(rawText) {
 
 /* renderMathBubble — no-op for call-site compatibility */
 function renderMathBubble(_el) {}
+           

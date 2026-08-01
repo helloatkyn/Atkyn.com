@@ -76,7 +76,7 @@ export async function onRequestPost(context) {
         max_tokens: 2048,
         temperature: 0.7,
         top_p: 0.8,
-        presence_penalty: 1.5,
+        presence_penalty: 1.0,
         reasoning_effort: 'none',
       }),
     });

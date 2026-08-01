@@ -2,6 +2,44 @@ import { IDENTITY_PROMPT }     from './identity.js';
 import { CONVERSATION_PROMPT } from './conversation.js';
 import { classifyQuery, getTypeInstruction } from './queryType.js';
 
+/**
+ * Sanitize conversation history before sending to Groq.
+ *
+ * WHY THIS EXISTS:
+ * When a request fails (rate-limit, timeout, model error), the frontend
+ * adds the user message to local history but never receives a valid
+ * assistant reply. On the next send, history ends with a 'user' turn.
+ * chat.js then appends another { role: 'user' } → two consecutive user
+ * roles → Groq returns 400 → "Something went wrong" → cascade of failures.
+ *
+ * This function makes history safe to use regardless of prior failures.
+ */
+function sanitizeHistory(history) {
+  if (!Array.isArray(history)) return [];
+
+  // Strip any trailing user turns — chat.js appends the current query itself.
+  // A trailing user in history + the new user query = consecutive user roles → 400.
+  let h = [...history];
+  while (h.length > 0 && h[h.length - 1].role === 'user') {
+    h.pop();
+  }
+
+  // Drop malformed entries and any system messages that snuck into history.
+  // Also collapse any remaining consecutive same-role sequences defensively.
+  const cleaned = [];
+  let lastRole = 'assistant'; // history should start with a user turn
+  for (const msg of h) {
+    if (!msg || typeof msg.role !== 'string' || typeof msg.content !== 'string') continue;
+    if (msg.role === 'system') continue;
+    if (msg.content.trim() === '') continue;
+    if (msg.role === lastRole) continue; // skip consecutive same-role
+    cleaned.push({ role: msg.role, content: msg.content });
+    lastRole = msg.role;
+  }
+
+  return cleaned;
+}
+
 export async function onRequestPost(context) {
   const { request, env } = context;
 
@@ -31,6 +69,9 @@ export async function onRequestPost(context) {
     typeInstruction,
   ].join('\n\n');
 
+  // Sanitize history BEFORE slicing and before building the messages array.
+  const safeHistory = sanitizeHistory(history).slice(-100);
+
   let groqResp;
   try {
     groqResp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
@@ -43,7 +84,7 @@ export async function onRequestPost(context) {
         model: 'qwen/qwen3.6-27b',
         messages: [
           { role: 'system', content: systemPrompt },
-          ...(Array.isArray(history) ? history.slice(-100) : []),
+          ...safeHistory,
           { role: 'user', content: query },
         ],
         stream: true,

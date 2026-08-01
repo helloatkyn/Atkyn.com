@@ -3,18 +3,14 @@ import { CONVERSATION_PROMPT } from './conversation.js';
 import { FORMAT_PROMPT }       from './format.js';
 import { classifyQuery, getTypeInstruction } from './queryType.js';
 
-// History sanitizer — conversation kabhi break nahi hogi
 function sanitizeHistory(history) {
   if (!Array.isArray(history)) return [];
 
   let h = [...history];
-
-  // Trailing user turns hata — warna consecutive user messages → Groq 400
   while (h.length > 0 && h[h.length - 1].role === 'user') {
     h.pop();
   }
 
-  // Malformed, empty, system messages hata
   const cleaned = [];
   let lastRole = 'assistant';
   for (const msg of h) {
@@ -52,12 +48,11 @@ export async function onRequestPost(context) {
   const queryType       = classifyQuery(query);
   const typeInstruction = getTypeInstruction(queryType);
 
-  // CONVERSATION PRIMARY — hamesha pehle, kabhi nahi hatega
   const systemPrompt = [
-    IDENTITY_PROMPT,       // kaun hai Atkyn
-    CONVERSATION_PROMPT,   // PRIMARY — hamesha on
-    FORMAT_PROMPT,         // format rules
-    typeInstruction,       // sirf extra context — math/search/code etc
+    IDENTITY_PROMPT,
+    CONVERSATION_PROMPT,
+    FORMAT_PROMPT,
+    typeInstruction,
   ].join('\n\n---\n\n');
 
   const safeHistory = sanitizeHistory(history).slice(-100);
@@ -71,7 +66,7 @@ export async function onRequestPost(context) {
         'Authorization': `Bearer ${env.GROQ_API_KEY}`,
       },
       body: JSON.stringify({
-        model: 'qwen/qwen3-27b',
+        model: 'qwen/qwen3.6-27b',
         messages: [
           { role: 'system', content: systemPrompt },
           ...safeHistory,

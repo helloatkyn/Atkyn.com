@@ -1,38 +1,27 @@
 import { IDENTITY_PROMPT }     from './identity.js';
 import { CONVERSATION_PROMPT } from './conversation.js';
+import { FORMAT_PROMPT }       from './format.js';
 import { classifyQuery, getTypeInstruction } from './queryType.js';
 
-/**
- * Sanitize conversation history before sending to Groq.
- *
- * WHY THIS EXISTS:
- * When a request fails (rate-limit, timeout, model error), the frontend
- * adds the user message to local history but never receives a valid
- * assistant reply. On the next send, history ends with a 'user' turn.
- * chat.js then appends another { role: 'user' } → two consecutive user
- * roles → Groq returns 400 → "Something went wrong" → cascade of failures.
- *
- * This function makes history safe to use regardless of prior failures.
- */
+// History sanitizer — conversation kabhi break nahi hogi
 function sanitizeHistory(history) {
   if (!Array.isArray(history)) return [];
 
-  // Strip any trailing user turns — chat.js appends the current query itself.
-  // A trailing user in history + the new user query = consecutive user roles → 400.
   let h = [...history];
+
+  // Trailing user turns hata — warna consecutive user messages → Groq 400
   while (h.length > 0 && h[h.length - 1].role === 'user') {
     h.pop();
   }
 
-  // Drop malformed entries and any system messages that snuck into history.
-  // Also collapse any remaining consecutive same-role sequences defensively.
+  // Malformed, empty, system messages hata
   const cleaned = [];
-  let lastRole = 'assistant'; // history should start with a user turn
+  let lastRole = 'assistant';
   for (const msg of h) {
     if (!msg || typeof msg.role !== 'string' || typeof msg.content !== 'string') continue;
     if (msg.role === 'system') continue;
     if (msg.content.trim() === '') continue;
-    if (msg.role === lastRole) continue; // skip consecutive same-role
+    if (msg.role === lastRole) continue;
     cleaned.push({ role: msg.role, content: msg.content });
     lastRole = msg.role;
   }
@@ -63,13 +52,14 @@ export async function onRequestPost(context) {
   const queryType       = classifyQuery(query);
   const typeInstruction = getTypeInstruction(queryType);
 
+  // CONVERSATION PRIMARY — hamesha pehle, kabhi nahi hatega
   const systemPrompt = [
-    IDENTITY_PROMPT,
-    CONVERSATION_PROMPT,
-    typeInstruction,
-  ].join('\n\n');
+    IDENTITY_PROMPT,       // kaun hai Atkyn
+    CONVERSATION_PROMPT,   // PRIMARY — hamesha on
+    FORMAT_PROMPT,         // format rules
+    typeInstruction,       // sirf extra context — math/search/code etc
+  ].join('\n\n---\n\n');
 
-  // Sanitize history BEFORE slicing and before building the messages array.
   const safeHistory = sanitizeHistory(history).slice(-100);
 
   let groqResp;
@@ -81,7 +71,7 @@ export async function onRequestPost(context) {
         'Authorization': `Bearer ${env.GROQ_API_KEY}`,
       },
       body: JSON.stringify({
-        model: 'qwen/qwen3.6-27b',
+        model: 'qwen/qwen3-27b',
         messages: [
           { role: 'system', content: systemPrompt },
           ...safeHistory,
@@ -104,7 +94,6 @@ export async function onRequestPost(context) {
 
   if (!groqResp.ok) {
     const errText = await groqResp.text();
-    // Pass Groq's status through so frontend can distinguish 429 vs 500
     return new Response(errText, {
       status: groqResp.status,
       headers: { 'Content-Type': 'application/json' },

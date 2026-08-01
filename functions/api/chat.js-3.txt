@@ -1,0 +1,84 @@
+import { IDENTITY_PROMPT }     from './identity.js';
+import { CONVERSATION_PROMPT } from './conversation.js';
+import { classifyQuery, getTypeInstruction } from './queryType.js';
+
+export async function onRequestPost(context) {
+  const { request, env } = context;
+
+  let query, history;
+  try {
+    ({ query, history } = await request.json());
+  } catch {
+    return new Response(JSON.stringify({ error: 'Invalid request body' }), {
+      status: 400,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+
+  if (!query?.trim()) {
+    return new Response(JSON.stringify({ error: 'Empty query' }), {
+      status: 400,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+
+  // Classify query and get the matching instruction block
+  const queryType       = classifyQuery(query);
+  const typeInstruction = getTypeInstruction(queryType);
+
+  // Assemble final system prompt: identity + conversation rules + active mode
+  const systemPrompt = [
+    IDENTITY_PROMPT,
+    CONVERSATION_PROMPT,
+    typeInstruction,
+  ].join('\n\n');
+
+  const groqResp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${env.GROQ_API_KEY}`,
+    },
+    body: JSON.stringify({
+      model: 'qwen/qwen3.6-27b',
+      messages: [
+        { role: 'system', content: systemPrompt },
+        ...(Array.isArray(history) ? history.slice(-100) : []),
+        { role: 'user', content: query },
+      ],
+      stream: true,
+      max_tokens: 2048,
+      temperature: 0.7,
+      top_p: 0.8,
+      top_k: 20,
+      presence_penalty: 1.5,
+      reasoning_effort: 'none',
+    }),
+  });
+
+  if (!groqResp.ok) {
+    const err = await groqResp.text();
+    return new Response(JSON.stringify({ error: err }), {
+      status: groqResp.status,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+
+  return new Response(groqResp.body, {
+    headers: {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      'X-Accel-Buffering': 'no',
+    },
+  });
+}
+
+export async function onRequestOptions() {
+  return new Response(null, {
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type',
+    },
+  });
+}

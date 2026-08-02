@@ -36,6 +36,7 @@ export async function onRequestPost(context) {
       stream: true,
       max_tokens: 2048,
       temperature: 0.6,
+      enable_thinking: false,
     }),
   });
 

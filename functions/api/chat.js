@@ -28,12 +28,9 @@ export async function onRequestPost(context) {
       'Authorization': `Bearer ${env.QWEN_API_KEY}`,
     },
     body: JSON.stringify({
-      model: 'qwen3-7b-instruct',
+      model: 'qwen3.7-flash',
       messages: [
-        {
-          role: 'system',
-          content: 'You decide if a web search is needed to answer the user query. Reply with only [SEARCH] or [NO_SEARCH]. Nothing else. Use [SEARCH] for: current events, news, sports, weather, prices, people, places, products, facts about the real world, or anything time-sensitive. Use [NO_SEARCH] only for: pure math, coding help, writing assistance, or casual chitchat like greetings.',
-        },
+        { role: 'system', content: 'You decide if a web search is needed to answer the user query. Reply with only [SEARCH] or [NO_SEARCH]. Nothing else.' },
         { role: 'user', content: query },
       ],
       stream: false,
@@ -58,13 +55,12 @@ export async function onRequestPost(context) {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${env.LANGSEARCH_API_KEY}`,
           },
-          body: JSON.stringify({ query, count: 6, summary: false }),
+          body: JSON.stringify({ query: query, count: 6, summary: false }),
         });
 
         if (langResp.ok) {
-          const data = await langResp.json();
-          const items = data?.webPages?.value || [];
-          searchResults = items.slice(0, 6).map(r => ({
+          const pages = (await langResp.json()).data?.webPages?.value || [];
+          searchResults = pages.slice(0, 6).map(r => ({
             title:   r.name    || '',
             url:     r.url     || '',
             snippet: r.snippet || '',
@@ -96,7 +92,7 @@ export async function onRequestPost(context) {
           'Authorization': `Bearer ${env.QWEN_API_KEY}`,
         },
         body: JSON.stringify({
-          model: 'qwen3-7b-instruct',
+          model: 'qwen3.7-flash',
           messages: [
             { role: 'system', content: searchContext ? `${SYSTEM_PROMPT}\n\n${searchContext}` : SYSTEM_PROMPT },
             ...(Array.isArray(history) ? history.slice(-100) : []),
@@ -148,4 +144,4 @@ export async function onRequestOptions() {
       'Access-Control-Allow-Headers': 'Content-Type',
     },
   });
-}
+          }

@@ -28,9 +28,12 @@ export async function onRequestPost(context) {
       'Authorization': `Bearer ${env.QWEN_API_KEY}`,
     },
     body: JSON.stringify({
-      model: 'qwen3.7-flash',
+      model: 'qwen3-7b-instruct',
       messages: [
-        { role: 'system', content: 'You decide if a web search is needed to answer the user query. Reply with only [SEARCH] or [NO_SEARCH]. Nothing else.' },
+        {
+          role: 'system',
+          content: 'You decide if a web search is needed to answer the user query. Reply with only [SEARCH] or [NO_SEARCH]. Nothing else. Use [SEARCH] for: current events, news, sports, weather, prices, people, places, products, facts about the real world, or anything time-sensitive. Use [NO_SEARCH] only for: pure math, coding help, writing assistance, or casual chitchat like greetings.',
+        },
         { role: 'user', content: query },
       ],
       stream: false,
@@ -93,7 +96,7 @@ export async function onRequestPost(context) {
           'Authorization': `Bearer ${env.QWEN_API_KEY}`,
         },
         body: JSON.stringify({
-          model: 'qwen3.7-flash',
+          model: 'qwen3-7b-instruct',
           messages: [
             { role: 'system', content: searchContext ? `${SYSTEM_PROMPT}\n\n${searchContext}` : SYSTEM_PROMPT },
             ...(Array.isArray(history) ? history.slice(-100) : []),

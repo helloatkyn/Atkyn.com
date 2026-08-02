@@ -20,14 +20,14 @@ export async function onRequestPost(context) {
     });
   }
 
-  const groqResp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+  const groqResp = await fetch('https://dashscope-intl.aliyuncs.com/compatible-mode/v1/chat/completions', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${env.GROQ_API_KEY}`,
+      'Authorization': `Bearer ${env.DASHSCOPE_API_KEY}`,
     },
     body: JSON.stringify({
-      model: 'qwen/qwen3.6-27b',
+      model: 'qwen3.7-flash',
       messages: [
         { role: 'system', content: SYSTEM_PROMPT },
         ...(Array.isArray(history) ? history.slice(-100) : []),
@@ -36,7 +36,6 @@ export async function onRequestPost(context) {
       stream: true,
       max_tokens: 2048,
       temperature: 0.6,
-      reasoning_effort: 'none',
     }),
   });
 

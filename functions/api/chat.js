@@ -20,33 +20,61 @@ export async function onRequestPost(context) {
     });
   }
 
+  // Step 1: Ask Qwen if search is needed
+  const intentResp = await fetch('https://dashscope-intl.aliyuncs.com/compatible-mode/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${env.QWEN_API_KEY}`,
+    },
+    body: JSON.stringify({
+      model: 'qwen3.7-flash',
+      messages: [
+        { role: 'system', content: 'You decide if a web search is needed to answer the user query. Reply with only [SEARCH] or [NO_SEARCH]. Nothing else.' },
+        { role: 'user', content: query },
+      ],
+      stream: false,
+      max_tokens: 10,
+      temperature: 0,
+      enable_thinking: false,
+    }),
+  });
+
   let searchResults = [];
   let searchContext = '';
 
-  try {
-    const serperResp = await fetch('https://google.serper.dev/search', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-API-KEY': env.SERPER_API_KEY,
-      },
-      body: JSON.stringify({ q: query, num: 6 }),
-    });
+  if (intentResp.ok) {
+    const intentData = await intentResp.json();
+    const decision = intentData.choices?.[0]?.message?.content?.trim();
 
-    if (serperResp.ok) {
-      const organic = (await serperResp.json()).organic || [];
-      searchResults = organic.slice(0, 6).map(r => ({
-        title:   r.title   || '',
-        url:     r.link    || '',
-        snippet: r.snippet || '',
-      }));
-      if (searchResults.length > 0) {
-        searchContext = 'Web search results:\n' +
-          searchResults.map((r, i) => `[${i + 1}] ${r.title}\n${r.snippet}`).join('\n\n');
-      }
+    if (decision === '[SEARCH]') {
+      try {
+        const serperResp = await fetch('https://google.serper.dev/search', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-API-KEY': env.SERPER_API_KEY,
+          },
+          body: JSON.stringify({ q: query, num: 6 }),
+        });
+
+        if (serperResp.ok) {
+          const organic = (await serperResp.json()).organic || [];
+          searchResults = organic.slice(0, 6).map(r => ({
+            title:   r.title   || '',
+            url:     r.link    || '',
+            snippet: r.snippet || '',
+          }));
+          if (searchResults.length > 0) {
+            searchContext = 'Web search results:\n' +
+              searchResults.map((r, i) => `[${i + 1}] ${r.title}\n${r.snippet}`).join('\n\n');
+          }
+        }
+      } catch (_) {}
     }
-  } catch (_) {}
+  }
 
+  // Step 2: Stream final answer
   const { readable, writable } = new TransformStream();
   const writer = writable.getWriter();
   const enc    = new TextEncoder();

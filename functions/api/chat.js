@@ -49,20 +49,21 @@ export async function onRequestPost(context) {
 
     if (decision === '[SEARCH]') {
       try {
-        const serperResp = await fetch('https://google.serper.dev/search', {
+        const langResp = await fetch('https://api.langsearch.com/v1/web-search', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'X-API-KEY': env.SERPER_API_KEY,
+            'Authorization': `Bearer ${env.LANGSEARCH_API_KEY}`,
           },
-          body: JSON.stringify({ q: query, num: 6 }),
+          body: JSON.stringify({ query, count: 6, summary: false }),
         });
 
-        if (serperResp.ok) {
-          const organic = (await serperResp.json()).organic || [];
-          searchResults = organic.slice(0, 6).map(r => ({
-            title:   r.title   || '',
-            url:     r.link    || '',
+        if (langResp.ok) {
+          const data = await langResp.json();
+          const items = data?.webPages?.value || [];
+          searchResults = items.slice(0, 6).map(r => ({
+            title:   r.name    || '',
+            url:     r.url     || '',
             snippet: r.snippet || '',
           }));
           if (searchResults.length > 0) {

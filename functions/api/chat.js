@@ -20,11 +20,11 @@ export async function onRequestPost(context) {
     });
   }
 
-  const groqResp = await fetch('https://dashscope-intl.aliyuncs.com/compatible-mode/v1/chat/completions', {
+  const qwenResp = await fetch('https://dashscope-intl.aliyuncs.com/compatible-mode/v1/chat/completions', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${env.DASHSCOPE_API_KEY}`,
+      'Authorization': `Bearer ${env.QWEN_API_KEY}`,
     },
     body: JSON.stringify({
       model: 'qwen3.7-flash',
@@ -39,15 +39,15 @@ export async function onRequestPost(context) {
     }),
   });
 
-  if (!groqResp.ok) {
-    const err = await groqResp.text();
+  if (!qwenResp.ok) {
+    const err = await qwenResp.text();
     return new Response(JSON.stringify({ error: err }), {
-      status: groqResp.status,
+      status: qwenResp.status,
       headers: { 'Content-Type': 'application/json' },
     });
   }
 
-  return new Response(groqResp.body, {
+  return new Response(qwenResp.body, {
     headers: {
       'Content-Type': 'text/event-stream',
       'Cache-Control': 'no-cache',

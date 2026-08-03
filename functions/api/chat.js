@@ -49,20 +49,20 @@ export async function onRequestPost(context) {
 
     if (decision === '[SEARCH]') {
       try {
-        const langResp = await fetch('https://api.langsearch.com/v1/web-search', {
+        const serperResp = await fetch('https://google.serper.dev/search', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${env.LANGSEARCH_API_KEY}`,
+            'X-API-KEY': env.SERPER_API_KEY,
           },
-          body: JSON.stringify({ query: query, count: 6, summary: false }),
+          body: JSON.stringify({ q: query, num: 6 }),
         });
 
-        if (langResp.ok) {
-          const pages = (await langResp.json()).data?.webPages?.value || [];
-          searchResults = pages.slice(0, 6).map(r => ({
-            title:   r.name    || '',
-            url:     r.url     || '',
+        if (serperResp.ok) {
+          const organic = (await serperResp.json()).organic || [];
+          searchResults = organic.slice(0, 6).map(r => ({
+            title:   r.title   || '',
+            url:     r.link    || '',
             snippet: r.snippet || '',
           }));
           if (searchResults.length > 0) {
@@ -144,4 +144,4 @@ export async function onRequestOptions() {
       'Access-Control-Allow-Headers': 'Content-Type',
     },
   });
-          }
+}

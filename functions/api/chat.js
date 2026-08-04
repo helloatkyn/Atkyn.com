@@ -49,20 +49,22 @@ export async function onRequestPost(context) {
 
     if (decision === '[SEARCH]') {
       try {
-        const langResp = await fetch('https://api.langsearch.com/v1/web-search', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${env.LANGSEARCH_API_KEY}`,
-          },
-          body: JSON.stringify({ query: query, count: 6, summary: false }),
-        });
+        const searloResp = await fetch(
+          `https://api.searlo.tech/api/v1/search/web?q=${encodeURIComponent(query)}&limit=6`,
+          {
+            method: 'GET',
+            headers: {
+              'x-api-key': env.SEARLO_API_KEY,
+            },
+          }
+        );
 
-        if (langResp.ok) {
-          const pages = (await langResp.json()).data?.webPages?.value || [];
+        if (searloResp.ok) {
+          const data = await searloResp.json();
+          const pages = data.items || [];
           searchResults = pages.slice(0, 6).map(r => ({
-            title:   r.name    || '',
-            url:     r.url     || '',
+            title:   r.title   || '',
+            url:     r.link    || '',
             snippet: r.snippet || '',
           }));
           if (searchResults.length > 0) {

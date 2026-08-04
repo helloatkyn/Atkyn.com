@@ -13,7 +13,7 @@ async function _detectStock(query, apiKey) {
       messages: [
         {
           role: 'system',
-          content: 'Extract the stock ticker symbol if the user is asking about a stock price or company stock. Reply with ONLY the ticker symbol in uppercase (e.g. AAPL, TSLA, MSFT). If no stock is mentioned, reply with NONE.',
+          content: 'The user may be asking about a stock by ticker symbol or company name. A lone ticker like "AAPL" or "TSLA" counts as a stock query. A company name like "Apple stock" or "Tesla price" also counts. Extract and return ONLY the uppercase ticker symbol (e.g. AAPL, TSLA, MSFT, GOOGL). If no stock is involved, reply with exactly: NONE. Reply with the ticker or NONE — nothing else, no punctuation.',
         },
         { role: 'user', content: query },
       ],
@@ -26,12 +26,13 @@ async function _detectStock(query, apiKey) {
   if (!resp.ok) return null;
   const data = await resp.json();
   const raw  = data.choices?.[0]?.message?.content?.trim().toUpperCase();
-  return (!raw || raw === 'NONE' || raw.length > 6) ? null : raw;
+  // Accept only pure alpha tickers 1-5 chars
+  return (raw && raw !== 'NONE' && /^[A-Z]{1,5}$/.test(raw)) ? raw : null;
 }
 
 /* ── Finnhub fetch ── */
 async function _fetchStockData(symbol, apiKey) {
-  const base = 'https://finnhub.io/api/v1';
+  const base    = 'https://finnhub.io/api/v1';
   const headers = { 'X-Finnhub-Token': apiKey };
 
   const [quoteRes, profileRes, metricsRes, newsRes] = await Promise.allSettled([
@@ -106,7 +107,7 @@ export async function onRequestPost(context) {
     });
   }
 
-  // Step 1: Web search intent + stock symbol — parallel Qwen calls
+  // Step 1: Intent check + stock detection — parallel
   const [intentResp, stockSymbol] = await Promise.all([
     fetch('https://dashscope-intl.aliyuncs.com/compatible-mode/v1/chat/completions', {
       method: 'POST',
@@ -134,19 +135,16 @@ export async function onRequestPost(context) {
 
   if (intentResp.ok) {
     const intentData = await intentResp.json();
-    const decision = intentData.choices?.[0]?.message?.content?.trim();
+    const decision   = intentData.choices?.[0]?.message?.content?.trim();
 
     if (decision === '[SEARCH]') {
       try {
         const searloResp = await fetch(
           `https://api.searlo.tech/api/v1/search/web?q=${encodeURIComponent(query)}&limit=6`,
-          {
-            method: 'GET',
-            headers: { 'x-api-key': env.SEARLO_API_KEY },
-          }
+          { method: 'GET', headers: { 'x-api-key': env.SEARLO_API_KEY } }
         );
         if (searloResp.ok) {
-          const data = await searloResp.json();
+          const data  = await searloResp.json();
           const pages = data.items || [];
           searchResults = pages.slice(0, 6).map(r => ({
             title:   r.title   || '',
@@ -162,49 +160,51 @@ export async function onRequestPost(context) {
     }
   }
 
-  // Step 2: Stream response
+  // Step 2: Kick off stock fetch + Qwen answer stream in parallel
+  const stockDataPromise = (stockSymbol && env.FINNHUB_API_KEY)
+    ? _fetchStockData(stockSymbol, env.FINNHUB_API_KEY).catch(() => null)
+    : Promise.resolve(null);
+
+  const qwenRespPromise = fetch('https://dashscope-intl.aliyuncs.com/compatible-mode/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${env.QWEN_API_KEY}`,
+    },
+    body: JSON.stringify({
+      model: 'qwen3.7-flash',
+      messages: [
+        { role: 'system', content: searchContext ? `${SYSTEM_PROMPT}\n\n${searchContext}` : SYSTEM_PROMPT },
+        ...(Array.isArray(history) ? history.slice(-100) : []),
+        { role: 'user', content: query },
+      ],
+      stream: true,
+      max_tokens: 2048,
+      temperature: 0.6,
+      enable_thinking: false,
+    }),
+  });
+
+  // Wait for both before streaming so stock card always arrives first
+  const [stockData, qwenResp] = await Promise.all([stockDataPromise, qwenRespPromise]);
+
   const { readable, writable } = new TransformStream();
   const writer = writable.getWriter();
   const enc    = new TextEncoder();
 
   (async () => {
     try {
-      // Emit web results
+      // Emit web results first
       if (searchResults.length > 0) {
         await writer.write(enc.encode(`event: results\ndata: ${JSON.stringify(searchResults)}\n\n`));
       }
 
-      // Emit stock card
-      if (stockSymbol && env.FINNHUB_API_KEY) {
-        try {
-          const stockData = await _fetchStockData(stockSymbol, env.FINNHUB_API_KEY);
-          if (stockData) {
-            await writer.write(enc.encode(`event: stock\ndata: ${JSON.stringify(stockData)}\n\n`));
-          }
-        } catch (_) {}
+      // Emit stock card before text — guaranteed order
+      if (stockData) {
+        await writer.write(enc.encode(`event: stock\ndata: ${JSON.stringify(stockData)}\n\n`));
       }
 
-      // Qwen final answer
-      const qwenResp = await fetch('https://dashscope-intl.aliyuncs.com/compatible-mode/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${env.QWEN_API_KEY}`,
-        },
-        body: JSON.stringify({
-          model: 'qwen3.7-flash',
-          messages: [
-            { role: 'system', content: searchContext ? `${SYSTEM_PROMPT}\n\n${searchContext}` : SYSTEM_PROMPT },
-            ...(Array.isArray(history) ? history.slice(-100) : []),
-            { role: 'user', content: query },
-          ],
-          stream: true,
-          max_tokens: 2048,
-          temperature: 0.6,
-          enable_thinking: false,
-        }),
-      });
-
+      // Stream Qwen answer
       if (!qwenResp.ok) {
         await writer.write(enc.encode(`data: ${JSON.stringify({ error: await qwenResp.text() })}\n\n`));
         await writer.close();
@@ -244,4 +244,4 @@ export async function onRequestOptions() {
       'Access-Control-Allow-Headers': 'Content-Type',
     },
   });
-      }
+}

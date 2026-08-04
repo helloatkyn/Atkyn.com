@@ -1,25 +1,32 @@
 import { SYSTEM_PROMPT } from './systemPrompt.js';
 
-/* ── Stock symbol detector ── */
-const _STOCK_RE = /\b([A-Z]{1,5})\s+stock\b|\bstock\s+(?:of\s+|price\s+(?:of\s+)?)?([A-Z]{1,5})\b|\bprice\s+of\s+([A-Z]{1,5})\b|\b(AAPL|MSFT|GOOGL|GOOG|AMZN|TSLA|META|NVDA|NFLX|AMD|INTC|ORCL|IBM|CSCO|QCOM|ADBE|CRM|PYPL|UBER|LYFT|SNAP|TWTR|SPOT|SQ|SHOP|ZM|DOCU|PLTR|RBLX|COIN|HOOD|SOFI|RIVN|LCID|NIO|BABA|JD|PDD|TCEHY|BIDU|BYND|DKNG|PENN|MGM|LVS|WYNN|MRNA|PFE|JNJ|ABBV|MRK|LLY|BMY|GILD|AMGN|BIIB|REGN|VRTX|ISRG|MDT|ABT|DHR|TMO|UNH|CVS|WBA|HUM|CI|ANTM|CNC|MOH|JPM|BAC|WFC|GS|MS|C|USB|PNC|TFC|COF|AXP|V|MA|BRK\.B|BRK\.A|XOM|CVX|COP|SLB|HAL|BKR|MPC|VLO|PSX|NEE|DUK|SO|D|AEP|EXC|SRE|PEG|ED|WM|RSG|COST|WMT|TGT|HD|LOW|BBY|AMZN|DG|DLTR|KR|SYY|MCD|SBUX|YUM|CMG|DPZ|QSR|BA|LMT|RTX|NOC|GD|L3H|HII|TDG|SPR|HEI|CAT|DE|HON|MMM|GE|EMR|ITW|PH|ROK|DOV|XYL|AMT|CCI|PLD|SPG|EQR|AVB|MAA|UDR|CPT|ESS|AIV|NLY|AGNC|TWO|IVR|MFA)\b/i;
-
-function _detectStock(query) {
-  const upper = query.toUpperCase();
-
-  // Direct ticker patterns: "AAPL", "AAPL stock", "stock price of AAPL"
-  const m = upper.match(
-    /\b(AAPL|MSFT|GOOGL|GOOG|AMZN|TSLA|META|NVDA|NFLX|AMD|INTC|ORCL|IBM|CSCO|QCOM|ADBE|CRM|PYPL|UBER|LYFT|SNAP|SPOT|SQ|SHOP|ZM|DOCU|PLTR|RBLX|COIN|HOOD|SOFI|RIVN|LCID|NIO|BABA|JD|PDD|MRNA|PFE|JNJ|ABBV|MRK|LLY|BMY|GILD|AMGN|BIIB|REGN|VRTX|ISRG|MDT|ABT|DHR|TMO|UNH|CVS|HUM|JPM|BAC|WFC|GS|MS|USB|PNC|COF|AXP|V|MA|XOM|CVX|COP|SLB|HAL|NEE|DUK|WMT|TGT|HD|LOW|COST|MCD|SBUX|YUM|CMG|BA|LMT|RTX|NOC|GD|CAT|DE|HON|MMM|GE|EMT|AMT|CCI|PLD|SPG)\b/
-  );
-  if (m) return m[1];
-
-  // "X stock" or "stock of X" patterns
-  const stockOf = upper.match(/\b([A-Z]{1,5})\s+STOCK\b/);
-  if (stockOf) return stockOf[1];
-
-  const ofStock = upper.match(/STOCK\s+(?:OF\s+|PRICE\s+(?:OF\s+)?)?([A-Z]{1,5})\b/);
-  if (ofStock) return ofStock[1];
-
-  return null;
+/* ── Stock symbol extractor via Qwen ── */
+async function _detectStock(query, apiKey) {
+  const resp = await fetch('https://dashscope-intl.aliyuncs.com/compatible-mode/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model: 'qwen3.7-flash',
+      messages: [
+        {
+          role: 'system',
+          content: 'Extract the stock ticker symbol if the user is asking about a stock price or company stock. Reply with ONLY the ticker symbol in uppercase (e.g. AAPL, TSLA, MSFT). If no stock is mentioned, reply with NONE.',
+        },
+        { role: 'user', content: query },
+      ],
+      stream: false,
+      max_tokens: 10,
+      temperature: 0,
+      enable_thinking: false,
+    }),
+  });
+  if (!resp.ok) return null;
+  const data = await resp.json();
+  const raw  = data.choices?.[0]?.message?.content?.trim().toUpperCase();
+  return (!raw || raw === 'NONE' || raw.length > 6) ? null : raw;
 }
 
 /* ── Finnhub fetch ── */
@@ -99,28 +106,28 @@ export async function onRequestPost(context) {
     });
   }
 
-  // Step 1: Stock detect karo
-  const stockSymbol = _detectStock(query);
-
-  // Step 2: Web search intent check (Qwen)
-  const intentResp = await fetch('https://dashscope-intl.aliyuncs.com/compatible-mode/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${env.QWEN_API_KEY}`,
-    },
-    body: JSON.stringify({
-      model: 'qwen3.7-flash',
-      messages: [
-        { role: 'system', content: 'You decide if a web search is needed to answer the user query. Reply with only [SEARCH] or [NO_SEARCH]. Nothing else.' },
-        { role: 'user', content: query },
-      ],
-      stream: false,
-      max_tokens: 10,
-      temperature: 0,
-      enable_thinking: false,
+  // Step 1: Web search intent + stock symbol — parallel Qwen calls
+  const [intentResp, stockSymbol] = await Promise.all([
+    fetch('https://dashscope-intl.aliyuncs.com/compatible-mode/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${env.QWEN_API_KEY}`,
+      },
+      body: JSON.stringify({
+        model: 'qwen3.7-flash',
+        messages: [
+          { role: 'system', content: 'You decide if a web search is needed to answer the user query. Reply with only [SEARCH] or [NO_SEARCH]. Nothing else.' },
+          { role: 'user', content: query },
+        ],
+        stream: false,
+        max_tokens: 10,
+        temperature: 0,
+        enable_thinking: false,
+      }),
     }),
-  });
+    _detectStock(query, env.QWEN_API_KEY),
+  ]);
 
   let searchResults = [];
   let searchContext = '';
@@ -155,7 +162,7 @@ export async function onRequestPost(context) {
     }
   }
 
-  // Step 3: Stream response
+  // Step 2: Stream response
   const { readable, writable } = new TransformStream();
   const writer = writable.getWriter();
   const enc    = new TextEncoder();
@@ -237,4 +244,4 @@ export async function onRequestOptions() {
       'Access-Control-Allow-Headers': 'Content-Type',
     },
   });
-}
+      }

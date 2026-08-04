@@ -49,23 +49,20 @@ export async function onRequestPost(context) {
 
     if (decision === '[SEARCH]') {
       try {
-        // 🔥 SEARLO WEB SEARCH - LangSearch ki jagah
-        const searloResp = await fetch(
-          `https://api.searlo.tech/api/v1/search/web?q=${encodeURIComponent(query)}&limit=6&hl=en`,
-          {
-            method: 'GET',
-            headers: {
-              'x-api-key': env.SEARLO_API_KEY,
-            },
-          }
-        );
+        const langResp = await fetch('https://api.langsearch.com/v1/web-search', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${env.LANGSEARCH_API_KEY}`,
+          },
+          body: JSON.stringify({ query: query, count: 6, summary: false }),
+        });
 
-        if (searloResp.ok) {
-          const data = await searloResp.json();
-          const pages = data.items || [];
+        if (langResp.ok) {
+          const pages = (await langResp.json()).data?.webPages?.value || [];
           searchResults = pages.slice(0, 6).map(r => ({
-            title:   r.title   || '',
-            url:     r.link    || '',
+            title:   r.name    || '',
+            url:     r.url     || '',
             snippet: r.snippet || '',
           }));
           if (searchResults.length > 0) {
@@ -147,4 +144,4 @@ export async function onRequestOptions() {
       'Access-Control-Allow-Headers': 'Content-Type',
     },
   });
-      }
+}

@@ -151,7 +151,7 @@ export async function onRequestPost(context) {
     const intentData = await intentResp.json();
     const decision   = intentData.choices?.[0]?.message?.content?.trim();
 
-    if (decision === '[SEARCH]') {
+    if (decision === '[SEARCH]' && !stockSymbol) {
       try {
         const langResp = await fetch(
           'https://api.langsearch.com/v1/web-search',
@@ -268,4 +268,5 @@ export async function onRequestOptions() {
       'Access-Control-Allow-Headers': 'Content-Type',
     },
   });
-}
+      }
+          

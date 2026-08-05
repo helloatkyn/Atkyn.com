@@ -1,106 +1,5 @@
 import { SYSTEM_PROMPT } from './systemPrompt.js';
 
-/* ── Stock symbol extractor via Qwen ── */
-async function _detectStock(query, apiKey) {
-  const resp = await fetch('https://dashscope-intl.aliyuncs.com/compatible-mode/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify({
-      model: 'qwen3.7-flash',
-      messages: [
-        {
-          role: 'system',
-          content: 'The user may be asking about a stock by ticker symbol or company name. A lone ticker like "AAPL" or "TSLA" counts as a stock query. A company name like "Apple stock" or "Tesla price" also counts. Extract and return ONLY the uppercase ticker symbol (e.g. AAPL, TSLA, MSFT, GOOGL). If no stock is involved, reply with exactly: NONE. Reply with the ticker or NONE — nothing else, no punctuation.',
-        },
-        { role: 'user', content: query },
-      ],
-      stream: false,
-      max_tokens: 10,
-      temperature: 0,
-      enable_thinking: false,
-    }),
-  });
-  if (!resp.ok) return null;
-  const data = await resp.json();
-  const raw  = data.choices?.[0]?.message?.content?.trim().toUpperCase();
-  // Accept only pure alpha tickers 1-5 chars
-  return (raw && raw !== 'NONE' && /^[A-Z]{1,5}$/.test(raw)) ? raw : null;
-}
-
-/* ── Finnhub fetch ── */
-async function _fetchStockData(symbol, apiKey) {
-  const base    = 'https://finnhub.io/api/v1';
-  const headers = { 'X-Finnhub-Token': apiKey };
-
-  const [quoteRes, profileRes, metricsRes, newsRes] = await Promise.allSettled([
-    fetch(`${base}/quote?symbol=${symbol}`, { headers }),
-    fetch(`${base}/stock/profile2?symbol=${symbol}`, { headers }),
-    fetch(`${base}/stock/metric?symbol=${symbol}&metric=all`, { headers }),
-    fetch(`${base}/company-news?symbol=${symbol}&from=${_daysAgo(7)}&to=${_today()}`, { headers }),
-  ]);
-
-  const quote   = quoteRes.status   === 'fulfilled' && quoteRes.value.ok   ? await quoteRes.value.json()   : null;
-  const profile = profileRes.status === 'fulfilled' && profileRes.value.ok ? await profileRes.value.json() : null;
-  const metrics = metricsRes.status === 'fulfilled' && metricsRes.value.ok ? await metricsRes.value.json() : null;
-  const news    = newsRes.status    === 'fulfilled' && newsRes.value.ok    ? await newsRes.value.json()    : [];
-
-  if (!quote || quote.c === 0) return null;
-
-  return {
-    symbol,
-    name:        profile?.name        || symbol,
-    exchange:    profile?.exchange    || '',
-    logo:        profile?.logo        || '',
-    currency:    profile?.currency    || 'USD',
-    price:       quote.c,
-    open:        quote.o,
-    high:        quote.h,
-    low:         quote.l,
-    prevClose:   quote.pc,
-    change:      quote.d,
-    changePct:   quote.dp,
-    marketCap:   profile?.marketCapitalization || null,
-    pe:          metrics?.metric?.peNormalizedAnnual || null,
-    week52High:  metrics?.metric?.['52WeekHigh'] || null,
-    week52Low:   metrics?.metric?.['52WeekLow']  || null,
-    news:        Array.isArray(news) ? news.slice(0, 3).map(n => ({
-      headline: n.headline,
-      url:      n.url,
-      source:   n.source,
-      datetime: n.datetime,
-    })) : [],
-  };
-}
-
-/* ── Build stock context string for Qwen ── */
-function _buildStockContext(d) {
-  const fmt = (v, prefix = '$') => v != null ? `${prefix}${Number(v).toLocaleString()}` : 'N/A';
-  const fmtPct = v => v != null ? `${Number(v).toFixed(2)}%` : 'N/A';
-  return [
-    `LIVE STOCK DATA (real-time, use this — do not guess or cite external sources):`,
-    `Symbol: ${d.symbol} | Name: ${d.name} | Exchange: ${d.exchange}`,
-    `Price: ${fmt(d.price)} ${d.currency} | Change: ${fmt(d.change)} (${fmtPct(d.changePct)})`,
-    `Open: ${fmt(d.open)} | High: ${fmt(d.high)} | Low: ${fmt(d.low)} | Prev Close: ${fmt(d.prevClose)}`,
-    `Market Cap: ${d.marketCap ? fmt(d.marketCap / 1000, '$') + 'T' : 'N/A'} | P/E: ${d.pe ?? 'N/A'}`,
-    `52W High: ${fmt(d.week52High)} | 52W Low: ${fmt(d.week52Low)}`,
-  ].join('\n');
-}
-
-function _today() {
-  return new Date().toISOString().slice(0, 10);
-}
-function _daysAgo(n) {
-  const d = new Date();
-  d.setDate(d.getDate() - n);
-  return d.toISOString().slice(0, 10);
-}
-
-/* ══════════════════════════════════════════
-   MAIN HANDLER
-   ══════════════════════════════════════════ */
 export async function onRequestPost(context) {
   const { request, env } = context;
 
@@ -121,52 +20,46 @@ export async function onRequestPost(context) {
     });
   }
 
-  // Step 1: Intent check + stock detection — parallel
-  const [intentResp, stockSymbol] = await Promise.all([
-    fetch('https://dashscope-intl.aliyuncs.com/compatible-mode/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${env.QWEN_API_KEY}`,
-      },
-      body: JSON.stringify({
-        model: 'qwen3.7-flash',
-        messages: [
-          { role: 'system', content: 'You decide if a web search is needed to answer the user query. Reply with only [SEARCH] or [NO_SEARCH]. Nothing else.' },
-          { role: 'user', content: query },
-        ],
-        stream: false,
-        max_tokens: 10,
-        temperature: 0,
-        enable_thinking: false,
-      }),
+  // Step 1: Ask Qwen if search is needed
+  const intentResp = await fetch('https://dashscope-intl.aliyuncs.com/compatible-mode/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${env.QWEN_API_KEY}`,
+    },
+    body: JSON.stringify({
+      model: 'qwen3.7-flash',
+      messages: [
+        { role: 'system', content: 'You decide if a web search is needed to answer the user query. Reply with only [SEARCH] or [NO_SEARCH]. Nothing else.' },
+        { role: 'user', content: query },
+      ],
+      stream: false,
+      max_tokens: 10,
+      temperature: 0,
+      enable_thinking: false,
     }),
-    _detectStock(query, env.QWEN_API_KEY),
-  ]);
+  });
 
   let searchResults = [];
   let searchContext = '';
 
   if (intentResp.ok) {
     const intentData = await intentResp.json();
-    const decision   = intentData.choices?.[0]?.message?.content?.trim();
+    const decision = intentData.choices?.[0]?.message?.content?.trim();
 
-    if (decision === '[SEARCH]' && !stockSymbol) {
+    if (decision === '[SEARCH]') {
       try {
-        const langResp = await fetch(
-          'https://api.langsearch.com/v1/web-search',
-          {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${env.LANGSEARCH_API_KEY}`,
-            },
-            body: JSON.stringify({ query, count: 6, freshness: 'noLimit', summary: false }),
-          }
-        );
+        const langResp = await fetch('https://api.langsearch.com/v1/web-search', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${env.LANGSEARCH_API_KEY}`,
+          },
+          body: JSON.stringify({ query: query, count: 6, summary: false }),
+        });
+
         if (langResp.ok) {
-          const data  = await langResp.json();
-          const pages = data.data?.webPages?.value || [];
+          const pages = (await langResp.json()).data?.webPages?.value || [];
           searchResults = pages.slice(0, 6).map(r => ({
             title:   r.name    || '',
             url:     r.url     || '',
@@ -181,54 +74,37 @@ export async function onRequestPost(context) {
     }
   }
 
-  // Step 2: Fetch stock data first — then inject into Qwen context
-  const stockData = (stockSymbol && env.FINNHUB_API_KEY)
-    ? await _fetchStockData(stockSymbol, env.FINNHUB_API_KEY).catch(() => null)
-    : null;
-
-  // Build final system prompt with all available context
-  let finalSystemPrompt = SYSTEM_PROMPT;
-  if (stockData)         finalSystemPrompt += `\n\n${_buildStockContext(stockData)}`;
-  if (searchContext)     finalSystemPrompt += `\n\n${searchContext}`;
-
-  // Step 3: Qwen final answer — stock data already in context
-  const qwenResp = await fetch('https://dashscope-intl.aliyuncs.com/compatible-mode/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${env.QWEN_API_KEY}`,
-    },
-    body: JSON.stringify({
-      model: 'qwen3.7-flash',
-      messages: [
-        { role: 'system', content: finalSystemPrompt },
-        ...(Array.isArray(history) ? history.slice(-100) : []),
-        { role: 'user', content: query },
-      ],
-      stream: true,
-      max_tokens: 2048,
-      temperature: 0.6,
-      enable_thinking: false,
-    }),
-  });
-
+  // Step 2: Stream final answer
   const { readable, writable } = new TransformStream();
   const writer = writable.getWriter();
   const enc    = new TextEncoder();
 
   (async () => {
     try {
-      // Emit web results first
       if (searchResults.length > 0) {
         await writer.write(enc.encode(`event: results\ndata: ${JSON.stringify(searchResults)}\n\n`));
       }
 
-      // Emit stock card
-      if (stockData) {
-        await writer.write(enc.encode(`event: stock\ndata: ${JSON.stringify(stockData)}\n\n`));
-      }
+      const qwenResp = await fetch('https://dashscope-intl.aliyuncs.com/compatible-mode/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${env.QWEN_API_KEY}`,
+        },
+        body: JSON.stringify({
+          model: 'qwen3.7-flash',
+          messages: [
+            { role: 'system', content: searchContext ? `${SYSTEM_PROMPT}\n\n${searchContext}` : SYSTEM_PROMPT },
+            ...(Array.isArray(history) ? history.slice(-100) : []),
+            { role: 'user', content: query },
+          ],
+          stream: true,
+          max_tokens: 2048,
+          temperature: 0.6,
+          enable_thinking: false,
+        }),
+      });
 
-      // Stream Qwen answer
       if (!qwenResp.ok) {
         await writer.write(enc.encode(`data: ${JSON.stringify({ error: await qwenResp.text() })}\n\n`));
         await writer.close();
@@ -268,5 +144,4 @@ export async function onRequestOptions() {
       'Access-Control-Allow-Headers': 'Content-Type',
     },
   });
-      }
-          
+            }

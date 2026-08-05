@@ -75,6 +75,20 @@ async function _fetchStockData(symbol, apiKey) {
   };
 }
 
+/* ── Build stock context string for Qwen ── */
+function _buildStockContext(d) {
+  const fmt = (v, prefix = '$') => v != null ? `${prefix}${Number(v).toLocaleString()}` : 'N/A';
+  const fmtPct = v => v != null ? `${Number(v).toFixed(2)}%` : 'N/A';
+  return [
+    `LIVE STOCK DATA (real-time, use this — do not guess or cite external sources):`,
+    `Symbol: ${d.symbol} | Name: ${d.name} | Exchange: ${d.exchange}`,
+    `Price: ${fmt(d.price)} ${d.currency} | Change: ${fmt(d.change)} (${fmtPct(d.changePct)})`,
+    `Open: ${fmt(d.open)} | High: ${fmt(d.high)} | Low: ${fmt(d.low)} | Prev Close: ${fmt(d.prevClose)}`,
+    `Market Cap: ${d.marketCap ? fmt(d.marketCap / 1000, '$') + 'T' : 'N/A'} | P/E: ${d.pe ?? 'N/A'}`,
+    `52W High: ${fmt(d.week52High)} | 52W Low: ${fmt(d.week52Low)}`,
+  ].join('\n');
+}
+
 function _today() {
   return new Date().toISOString().slice(0, 10);
 }
@@ -160,12 +174,18 @@ export async function onRequestPost(context) {
     }
   }
 
-  // Step 2: Kick off stock fetch + Qwen answer stream in parallel
-  const stockDataPromise = (stockSymbol && env.FINNHUB_API_KEY)
-    ? _fetchStockData(stockSymbol, env.FINNHUB_API_KEY).catch(() => null)
-    : Promise.resolve(null);
+  // Step 2: Fetch stock data first — then inject into Qwen context
+  const stockData = (stockSymbol && env.FINNHUB_API_KEY)
+    ? await _fetchStockData(stockSymbol, env.FINNHUB_API_KEY).catch(() => null)
+    : null;
 
-  const qwenRespPromise = fetch('https://dashscope-intl.aliyuncs.com/compatible-mode/v1/chat/completions', {
+  // Build final system prompt with all available context
+  let finalSystemPrompt = SYSTEM_PROMPT;
+  if (stockData)         finalSystemPrompt += `\n\n${_buildStockContext(stockData)}`;
+  if (searchContext)     finalSystemPrompt += `\n\n${searchContext}`;
+
+  // Step 3: Qwen final answer — stock data already in context
+  const qwenResp = await fetch('https://dashscope-intl.aliyuncs.com/compatible-mode/v1/chat/completions', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -174,7 +194,7 @@ export async function onRequestPost(context) {
     body: JSON.stringify({
       model: 'qwen3.7-flash',
       messages: [
-        { role: 'system', content: searchContext ? `${SYSTEM_PROMPT}\n\n${searchContext}` : SYSTEM_PROMPT },
+        { role: 'system', content: finalSystemPrompt },
         ...(Array.isArray(history) ? history.slice(-100) : []),
         { role: 'user', content: query },
       ],
@@ -184,9 +204,6 @@ export async function onRequestPost(context) {
       enable_thinking: false,
     }),
   });
-
-  // Wait for both before streaming so stock card always arrives first
-  const [stockData, qwenResp] = await Promise.all([stockDataPromise, qwenRespPromise]);
 
   const { readable, writable } = new TransformStream();
   const writer = writable.getWriter();
@@ -199,7 +216,7 @@ export async function onRequestPost(context) {
         await writer.write(enc.encode(`event: results\ndata: ${JSON.stringify(searchResults)}\n\n`));
       }
 
-      // Emit stock card before text — guaranteed order
+      // Emit stock card
       if (stockData) {
         await writer.write(enc.encode(`event: stock\ndata: ${JSON.stringify(stockData)}\n\n`));
       }

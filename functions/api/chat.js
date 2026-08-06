@@ -20,14 +20,14 @@ export async function onRequestPost(context) {
     });
   }
 
-  const mistralResp = await fetch('https://api.mistral.ai/v1/chat/completions', {
+  const groqResp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${env.MISTRAL_API_KEY}`,
+      'Authorization': `Bearer ${env.GROQ_API_KEY}`,
     },
     body: JSON.stringify({
-      model: 'ministral-14b-2512',
+      model: 'qwen/qwen3.6-27b',
       messages: [
         { role: 'system', content: SYSTEM_PROMPT },
         ...(Array.isArray(history) ? history.slice(-100) : []),
@@ -36,18 +36,19 @@ export async function onRequestPost(context) {
       stream: true,
       max_tokens: 2048,
       temperature: 0.6,
+      reasoning_effort: 'none',
     }),
   });
 
-  if (!mistralResp.ok) {
-    const err = await mistralResp.text();
+  if (!groqResp.ok) {
+    const err = await groqResp.text();
     return new Response(JSON.stringify({ error: err }), {
-      status: mistralResp.status,
+      status: groqResp.status,
       headers: { 'Content-Type': 'application/json' },
     });
   }
 
-  return new Response(mistralResp.body, {
+  return new Response(groqResp.body, {
     headers: {
       'Content-Type': 'text/event-stream',
       'Cache-Control': 'no-cache',

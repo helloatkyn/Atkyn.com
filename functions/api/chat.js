@@ -40,7 +40,7 @@ export async function onRequestPost(context) {
     });
   }
 
-  // Step 1: Mistral intent check
+  // Step 1: Intent check
   const intentResp = await fetch('https://api.mistral.ai/v1/chat/completions', {
     method: 'POST',
     headers: {
@@ -77,7 +77,6 @@ export async function onRequestPost(context) {
           const data = await searxResp.json();
           const raw = (data.results || []).slice(0, 6);
 
-          // Fetch full content for top 5 results
           const enriched = await Promise.all(
             raw.map(async (r, i) => {
               let content = r.content || '';
@@ -103,7 +102,7 @@ export async function onRequestPost(context) {
     }
   }
 
-  // Step 2: Mistral stream
+  // Step 2: Mistral Nemo stream
   const { readable, writable } = new TransformStream();
   const writer = writable.getWriter();
   const enc    = new TextEncoder();
@@ -121,7 +120,7 @@ export async function onRequestPost(context) {
           'Authorization': `Bearer ${env.MISTRAL_API_KEY}`,
         },
         body: JSON.stringify({
-          model: 'mistral-large-latest',
+          model: 'open-mistral-nemo-2407',  // ← Mistral NeMo 12B
           messages: [
             { role: 'system', content: searchContext ? `${SYSTEM_PROMPT}\n\n${searchContext}` : SYSTEM_PROMPT },
             ...(Array.isArray(history) ? history.slice(-100) : []),
@@ -129,7 +128,7 @@ export async function onRequestPost(context) {
           ],
           stream: true,
           max_tokens: 2048,
-          temperature: 0.6,
+          temperature: 0.3,  // NeMo ke liye recommended lower temp
         }),
       });
 
@@ -172,4 +171,4 @@ export async function onRequestOptions() {
       'Access-Control-Allow-Headers': 'Content-Type',
     },
   });
-                }
+}

@@ -1,5 +1,25 @@
 import { SYSTEM_PROMPT } from './systemPrompt.js';
 
+async function fetchPageText(url) {
+  try {
+    const resp = await fetch(url, {
+      headers: { 'User-Agent': 'Mozilla/5.0' },
+      signal: AbortSignal.timeout(4000),
+    });
+    if (!resp.ok) return '';
+    const html = await resp.text();
+    const clean = html
+      .replace(/<script[\s\S]*?<\/script>/gi, '')
+      .replace(/<style[\s\S]*?<\/style>/gi, '')
+      .replace(/<[^>]+>/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+    return clean.slice(0, 1500);
+  } catch {
+    return '';
+  }
+}
+
 export async function onRequestPost(context) {
   const { request, env } = context;
 
@@ -55,15 +75,28 @@ export async function onRequestPost(context) {
 
         if (searxResp.ok) {
           const data = await searxResp.json();
-          const results = (data.results || []).slice(0, 6);
-          searchResults = results.map(r => ({
-            title:   r.title   || '',
-            url:     r.url     || '',
-            snippet: r.content || '',
-          }));
+          const raw = (data.results || []).slice(0, 6);
+
+          // Fetch full content for top 5 results
+          const enriched = await Promise.all(
+            raw.map(async (r, i) => {
+              let content = r.content || '';
+              if (i < 5) {
+                const pageText = await fetchPageText(r.url);
+                if (pageText) content = pageText;
+              }
+              return {
+                title:   r.title || '',
+                url:     r.url   || '',
+                snippet: content,
+              };
+            })
+          );
+
+          searchResults = enriched;
           if (searchResults.length > 0) {
             searchContext = 'Web search results:\n' +
-              searchResults.map((r, i) => `[${i + 1}] ${r.title}\n${r.snippet}`).join('\n\n');
+              searchResults.map((r, i) => `[${i + 1}] ${r.title}\nURL: ${r.url}\n${r.snippet}`).join('\n\n');
           }
         }
       } catch (_) {}
@@ -139,4 +172,4 @@ export async function onRequestOptions() {
       'Access-Control-Allow-Headers': 'Content-Type',
     },
   });
-}
+                }

@@ -48,21 +48,18 @@ export async function onRequestPost(context) {
 
     if (decision === '[SEARCH]') {
       try {
-        const langResp = await fetch('https://api.langsearch.com/v1/web-search', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${env.LANGSEARCH_API_KEY}`,
-          },
-          body: JSON.stringify({ query: query, count: 6, summary: false }),
-        });
+        const searxResp = await fetch(
+          `${env.SEARXNG_URL}/search?q=${encodeURIComponent(query)}&format=json&categories=general&language=en`,
+          { headers: { 'Accept': 'application/json' } }
+        );
 
-        if (langResp.ok) {
-          const pages = (await langResp.json()).data?.webPages?.value || [];
-          searchResults = pages.slice(0, 6).map(r => ({
-            title:   r.name    || '',
+        if (searxResp.ok) {
+          const data = await searxResp.json();
+          const results = (data.results || []).slice(0, 6);
+          searchResults = results.map(r => ({
+            title:   r.title   || '',
             url:     r.url     || '',
-            snippet: r.snippet || '',
+            snippet: r.content || '',
           }));
           if (searchResults.length > 0) {
             searchContext = 'Web search results:\n' +

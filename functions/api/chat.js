@@ -40,7 +40,7 @@ export async function onRequestPost(context) {
     });
   }
 
-  // Step 1: Intent check — Mistral Small (fast + cheap)
+  // Step 1: Intent check — Mistral Medium
   const intentResp = await fetch('https://api.mistral.ai/v1/chat/completions', {
     method: 'POST',
     headers: {
@@ -48,7 +48,7 @@ export async function onRequestPost(context) {
       'Authorization': `Bearer ${env.MISTRAL_API_KEY}`,
     },
     body: JSON.stringify({
-      model: 'mistral-small-latest',
+      model: 'mistral-medium-latest',
       messages: [
         {
           role: 'system',
@@ -114,7 +114,7 @@ Default is [NO_SEARCH]. Only search when clearly needed.`
     }
   }
 
-  // Step 2: Main response — Mistral Large (flagship)
+  // Step 2: Main response — Mistral Medium
   const { readable, writable } = new TransformStream();
   const writer = writable.getWriter();
   const enc    = new TextEncoder();
@@ -132,7 +132,7 @@ Default is [NO_SEARCH]. Only search when clearly needed.`
           'Authorization': `Bearer ${env.MISTRAL_API_KEY}`,
         },
         body: JSON.stringify({
-          model: 'mistral-large-latest',
+          model: 'mistral-medium-latest',
           messages: [
             { role: 'system', content: searchContext ? `${SYSTEM_PROMPT}\n\n${searchContext}` : SYSTEM_PROMPT },
             ...(Array.isArray(history) ? history.slice(-100) : []),

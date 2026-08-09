@@ -1,0 +1,31 @@
+/* ════════════════════════════════════════════════════════════════
+   math.css — KaTeX inline & display math
+════════════════════════════════════════════════════════════════ */
+
+.katex { font-size: 1.08em; }
+
+/* Shared scroll container for both display math types */
+.katex-display,
+.math-display-block {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 10px 4px;
+  margin: 8px 0;
+  -webkit-overflow-scrolling: touch;
+}
+/* math-display-block has a tighter margin than katex-display */
+.math-display-block { margin: 6px 0; }
+.katex-display      { text-align: center; }
+
+.katex-display::-webkit-scrollbar,
+.math-display-block::-webkit-scrollbar { height: 3px; }
+
+.katex-display::-webkit-scrollbar-thumb,
+.math-display-block::-webkit-scrollbar-thumb {
+  background: rgba(128, 128, 128, 0.3);
+  border-radius: 2px;
+}
+
+@media (prefers-color-scheme: dark) {
+  .katex { color: #f0f0f2; }
+}

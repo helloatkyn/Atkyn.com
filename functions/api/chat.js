@@ -40,44 +40,34 @@ export async function onRequestPost(context) {
     });
   }
 
-  // Step 1: Intent check — GPT-OSS 20B (fastest on Groq)
-  const intentResp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+  // Step 1: Intent check — Mistral Small (fast + cheap)
+  const intentResp = await fetch('https://api.mistral.ai/v1/chat/completions', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${env.GROQ_API_KEY}`,
+      'Authorization': `Bearer ${env.MISTRAL_API_KEY}`,
     },
     body: JSON.stringify({
-      model: 'openai/gpt-oss-20b',
+      model: 'mistral-small-latest',
       messages: [
         {
           role: 'system',
-          content: `You are a search intent classifier. Your ONLY job is to decide if a web search is needed.
+          content: `Reply with [SEARCH] or [NO_SEARCH] only.
 
-Reply with [SEARCH] if the query needs current/live information:
-- Current news, prices, stock market, weather
-- Recent events (last 1-2 years)
-- Specific person's current status, company info
-- Product prices, availability
-- Sports scores, results
+[SEARCH] only if:
+- Query needs live/current data (prices, news, scores, weather, stock, valuation)
+- Query has words like: current, latest, aaj, abhi, now, today, 2024, 2025
+- User explicitly says "search karo" or "search"
 
-Reply with [NO_SEARCH] for everything else:
-- Math, formulas, equations, calculations
-- General knowledge, science, history
-- Coding help, programming questions
-- Language questions, grammar
-- Definitions, concepts
-- Creative writing
-- General advice
+[NO_SEARCH] for everything else — math, coding, formulas, general knowledge, history, advice, definitions.
 
-Reply with ONLY [SEARCH] or [NO_SEARCH]. Nothing else.`
+Default is [NO_SEARCH]. Only search when clearly needed.`
         },
         { role: 'user', content: query },
       ],
       stream: false,
       max_tokens: 10,
       temperature: 0,
-      reasoning_effort: 'none',
     }),
   });
 
@@ -124,7 +114,7 @@ Reply with ONLY [SEARCH] or [NO_SEARCH]. Nothing else.`
     }
   }
 
-  // Step 2: Main response — Qwen 3.6 27B (no thinking)
+  // Step 2: Main response — Mistral Large (flagship)
   const { readable, writable } = new TransformStream();
   const writer = writable.getWriter();
   const enc    = new TextEncoder();
@@ -135,14 +125,14 @@ Reply with ONLY [SEARCH] or [NO_SEARCH]. Nothing else.`
         await writer.write(enc.encode(`event: results\ndata: ${JSON.stringify(searchResults)}\n\n`));
       }
 
-      const groqResp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      const mistralResp = await fetch('https://api.mistral.ai/v1/chat/completions', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${env.GROQ_API_KEY}`,
+          'Authorization': `Bearer ${env.MISTRAL_API_KEY}`,
         },
         body: JSON.stringify({
-          model: 'qwen/qwen3.6-27b',
+          model: 'mistral-large-latest',
           messages: [
             { role: 'system', content: searchContext ? `${SYSTEM_PROMPT}\n\n${searchContext}` : SYSTEM_PROMPT },
             ...(Array.isArray(history) ? history.slice(-100) : []),
@@ -151,17 +141,16 @@ Reply with ONLY [SEARCH] or [NO_SEARCH]. Nothing else.`
           stream: true,
           max_tokens: 2048,
           temperature: 0.6,
-          reasoning_effort: 'none',
         }),
       });
 
-      if (!groqResp.ok) {
-        await writer.write(enc.encode(`data: ${JSON.stringify({ error: await groqResp.text() })}\n\n`));
+      if (!mistralResp.ok) {
+        await writer.write(enc.encode(`data: ${JSON.stringify({ error: await mistralResp.text() })}\n\n`));
         await writer.close();
         return;
       }
 
-      const reader = groqResp.body.getReader();
+      const reader = mistralResp.body.getReader();
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;

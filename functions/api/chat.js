@@ -20,58 +20,33 @@ export async function onRequestPost(context) {
     });
   }
 
-  // Step 1: Ask Qwen if search is needed
-  const intentResp = await fetch('https://dashscope-intl.aliyuncs.com/compatible-mode/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${env.QWEN_API_KEY}`,
-    },
-    body: JSON.stringify({
-      model: 'qwen3.7-flash',
-      messages: [
-        { role: 'system', content: 'You decide if a web search is needed to answer the user query. Reply with only [SEARCH] or [NO_SEARCH]. Nothing else.' },
-        { role: 'user', content: query },
-      ],
-      stream: false,
-      max_tokens: 10,
-      temperature: 0,
-      enable_thinking: false,
-    }),
-  });
-
   let searchResults = [];
   let searchContext = '';
 
-  if (intentResp.ok) {
-    const intentData = await intentResp.json();
-    const decision = intentData.choices?.[0]?.message?.content?.trim();
+  try {
+    const langResp = await fetch('https://api.langsearch.com/v1/web-search', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${env.LANGSEARCH_API_KEY}`,
+      },
+      body: JSON.stringify({ query: query, count: 6, summary: false }),
+    });
 
-    if (decision === '[SEARCH]') {
-      try {
-        const searxResp = await fetch(
-          `${env.SEARXNG_URL}/search?q=${encodeURIComponent(query)}&format=json&categories=general&language=en`,
-          { headers: { 'Accept': 'application/json' } }
-        );
-
-        if (searxResp.ok) {
-          const data = await searxResp.json();
-          const results = (data.results || []).slice(0, 6);
-          searchResults = results.map(r => ({
-            title:   r.title   || '',
-            url:     r.url     || '',
-            snippet: r.content || '',
-          }));
-          if (searchResults.length > 0) {
-            searchContext = 'Web search results:\n' +
-              searchResults.map((r, i) => `[${i + 1}] ${r.title}\n${r.snippet}`).join('\n\n');
-          }
-        }
-      } catch (_) {}
+    if (langResp.ok) {
+      const pages = (await langResp.json()).data?.webPages?.value || [];
+      searchResults = pages.slice(0, 6).map(r => ({
+        title:   r.name    || '',
+        url:     r.url     || '',
+        snippet: r.snippet || '',
+      }));
+      if (searchResults.length > 0) {
+        searchContext = 'Web search results:\n' +
+          searchResults.map((r, i) => `[${i + 1}] ${r.title}\n${r.snippet}`).join('\n\n');
+      }
     }
-  }
+  } catch (_) {}
 
-  // Step 2: Stream final answer via Mistral
   const { readable, writable } = new TransformStream();
   const writer = writable.getWriter();
   const enc    = new TextEncoder();

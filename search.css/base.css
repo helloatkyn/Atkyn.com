@@ -1,0 +1,49 @@
+/* ════════════════════════════════════════════════════════════════
+   base.css — Reset · Body · Scroll host
+════════════════════════════════════════════════════════════════ */
+
+/* ────────────────────────────────────────────────────────────────
+   RESET
+   Merged into one universal block. font-family: inherit ensures
+   buttons/inputs follow the body font without explicit overrides.
+──────────────────────────────────────────────────────────────── */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  font-family: inherit;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html { height: 100%; }
+
+body {
+  position: fixed;
+  inset: 0;
+  height: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
+  background: #fff;
+  color: #1a1a1a;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  display: flex;
+  flex-direction: column;
+}
+@media (prefers-color-scheme: dark) {
+  body { background: #1c1c1e; color: #f0f0f2; }
+}
+
+/* ────────────────────────────────────────────────────────────────
+   SCROLL HOST
+   Main content scroll container inside body flex column.
+──────────────────────────────────────────────────────────────── */
+.scroll-host {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: none;
+  scroll-behavior: auto;
+}
+.scroll-host::-webkit-scrollbar { display: none; }

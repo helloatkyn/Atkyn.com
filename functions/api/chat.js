@@ -1,5 +1,23 @@
 import { SYSTEM_PROMPT } from './systemPrompt.js';
 
+async function searchWeb(query, apiKey) {
+  const url = `https://api.searlo.tech/api/v1/search/web?q=${encodeURIComponent(query)}&limit=5&hl=en`;
+  const resp = await fetch(url, {
+    headers: { 'x-api-key': apiKey },
+  });
+  if (!resp.ok) return null;
+  const data = await resp.json();
+  return data.items || [];
+}
+
+function formatSearchResults(items) {
+  if (!items || items.length === 0) return '';
+  const formatted = items
+    .map((r, i) => `[${i + 1}] ${r.title}\nURL: ${r.link}\n${r.snippet}`)
+    .join('\n\n');
+  return `\n\n<web_results>\n${formatted}\n</web_results>`;
+}
+
 export async function onRequestPost(context) {
   const { request, env } = context;
 
@@ -20,6 +38,13 @@ export async function onRequestPost(context) {
     });
   }
 
+  const searchResults = await searchWeb(query, env.SEARLO_API_KEY);
+  const searchContext = formatSearchResults(searchResults);
+
+  const userMessageWithContext = searchContext
+    ? `${query}${searchContext}`
+    : query;
+
   const mistralResp = await fetch('https://api.mistral.ai/v1/chat/completions', {
     method: 'POST',
     headers: {
@@ -31,7 +56,7 @@ export async function onRequestPost(context) {
       messages: [
         { role: 'system', content: SYSTEM_PROMPT },
         ...(Array.isArray(history) ? history.slice(-100) : []),
-        { role: 'user', content: query },
+        { role: 'user', content: userMessageWithContext },
       ],
       stream: true,
       max_tokens: 2048,

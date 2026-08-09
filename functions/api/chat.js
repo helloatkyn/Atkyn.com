@@ -20,33 +20,60 @@ export async function onRequestPost(context) {
     });
   }
 
+  // Step 1: Mistral intent check
+  const intentResp = await fetch('https://api.mistral.ai/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${env.MISTRAL_API_KEY}`,
+    },
+    body: JSON.stringify({
+      model: 'mistral-small-latest',
+      messages: [
+        { role: 'system', content: 'You decide if a web search is needed to answer the user query. Reply with only [SEARCH] or [NO_SEARCH]. Nothing else.' },
+        { role: 'user', content: query },
+      ],
+      stream: false,
+      max_tokens: 10,
+      temperature: 0,
+    }),
+  });
+
   let searchResults = [];
   let searchContext = '';
 
-  try {
-    const langResp = await fetch('https://api.langsearch.com/v1/web-search', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${env.LANGSEARCH_API_KEY}`,
-      },
-      body: JSON.stringify({ query: query, count: 6, summary: false }),
-    });
+  if (intentResp.ok) {
+    const intentData = await intentResp.json();
+    const decision = intentData.choices?.[0]?.message?.content?.trim();
 
-    if (langResp.ok) {
-      const pages = (await langResp.json()).data?.webPages?.value || [];
-      searchResults = pages.slice(0, 6).map(r => ({
-        title:   r.name    || '',
-        url:     r.url     || '',
-        snippet: r.snippet || '',
-      }));
-      if (searchResults.length > 0) {
-        searchContext = 'Web search results:\n' +
-          searchResults.map((r, i) => `[${i + 1}] ${r.title}\n${r.snippet}`).join('\n\n');
-      }
+    if (decision === '[SEARCH]') {
+      try {
+        const langResp = await fetch('https://api.langsearch.com/v1/web-search', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${env.LANGSEARCH_API_KEY}`,
+          },
+          body: JSON.stringify({ query: query, count: 6, summary: false }),
+        });
+
+        if (langResp.ok) {
+          const pages = (await langResp.json()).data?.webPages?.value || [];
+          searchResults = pages.slice(0, 6).map(r => ({
+            title:   r.name    || '',
+            url:     r.url     || '',
+            snippet: r.snippet || '',
+          }));
+          if (searchResults.length > 0) {
+            searchContext = 'Web search results:\n' +
+              searchResults.map((r, i) => `[${i + 1}] ${r.title}\n${r.snippet}`).join('\n\n');
+          }
+        }
+      } catch (_) {}
     }
-  } catch (_) {}
+  }
 
+  // Step 2: Mistral stream
   const { readable, writable } = new TransformStream();
   const writer = writable.getWriter();
   const enc    = new TextEncoder();

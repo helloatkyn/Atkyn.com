@@ -48,7 +48,7 @@ export async function onRequestPost(context) {
       'Authorization': `Bearer ${env.MISTRAL_API_KEY}`,
     },
     body: JSON.stringify({
-      model: 'mistral-small-latest',
+      model: 'ministral-3b-latest',
       messages: [
         { role: 'system', content: 'You decide if a web search is needed to answer the user query. Reply with only [SEARCH] or [NO_SEARCH]. Nothing else.' },
         { role: 'user', content: query },
@@ -102,7 +102,7 @@ export async function onRequestPost(context) {
     }
   }
 
-  // Step 2: Mistral Nemo stream
+  // Step 2: Ministral 3B stream
   const { readable, writable } = new TransformStream();
   const writer = writable.getWriter();
   const enc    = new TextEncoder();
@@ -120,7 +120,7 @@ export async function onRequestPost(context) {
           'Authorization': `Bearer ${env.MISTRAL_API_KEY}`,
         },
         body: JSON.stringify({
-          model: 'open-mistral-nemo-2407',  // ← Mistral NeMo 12B
+          model: 'ministral-3b-latest',  // ← Ministral 3B
           messages: [
             { role: 'system', content: searchContext ? `${SYSTEM_PROMPT}\n\n${searchContext}` : SYSTEM_PROMPT },
             ...(Array.isArray(history) ? history.slice(-100) : []),
@@ -128,7 +128,7 @@ export async function onRequestPost(context) {
           ],
           stream: true,
           max_tokens: 2048,
-          temperature: 0.3,  // NeMo ke liye recommended lower temp
+          temperature: 0.3,
         }),
       });
 

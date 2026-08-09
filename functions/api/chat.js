@@ -40,7 +40,7 @@ export async function onRequestPost(context) {
     });
   }
 
-  // Step 1: Intent check — Groq pe Qwen 3.6 27B (no thinking)
+  // Step 1: Intent check — GPT-OSS 20B (fastest on Groq)
   const intentResp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
     method: 'POST',
     headers: {
@@ -48,9 +48,30 @@ export async function onRequestPost(context) {
       'Authorization': `Bearer ${env.GROQ_API_KEY}`,
     },
     body: JSON.stringify({
-      model: 'qwen/qwen3.6-27b',
+      model: 'openai/gpt-oss-20b',
       messages: [
-        { role: 'system', content: 'You decide if a web search is needed to answer the user query. Reply with only [SEARCH] or [NO_SEARCH]. Nothing else.' },
+        {
+          role: 'system',
+          content: `You are a search intent classifier. Your ONLY job is to decide if a web search is needed.
+
+Reply with [SEARCH] if the query needs current/live information:
+- Current news, prices, stock market, weather
+- Recent events (last 1-2 years)
+- Specific person's current status, company info
+- Product prices, availability
+- Sports scores, results
+
+Reply with [NO_SEARCH] for everything else:
+- Math, formulas, equations, calculations
+- General knowledge, science, history
+- Coding help, programming questions
+- Language questions, grammar
+- Definitions, concepts
+- Creative writing
+- General advice
+
+Reply with ONLY [SEARCH] or [NO_SEARCH]. Nothing else.`
+        },
         { role: 'user', content: query },
       ],
       stream: false,
@@ -103,7 +124,7 @@ export async function onRequestPost(context) {
     }
   }
 
-  // Step 2: Main response — Groq pe Qwen 3.6 27B (no thinking)
+  // Step 2: Main response — Qwen 3.6 27B (no thinking)
   const { readable, writable } = new TransformStream();
   const writer = writable.getWriter();
   const enc    = new TextEncoder();
@@ -173,4 +194,4 @@ export async function onRequestOptions() {
       'Access-Control-Allow-Headers': 'Content-Type',
     },
   });
-          }
+}

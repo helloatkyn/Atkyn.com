@@ -1,0 +1,124 @@
+/* ════════════════════════════════════════════════════════════════
+   typography.css — Bot bubble rich text
+   Headings · Lists · Links · Inline code · Horizontal rule
+════════════════════════════════════════════════════════════════ */
+
+/* ────────────────────────────────────────────────────────────────
+   PARAGRAPHS
+   line-height inherited from .bubble, no need to repeat.
+──────────────────────────────────────────────────────────────── */
+.msg.bot .bubble p            { margin: 0 0 10px; }
+.msg.bot .bubble p:last-child { margin-bottom: 0; }
+
+/* ────────────────────────────────────────────────────────────────
+   HEADINGS
+   h3/h4 color inherits #1a1a1a from .bubble; h5 differs.
+──────────────────────────────────────────────────────────────── */
+.msg.bot .bubble h3 {
+  font-size: 1.05rem;
+  font-weight: 700;
+  margin: 16px 0 5px;
+  letter-spacing: -0.01em;
+}
+.msg.bot .bubble h4 {
+  font-size: 0.98rem;
+  font-weight: 650;
+  margin: 12px 0 4px;
+}
+.msg.bot .bubble h5 {
+  font-size: 0.93rem;
+  font-weight: 600;
+  margin: 10px 0 3px;
+  color: #555;
+}
+@media (prefers-color-scheme: dark) {
+  .msg.bot .bubble h3,
+  .msg.bot .bubble h4 { color: #f0f0f2; }
+  .msg.bot .bubble h5 { color: #aaa; }
+}
+
+/* ────────────────────────────────────────────────────────────────
+   LISTS
+   No forced bullet markers; ordered lists use native numbers.
+──────────────────────────────────────────────────────────────── */
+.msg.bot .bubble ul,
+.msg.bot .bubble ol {
+  padding-left: 0;
+  margin: 2px 0 10px;
+  list-style: none;
+}
+.msg.bot .bubble li {
+  margin-bottom: 6px;
+  /* line-height and padding-left:0 inherited/defaulted — not needed */
+}
+
+/* Ordered list: native decimal numbers */
+.msg.bot .bubble ol {
+  list-style: decimal;
+  padding-left: 20px;
+}
+.msg.bot .bubble ol > li { padding-left: 4px; }
+
+/* Nested lists */
+.msg.bot .bubble li > ul,
+.msg.bot .bubble li > ol {
+  margin: 4px 0 0;
+  padding-left: 14px;
+}
+
+/* ────────────────────────────────────────────────────────────────
+   INLINE EMPHASIS
+──────────────────────────────────────────────────────────────── */
+.msg.bot .bubble strong { font-weight: 650; }
+.msg.bot .bubble em     { font-style: italic; }
+
+/* ────────────────────────────────────────────────────────────────
+   LINKS
+──────────────────────────────────────────────────────────────── */
+.msg.bot .bubble a {
+  color: #0066cc;
+  text-decoration: none;
+  border-bottom: 1px solid rgba(0, 102, 204, 0.3);
+}
+.msg.bot .bubble a:active { opacity: 0.7; }
+@media (prefers-color-scheme: dark) {
+  .msg.bot .bubble a {
+    color: #4da6ff;
+    border-bottom-color: rgba(77, 166, 255, 0.3);
+  }
+}
+
+/* ────────────────────────────────────────────────────────────────
+   INLINE CODE
+──────────────────────────────────────────────────────────────── */
+.msg.bot .bubble code {
+  font-family: 'SFMono-Regular', 'SF Mono', 'Menlo', 'Consolas',
+               'Liberation Mono', monospace;
+  font-size: 0.84em;
+  background: #F1F1F1;
+  color: #1a1a1a;
+  padding: 2px 6px;
+  border-radius: 5px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+}
+@media (prefers-color-scheme: dark) {
+  .msg.bot .bubble code {
+    background: rgba(255, 255, 255, 0.09);
+    border-color: rgba(255, 255, 255, 0.08);
+    color: #c9d1d9;
+  }
+}
+
+/* ────────────────────────────────────────────────────────────────
+   HORIZONTAL RULE — markdown section divider
+──────────────────────────────────────────────────────────────── */
+.msg.bot .bubble hr.md-hr {
+  border: none;
+  border-top: 1px solid rgba(0, 0, 0, 0.12);
+  margin: 16px 0;
+}
+@media (prefers-color-scheme: dark) {
+  .msg.bot .bubble hr.md-hr {
+    border-top-color: rgba(255, 255, 255, 0.12);
+  }
+}

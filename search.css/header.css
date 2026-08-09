@@ -1,0 +1,109 @@
+/* ════════════════════════════════════════════════════════════════
+   header.css — Logo header · Hamburger · Nine-dot button
+════════════════════════════════════════════════════════════════ */
+
+/* ────────────────────────────────────────────────────────────────
+   LOGO HEADER
+──────────────────────────────────────────────────────────────── */
+.logo-header {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  padding: 16px 18px 10px;
+  height: 76px;
+  overflow: hidden;
+  background: #ffffff;
+  /* opacity:1 omitted — browser default */
+  transition:
+    height  0.18s cubic-bezier(0.4, 0, 0.2, 1),
+    padding 0.18s cubic-bezier(0.4, 0, 0.2, 1),
+    opacity 0.15s ease;
+}
+@media (prefers-color-scheme: dark) {
+  .logo-header { background: #1c1c1e; }
+}
+.logo-header img {
+  height: 48px;
+  width: auto;
+  object-fit: contain;
+}
+.logo-header.collapsed {
+  height: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* ────────────────────────────────────────────────────────────────
+   HAMBURGER BUTTON (top-right)
+──────────────────────────────────────────────────────────────── */
+.hamburger-btn {
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  border: none;
+  background: none;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-end;
+  gap: 5.5px;
+  width: 40px;
+  height: 40px;
+  padding: 8px;
+  border-radius: 10px;
+  transition: background 0.15s;
+}
+.hamburger-btn span {
+  display: block;
+  height: 1.5px;
+  border-radius: 99px;
+  background: #1a1a1a;
+}
+.hamburger-btn span:nth-child(1) { width: 22px; }
+.hamburger-btn span:nth-child(2) { width: 15px; }
+.hamburger-btn span:nth-child(3) { width: 22px; }
+.hamburger-btn:active { background: rgba(0, 0, 0, 0.06); }
+@media (prefers-color-scheme: dark) {
+  .hamburger-btn span { background: #e5e5e7; }
+}
+
+/* ────────────────────────────────────────────────────────────────
+   NINE-DOT GRID BUTTON (top-left)
+──────────────────────────────────────────────────────────────── */
+.dots-btn {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  border: none;
+  background: none;
+  cursor: pointer;
+  display: grid;
+  grid-template-columns: repeat(3, 4px);
+  gap: 4px;
+  align-content: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  transition: background 0.15s;
+}
+.dots-btn span {
+  display: block;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: #1a1a1a;
+  transition: background 0.2s;
+}
+.dots-btn:active           { background: rgba(0, 0, 0, 0.06); }
+.dots-btn:active span      { background: #0077B5; }
+@media (prefers-color-scheme: dark) {
+  .dots-btn span { background: #e5e5e7; }
+}

@@ -14,7 +14,7 @@ async function fetchPageText(url) {
       .replace(/<[^>]+>/g, ' ')
       .replace(/\s+/g, ' ')
       .trim();
-    return clean.slice(0, 1500);
+    return clean.slice(0, 5000);
   } catch {
     return '';
   }
@@ -173,4 +173,4 @@ export async function onRequestOptions() {
       'Access-Control-Allow-Headers': 'Content-Type',
     },
   });
-}
+          }

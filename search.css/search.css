@@ -1,0 +1,34 @@
+/* ═══════════════════════════════════════════════════════════════
+   search.css — Atkyn Search PWA
+   Vite entry point — import this file in main.js / main.ts
+
+   import './search/search.css'   ← in your Vite entry
+
+   Folder structure:
+     search/
+     ├── search.css       ← this file (Vite entry / import map)
+     ├── tokens.css       ← ALL colours as CSS custom properties
+     ├── base.css         ← reset, body, scroll host
+     ├── header.css       ← logo header, hamburger, dots button
+     ├── tabs.css         ← tab bar (Answer / Web / Images …)
+     ├── chat.css         ← bubbles, animations, typing, action bar
+     ├── typography.css   ← bot bubble: headings, lists, links, code, hr
+     ├── table.css        ← markdown table
+     ├── code-block.css   ← fenced code, line numbers, syntax tokens
+     ├── math.css         ← KaTeX inline & display
+     ├── chatbar.css      ← search pill, shimmer, plus menu (glassmorphism)
+     └── web-cards.css    ← web result cards & carousel
+   ═══════════════════════════════════════════════════════════════ */
+
+/* tokens MUST be first — all other files depend on its variables */
+@import './tokens.css';
+@import './base.css';
+@import './header.css';
+@import './tabs.css';
+@import './chat.css';
+@import './typography.css';
+@import './table.css';
+@import './code-block.css';
+@import './math.css';
+@import './chatbar.css';
+@import './web-cards.css';

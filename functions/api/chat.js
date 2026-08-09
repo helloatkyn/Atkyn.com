@@ -49,19 +49,18 @@ export async function onRequestPost(context) {
 
     if (decision === '[SEARCH]') {
       try {
-        const searloResp = await fetch(
-          `https://api.searlo.tech/api/v1/search/web?q=${encodeURIComponent(query)}&limit=6&hl=en`,
-          {
-            headers: { 'x-api-key': env.SEARLO_API_KEY },
-          }
+        const searxResp = await fetch(
+          `${env.SEARXNG_URL}/search?q=${encodeURIComponent(query)}&format=json&categories=general&language=en`,
+          { headers: { 'Accept': 'application/json' } }
         );
 
-        if (searloResp.ok) {
-          const items = (await searloResp.json()).items || [];
-          searchResults = items.slice(0, 6).map(r => ({
+        if (searxResp.ok) {
+          const data = await searxResp.json();
+          const results = (data.results || []).slice(0, 6);
+          searchResults = results.map(r => ({
             title:   r.title   || '',
-            url:     r.link    || '',
-            snippet: r.snippet || '',
+            url:     r.url     || '',
+            snippet: r.content || '',
           }));
           if (searchResults.length > 0) {
             searchContext = 'Web search results:\n' +

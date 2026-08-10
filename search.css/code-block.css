@@ -1,0 +1,201 @@
+/* ════════════════════════════════════════════════════════════════
+   code-block.css — Fenced code block
+   Container · Header · Language badge · Copy button ·
+   Line numbers · Code content · Fallback · Syntax tokens
+════════════════════════════════════════════════════════════════ */
+
+/* ── Container ── */
+.code-block {
+  margin: 12px 0 16px;
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--color-bg-code);
+  border: none;
+  box-shadow: none;
+  width: 100%;
+}
+@media (prefers-color-scheme: dark) {
+  .code-block {
+    background: var(--color-bg-code-dark);
+    border: none;
+    box-shadow: none;
+  }
+}
+
+/* ── Header bar ── */
+.code-block-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px 10px 14px;
+  background: transparent;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+  user-select: none;
+  min-height: 44px;
+}
+@media (prefers-color-scheme: dark) {
+  .code-block-header {
+    background: transparent;
+    border-bottom-color: var(--color-press-dark);
+  }
+}
+
+/* ── Language badge ── */
+.code-block-lang {
+  font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--color-code-lang);
+  background: var(--color-press-light-md);
+  padding: 3px 9px;
+  height: 26px;
+  line-height: 20px;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+}
+@media (prefers-color-scheme: dark) {
+  .code-block-lang {
+    color: var(--color-text-code-muted);
+    background: var(--color-code-lang-bg-dark);
+  }
+}
+
+/* ── Copy button ── */
+.code-copy-btn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  color: var(--color-code-lang);
+  padding: 4px 2px;
+  border-radius: 4px;
+  font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 12px;
+  font-weight: 400;
+  letter-spacing: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+.code-copy-btn svg {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  stroke-width: 1.75;
+}
+.code-copy-btn:active { opacity: 0.45; }
+.code-copy-btn.copied { color: var(--color-copied); }
+
+@media (prefers-color-scheme: dark) {
+  .code-copy-btn        { color: var(--color-text-code-muted); }
+  .code-copy-btn:active { opacity: 0.45; }
+  .code-copy-btn.copied { color: var(--color-copied); }
+}
+
+/* ── Pre / scroll container ── */
+.code-block pre {
+  margin: 0;
+  padding: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  background: transparent;
+  scrollbar-width: none;
+}
+.code-block pre::-webkit-scrollbar { display: none; }
+
+/* ── Lines table (display:table layout for line numbers) ── */
+.code-block .code-lines {
+  display: table;
+  min-width: 100%;
+  padding: 14px 0;
+}
+.code-line { display: table-row; }
+
+/* ── Line numbers ── */
+.code-line-num {
+  display: table-cell;
+  padding: 0 10px 0 16px;
+  text-align: right;
+  font-family: 'Söhne Mono', ui-monospace, 'SFMono-Regular', 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--color-code-num);
+  user-select: none;
+  white-space: nowrap;
+  min-width: 32px;
+  border-right: 1px solid rgba(0, 0, 0, 0.08);
+  vertical-align: top;
+}
+@media (prefers-color-scheme: dark) {
+  .code-line-num {
+    color: var(--color-code-num-dark);
+    border-right-color: var(--color-press-dark);
+  }
+}
+
+/* ── Code content cell ── */
+.code-line-content {
+  display: table-cell;
+  padding: 0 16px 0 14px;
+  font-family: 'Söhne Mono', ui-monospace, 'SFMono-Regular', 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace;
+  font-size: 13px;
+  line-height: 1.6;
+  font-weight: 400;
+  white-space: pre;
+  color: var(--color-code-content);
+  width: 100%;
+  tab-size: 2;
+  -moz-tab-size: 2;
+  vertical-align: top;
+  -webkit-font-smoothing: antialiased;
+}
+@media (prefers-color-scheme: dark) {
+  .code-line-content {
+    color: var(--color-text-dark-mono);
+    -webkit-font-smoothing: antialiased;
+  }
+}
+
+/* ── Fallback pre > code (when line rendering is unavailable) ── */
+.code-block pre code {
+  display: block;
+  padding: 14px 16px;
+  background: none;
+  font-family: 'Söhne Mono', ui-monospace, 'SFMono-Regular', 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace;
+  font-size: 13px;
+  line-height: 1.6;
+  font-weight: 400;
+  color: var(--color-code-content);
+  white-space: pre;
+  tab-size: 2;
+  -moz-tab-size: 2;
+  -webkit-font-smoothing: antialiased;
+}
+@media (prefers-color-scheme: dark) {
+  .code-block pre code { color: var(--color-text-dark-mono); }
+}
+
+/* ── Syntax token colours (ChatGPT light theme) ── */
+.tk-kw   { color: var(--color-tk-kw); }
+.tk-fn   { color: var(--color-tk-fn); }
+.tk-str  { color: var(--color-tk-str); }
+.tk-num  { color: var(--color-tk-num); }
+.tk-cmt  { color: var(--color-tk-cmt); font-style: italic; }
+.tk-cls  { color: var(--color-tk-cls); }
+.tk-prop { color: var(--color-tk-prop); }
+.tk-bool { color: var(--color-tk-bool); }
+
+@media (prefers-color-scheme: dark) {
+  .tk-kw   { color: var(--color-tk-kw-dark); }
+  .tk-fn   { color: var(--color-tk-fn-dark); }
+  .tk-str  { color: var(--color-tk-str-dark); }
+  .tk-num  { color: var(--color-tk-num-dark); }
+  .tk-cmt  { color: var(--color-tk-cmt-dark); font-style: italic; }
+  .tk-cls  { color: var(--color-tk-cls-dark); }
+  .tk-prop { color: var(--color-tk-prop-dark); }
+  .tk-bool { color: var(--color-tk-bool-dark); }
+}

@@ -38,7 +38,6 @@ let _lastSpacerH  = -1;
 /* ── last user message el (set by search.js) ── */
 window._lastUserMsgEl = null;
 
-/* ── Tab page map ── */
 /* ── Tab page map — absolute paths based on current origin + folder ── */
 const _BASE = (() => {
   const p = location.pathname;
@@ -56,10 +55,10 @@ const _TAB_PAGES = {
 };
 
 /* ── Current active tab (read from DOM on load) ── */
-const _activeTabEl  = tabBar.querySelector('.tab.active');
+const _activeTabEl   = tabBar?.querySelector('.tab.active');
 const _currentTabKey = _activeTabEl ? _activeTabEl.getAttribute('data-tab') : 'ai';
 
-/* ── Content area refs (only Answer page has these) ── */
+/* ── Content area refs ── */
 const _msgWrap    = document.getElementById('msgWrap');
 const _chatSpacer = document.getElementById('chatSpacer');
 
@@ -67,23 +66,29 @@ const _chatSpacer = document.getElementById('chatSpacer');
    HELPERS
    ════════════════════════════════ */
 
-function resetScrollAccum() { _accumDown = 0; _accumUp = 0; }
+function resetScrollAccum() { 
+  _accumDown = 0; 
+  _accumUp = 0; 
+}
 
 /* ════════════════════════════════
    SCROLL TO MSG
    ════════════════════════════════ */
 
 function scrollToMsg(el) {
-  if (!el) return;
+  if (!el || !scrollHost) return;
   if (_scrollRafId !== null) cancelAnimationFrame(_scrollRafId);
+  
   _scrollRafId = requestAnimationFrame(() => {
     _scrollRafId = null;
     _programmaticScroll = true;
-    const tabH   = tabBar.offsetHeight;
+    const tabH   = tabBar ? tabBar.offsetHeight : 0;
     const target = Math.max(0, el.offsetTop - tabH - 8);
+    
     scrollHost.scrollTo({ top: target, behavior: 'smooth' });
     _lastScrollY = target;
     resetScrollAccum();
+    
     setTimeout(() => { _programmaticScroll = false; }, 400);
   });
 }
@@ -95,49 +100,72 @@ window.scrollToMsg = scrollToMsg;
 
 function updateSpacer(kbHeight) {
   const spacer = document.getElementById('chatSpacer');
-  const barH   = chatbarWrap.offsetHeight;
+  if (!spacer || !chatbarWrap) return;
+
+  const barH = chatbarWrap.offsetHeight;
   const spacerH = barH + (kbHeight || 0);
+
   if (spacerH === _lastSpacerH) return;
   _lastSpacerH = spacerH;
-  if (spacer) spacer.style.height = spacerH + 'px';
+  spacer.style.height = `${spacerH}px`;
 }
 
-const _barResizeObserver = new ResizeObserver((entries) => {
-  const entry = entries[entries.length - 1];
-  const barH  = entry.borderBoxSize
-    ? entry.borderBoxSize[0].blockSize
-    : entry.contentRect.height;
-  const kbH = _keyboardOpen
-    ? Math.max(0, window.innerHeight - (window.visualViewport?.height ?? 0) - (window.visualViewport?.offsetTop ?? 0))
-    : 0;
-  const spacerH = barH + kbH;
-  if (spacerH === _lastSpacerH) return;
-  _lastSpacerH = spacerH;
-  const spacer = document.getElementById('chatSpacer');
-  if (spacer) spacer.style.height = spacerH + 'px';
-});
-_barResizeObserver.observe(chatbarWrap);
+let _barResizeObserver = null;
+if (chatbarWrap) {
+  _barResizeObserver = new ResizeObserver((entries) => {
+    const entry = entries[entries.length - 1];
+    if (!entry) return;
+
+    const barH = entry.borderBoxSize
+      ? entry.borderBoxSize[0].blockSize
+      : entry.contentRect.height;
+
+    const vvp = window.visualViewport;
+    const kbH = _keyboardOpen && vvp
+      ? Math.max(0, window.innerHeight - vvp.height - vvp.offsetTop)
+      : 0;
+
+    const spacerH = barH + kbH;
+    if (spacerH === _lastSpacerH) return;
+    _lastSpacerH = spacerH;
+
+    const spacer = document.getElementById('chatSpacer');
+    if (spacer) spacer.style.height = `${spacerH}px`;
+  });
+  
+  _barResizeObserver.observe(chatbarWrap);
+}
 
 let _debounceTimer = 0;
-function fixViewport() { clearTimeout(_debounceTimer); _debounceTimer = setTimeout(_applyViewport, 80); }
+function fixViewport() { 
+  clearTimeout(_debounceTimer); 
+  _debounceTimer = setTimeout(_applyViewport, 80); 
+}
 
 function _applyViewport() {
   _debounceTimer = 0;
   const vvp = window.visualViewport;
-  if (!vvp) return;
+  if (!vvp || !chatbarWrap || !scrollHost) return;
+
   const rawKb    = Math.max(0, window.innerHeight - vvp.height - vvp.offsetTop);
   const kbHeight = rawKb > 50 ? rawKb : 0;
+
   if (Math.round(kbHeight) === Math.round(_stableKbH)) return;
+  
   _keyboardOpen = kbHeight > 50;
   _stableKbH    = kbHeight;
+
   chatbarWrap.style.transition = _keyboardOpen ? 'transform 0.30s ease-out' : 'transform 0.40s ease-out';
   chatbarWrap.style.transform  = kbHeight > 0 ? `translateY(-${kbHeight}px) translateZ(0)` : '';
+
   updateSpacer(kbHeight);
+
   if (kbHeight > 0) {
     _programmaticScroll = true;
     const anchor = window._lastUserMsgEl;
     scrollHost.scrollTop = anchor ? Math.max(0, anchor.offsetTop - 16) : scrollHost.scrollHeight;
   }
+
   cancelAnimationFrame(_cleanupRafId);
   _cleanupRafId = requestAnimationFrame(() => {
     _cleanupRafId = 0;
@@ -147,11 +175,15 @@ function _applyViewport() {
   });
 }
 
-/* ── Chatbar entrance animation ──
-   Skip if: ?q= param OR came from another Atkyn tab (sessionStorage flag) */
+/* ── Chatbar entrance animation ── */
 (function _chatbarEntrance() {
+  if (!chatbarWrap) return;
+  
   const fromTab = sessionStorage.getItem('atkyn_tab_switch');
-  if (fromTab) { sessionStorage.removeItem('atkyn_tab_switch'); return; }
+  if (fromTab) { 
+    sessionStorage.removeItem('atkyn_tab_switch'); 
+    return; 
+  }
   if (new URLSearchParams(location.search).get('q')) return;
 
   chatbarWrap.style.willChange = 'transform';
@@ -162,13 +194,16 @@ function _applyViewport() {
     requestAnimationFrame(() => {
       chatbarWrap.style.transition = 'transform 0.42s ease-out';
       chatbarWrap.style.transform  = 'translateZ(0)';
-      chatbarWrap.addEventListener('transitionend', function _onEntryDone(e) {
+      
+      const _onEntryDone = (e) => {
         if (e.propertyName !== 'transform') return;
         chatbarWrap.removeEventListener('transitionend', _onEntryDone);
         chatbarWrap.style.transition = '';
         chatbarWrap.style.transform  = '';
         chatbarWrap.style.willChange = '';
-      });
+      };
+      
+      chatbarWrap.addEventListener('transitionend', _onEntryDone);
     });
   });
 }());
@@ -179,10 +214,10 @@ if (window.visualViewport) {
   updateSpacer(0);
   _applyViewport();
 } else {
-  function _legacyFix() {
-    const h = window.innerHeight + 'px';
+  const _legacyFix = () => {
+    const h = `${window.innerHeight}px`;
     if (document.body.style.height !== h) document.body.style.height = h;
-  }
+  };
   window.addEventListener('resize', _legacyFix, { passive: true });
   _legacyFix();
   updateSpacer(0);
@@ -198,7 +233,14 @@ const LOGO_THRESH = 10;
 
 function updateHeader() {
   _rafPending = false;
-  if (_programmaticScroll) { _lastScrollY = scrollHost.scrollTop; resetScrollAccum(); return; }
+  if (!scrollHost) return;
+
+  if (_programmaticScroll) { 
+    _lastScrollY = scrollHost.scrollTop; 
+    resetScrollAccum(); 
+    return; 
+  }
+
   const sy    = scrollHost.scrollTop;
   const delta = sy - _lastScrollY;
   if (delta === 0) return;
@@ -206,64 +248,94 @@ function updateHeader() {
 
   if (sy <= LOGO_THRESH) {
     resetScrollAccum();
-    if (_isLogoCollapsed) { logoHeader.classList.remove('collapsed'); _isLogoCollapsed = false; }
-    if (_isTabHidden)     { tabBar.classList.remove('hide');          _isTabHidden      = false; }
-    if (_isTabScrolled)   { tabBar.classList.remove('scrolled');      _isTabScrolled    = false; }
+    if (_isLogoCollapsed && logoHeader) { logoHeader.classList.remove('collapsed'); _isLogoCollapsed = false; }
+    if (_isTabHidden && tabBar)         { tabBar.classList.remove('hide');          _isTabHidden      = false; }
+    if (_isTabScrolled && tabBar)       { tabBar.classList.remove('scrolled');      _isTabScrolled    = false; }
     return;
   }
 
-  if (!_isLogoCollapsed) { logoHeader.classList.add('collapsed');  _isLogoCollapsed = true; }
-  if (!_isTabScrolled)   { tabBar.classList.add('scrolled');       _isTabScrolled    = true; }
+  if (!_isLogoCollapsed && logoHeader) { logoHeader.classList.add('collapsed');  _isLogoCollapsed = true; }
+  if (!_isTabScrolled && tabBar)       { tabBar.classList.add('scrolled');       _isTabScrolled    = true; }
 
   if (delta > 0) {
-    _accumDown += delta; if (_accumUp > 0) _accumUp = 0;
-    if (!_isTabHidden && _accumDown >= HIDE_ACCUM) { tabBar.classList.add('hide'); _isTabHidden = true; _accumDown = 0; }
+    _accumDown += delta; 
+    if (_accumUp > 0) _accumUp = 0;
+    if (!_isTabHidden && tabBar && _accumDown >= HIDE_ACCUM) { 
+      tabBar.classList.add('hide'); 
+      _isTabHidden = true; 
+      _accumDown = 0; 
+    }
   } else {
-    _accumUp += -delta; if (_accumDown > 0) _accumDown = 0;
-    if (_isTabHidden && _accumUp >= SHOW_ACCUM) { tabBar.classList.remove('hide'); _isTabHidden = false; _accumUp = 0; }
+    _accumUp += -delta; 
+    if (_accumDown > 0) _accumDown = 0;
+    if (_isTabHidden && tabBar && _accumUp >= SHOW_ACCUM) { 
+      tabBar.classList.remove('hide'); 
+      _isTabHidden = false; 
+      _accumUp = 0; 
+    }
   }
 }
 
-scrollHost.addEventListener('scroll', () => {
-  if (!_rafPending) { _rafPending = true; requestAnimationFrame(updateHeader); }
-}, { passive: true });
+if (scrollHost) {
+  scrollHost.addEventListener('scroll', () => {
+    if (!_rafPending) { 
+      _rafPending = true; 
+      requestAnimationFrame(updateHeader); 
+    }
+  }, { passive: true });
+}
 
 /* ════════════════════════════════
    INPUT & PILL
    ════════════════════════════════ */
 
-pill.addEventListener('pointerdown', (e) => {
-  if (e.target !== pill && e.target !== input &&
-      e.target.closest('button, .overlay-input-wrap')) return;
-  if (document.activeElement === input || _keyboardOpen) return;
-  e.preventDefault();
-  requestAnimationFrame(() => { input.focus(); });
-}, { passive: false });
+if (pill) {
+  pill.addEventListener('pointerdown', (e) => {
+    if (e.target !== pill && e.target !== input && e.target.closest('button, .overlay-input-wrap')) return;
+    if (document.activeElement === input || _keyboardOpen) return;
+    
+    e.preventDefault();
+    requestAnimationFrame(() => { input?.focus(); });
+  }, { passive: false });
+}
 
-input.addEventListener('input', () => {
-  pill.classList.toggle('has-text', input.value.trim().length > 0);
-});
+if (input) {
+  input.addEventListener('input', () => {
+    pill?.classList.toggle('has-text', input.value.trim().length > 0);
+  });
+}
 
 /* ════════════════════════════════
    PLUS MENU
    ════════════════════════════════ */
 
 function openPlusMenu() {
+  if (!plusBtn || !plusMenu || !plusBackdrop) return;
   const rect = plusBtn.getBoundingClientRect();
-  plusMenu.style.bottom = (window.innerHeight - rect.top + 8) + 'px';
+  plusMenu.style.bottom = `${window.innerHeight - rect.top + 8}px`;
   _plusOpen = true;
   plusBackdrop.classList.add('open');
   requestAnimationFrame(() => plusMenu.classList.add('open'));
 }
 
 function closePlusMenu() {
+  if (!plusMenu || !plusBackdrop) return;
   _plusOpen = false;
   plusMenu.classList.remove('open');
   plusBackdrop.classList.remove('open');
 }
 
-plusBtn.addEventListener('click', (e) => { e.stopPropagation(); _plusOpen ? closePlusMenu() : openPlusMenu(); });
-plusBackdrop.addEventListener('click', closePlusMenu);
+if (plusBtn) {
+  plusBtn.addEventListener('click', (e) => { 
+    e.stopPropagation(); 
+    _plusOpen ? closePlusMenu() : openPlusMenu(); 
+  });
+}
+
+if (plusBackdrop) {
+  plusBackdrop.addEventListener('click', closePlusMenu);
+}
+
 ['pmPhoto', 'pmCamera', 'pmFile', 'pmLocation'].forEach(id => {
   const el = document.getElementById(id);
   if (el) el.addEventListener('click', closePlusMenu);
@@ -271,29 +343,28 @@ plusBackdrop.addEventListener('click', closePlusMenu);
 
 /* ════════════════════════════════
    TAB BAR — instant switching
-   No reload. Uses sessionStorage for:
-     1. Flag to skip chatbar entrance animation
-     2. Chat HTML cache so Answer tab restores instantly
    ════════════════════════════════ */
 
-tabBar.addEventListener('click', e => {
-  const tab = e.target.closest('.tab');
-  if (!tab) return;
-  if (tab.classList.contains('active')) return;
+if (tabBar) {
+  tabBar.addEventListener('click', e => {
+    const tab = e.target.closest('.tab');
+    if (!tab || tab.classList.contains('active')) return;
 
-  const key  = tab.getAttribute('data-tab');
-  const page = _TAB_PAGES[key];
-  if (!page) return;
+    const key  = tab.getAttribute('data-tab');
+    const page = _TAB_PAGES[key];
+    if (!page) return;
 
-  /* Mark that we're doing a tab switch — suppresses entrance animation on next page */
-  sessionStorage.setItem('atkyn_tab_switch', '1');
+    /* Mark tab switch to suppress entrance animation */
+    sessionStorage.setItem('atkyn_tab_switch', '1');
 
-  /* If leaving Answer tab, save chat HTML snapshot */
-  if (_currentTabKey === 'ai' && _msgWrap) {
-    sessionStorage.setItem('atkyn_chat_html',   _msgWrap.innerHTML);
-    sessionStorage.setItem('atkyn_chat_scroll',  String(scrollHost.scrollTop));
-  }
+    /* Save chat state if leaving Answer tab */
+    if (_currentTabKey === 'ai' && _msgWrap) {
+      sessionStorage.setItem('atkyn_chat_html', _msgWrap.innerHTML);
+      if (scrollHost) {
+        sessionStorage.setItem('atkyn_chat_scroll', String(scrollHost.scrollTop));
+      }
+    }
 
-  location.href = page;
-}, { passive: true });
-                       
+    location.href = page;
+  }, { passive: true });
+}

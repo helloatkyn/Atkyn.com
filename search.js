@@ -372,6 +372,8 @@ async function send() {
   if (!q) return;
   input.value = '';
   pill.classList.remove('has-text');
+  /* Save query so modules (web, images, news) can use it on tab switch */
+  sessionStorage.setItem('atkyn_last_query', q);
   addMsg('user', q);
 
   if (_streamAbort) { _streamAbort.abort(); _streamAbort = null; }
@@ -530,4 +532,4 @@ if (_qParam) {
 } else {
   /* Try to restore cached chat (coming back from another tab) */
   _restoreChat();
-                                  }
+                               }

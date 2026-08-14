@@ -7,10 +7,8 @@
    Modules: modules/{key}/{key}.js + modules/{key}/{key}.css
    ═══════════════════════════════════════════════════════════════════ */
 
-/* ── Motion preferences ── */
 const _prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-/* ── Platform-matched easing curves ── */
 const EASE = {
   keyboardUp:   'cubic-bezier(0.32, 0.72, 0, 1)',
   keyboardDown: 'cubic-bezier(0.32, 0.72, 0, 1)',
@@ -22,7 +20,6 @@ const EASE = {
   contentSwap:  'cubic-bezier(0.16, 1, 0.3, 1)',
 };
 
-/* ── Cached DOM references ── */
 const scrollHost   = document.getElementById('scrollHost');
 const logoHeader   = document.querySelector('.logo-header');
 const tabBar       = document.getElementById('tabBar');
@@ -34,7 +31,6 @@ const pill         = document.getElementById('pill');
 const input        = document.getElementById('cbInput');
 const pageContent  = document.getElementById('pageContent');
 
-/* ── Shared state ── */
 let _rafPending         = false;
 let _lastScrollY        = 0;
 let _accumDown          = 0;
@@ -47,33 +43,25 @@ let _scrollRafId        = null;
 let _programmaticScroll = false;
 let _plusOpen           = false;
 
-/* ── Velocity smoothing (EMA) ── */
 let _velocityEMA    = 0;
 let _lastScrollTime = 0;
 const VELOCITY_ALPHA = 0.3;
 
-/* ── Viewport / keyboard state ── */
 let _cleanupRafId = 0;
 let _stableKbH    = 0;
 let _kbAnimFrame  = null;
 let _vvpDebounce  = 0;
 
-/* ── Spacer dedup ── */
 let _lastSpacerH = -1;
 
-/* ── last user message el (set by search.js) ── */
 window._lastUserMsgEl = null;
 
-/* ── Active tab tracking ── */
 let _currentTabKey = (() => {
   const a = tabBar.querySelector('.tab.active');
   return a ? a.getAttribute('data-tab') : 'ai';
 })();
 
-/* ── Loaded modules cache — avoid re-fetching ── */
 const _moduleCache = {};
-
-/* ── Answer page DOM refs ── */
 const _msgWrap = document.getElementById('msgWrap');
 
 /* ════════════════════════════════════
@@ -130,7 +118,6 @@ const _barResizeObserver = new ResizeObserver((entries) => {
 });
 _barResizeObserver.observe(chatbarWrap);
 
-/* ── Chatbar entrance animation ── */
 (function _chatbarEntrance() {
   if (_prefersReducedMotion) return;
   chatbarWrap.style.cssText = 'will-change:transform,opacity;transition:none;transform:translateY(24px) translateZ(0);opacity:0';
@@ -282,8 +269,10 @@ input.addEventListener('input', () => {
    ════════════════════════════════════ */
 
 function openPlusMenu() {
-  const rect = plusBtn.getBoundingClientRect();
-  plusMenu.style.bottom = (window.innerHeight - rect.top + 8) + 'px';
+  const rect  = plusBtn.getBoundingClientRect();
+  const vvp   = window.visualViewport;
+  const viewH = vvp ? vvp.height : window.innerHeight;
+  plusMenu.style.bottom = (viewH - rect.top + 8) + 'px';
   _plusOpen = true;
   plusBackdrop.classList.add('open');
   if (_prefersReducedMotion) { plusMenu.classList.add('open'); return; }

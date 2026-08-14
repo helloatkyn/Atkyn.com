@@ -40,23 +40,21 @@ export async function onRequestPost(context) {
     });
   }
 
-  // Step 1: Intent check — Groq pe Qwen 3.6 27B (no thinking)
-  const intentResp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+  // Step 1: Intent check — Mistral Large 3 (string search on output)
+  const intentResp = await fetch('https://api.mistral.ai/v1/chat/completions', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${env.GROQ_API_KEY}`,
+      'Authorization': `Bearer ${env.MISTRAL_API_KEY}`,
     },
     body: JSON.stringify({
-      model: 'qwen/qwen3.6-27b',
+      model: 'mistral-large-latest',
       messages: [
         { role: 'system', content: 'You decide if a web search is needed to answer the user query. Reply with only [SEARCH] or [NO_SEARCH]. Nothing else.' },
         { role: 'user', content: query },
       ],
-      stream: false,
       max_tokens: 10,
       temperature: 0,
-      reasoning_effort: 'none',
     }),
   });
 
@@ -65,9 +63,9 @@ export async function onRequestPost(context) {
 
   if (intentResp.ok) {
     const intentData = await intentResp.json();
-    const decision = intentData.choices?.[0]?.message?.content?.trim();
+    const decision = intentData.choices?.[0]?.message?.content?.trim() ?? '';
 
-    if (decision === '[SEARCH]') {
+    if (decision.includes('[SEARCH]')) {
       try {
         const searxResp = await fetch(
           `${env.SEARXNG_URL}/search?q=${encodeURIComponent(query)}&format=json&categories=general&language=en`,

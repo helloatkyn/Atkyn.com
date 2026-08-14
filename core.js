@@ -39,13 +39,20 @@ let _lastSpacerH  = -1;
 window._lastUserMsgEl = null;
 
 /* ── Tab page map ── */
+/* ── Tab page map — absolute paths based on current origin + folder ── */
+const _BASE = (() => {
+  const p = location.pathname;
+  const dir = p.substring(0, p.lastIndexOf('/') + 1);
+  return location.origin + dir;
+})();
+
 const _TAB_PAGES = {
-  'ai':     'search.html',
-  'web':    'web.html',
-  'images': 'images.html',
-  'videos': 'videos.html',
-  'news':   'news.html',
-  'maps':   'maps.html',
+  'ai':     _BASE + 'search.html',
+  'web':    _BASE + 'web.html',
+  'images': _BASE + 'images.html',
+  'videos': _BASE + 'videos.html',
+  'news':   _BASE + 'news.html',
+  'maps':   _BASE + 'maps.html',
 };
 
 /* ── Current active tab (read from DOM on load) ── */
@@ -289,4 +296,4 @@ tabBar.addEventListener('click', e => {
 
   location.href = page;
 }, { passive: true });
-    
+                       

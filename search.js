@@ -532,4 +532,4 @@ if (_qParam) {
 } else {
   /* Try to restore cached chat (coming back from another tab) */
   _restoreChat();
-                               }
+}

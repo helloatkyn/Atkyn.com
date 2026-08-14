@@ -1,0 +1,99 @@
+.wc-list {
+  display: flex;
+  flex-direction: column;
+  padding: 8px 0 24px;
+}
+
+.wc-card {
+  display: block;
+  text-decoration: none;
+  color: inherit;
+  padding: 14px 16px;
+  border-radius: 16px;
+  margin: 0 8px;
+  transition: background 0.15s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+.wc-card:active {
+  background: rgba(0,0,0,0.04);
+}
+
+.wc-body {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+.wc-text { flex: 1; min-width: 0; }
+
+.wc-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: #1a73e8;
+  line-height: 1.35;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  margin-bottom: 4px;
+}
+
+.wc-snippet {
+  font-size: 13px;
+  color: #555;
+  line-height: 1.5;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.wc-thumb-wrap { flex-shrink: 0; }
+.wc-thumb {
+  width: 72px;
+  height: 72px;
+  object-fit: cover;
+  border-radius: 10px;
+  display: block;
+}
+
+.wc-meta {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 8px;
+  overflow: hidden;
+}
+.wc-fav-wrap { flex-shrink: 0; width: 14px; height: 14px; }
+.wc-fav { width: 14px; height: 14px; border-radius: 3px; display: block; }
+.wc-domain {
+  font-size: 12px;
+  font-weight: 500;
+  color: #888;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.wc-sep { font-size: 12px; color: #aaa; flex-shrink: 0; }
+.wc-path {
+  font-size: 12px;
+  color: #aaa;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.wc-list > .wc-card:not(:last-child) {
+  border-bottom: 1px solid rgba(0,0,0,0.06);
+  border-radius: 0;
+  margin: 0;
+  padding: 14px 16px;
+}
+.wc-list > .wc-card:first-child { border-radius: 16px 16px 0 0; margin: 0 0 0 0; }
+.wc-list > .wc-card:last-child  { border-radius: 0 0 16px 16px; }
+
+@media (prefers-color-scheme: dark) {
+  .wc-card:active { background: rgba(255,255,255,0.05); }
+  .wc-title { color: #4da3ff; }
+  .wc-snippet { color: rgba(255,255,255,0.6); }
+  .wc-domain, .wc-sep, .wc-path { color: rgba(255,255,255,0.35); }
+  .wc-list > .wc-card:not(:last-child) { border-bottom-color: rgba(255,255,255,0.07); }
+}

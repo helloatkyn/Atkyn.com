@@ -331,37 +331,31 @@ plusBackdrop.addEventListener('click', closePlusMenu);
    ════════════════════════════════════ */
 
 async function _loadTab(key) {
-  /* Answer tab — restore or show chat area */
+  const chatArea = document.getElementById('chatArea');
+
   if (key === 'ai') {
-    const chatArea = document.getElementById('chatArea');
-    if (chatArea) {
-      chatArea.style.display = '';
-      return;
-    }
-    /* chatArea removed — shouldn't happen but guard */
+    /* Show chat, hide module content */
+    if (chatArea) chatArea.style.display = '';
+    pageContent.style.display = 'none';
     return;
   }
 
-  /* Other tabs — hide chat, show module content */
-  const chatArea = document.getElementById('chatArea');
+  /* Hide chat, show pageContent */
   if (chatArea) chatArea.style.display = 'none';
+  pageContent.style.display = '';
 
-  /* Already loaded and cached */
+  /* Script already loaded — just re-init */
   if (_moduleCache[key]) {
-    pageContent.innerHTML = '';
-    pageContent.appendChild(_moduleCache[key].cloneNode(true));
-    /* Re-init module if it exposes an init fn */
     if (window[`_atkynInit_${key}`]) window[`_atkynInit_${key}`]();
     return;
   }
 
-  /* Show skeleton while loading */
+  /* First load — show skeleton */
   pageContent.innerHTML = `<div class="tab-skeleton"><div class="sk-line"></div><div class="sk-line sk-short"></div><div class="sk-line"></div></div>`;
 
   try {
-    /* Dynamically load module script */
     await _loadScript(`modules/${key}.js`);
-    /* Module should have populated pageContent and set _moduleCache[key] */
+    _moduleCache[key] = true; /* mark as loaded */
   } catch (_) {
     pageContent.innerHTML = `<div class="tab-empty"><p>Coming soon</p></div>`;
   }
@@ -423,4 +417,3 @@ tabBar.addEventListener('click', async e => {
 window._atkynModuleCache  = _moduleCache;
 window._atkynPageContent  = pageContent;
 window._atkynAnimateIn    = _animateContentIn;
-     

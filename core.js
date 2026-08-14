@@ -4,7 +4,7 @@
    chatbar entrance · plus menu · tab navigation (instant, NO reload)
    
    Tab switching: swaps #pageContent div only — zero page reload
-   Modules: modules/web.js · modules/images.js · modules/news.js etc.
+   Modules: modules/{key}/{key}.js + modules/{key}/{key}.css
    ═══════════════════════════════════════════════════════════════════ */
 
 /* ── Motion preferences ── */
@@ -32,7 +32,7 @@ const plusMenu     = document.getElementById('plusMenu');
 const plusBackdrop = document.getElementById('plusBackdrop');
 const pill         = document.getElementById('pill');
 const input        = document.getElementById('cbInput');
-const pageContent  = document.getElementById('pageContent'); // single swappable area
+const pageContent  = document.getElementById('pageContent');
 
 /* ── Shared state ── */
 let _rafPending         = false;
@@ -327,45 +327,52 @@ plusBackdrop.addEventListener('click', closePlusMenu);
 
 /* ════════════════════════════════════
    TAB BAR — instant content swap
-   Zero page reload. Modules loaded once, cached in _moduleCache.
+   Modules live in modules/{key}/{key}.js + modules/{key}/{key}.css
    ════════════════════════════════════ */
 
 async function _loadTab(key) {
   const chatArea = document.getElementById('chatArea');
 
   if (key === 'ai') {
-    /* Show chat, hide module content */
     if (chatArea) chatArea.style.display = '';
     pageContent.style.display = 'none';
     return;
   }
 
-  /* Hide chat, show pageContent */
   if (chatArea) chatArea.style.display = 'none';
   pageContent.style.display = '';
 
-  /* Script already loaded — just re-init */
   if (_moduleCache[key]) {
     if (window[`_atkynInit_${key}`]) window[`_atkynInit_${key}`]();
     return;
   }
 
-  /* First load — show skeleton */
   pageContent.innerHTML = `<div class="tab-skeleton"><div class="sk-line"></div><div class="sk-line sk-short"></div><div class="sk-line"></div></div>`;
 
   try {
-    await _loadScript(`modules/${key}.js`);
-    _moduleCache[key] = true; /* mark as loaded */
+    _loadModuleCSS(key);
+    await _loadScript(`modules/${key}/${key}.js`);
+    _moduleCache[key] = true;
   } catch (_) {
     pageContent.innerHTML = `<div class="tab-empty"><p>Coming soon</p></div>`;
   }
 }
 
+function _loadModuleCSS(key) {
+  const id = `_atkyn_css_${key}`;
+  if (document.getElementById(id)) return;
+  const link = document.createElement('link');
+  link.id   = id;
+  link.rel  = 'stylesheet';
+  link.href = `modules/${key}/${key}.css`;
+  document.head.appendChild(link);
+}
+
 function _loadScript(src) {
   return new Promise((resolve, reject) => {
-    const s  = document.createElement('script');
-    s.src    = src;
-    s.onload = resolve;
+    const s   = document.createElement('script');
+    s.src     = src;
+    s.onload  = resolve;
     s.onerror = reject;
     document.head.appendChild(s);
   });
@@ -373,13 +380,13 @@ function _loadScript(src) {
 
 function _animateContentIn() {
   if (_prefersReducedMotion) return;
-  pageContent.style.opacity   = '0';
-  pageContent.style.transform = 'translateY(8px)';
+  pageContent.style.opacity    = '0';
+  pageContent.style.transform  = 'translateY(8px)';
   pageContent.style.transition = 'none';
   pageContent.getBoundingClientRect();
   pageContent.style.transition = `opacity 0.22s ease-out, transform 0.28s ${EASE.contentSwap}`;
-  pageContent.style.opacity   = '1';
-  pageContent.style.transform = 'translateY(0)';
+  pageContent.style.opacity    = '1';
+  pageContent.style.transform  = 'translateY(0)';
 }
 
 tabBar.addEventListener('click', async e => {
@@ -388,22 +395,18 @@ tabBar.addEventListener('click', async e => {
 
   const key = tab.getAttribute('data-tab');
 
-  /* Save chat if leaving Answer tab */
   if (_currentTabKey === 'ai' && _msgWrap) {
     sessionStorage.setItem('atkyn_chat_html',   _msgWrap.innerHTML);
     sessionStorage.setItem('atkyn_chat_scroll',  String(scrollHost.scrollTop));
   }
 
-  /* Instant tab active state update */
   tabBar.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
   tab.classList.add('active');
   _currentTabKey = key;
 
-  /* Scroll to top of content */
   scrollHost.scrollTo({ top: 0, behavior: _prefersReducedMotion ? 'auto' : 'smooth' });
   resetScrollAccum();
 
-  /* Reset header state */
   if (_isLogoCollapsed) { logoHeader.classList.remove('collapsed'); _isLogoCollapsed = false; }
   if (_isTabHidden)     { tabBar.classList.remove('hide');          _isTabHidden      = false; }
   if (_isTabScrolled)   { tabBar.classList.remove('scrolled');      _isTabScrolled    = false; }
@@ -413,7 +416,7 @@ tabBar.addEventListener('click', async e => {
 
 }, { passive: true });
 
-/* Expose for modules */
+/* ── Expose for modules ── */
 window._atkynModuleCache  = _moduleCache;
 window._atkynPageContent  = pageContent;
 window._atkynAnimateIn    = _animateContentIn;

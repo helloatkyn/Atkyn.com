@@ -40,21 +40,23 @@ export async function onRequestPost(context) {
     });
   }
 
-  // Step 1: Intent check — Mistral Large 3 (string search on output)
-  const intentResp = await fetch('https://api.mistral.ai/v1/chat/completions', {
+  // Step 1: Intent check — Groq pe Qwen 3.6 27B (no thinking)
+  const intentResp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${env.MISTRAL_API_KEY}`,
+      'Authorization': `Bearer ${env.GROQ_API_KEY}`,
     },
     body: JSON.stringify({
-      model: 'mistral-large-latest',
+      model: 'qwen/qwen3.6-27b',
       messages: [
         { role: 'system', content: 'You decide if a web search is needed to answer the user query. Reply with only [SEARCH] or [NO_SEARCH]. Nothing else.' },
         { role: 'user', content: query },
       ],
+      stream: false,
       max_tokens: 10,
       temperature: 0,
+      reasoning_effort: 'none',
     }),
   });
 
@@ -63,9 +65,9 @@ export async function onRequestPost(context) {
 
   if (intentResp.ok) {
     const intentData = await intentResp.json();
-    const decision = intentData.choices?.[0]?.message?.content?.trim() ?? '';
+    const decision = intentData.choices?.[0]?.message?.content?.trim();
 
-    if (decision.includes('[SEARCH]')) {
+    if (decision === '[SEARCH]') {
       try {
         const searxResp = await fetch(
           `${env.SEARXNG_URL}/search?q=${encodeURIComponent(query)}&format=json&categories=general&language=en`,
@@ -101,7 +103,7 @@ export async function onRequestPost(context) {
     }
   }
 
-  // Step 2: Main response — Mistral Large 3 (streaming)
+  // Step 2: Main response — Groq pe Qwen 3.6 27B (no thinking)
   const { readable, writable } = new TransformStream();
   const writer = writable.getWriter();
   const enc    = new TextEncoder();
@@ -112,14 +114,14 @@ export async function onRequestPost(context) {
         await writer.write(enc.encode(`event: results\ndata: ${JSON.stringify(searchResults)}\n\n`));
       }
 
-      const mistralResp = await fetch('https://api.mistral.ai/v1/chat/completions', {
+      const groqResp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${env.MISTRAL_API_KEY}`,
+          'Authorization': `Bearer ${env.GROQ_API_KEY}`,
         },
         body: JSON.stringify({
-          model: 'mistral-large-latest',
+          model: 'qwen/qwen3.6-27b',
           messages: [
             { role: 'system', content: searchContext ? `${SYSTEM_PROMPT}\n\n${searchContext}` : SYSTEM_PROMPT },
             ...(Array.isArray(history) ? history.slice(-100) : []),
@@ -128,16 +130,17 @@ export async function onRequestPost(context) {
           stream: true,
           max_tokens: 2048,
           temperature: 0.6,
+          reasoning_effort: 'none',
         }),
       });
 
-      if (!mistralResp.ok) {
-        await writer.write(enc.encode(`data: ${JSON.stringify({ error: await mistralResp.text() })}\n\n`));
+      if (!groqResp.ok) {
+        await writer.write(enc.encode(`data: ${JSON.stringify({ error: await groqResp.text() })}\n\n`));
         await writer.close();
         return;
       }
 
-      const reader = mistralResp.body.getReader();
+      const reader = groqResp.body.getReader();
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;

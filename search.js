@@ -466,9 +466,68 @@ input.addEventListener('keydown', e => {
 sendBtn.addEventListener('click', send);
 
 /* ════════════════════════════════
-   URL PARAM AUTO-SEND
+   CHAT CACHE — sessionStorage
+   Save chat HTML when leaving Answer tab.
+   Restore instantly when coming back.
+   ════════════════════════════════ */
+
+const CACHE_HTML   = 'atkyn_chat_html';
+const CACHE_SCROLL = 'atkyn_chat_scroll';
+const CACHE_HIST   = 'atkyn_chat_history';
+
+function _saveChat() {
+  if (!msgWrap.innerHTML.trim()) return;
+  try {
+    sessionStorage.setItem(CACHE_HTML,   msgWrap.innerHTML);
+    sessionStorage.setItem(CACHE_SCROLL, String(scrollHost.scrollTop));
+    sessionStorage.setItem(CACHE_HIST,   JSON.stringify(_history));
+  } catch (_) {}
+}
+
+function _restoreChat() {
+  const html = sessionStorage.getItem(CACHE_HTML);
+  if (!html) return false;
+  try {
+    msgWrap.innerHTML = html;
+    const savedScroll = parseInt(sessionStorage.getItem(CACHE_SCROLL) || '0', 10);
+    const savedHist   = sessionStorage.getItem(CACHE_HIST);
+    if (savedHist) {
+      const parsed = JSON.parse(savedHist);
+      _history.push(...parsed);
+    }
+    /* Restore scroll after paint */
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => { scrollHost.scrollTop = savedScroll; });
+    });
+    /* Re-attach last user msg ref for keyboard scroll anchor */
+    const userMsgs = msgWrap.querySelectorAll('.msg.user');
+    if (userMsgs.length) window._lastUserMsgEl = userMsgs[userMsgs.length - 1];
+    return true;
+  } catch (_) {
+    return false;
+  }
+}
+
+/* Save before tab switch (core.js also calls this, belt-and-suspenders) */
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden') _saveChat();
+});
+window.addEventListener('pagehide', _saveChat);
+
+/* ════════════════════════════════
+   URL PARAM AUTO-SEND / RESTORE
    ════════════════════════════════ */
 
 const _qParam = new URLSearchParams(location.search).get('q');
-if (_qParam) { input.value = _qParam; pill.classList.add('has-text'); send(); }
-    
+if (_qParam) {
+  /* Fresh query from URL — clear any stale cache first */
+  sessionStorage.removeItem(CACHE_HTML);
+  sessionStorage.removeItem(CACHE_SCROLL);
+  sessionStorage.removeItem(CACHE_HIST);
+  input.value = _qParam;
+  pill.classList.add('has-text');
+  send();
+} else {
+  /* Try to restore cached chat (coming back from another tab) */
+  _restoreChat();
+                                  }

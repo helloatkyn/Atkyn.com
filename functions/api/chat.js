@@ -103,7 +103,7 @@ export async function onRequestPost(context) {
     }
   }
 
-  // Step 2: Main response — Cloudflare Workers AI pe Qwen3 30B (free)
+  // Step 2: Main response — Cloudflare Workers AI pe Gemma 4 26B
   const { readable, writable } = new TransformStream();
   const writer = writable.getWriter();
   const enc    = new TextEncoder();
@@ -115,7 +115,7 @@ export async function onRequestPost(context) {
       }
 
       const cfResp = await fetch(
-        `https://api.cloudflare.com/client/v4/accounts/${env.CF_ACCOUNT_ID}/ai/run/@cf/qwen/qwen3-30b-a3b-fp8`,
+        `https://api.cloudflare.com/client/v4/accounts/${env.CF_ACCOUNT_ID}/ai/run/@cf/google/gemma-4-26b-a4b-it`,
         {
           method: 'POST',
           headers: {
@@ -174,4 +174,4 @@ export async function onRequestOptions() {
       'Access-Control-Allow-Headers': 'Content-Type',
     },
   });
-                                               }
+          }

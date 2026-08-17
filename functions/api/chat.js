@@ -103,7 +103,7 @@ export async function onRequestPost(context) {
     }
   }
 
-  // Step 2: Main response — Cerebras pe Gemma 4 31B (no thinking by default)
+  // Step 2: Main response — Z.ai pe GLM-4.7-Flash (free)
   const { readable, writable } = new TransformStream();
   const writer = writable.getWriter();
   const enc    = new TextEncoder();
@@ -114,14 +114,14 @@ export async function onRequestPost(context) {
         await writer.write(enc.encode(`event: results\ndata: ${JSON.stringify(searchResults)}\n\n`));
       }
 
-      const cerebrasResp = await fetch('https://api.cerebras.ai/v1/chat/completions', {
+      const zaiResp = await fetch('https://api.z.ai/api/paas/v4/chat/completions', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${env.CEREBRAS_API_KEY}`,
+          'Authorization': `Bearer ${env.ZAI_API_KEY}`,
         },
         body: JSON.stringify({
-          model: 'gemma-4-31b',
+          model: 'glm-4.7-flash',
           messages: [
             { role: 'system', content: searchContext ? `${SYSTEM_PROMPT}\n\n${searchContext}` : SYSTEM_PROMPT },
             ...(Array.isArray(history) ? history.slice(-100) : []),
@@ -133,13 +133,13 @@ export async function onRequestPost(context) {
         }),
       });
 
-      if (!cerebrasResp.ok) {
-        await writer.write(enc.encode(`data: ${JSON.stringify({ error: await cerebrasResp.text() })}\n\n`));
+      if (!zaiResp.ok) {
+        await writer.write(enc.encode(`data: ${JSON.stringify({ error: await zaiResp.text() })}\n\n`));
         await writer.close();
         return;
       }
 
-      const reader = cerebrasResp.body.getReader();
+      const reader = zaiResp.body.getReader();
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;

@@ -103,7 +103,7 @@ export async function onRequestPost(context) {
     }
   }
 
-  // Step 2: Main response — Z.ai pe GLM-4.7-Flash (free)
+  // Step 2: Main response — Cloudflare Workers AI pe Qwen3 30B (free)
   const { readable, writable } = new TransformStream();
   const writer = writable.getWriter();
   const enc    = new TextEncoder();
@@ -114,32 +114,34 @@ export async function onRequestPost(context) {
         await writer.write(enc.encode(`event: results\ndata: ${JSON.stringify(searchResults)}\n\n`));
       }
 
-      const zaiResp = await fetch('https://api.z.ai/api/paas/v4/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${env.ZAI_API_KEY}`,
-        },
-        body: JSON.stringify({
-          model: 'glm-4.7-flash',
-          messages: [
-            { role: 'system', content: searchContext ? `${SYSTEM_PROMPT}\n\n${searchContext}` : SYSTEM_PROMPT },
-            ...(Array.isArray(history) ? history.slice(-100) : []),
-            { role: 'user', content: query },
-          ],
-          stream: true,
-          max_tokens: 2048,
-          temperature: 0.6,
-        }),
-      });
+      const cfResp = await fetch(
+        `https://api.cloudflare.com/client/v4/accounts/${env.CF_ACCOUNT_ID}/ai/run/@cf/qwen/qwen3-30b-a3b-fp8`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${env.CF_API_TOKEN}`,
+          },
+          body: JSON.stringify({
+            messages: [
+              { role: 'system', content: searchContext ? `${SYSTEM_PROMPT}\n\n${searchContext}` : SYSTEM_PROMPT },
+              ...(Array.isArray(history) ? history.slice(-100) : []),
+              { role: 'user', content: query },
+            ],
+            stream: true,
+            max_tokens: 2048,
+            temperature: 0.6,
+          }),
+        }
+      );
 
-      if (!zaiResp.ok) {
-        await writer.write(enc.encode(`data: ${JSON.stringify({ error: await zaiResp.text() })}\n\n`));
+      if (!cfResp.ok) {
+        await writer.write(enc.encode(`data: ${JSON.stringify({ error: await cfResp.text() })}\n\n`));
         await writer.close();
         return;
       }
 
-      const reader = zaiResp.body.getReader();
+      const reader = cfResp.body.getReader();
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
@@ -172,4 +174,4 @@ export async function onRequestOptions() {
       'Access-Control-Allow-Headers': 'Content-Type',
     },
   });
-}
+                                               }

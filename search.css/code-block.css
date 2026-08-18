@@ -9,7 +9,7 @@
   margin: 12px 0 16px;
   border-radius: 12px;
   overflow: hidden;
-  background: var(--color-bg-code);
+  background: #f7f7f8;
   border: none;
   box-shadow: none;
   width: 100%;
@@ -28,8 +28,8 @@
   align-items: center;
   justify-content: space-between;
   padding: 10px 14px 10px 14px;
-  background: transparent;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+  background: #f0f0f2;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
   user-select: none;
   min-height: 44px;
 }
@@ -47,8 +47,8 @@
   font-weight: 500;
   letter-spacing: 0;
   text-transform: none;
-  color: var(--color-code-lang);
-  background: var(--color-press-light-md);
+  color: #57606a;
+  background: rgba(0, 0, 0, 0.06);
   padding: 3px 9px;
   height: 26px;
   line-height: 20px;
@@ -71,7 +71,7 @@
   border: none;
   background: transparent;
   cursor: pointer;
-  color: var(--color-code-lang);
+  color: #57606a;
   padding: 4px 2px;
   border-radius: 4px;
   font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
@@ -123,11 +123,11 @@
   font-family: 'Söhne Mono', ui-monospace, 'SFMono-Regular', 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace;
   font-size: 13px;
   line-height: 1.6;
-  color: var(--color-code-num);
+  color: #babbbd;
   user-select: none;
   white-space: nowrap;
   min-width: 32px;
-  border-right: 1px solid rgba(0, 0, 0, 0.08);
+  border-right: 1px solid rgba(0, 0, 0, 0.06);
   vertical-align: top;
 }
 @media (prefers-color-scheme: dark) {
@@ -146,7 +146,7 @@
   line-height: 1.6;
   font-weight: 400;
   white-space: pre;
-  color: var(--color-code-content);
+  color: #1f2328;
   width: 100%;
   tab-size: 2;
   -moz-tab-size: 2;
@@ -169,7 +169,7 @@
   font-size: 13px;
   line-height: 1.6;
   font-weight: 400;
-  color: var(--color-code-content);
+  color: #1f2328;
   white-space: pre;
   tab-size: 2;
   -moz-tab-size: 2;
@@ -179,15 +179,15 @@
   .code-block pre code { color: var(--color-text-dark-mono); }
 }
 
-/* ── Syntax token colours (ChatGPT light theme) ── */
-.tk-kw   { color: var(--color-tk-kw); }
-.tk-fn   { color: var(--color-tk-fn); }
-.tk-str  { color: var(--color-tk-str); }
-.tk-num  { color: var(--color-tk-num); }
-.tk-cmt  { color: var(--color-tk-cmt); font-style: italic; }
-.tk-cls  { color: var(--color-tk-cls); }
-.tk-prop { color: var(--color-tk-prop); }
-.tk-bool { color: var(--color-tk-bool); }
+/* ── Syntax token colours (GitHub Light) ── */
+.tk-kw   { color: #cf222e; }   /* keywords — red */
+.tk-fn   { color: #8250df; }   /* functions — purple */
+.tk-str  { color: #0a3069; }   /* strings — deep blue */
+.tk-num  { color: #0550ae; }   /* numbers — blue */
+.tk-cmt  { color: #6e7781; font-style: italic; } /* comments — grey */
+.tk-cls  { color: #953800; }   /* classes — orange-brown */
+.tk-prop { color: #0550ae; }   /* properties — blue */
+.tk-bool { color: #cf222e; }   /* booleans — red */
 
 @media (prefers-color-scheme: dark) {
   .tk-kw   { color: var(--color-tk-kw-dark); }

@@ -99,6 +99,7 @@
 .bot-actions {
   display: flex;
   align-items: center;
+  align-self: flex-start;
   gap: 1px;
   padding: 3px 0 0;
   opacity: 0;
@@ -113,8 +114,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 35px;
-  height: 35px;
+  width: 33px;
+  height: 33px;
   border: none;
   background: none;
   cursor: pointer;
@@ -123,8 +124,8 @@
   padding: 0;
   transition: background 0.13s, color 0.13s;
 }
-.bot-actions button svg                    { width: 19px; height: 19px; stroke-width: 1.65; }
-.bot-actions button[aria-label="Read"] svg { width: 22px; height: 22px; }
+.bot-actions button svg                    { width: 17px; height: 17px; stroke-width: 1.65; }
+.bot-actions button[aria-label="Read"] svg { width: 20px; height: 20px; }
 .bot-actions button:active                 { background: var(--color-press-light-md); color: var(--color-text-faint); }
 .bot-actions button.active-like            { color: var(--color-like); }
 .bot-actions button.active-dislike         { color: var(--color-primary); }

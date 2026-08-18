@@ -24,7 +24,7 @@
   .logo-header { background: var(--color-bg-dark); }
 }
 .logo-header img {
-  height: 36px; /* 32 → 36 slightly bada */
+  height: 38px; /* 32 → 36 slightly bada */
   width: auto;
   object-fit: contain;
   position: absolute;

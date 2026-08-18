@@ -91,6 +91,7 @@ async function _fetch(q) {
     const list = document.createElement('div');
     list.className = 'wc-list';
 
+    let eventType = '';
     while (!done) {
       const chunk = await reader.read();
       done = chunk.done;
@@ -99,12 +100,33 @@ async function _fetch(q) {
       buf = done ? '' : lines.pop();
 
       for (const line of lines) {
-        if (!line.startsWith('data: ')) continue;
+        if (line.startsWith('event: ')) { eventType = line.slice(7).trim(); continue; }
+        if (!line.startsWith('data: ')) { eventType = ''; continue; }
         const data = line.slice(6).trim();
         if (data === '[DONE]') { done = true; break; }
+
+        if (eventType === 'results') {
+          try {
+            const parsed = JSON.parse(data);
+            if (Array.isArray(parsed) && parsed.length) {
+              parsed.forEach(r => list.appendChild(_buildCard(r)));
+              allResults = allResults.concat(parsed);
+              if (!rendered) {
+                pc.innerHTML = '';
+                pc.appendChild(list);
+                window._atkynAnimateIn();
+                rendered = true;
+              }
+            }
+          } catch(_) {}
+          eventType = '';
+          continue;
+        }
+
+        /* Fallback: plain JSON array (no event: prefix) */
         try {
           const parsed = JSON.parse(data);
-          if (Array.isArray(parsed)) {
+          if (Array.isArray(parsed) && parsed.length) {
             parsed.forEach(r => list.appendChild(_buildCard(r)));
             allResults = allResults.concat(parsed);
             if (!rendered) {

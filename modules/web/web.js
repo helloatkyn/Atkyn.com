@@ -15,7 +15,7 @@ function _buildCard(r) {
   try {
     const u = new URL(r.url);
     host = u.hostname.replace(/^www\./, '');
-    path = host + u.pathname;
+    path = (host + u.pathname).replace(/\/$/, '').substring(0, 60);
   } catch(_) {}
 
   const fav  = `https://www.google.com/s2/favicons?sz=64&domain=${encodeURIComponent(host)}`;

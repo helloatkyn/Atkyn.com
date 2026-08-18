@@ -9,7 +9,7 @@
   margin: 12px 0 16px;
   border-radius: 12px;
   overflow: hidden;
-  background: #f7f7f8;
+  background: #f2f3f5;
   border: none;
   box-shadow: none;
   width: 100%;
@@ -28,7 +28,7 @@
   align-items: center;
   justify-content: space-between;
   padding: 10px 14px 10px 14px;
-  background: #f0f0f2;
+  background: #eaebee;
   border-bottom: 1px solid rgba(0, 0, 0, 0.06);
   user-select: none;
   min-height: 44px;
@@ -107,7 +107,7 @@
 }
 .code-block pre::-webkit-scrollbar { display: none; }
 
-/* ── Lines table (display:table layout for line numbers) ── */
+/* ── Lines table ── */
 .code-block .code-lines {
   display: table;
   min-width: 100%;
@@ -123,7 +123,7 @@
   font-family: 'Söhne Mono', ui-monospace, 'SFMono-Regular', 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace;
   font-size: 13px;
   line-height: 1.6;
-  color: #babbbd;
+  color: #c0c2c7;
   user-select: none;
   white-space: nowrap;
   min-width: 32px;
@@ -160,7 +160,7 @@
   }
 }
 
-/* ── Fallback pre > code (when line rendering is unavailable) ── */
+/* ── Fallback pre > code ── */
 .code-block pre code {
   display: block;
   padding: 14px 16px;
@@ -179,23 +179,31 @@
   .code-block pre code { color: var(--color-text-dark-mono); }
 }
 
-/* ── Syntax token colours (GitHub Light) ── */
-.tk-kw   { color: #cf222e; }   /* keywords — red */
-.tk-fn   { color: #8250df; }   /* functions — purple */
-.tk-str  { color: #0a3069; }   /* strings — deep blue */
-.tk-num  { color: #0550ae; }   /* numbers — blue */
-.tk-cmt  { color: #6e7781; font-style: italic; } /* comments — grey */
-.tk-cls  { color: #953800; }   /* classes — orange-brown */
-.tk-prop { color: #0550ae; }   /* properties — blue */
-.tk-bool { color: #cf222e; }   /* booleans — red */
+/* ── Syntax token colours ── */
+/* keywords: def, for, in, return, if, else, import … */
+.tk-kw   { color: #0000ff; font-weight: 500; }
+/* functions / method names */
+.tk-fn   { color: #795e26; }
+/* strings */
+.tk-str  { color: #a31515; }
+/* numbers */
+.tk-num  { color: #098658; }
+/* comments */
+.tk-cmt  { color: #6a9955; font-style: italic; }
+/* class names */
+.tk-cls  { color: #267f99; }
+/* object properties */
+.tk-prop { color: #001080; }
+/* booleans / None / null */
+.tk-bool { color: #0000ff; font-weight: 500; }
 
 @media (prefers-color-scheme: dark) {
-  .tk-kw   { color: var(--color-tk-kw-dark); }
+  .tk-kw   { color: var(--color-tk-kw-dark);   font-weight: 500; }
   .tk-fn   { color: var(--color-tk-fn-dark); }
   .tk-str  { color: var(--color-tk-str-dark); }
   .tk-num  { color: var(--color-tk-num-dark); }
   .tk-cmt  { color: var(--color-tk-cmt-dark); font-style: italic; }
   .tk-cls  { color: var(--color-tk-cls-dark); }
   .tk-prop { color: var(--color-tk-prop-dark); }
-  .tk-bool { color: var(--color-tk-bool-dark); }
+  .tk-bool { color: var(--color-tk-bool-dark); font-weight: 500; }
 }

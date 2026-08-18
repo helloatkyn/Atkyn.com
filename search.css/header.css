@@ -24,9 +24,11 @@
   .logo-header { background: var(--color-bg-dark); }
 }
 .logo-header img {
-  height: 32px;
+  height: 36px; /* 32 → 36 slightly bada */
   width: auto;
   object-fit: contain;
+  position: absolute;
+  left: 14px; /* dots ki jagah par */
 }
 .logo-header.collapsed {
   height: 0;
@@ -73,9 +75,10 @@
 }
 
 /* ────────────────────────────────────────────────────────────────
-   NINE-DOT GRID BUTTON (top-left)
+   NINE-DOT GRID BUTTON (top-left) — temporarily hidden
 ──────────────────────────────────────────────────────────────── */
 .dots-btn {
+  display: none; /* temporarily hidden */
   position: absolute;
   left: 14px;
   top: 50%;
@@ -83,7 +86,6 @@
   border: none;
   background: none;
   cursor: pointer;
-  display: grid;
   grid-template-columns: repeat(3, 4px);
   gap: 4px;
   align-content: center;

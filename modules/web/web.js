@@ -30,20 +30,20 @@ function _buildCard(r) {
   a.target    = '_blank';
   a.rel       = 'noopener noreferrer';
   a.innerHTML = `
+    <div class="wc-meta">
+      <div class="wc-fav-wrap">
+        <img class="wc-fav" src="${_esc(fav)}" width="16" height="16" loading="lazy" decoding="async" alt="">
+      </div>
+      <span class="wc-domain">${_esc(host)}</span>
+      <span class="wc-sep">·</span>
+      <span class="wc-path">${_esc(path)}</span>
+    </div>
     <div class="wc-body">
       <div class="wc-text">
         <div class="wc-title">${_esc(r.title)}</div>
         <div class="wc-snippet">${_esc(r.snippet)}</div>
       </div>
       ${thumb ? `<div class="wc-thumb-wrap">${thumb}</div>` : ''}
-    </div>
-    <div class="wc-meta">
-      <div class="wc-fav-wrap">
-        <img class="wc-fav" src="${_esc(fav)}" width="14" height="14" loading="lazy" decoding="async" alt="">
-      </div>
-      <span class="wc-domain">${_esc(host)}</span>
-      <span class="wc-sep">·</span>
-      <span class="wc-path">${_esc(path)}</span>
     </div>`;
 
   const favImg = a.querySelector('.wc-fav');

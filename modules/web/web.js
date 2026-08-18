@@ -34,9 +34,17 @@ function _buildCard(r) {
       <div class="wc-fav-wrap">
         <img class="wc-fav" src="${_esc(fav)}" width="16" height="16" loading="lazy" decoding="async" alt="">
       </div>
-      <span class="wc-domain">${_esc(host)}</span>
-      <span class="wc-sep">·</span>
-      <span class="wc-path">${_esc(path)}</span>
+      <div class="wc-meta-text">
+        <span class="wc-domain">${_esc(host)}</span>
+        <span class="wc-path">${_esc(path)}</span>
+      </div>
+      <span class="wc-dots" aria-hidden="true">
+        <svg viewBox="0 0 4 16" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="2" cy="2"  r="1.5"/>
+          <circle cx="2" cy="8"  r="1.5"/>
+          <circle cx="2" cy="14" r="1.5"/>
+        </svg>
+      </span>
     </div>
     <div class="wc-body">
       <div class="wc-text">

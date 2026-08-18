@@ -40,15 +40,15 @@ export async function onRequestPost(context) {
     });
   }
 
-  // Step 1: Intent check — Mistral pe ministral-14b-2512
-  const intentResp = await fetch('https://api.mistral.ai/v1/chat/completions', {
+  // Step 1: Intent check — Groq pe Qwen 3.6 27B (unchanged)
+  const intentResp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${env.MISTRAL_API_KEY}`,
+      'Authorization': `Bearer ${env.GROQ_API_KEY}`,
     },
     body: JSON.stringify({
-      model: 'ministral-14b-2512',
+      model: 'qwen/qwen3.6-27b',
       messages: [
         { role: 'system', content: 'You decide if a web search is needed to answer the user query. Reply with only [SEARCH] or [NO_SEARCH]. Nothing else.' },
         { role: 'user', content: query },
@@ -56,6 +56,7 @@ export async function onRequestPost(context) {
       stream: false,
       max_tokens: 10,
       temperature: 0,
+      reasoning_effort: 'none',
     }),
   });
 
@@ -102,7 +103,7 @@ export async function onRequestPost(context) {
     }
   }
 
-  // Step 2: Main response — Mistral pe ministral-14b-2512
+  // Step 2: Main response — DashScope pe qwen3.7-flash
   const { readable, writable } = new TransformStream();
   const writer = writable.getWriter();
   const enc    = new TextEncoder();
@@ -113,14 +114,14 @@ export async function onRequestPost(context) {
         await writer.write(enc.encode(`event: results\ndata: ${JSON.stringify(searchResults)}\n\n`));
       }
 
-      const mistralResp = await fetch('https://api.mistral.ai/v1/chat/completions', {
+      const qwenResp = await fetch('https://dashscope-intl.aliyuncs.com/compatible-mode/v1/chat/completions', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${env.MISTRAL_API_KEY}`,
+          'Authorization': `Bearer ${env.QWEN_API_KEY}`,
         },
         body: JSON.stringify({
-          model: 'ministral-14b-2512',
+          model: 'qwen3.7-flash',
           messages: [
             { role: 'system', content: searchContext ? `${SYSTEM_PROMPT}\n\n${searchContext}` : SYSTEM_PROMPT },
             ...(Array.isArray(history) ? history.slice(-100) : []),
@@ -129,16 +130,17 @@ export async function onRequestPost(context) {
           stream: true,
           max_tokens: 2048,
           temperature: 0.6,
+          enable_thinking: false,
         }),
       });
 
-      if (!mistralResp.ok) {
-        await writer.write(enc.encode(`data: ${JSON.stringify({ error: await mistralResp.text() })}\n\n`));
+      if (!qwenResp.ok) {
+        await writer.write(enc.encode(`data: ${JSON.stringify({ error: await qwenResp.text() })}\n\n`));
         await writer.close();
         return;
       }
 
-      const reader = mistralResp.body.getReader();
+      const reader = qwenResp.body.getReader();
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
@@ -171,4 +173,4 @@ export async function onRequestOptions() {
       'Access-Control-Allow-Headers': 'Content-Type',
     },
   });
-          }
+            }

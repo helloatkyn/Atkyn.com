@@ -11,11 +11,10 @@
   align-items: center;
   justify-content: center;
   position: relative;
-  padding: 16px 18px 10px;
-  height: 76px;
+  padding: 10px 18px 8px;
+  height: 62px;
   overflow: hidden;
   background: var(--color-bg);
-  /* opacity:1 omitted — browser default */
   transition:
     height  0.18s cubic-bezier(0.4, 0, 0.2, 1),
     padding 0.18s cubic-bezier(0.4, 0, 0.2, 1),
@@ -25,7 +24,7 @@
   .logo-header { background: var(--color-bg-dark); }
 }
 .logo-header img {
-  height: 48px;
+  height: 32px;
   width: auto;
   object-fit: contain;
 }

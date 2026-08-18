@@ -106,4 +106,4 @@
 .dots-btn:active span      { background: var(--color-primary); }
 @media (prefers-color-scheme: dark) {
   .dots-btn span { background: var(--color-text-dark-alt); }
-} Dekho
+}

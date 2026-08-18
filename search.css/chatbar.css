@@ -62,7 +62,7 @@
 }
 
 /* ────────────────────────────────────────────────────────────────
-   PLUS / ATTACH BUTTON — Google multicolor
+   PLUS / ATTACH BUTTON
 ──────────────────────────────────────────────────────────────── */
 .ico-plus {
   flex-shrink: 0;
@@ -73,22 +73,14 @@
   cursor: pointer;
   padding: 4px;
   border-radius: 50%;
+  color: rgba(0, 0, 0, 0.55);
   transition: background 0.12s;
 }
 .ico-plus:active { background: rgba(0, 0, 0, 0.06); }
 .ico-plus svg    { width: 24px; height: 24px; }
-
-/* Multicolor plus icon strokes */
-.ico-plus svg .arm-top    { stroke: #4285F4; }
-.ico-plus svg .arm-right  { stroke: #EA4335; }
-.ico-plus svg .arm-bottom { stroke: #FBBC05; }
-.ico-plus svg .arm-left   { stroke: #34A853; }
-
 @media (prefers-color-scheme: dark) {
-  .ico-plus svg .arm-top    { stroke: #8AB4F8; }
-  .ico-plus svg .arm-right  { stroke: #F28B82; }
-  .ico-plus svg .arm-bottom { stroke: #FDD663; }
-  .ico-plus svg .arm-left   { stroke: #81C995; }
+  .ico-plus { color: rgba(255, 255, 255, 0.75); }
+  .ico-plus:active { background: rgba(255, 255, 255, 0.08); }
 }
 
 /* ────────────────────────────────────────────────────────────────
@@ -156,7 +148,7 @@
 .search-input:not(:placeholder-shown) + .shimmer-overlay { display: none; }
 
 /* ────────────────────────────────────────────────────────────────
-   CAMERA BUTTON — Google multicolor
+   CAMERA BUTTON
 ──────────────────────────────────────────────────────────────── */
 .ico-camera {
   flex-shrink: 0;
@@ -167,22 +159,14 @@
   align-items: center;
   padding: 4px;
   border-radius: 50%;
+  color: rgba(0, 0, 0, 0.55);
   transition: background 0.12s;
 }
 .ico-camera:active { background: rgba(0, 0, 0, 0.06); }
 .ico-camera svg    { width: 24px; height: 24px; }
-
-/* Multicolor camera icon fills */
-.ico-camera svg .cam-body   { fill: #4285F4; }
-.ico-camera svg .cam-lens   { fill: #ffffff; }
-.ico-camera svg .cam-bump   { fill: #EA4335; }
-.ico-camera svg .cam-flash  { fill: #FBBC05; }
-
 @media (prefers-color-scheme: dark) {
-  .ico-camera svg .cam-body  { fill: #8AB4F8; }
-  .ico-camera svg .cam-lens  { fill: #1e1e1e; }
-  .ico-camera svg .cam-bump  { fill: #F28B82; }
-  .ico-camera svg .cam-flash { fill: #FDD663; }
+  .ico-camera { color: rgba(255, 255, 255, 0.75); }
+  .ico-camera:active { background: rgba(255, 255, 255, 0.08); }
 }
 
 /* ────────────────────────────────────────────────────────────────

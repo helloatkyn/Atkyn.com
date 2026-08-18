@@ -9,7 +9,7 @@
   margin: 12px 0 16px;
   border-radius: 12px;
   overflow: hidden;
-  background: #f2f3f5;
+  background: #fafafa;
   border: none;
   box-shadow: none;
   width: 100%;
@@ -28,7 +28,7 @@
   align-items: center;
   justify-content: space-between;
   padding: 10px 14px 10px 14px;
-  background: #eaebee;
+  background: #f2f3f5;
   border-bottom: 1px solid rgba(0, 0, 0, 0.06);
   user-select: none;
   min-height: 44px;
@@ -179,23 +179,15 @@
   .code-block pre code { color: var(--color-text-dark-mono); }
 }
 
-/* ── Syntax token colours ── */
-/* keywords: def, for, in, return, if, else, import … */
-.tk-kw   { color: #0000ff; font-weight: 500; }
-/* functions / method names */
-.tk-fn   { color: #795e26; }
-/* strings */
-.tk-str  { color: #a31515; }
-/* numbers */
-.tk-num  { color: #098658; }
-/* comments */
-.tk-cmt  { color: #6a9955; font-style: italic; }
-/* class names */
-.tk-cls  { color: #267f99; }
-/* object properties */
-.tk-prop { color: #001080; }
-/* booleans / None / null */
-.tk-bool { color: #0000ff; font-weight: 500; }
+/* ── Syntax token colours (VS Code Light+) ── */
+.tk-kw   { color: #0000ff; font-weight: 500; }  /* keywords */
+.tk-fn   { color: #795e26; }                     /* functions */
+.tk-str  { color: #a31515; }                     /* strings */
+.tk-num  { color: #098658; }                     /* numbers */
+.tk-cmt  { color: #6a9955; font-style: italic; } /* comments */
+.tk-cls  { color: #267f99; }                     /* classes */
+.tk-prop { color: #001080; }                     /* properties */
+.tk-bool { color: #0000ff; font-weight: 500; }   /* booleans */
 
 @media (prefers-color-scheme: dark) {
   .tk-kw   { color: var(--color-tk-kw-dark);   font-weight: 500; }

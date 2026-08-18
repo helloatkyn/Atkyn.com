@@ -40,15 +40,15 @@ export async function onRequestPost(context) {
     });
   }
 
-  // Step 1: Intent check — Groq pe GPT-OSS 120B
-  const intentResp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+  // Step 1: Intent check — Mistral Large
+  const intentResp = await fetch('https://api.mistral.ai/v1/chat/completions', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${env.GROQ_API_KEY}`,
+      'Authorization': `Bearer ${env.MISTRAL_API_KEY}`,
     },
     body: JSON.stringify({
-      model: 'openai/gpt-oss-120b',
+      model: 'mistral-large-latest',
       messages: [
         { role: 'system', content: 'You decide if a web search is needed to answer the user query. Reply with only [SEARCH] or [NO_SEARCH]. Nothing else.' },
         { role: 'user', content: query },
@@ -102,7 +102,7 @@ export async function onRequestPost(context) {
     }
   }
 
-  // Step 2: Main response — Groq pe GPT-OSS 120B
+  // Step 2: Main response — Mistral Large
   const { readable, writable } = new TransformStream();
   const writer = writable.getWriter();
   const enc    = new TextEncoder();
@@ -113,14 +113,14 @@ export async function onRequestPost(context) {
         await writer.write(enc.encode(`event: results\ndata: ${JSON.stringify(searchResults)}\n\n`));
       }
 
-      const groqResp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      const mistralResp = await fetch('https://api.mistral.ai/v1/chat/completions', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${env.GROQ_API_KEY}`,
+          'Authorization': `Bearer ${env.MISTRAL_API_KEY}`,
         },
         body: JSON.stringify({
-          model: 'openai/gpt-oss-120b',
+          model: 'mistral-large-latest',
           messages: [
             { role: 'system', content: searchContext ? `${SYSTEM_PROMPT}\n\n${searchContext}` : SYSTEM_PROMPT },
             ...(Array.isArray(history) ? history.slice(-100) : []),
@@ -132,13 +132,13 @@ export async function onRequestPost(context) {
         }),
       });
 
-      if (!groqResp.ok) {
-        await writer.write(enc.encode(`data: ${JSON.stringify({ error: await groqResp.text() })}\n\n`));
+      if (!mistralResp.ok) {
+        await writer.write(enc.encode(`data: ${JSON.stringify({ error: await mistralResp.text() })}\n\n`));
         await writer.close();
         return;
       }
 
-      const reader = groqResp.body.getReader();
+      const reader = mistralResp.body.getReader();
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;

@@ -409,3 +409,5 @@ tabBar.addEventListener('click', async e => {
 window._atkynModuleCache  = _moduleCache;
 window._atkynPageContent  = pageContent;
 window._atkynAnimateIn    = _animateContentIn;
+window._atkynLoadTab      = _loadTab;
+                           

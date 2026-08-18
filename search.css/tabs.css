@@ -27,7 +27,7 @@
   border-bottom: 1.5px solid rgba(0, 0, 0, 0.08);
 }
 .tab-bar::-webkit-scrollbar { display: none; }
-.tab-bar.hide { transform: translateY(-100%) translateZ(0); }
+.tab-bar.hide     { transform: translateY(-100%) translateZ(0); }
 @media (prefers-color-scheme: dark) {
   .tab-bar {
     background: var(--color-tab-bar-bg-dark);
@@ -38,8 +38,7 @@
 .tab {
   flex-shrink: 0;
   height: 100%;
-  padding: 0 16px;
-  min-width: 64px;
+  padding: 0 14px;
   font-size: 13.5px;
   font-weight: 500;
   color: var(--color-text-muted);
@@ -62,7 +61,7 @@
   border-bottom-color: var(--color-text-strong);
 }
 @media (prefers-color-scheme: dark) {
-  .tab { color: rgba(255, 255, 255, 0.45); }
+  .tab        { color: rgba(255, 255, 255, 0.45); }
   .tab.active {
     color: rgba(255, 255, 255, 0.95);
     border-bottom-color: rgba(255, 255, 255, 0.95);

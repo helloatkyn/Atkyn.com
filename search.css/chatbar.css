@@ -27,46 +27,45 @@
   display: flex;
   align-items: center;
   background: #ffffff;
-  border: 1.5px solid rgba(0, 0, 0, 0.08);
+  border: none;
   border-radius: 100px;
   padding: 0 18px 0 20px;
   height: 66px;
   gap: 12px;
   box-shadow:
-    0 1px 3px  rgba(0, 0, 0, 0.06),
-    0 4px 16px rgba(0, 0, 0, 0.10),
-    0 1px 2px  rgba(0, 0, 0, 0.04);
-  transition: box-shadow 0.18s, border-color 0.18s;
+    0 1px 2px  rgba(0, 0, 0, 0.05),
+    0 3px 8px  rgba(0, 0, 0, 0.07),
+    0 8px 24px rgba(0, 0, 0, 0.07);
+  transition: box-shadow 0.2s;
 }
 .overlay-pill:focus-within {
-  border-color: rgba(0, 0, 0, 0.14);
   box-shadow:
-    0 1px 4px  rgba(0, 0, 0, 0.08),
-    0 6px 24px rgba(0, 0, 0, 0.13),
-    0 1px 2px  rgba(0, 0, 0, 0.05);
+    0 1px 3px  rgba(0, 0, 0, 0.07),
+    0 4px 12px rgba(0, 0, 0, 0.09),
+    0 12px 32px rgba(0, 0, 0, 0.10);
 }
 @media (prefers-color-scheme: dark) {
   .overlay-pill {
     background: var(--color-bg-alt-dark);
-    border-color: rgba(255, 255, 255, 0.10);
+    border: none;
     box-shadow:
-      0 1px 3px  rgba(0, 0, 0, 0.20),
-      0 4px 20px rgba(0, 0, 0, 0.35);
+      0 1px 2px  rgba(0, 0, 0, 0.22),
+      0 3px 10px rgba(0, 0, 0, 0.28),
+      0 8px 28px rgba(0, 0, 0, 0.38);
   }
   .overlay-pill:focus-within {
-    border-color: rgba(255, 255, 255, 0.18);
     box-shadow:
-      0 1px 4px  rgba(0, 0, 0, 0.28),
-      0 6px 28px rgba(0, 0, 0, 0.45);
+      0 1px 3px  rgba(0, 0, 0, 0.28),
+      0 4px 14px rgba(0, 0, 0, 0.34),
+      0 12px 36px rgba(0, 0, 0, 0.44);
   }
 }
 
 /* ────────────────────────────────────────────────────────────────
-   PLUS / ATTACH BUTTON
+   PLUS / ATTACH BUTTON — Google multicolor
 ──────────────────────────────────────────────────────────────── */
 .ico-plus {
   flex-shrink: 0;
-  color: var(--color-text-muted);
   display: flex;
   align-items: center;
   border: none;
@@ -76,8 +75,21 @@
   border-radius: 50%;
   transition: background 0.12s;
 }
-.ico-plus:active { background: var(--color-press-light-icon); }
+.ico-plus:active { background: rgba(0, 0, 0, 0.06); }
 .ico-plus svg    { width: 24px; height: 24px; }
+
+/* Multicolor plus icon strokes */
+.ico-plus svg .arm-top    { stroke: #4285F4; }
+.ico-plus svg .arm-right  { stroke: #EA4335; }
+.ico-plus svg .arm-bottom { stroke: #FBBC05; }
+.ico-plus svg .arm-left   { stroke: #34A853; }
+
+@media (prefers-color-scheme: dark) {
+  .ico-plus svg .arm-top    { stroke: #8AB4F8; }
+  .ico-plus svg .arm-right  { stroke: #F28B82; }
+  .ico-plus svg .arm-bottom { stroke: #FDD663; }
+  .ico-plus svg .arm-left   { stroke: #81C995; }
+}
 
 /* ────────────────────────────────────────────────────────────────
    INPUT WRAPPER
@@ -113,7 +125,6 @@
 
 /* ────────────────────────────────────────────────────────────────
    ANIMATED SHIMMER PLACEHOLDER
-   Visible when input is empty.
 ──────────────────────────────────────────────────────────────── */
 .shimmer-overlay {
   position: absolute;
@@ -142,27 +153,41 @@
   0%   { background-position:  150% center; }
   100% { background-position: -150% center; }
 }
-/* Hide shimmer once user has typed */
 .search-input:not(:placeholder-shown) + .shimmer-overlay { display: none; }
 
 /* ────────────────────────────────────────────────────────────────
-   CAMERA BUTTON (idle state) & SEND BUTTON (has-text state)
+   CAMERA BUTTON — Google multicolor
 ──────────────────────────────────────────────────────────────── */
 .ico-camera {
   flex-shrink: 0;
   border: none;
   background: none;
   cursor: pointer;
-  color: var(--color-text-muted);
   display: flex;
   align-items: center;
   padding: 4px;
   border-radius: 50%;
   transition: background 0.12s;
 }
-.ico-camera:active { background: var(--color-press-light-icon); }
+.ico-camera:active { background: rgba(0, 0, 0, 0.06); }
 .ico-camera svg    { width: 24px; height: 24px; }
 
+/* Multicolor camera icon fills */
+.ico-camera svg .cam-body   { fill: #4285F4; }
+.ico-camera svg .cam-lens   { fill: #ffffff; }
+.ico-camera svg .cam-bump   { fill: #EA4335; }
+.ico-camera svg .cam-flash  { fill: #FBBC05; }
+
+@media (prefers-color-scheme: dark) {
+  .ico-camera svg .cam-body  { fill: #8AB4F8; }
+  .ico-camera svg .cam-lens  { fill: #1e1e1e; }
+  .ico-camera svg .cam-bump  { fill: #F28B82; }
+  .ico-camera svg .cam-flash { fill: #FDD663; }
+}
+
+/* ────────────────────────────────────────────────────────────────
+   SEND BUTTON
+──────────────────────────────────────────────────────────────── */
 .send-btn {
   flex-shrink: 0;
   display: none;
@@ -179,7 +204,7 @@
 .send-btn:active { transform: scale(0.88); }
 .send-btn svg    { width: 17px; height: 17px; }
 
-/* Toggle camera ↔ send based on input state */
+/* Toggle camera ↔ send */
 .overlay-pill.has-text .ico-camera { display: none; }
 .overlay-pill.has-text .send-btn   { display: flex; }
 

@@ -1,27 +1,76 @@
+/* ═══════════════════════════════════════════════════════════════
+   modules/web/web.js — Atkyn Web tab
+   Fetches from /api/search (SearXNG only — zero AI calls).
+   Requires: core.js globals (_atkynPageContent, _atkynAnimateIn)
+   ═══════════════════════════════════════════════════════════════ */
+
 (function () {
 
+/* ── Helpers ── */
 function _esc(s) {
   return String(s)
-    .replace(/&/g,'&amp;').replace(/</g,'&lt;')
-    .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
-function _safeUrl(u) {
-  try { const p = new URL(u); return (p.protocol==='https:'||p.protocol==='http:') ? u : '#'; }
-  catch(_) { return '#'; }
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
+function _safeUrl(u) {
+  try {
+    const p = new URL(u);
+    return (p.protocol === 'https:' || p.protocol === 'http:') ? u : '#';
+  } catch (_) { return '#'; }
+}
+
+/* ── Search bar ── */
+function _renderSearchBar(q) {
+  const wrap = document.createElement('div');
+  wrap.className = 'web-searchbar-wrap';
+  wrap.innerHTML = `
+    <div class="web-searchbar">
+      <svg class="web-searchbar-icon" viewBox="0 0 24 24" fill="none"
+           stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+      </svg>
+      <input class="web-searchbar-input" type="search" value="${_esc(q)}"
+             placeholder="Search the web…" autocomplete="off" spellcheck="false">
+    </div>`;
+
+  const input = wrap.querySelector('.web-searchbar-input');
+
+  input.addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter') return;
+    const val = input.value.trim();
+    if (!val) return;
+    sessionStorage.setItem('atkyn_last_query', val);
+    sessionStorage.removeItem('atkyn_web_results');
+    _init();
+  });
+
+  /* Keep main chatbar in sync */
+  input.addEventListener('input', () => {
+    const cbInput = document.getElementById('cbInput');
+    if (cbInput) {
+      cbInput.value = input.value;
+      cbInput.dispatchEvent(new Event('input'));
+    }
+  });
+
+  return wrap;
+}
+
+/* ── Card builder ── */
 function _buildCard(r) {
   let host = r.url, path = r.url;
   try {
     const u = new URL(r.url);
     host = u.hostname.replace(/^www\./, '');
     path = (host + u.pathname).replace(/\/$/, '').substring(0, 60);
-  } catch(_) {}
+  } catch (_) {}
 
   const fav  = `https://www.google.com/s2/favicons?sz=64&domain=${encodeURIComponent(host)}`;
   const fav2 = `https://icons.duckduckgo.com/ip3/${encodeURIComponent(host)}.ico`;
   const thumb = r.image
-    ? `<img class="wc-thumb" src="${_esc(r.image)}" loading="lazy" decoding="async" alt="" onerror="this.closest('.wc-thumb-wrap').remove()">`
+    ? `<img class="wc-thumb" src="${_esc(r.image)}" loading="lazy" decoding="async" alt=""
+            onerror="this.closest('.wc-thumb-wrap').remove()">`
     : '';
 
   const a = document.createElement('a');
@@ -32,7 +81,8 @@ function _buildCard(r) {
   a.innerHTML = `
     <div class="wc-meta">
       <div class="wc-fav-wrap">
-        <img class="wc-fav" src="${_esc(fav)}" width="16" height="16" loading="lazy" decoding="async" alt="">
+        <img class="wc-fav" src="${_esc(fav)}" width="16" height="16"
+             loading="lazy" decoding="async" alt="">
       </div>
       <div class="wc-meta-text">
         <span class="wc-domain">${_esc(host)}</span>
@@ -54,8 +104,7 @@ function _buildCard(r) {
       ${thumb ? `<div class="wc-thumb-wrap">${thumb}</div>` : ''}
     </div>`;
 
-  const favImg = a.querySelector('.wc-fav');
-  favImg.addEventListener('error', function() {
+  a.querySelector('.wc-fav').addEventListener('error', function () {
     if (this.src !== fav2) { this.src = fav2; }
     else { this.closest('.wc-fav-wrap').style.display = 'none'; }
   }, { passive: true });
@@ -63,109 +112,87 @@ function _buildCard(r) {
   return a;
 }
 
-function _render(results) {
-  const pc   = window._atkynPageContent;
+/* ── Render results ── */
+function _render(q, results) {
+  const pc = window._atkynPageContent;
+  const frag = document.createDocumentFragment();
+
+  frag.appendChild(_renderSearchBar(q));
+
   const list = document.createElement('div');
   list.className = 'wc-list';
   results.forEach(r => list.appendChild(_buildCard(r)));
+  frag.appendChild(list);
+
   pc.innerHTML = '';
-  pc.appendChild(list);
+  pc.appendChild(frag);
   window._atkynAnimateIn();
 }
 
+/* ── Fetch from /api/search (pure SearXNG, no AI) ── */
 async function _fetch(q) {
   const pc = window._atkynPageContent;
-  pc.innerHTML = '<div class="tab-skeleton"><div class="sk-line"></div><div class="sk-line sk-short"></div><div class="sk-line"></div><div class="sk-line sk-short"></div></div>';
+
+  /* Show search bar immediately with skeleton below */
+  pc.innerHTML = '';
+  pc.appendChild(_renderSearchBar(q));
+  pc.insertAdjacentHTML('beforeend',
+    '<div class="tab-skeleton"><div class="sk-line"></div><div class="sk-line sk-short"></div>' +
+    '<div class="sk-line"></div><div class="sk-line sk-short"></div></div>');
 
   try {
-    const resp = await fetch('/api/chat', {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ query: q, webOnly: true }),
+    const resp = await fetch(`/api/search?q=${encodeURIComponent(q)}`, {
+      signal: AbortSignal.timeout(10000),
     });
-    if (!resp.ok) throw new Error();
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
 
-    const reader  = resp.body.getReader();
-    const decoder = new TextDecoder('utf-8', { fatal: false });
-    let buf = '', allResults = [], rendered = false, done = false;
-    const list = document.createElement('div');
-    list.className = 'wc-list';
+    const results = await resp.json();
 
-    let eventType = '';
-    while (!done) {
-      const chunk = await reader.read();
-      done = chunk.done;
-      buf += done ? decoder.decode() : decoder.decode(chunk.value, { stream: true });
-      const lines = buf.split('\n');
-      buf = done ? '' : lines.pop();
-
-      for (const line of lines) {
-        if (line.startsWith('event: ')) { eventType = line.slice(7).trim(); continue; }
-        if (!line.startsWith('data: ')) { eventType = ''; continue; }
-        const data = line.slice(6).trim();
-        if (data === '[DONE]') { done = true; break; }
-
-        if (eventType === 'results') {
-          try {
-            const parsed = JSON.parse(data);
-            if (Array.isArray(parsed) && parsed.length) {
-              parsed.forEach(r => list.appendChild(_buildCard(r)));
-              allResults = allResults.concat(parsed);
-              if (!rendered) {
-                pc.innerHTML = '';
-                pc.appendChild(list);
-                window._atkynAnimateIn();
-                rendered = true;
-              }
-            }
-          } catch(_) {}
-          eventType = '';
-          continue;
-        }
-
-        /* Fallback: plain JSON array (no event: prefix) */
-        try {
-          const parsed = JSON.parse(data);
-          if (Array.isArray(parsed) && parsed.length) {
-            parsed.forEach(r => list.appendChild(_buildCard(r)));
-            allResults = allResults.concat(parsed);
-            if (!rendered) {
-              pc.innerHTML = '';
-              pc.appendChild(list);
-              window._atkynAnimateIn();
-              rendered = true;
-            }
-          }
-        } catch(_) {}
-      }
+    if (!Array.isArray(results) || !results.length) {
+      pc.innerHTML = '';
+      pc.appendChild(_renderSearchBar(q));
+      pc.insertAdjacentHTML('beforeend',
+        '<div class="tab-empty"><p>No results found</p></div>');
+      return;
     }
 
-    if (allResults.length) {
-      try { sessionStorage.setItem('atkyn_web_results', JSON.stringify(allResults)); } catch(_) {}
-    }
-    if (!rendered) pc.innerHTML = '<div class="tab-empty"><p>No results found</p></div>';
+    try { sessionStorage.setItem('atkyn_web_results', JSON.stringify({ q, results })); } catch (_) {}
+    _render(q, results);
 
-  } catch(_) {
-    pc.innerHTML = '<div class="tab-empty"><p>Could not load results</p></div>';
+  } catch (err) {
+    pc.innerHTML = '';
+    pc.appendChild(_renderSearchBar(q));
+    pc.insertAdjacentHTML('beforeend',
+      '<div class="tab-empty"><p>Could not load results</p></div>');
   }
 }
 
-window._atkynInit_web = function () {
+/* ── Init ── */
+function _init() {
   const q      = sessionStorage.getItem('atkyn_last_query') || '';
   const cached = sessionStorage.getItem('atkyn_web_results');
 
   if (cached) {
     try {
-      const results = JSON.parse(cached);
-      if (results.length) { _render(results); return; }
-    } catch(_) {}
+      const { q: cq, results } = JSON.parse(cached);
+      if (cq === q && Array.isArray(results) && results.length) {
+        _render(q, results);
+        return;
+      }
+    } catch (_) {}
   }
 
   if (q) { _fetch(q); return; }
 
-  window._atkynPageContent.innerHTML =
-    '<div class="tab-empty"><p>Search something to see web results</p></div>';
-};
+  const pc = window._atkynPageContent;
+  pc.innerHTML = '';
+  pc.appendChild(_renderSearchBar(''));
+  pc.insertAdjacentHTML('beforeend',
+    '<div class="tab-empty"><p>Search something to see web results</p></div>');
+}
 
-window._atkynInit_web();
+window._atkynInit_web = _init;
+_init();
+
 }());
+          

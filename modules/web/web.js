@@ -20,14 +20,6 @@ function _safeUrl(u) {
   } catch (_) { return '#'; }
 }
 
-/* ── Sync query into chatbar ── */
-function _syncChatbar(q) {
-  const cb = document.getElementById('cbInput');
-  if (!cb) return;
-  cb.value = q;
-  cb.dispatchEvent(new Event('input'));
-}
-
 /* ── Card builder ── */
 function _buildCard(r) {
   let host = r.url, path = r.url;
@@ -92,7 +84,6 @@ function _render(q, results) {
   pc.innerHTML = '';
   pc.appendChild(list);
   window._atkynAnimateIn();
-  _syncChatbar(q);
 }
 
 /* ── Fetch from /api/search (SearXNG, no AI) ── */
@@ -100,7 +91,6 @@ async function _fetch(q) {
   const pc = window._atkynPageContent;
   pc.innerHTML = '<div class="tab-skeleton"><div class="sk-line"></div><div class="sk-line sk-short"></div>' +
     '<div class="sk-line"></div><div class="sk-line sk-short"></div></div>';
-  _syncChatbar(q);
 
   try {
     const resp = await fetch(`/api/search?q=${encodeURIComponent(q)}`, {

@@ -1,14 +1,136 @@
 /* ═══════════════════════════════════════════════════════════════
    functions/api/chat.js — Atkyn Answer tab
-   SearXNG → Mistral streaming response
+   Smart intent classification → SearXNG → Mistral streaming
    ═══════════════════════════════════════════════════════════════ */
 
 import { SYSTEM_PROMPT } from './systemPrompt.js';
 
+/* ─────────────────────────────────────────────────────────────
+   INTENT CLASSIFIER
+   Returns { needsSearch: bool, reason: string }
+   Logic mirrors what Gemini/ChatGPT do internally:
+   - Conversational/casual/creative → no search
+   - Factual/current/entity/lookup   → search
+───────────────────────────────────────────────────────────── */
+function classifyIntent(query, history = []) {
+  const raw = query.trim();
+  const q   = raw.toLowerCase();
+  const words = q.split(/\s+/).filter(Boolean);
+
+  // ── 1. Trivially short → conversational ──
+  if (words.length === 0) return { needsSearch: false, reason: 'empty' };
+  if (words.length === 1) {
+    // Single-word could still be a lookup: "bitcoin", "delhi", "iphone15"
+    // But greetings / filler → skip search
+    const SINGLE_SKIP = new Set([
+      'hi','hey','hello','hii','heyy','yo','sup','hola','namaste','namaskar',
+      'ok','okay','k','fine','sure','yep','yes','no','nope','nah',
+      'lol','lmao','haha','hehe','xd','😂','🙏',
+      'thanks','thank','thx','ty','np','welcome',
+      'bye','cya','later','gtg','brb',
+    ]);
+    if (SINGLE_SKIP.has(q)) return { needsSearch: false, reason: 'single-word greeting/filler' };
+  }
+
+  // ── 2. Pure greetings / chit-chat phrases ──
+  const CHIT_CHAT_PATTERNS = [
+    /^(hi+|hey+|hello+|hola|howdy|sup|yo+)[!?. ]*$/i,
+    /^(good\s?(morning|evening|night|afternoon))[!?. ]*$/i,
+    /^(how are you|how r u|kaisa hai|kya haal|kya chal raha|kaise ho|kya hal)[?!. ]*$/i,
+    /^(what('s| is) up|whatsup|wassup)[?!. ]*$/i,
+    /^(thanks?|thank you|thx|ty|shukriya|dhanyawad)[!?. ]*$/i,
+    /^(bye|goodbye|cya|later|alvida|phir milenge)[!?. ]*$/i,
+    /^(ok(ay)?|sure|got it|alright|theek hai|haan|nahi|nope|yep|yeah)[!?. ]*$/i,
+    /^(lol+|lmao|haha+|hehe+|xd)[!?. ]*$/i,
+    /^(nice|cool|wow|great|awesome|amazing|shabash|wah)[!?. ]*$/i,
+  ];
+  for (const re of CHIT_CHAT_PATTERNS) {
+    if (re.test(raw)) return { needsSearch: false, reason: 'chit-chat pattern' };
+  }
+
+  // ── 3. Math / logic / code tasks → no search ──
+  const NOSEARCH_TASK_PATTERNS = [
+    /\b(calculate|solve|simplify|evaluate|differentiate|integrate|expand|factorise?)\b/i,
+    /\b(write\s+(a|an|me\s+a)?\s*(code|program|script|function|class|component|api|query))\b/i,
+    /\b(debug|fix\s+this|refactor|optimise?|improve\s+this)\b/i,
+    /\b(translate|summarise?|summarize|proofread|grammar|spell\s?check)\b/i,
+    /\b(explain\s+(me\s+)?(what\s+is|the\s+concept|how)\b)/i,
+    /\b(write\s+(a|an)\s*(poem|story|essay|email|letter|caption|bio|cover letter))\b/i,
+    /\b(make\s+(a|an)\s*(list|plan|itinerary|schedule|table|comparison))\b/i,
+    /[\d]+\s*[\+\-\*\/\^]\s*[\d]+/,   // arithmetic expression like 23 * 47
+    /\b(what\s+is\s+\d+[\+\-\*\/])/i,  // "what is 5 * 8"
+  ];
+  for (const re of NOSEARCH_TASK_PATTERNS) {
+    if (re.test(raw)) return { needsSearch: false, reason: 'computation/creative/code task' };
+  }
+
+  // ── 4. Strong search signals ──
+  const SEARCH_SIGNALS = [
+    // Temporal / freshness
+    /\b(latest|recent|current|today|tonight|right now|this week|this month|2024|2025|2026)\b/i,
+    /\b(news|breaking|update|just happened|just announced|launched)\b/i,
+    /\b(live score|live|streaming|trending|viral)\b/i,
+
+    // Entity lookups
+    /\b(who is|who are|who was|who were)\b/i,
+    /\b(what is the (price|cost|rate|fee|charge) of)\b/i,
+    /\b(where is|where are|where can i (find|buy|get|watch))\b/i,
+    /\b(when (is|was|will|does|did))\b/i,
+    /\b(how (much|many|long|far|tall|big|old))\b/i,
+    /\b(phone number|address|contact|timing|hours|open|closed)\b/i,
+
+    // Commercial / product
+    /\b(buy|purchase|order|shop|price|discount|offer|deal|coupon)\b/i,
+    /\b(best|top|review|rating|vs|versus|compare|comparison|alternative)\b/i,
+    /\b(specs|specifications|release date|launch date)\b/i,
+
+    // Fact / reference
+    /\b(capital (of|city)|population|gdp|ceo|founder|chairman|owner|president|prime minister|minister)\b/i,
+    /\b(movie|film|series|show|episode|season|trailer|cast|imdb)\b/i,
+    /\b(stock|share price|market cap|nifty|sensex|nasdaq|bitcoin|crypto)\b/i,
+    /\b(recipe|ingredients|how to make|how to cook)\b/i,
+    /\b(weather|temperature|forecast|rain|humidity)\b/i,
+    /\b(flight|train|bus|ticket|pnr|status|schedule)\b/i,
+    /\b(hospital|doctor|clinic|near me|nearby|around me)\b/i,
+    /\b(election|result|vote|poll|survey)\b/i,
+  ];
+  for (const re of SEARCH_SIGNALS) {
+    if (re.test(raw)) return { needsSearch: true, reason: 'search signal matched' };
+  }
+
+  // ── 5. Conversation continuity check ──
+  // If it looks like a follow-up to a previous AI message (short, pronoun-heavy),
+  // and the last AI reply didn't use search results → skip search
+  if (words.length <= 5 && history.length >= 2) {
+    const FOLLOW_UP_RE = /^(what about|and|but|also|tell me more|more|elaborate|go on|continue|why|how so|really|seriously|then what)[?!. ]*/i;
+    if (FOLLOW_UP_RE.test(raw)) return { needsSearch: false, reason: 'conversational follow-up' };
+  }
+
+  // ── 6. Question heuristic (default for questions) ──
+  // A sentence ending with ? or starting with question word that passed all above
+  // → lean toward searching unless it's a pure opinion/creative question
+  const OPINION_RE = /^(what do you think|what('s| is) your (opinion|view|take)|do you (like|prefer|believe|think)|in your opinion|aap kya sochte|tumhara kya khayal)/i;
+  if (OPINION_RE.test(raw)) return { needsSearch: false, reason: 'opinion question' };
+
+  if (q.endsWith('?') && words.length >= 4) {
+    return { needsSearch: true, reason: 'question heuristic' };
+  }
+
+  // ── 7. Default by length ──
+  // Very short statements that survived all above → probably conversational
+  if (words.length <= 3) return { needsSearch: false, reason: 'short non-question' };
+
+  // Longer statements → search to be safe (avoids hallucination on factual claims)
+  return { needsSearch: true, reason: 'long query default' };
+}
+
+/* ─────────────────────────────────────────────────────────────
+   PAGE SCRAPER
+───────────────────────────────────────────────────────────── */
 async function fetchPageText(url) {
   try {
     const resp = await fetch(url, {
-      headers: { 'User-Agent': 'Mozilla/5.0' },
+      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; Atkyn/1.0)' },
       signal: AbortSignal.timeout(4000),
     });
     if (!resp.ok) return '';
@@ -25,6 +147,9 @@ async function fetchPageText(url) {
   }
 }
 
+/* ─────────────────────────────────────────────────────────────
+   MAIN HANDLER
+───────────────────────────────────────────────────────────── */
 export async function onRequestPost(context) {
   const { request, env } = context;
 
@@ -37,36 +162,47 @@ export async function onRequestPost(context) {
 
   if (!query?.trim()) return _errJson('Empty query', 400);
 
-  /* ── Step 1: SearXNG ── */
+  const historyArr = Array.isArray(history) ? history : [];
+
+  /* ── Classify intent ── */
+  const { needsSearch } = classifyIntent(query, historyArr);
+
+  /* ── Step 1: SearXNG (only when needed) ── */
   let searchResults = [];
   let searchContext = '';
 
-  try {
-    const searxResp = await fetch(
-      `${env.SEARXNG_URL}/search?q=${encodeURIComponent(query)}&format=json&categories=general&language=en`,
-      { headers: { 'Accept': 'application/json' }, signal: AbortSignal.timeout(8000) }
-    );
-    if (searxResp.ok) {
-      const data = await searxResp.json();
-      const raw  = (data.results || []).slice(0, 6);
-
-      searchResults = await Promise.all(
-        raw.map(async (r, i) => {
-          let content = r.content || '';
-          if (i < 5) {
-            const pageText = await fetchPageText(r.url);
-            if (pageText) content = pageText;
-          }
-          return { title: r.title || '', url: r.url || '', snippet: content };
-        })
+  if (needsSearch) {
+    try {
+      const searxResp = await fetch(
+        `${env.SEARXNG_URL}/search?q=${encodeURIComponent(query)}&format=json&categories=general&language=en`,
+        { headers: { 'Accept': 'application/json' }, signal: AbortSignal.timeout(8000) }
       );
+      if (searxResp.ok) {
+        const data = await searxResp.json();
+        const raw  = (data.results || []).slice(0, 6);
 
-      if (searchResults.length) {
-        searchContext = 'Web search results:\n' +
-          searchResults.map((r, i) => `[${i + 1}] ${r.title}\nURL: ${r.url}\n${r.snippet}`).join('\n\n');
+        searchResults = await Promise.all(
+          raw.map(async (r, i) => {
+            let content = r.content || '';
+            if (i < 5) {
+              const pageText = await fetchPageText(r.url);
+              if (pageText) content = pageText;
+            }
+            return { title: r.title || '', url: r.url || '', snippet: content };
+          })
+        );
+
+        if (searchResults.length) {
+          searchContext = 'Web search results:\n' +
+            searchResults
+              .map((r, i) => `[${i + 1}] ${r.title}\nURL: ${r.url}\n${r.snippet}`)
+              .join('\n\n');
+        }
       }
+    } catch (_) {
+      // Search failed silently — Mistral answers from internal knowledge
     }
-  } catch (_) {}
+  }
 
   /* ── Step 2: Stream Mistral response ── */
   const { readable, writable } = new TransformStream();
@@ -79,6 +215,10 @@ export async function onRequestPost(context) {
         await writer.write(enc.encode(`event: results\ndata: ${JSON.stringify(searchResults)}\n\n`));
       }
 
+      const systemContent = searchContext
+        ? `${SYSTEM_PROMPT}\n\n${searchContext}`
+        : SYSTEM_PROMPT;
+
       const mistralResp = await fetch('https://api.mistral.ai/v1/chat/completions', {
         method: 'POST',
         headers: {
@@ -88,8 +228,8 @@ export async function onRequestPost(context) {
         body: JSON.stringify({
           model:    'ministral-14b-2512',
           messages: [
-            { role: 'system', content: searchContext ? `${SYSTEM_PROMPT}\n\n${searchContext}` : SYSTEM_PROMPT },
-            ...(Array.isArray(history) ? history.slice(-100) : []),
+            { role: 'system', content: systemContent },
+            ...historyArr.slice(-100),
             { role: 'user', content: query },
           ],
           stream:      true,
@@ -99,7 +239,8 @@ export async function onRequestPost(context) {
       });
 
       if (!mistralResp.ok) {
-        await writer.write(enc.encode(`data: ${JSON.stringify({ error: await mistralResp.text() })}\n\n`));
+        const errText = await mistralResp.text();
+        await writer.write(enc.encode(`data: ${JSON.stringify({ error: errText })}\n\n`));
         await writer.close();
         return;
       }

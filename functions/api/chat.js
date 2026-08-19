@@ -1,6 +1,6 @@
 /* ═══════════════════════════════════════════════════════════════
    functions/api/chat.js — Atkyn Answer tab
-   Smart intent classification → SearXNG → Mistral streaming
+   Smart intent classification → SearXNG → Groq (Qwen 3.6 27B) streaming
    ═══════════════════════════════════════════════════════════════ */
 
 import { SYSTEM_PROMPT } from './systemPrompt.js';
@@ -8,20 +8,14 @@ import { SYSTEM_PROMPT } from './systemPrompt.js';
 /* ─────────────────────────────────────────────────────────────
    INTENT CLASSIFIER
    Returns { needsSearch: bool, reason: string }
-   Logic mirrors what Gemini/ChatGPT do internally:
-   - Conversational/casual/creative → no search
-   - Factual/current/entity/lookup   → search
 ───────────────────────────────────────────────────────────── */
 function classifyIntent(query, history = []) {
   const raw = query.trim();
   const q   = raw.toLowerCase();
   const words = q.split(/\s+/).filter(Boolean);
 
-  // ── 1. Trivially short → conversational ──
   if (words.length === 0) return { needsSearch: false, reason: 'empty' };
   if (words.length === 1) {
-    // Single-word could still be a lookup: "bitcoin", "delhi", "iphone15"
-    // But greetings / filler → skip search
     const SINGLE_SKIP = new Set([
       'hi','hey','hello','hii','heyy','yo','sup','hola','namaste','namaskar',
       'ok','okay','k','fine','sure','yep','yes','no','nope','nah',
@@ -32,7 +26,6 @@ function classifyIntent(query, history = []) {
     if (SINGLE_SKIP.has(q)) return { needsSearch: false, reason: 'single-word greeting/filler' };
   }
 
-  // ── 2. Pure greetings / chit-chat phrases ──
   const CHIT_CHAT_PATTERNS = [
     /^(hi+|hey+|hello+|hola|howdy|sup|yo+)[!?. ]*$/i,
     /^(good\s?(morning|evening|night|afternoon))[!?. ]*$/i,
@@ -48,7 +41,6 @@ function classifyIntent(query, history = []) {
     if (re.test(raw)) return { needsSearch: false, reason: 'chit-chat pattern' };
   }
 
-  // ── 3. Math / logic / code tasks → no search ──
   const NOSEARCH_TASK_PATTERNS = [
     /\b(calculate|solve|simplify|evaluate|differentiate|integrate|expand|factorise?)\b/i,
     /\b(write\s+(a|an|me\s+a)?\s*(code|program|script|function|class|component|api|query))\b/i,
@@ -57,34 +49,26 @@ function classifyIntent(query, history = []) {
     /\b(explain\s+(me\s+)?(what\s+is|the\s+concept|how)\b)/i,
     /\b(write\s+(a|an)\s*(poem|story|essay|email|letter|caption|bio|cover letter))\b/i,
     /\b(make\s+(a|an)\s*(list|plan|itinerary|schedule|table|comparison))\b/i,
-    /[\d]+\s*[\+\-\*\/\^]\s*[\d]+/,   // arithmetic expression like 23 * 47
-    /\b(what\s+is\s+\d+[\+\-\*\/])/i,  // "what is 5 * 8"
+    /[\d]+\s*[\+\-\*\/\^]\s*[\d]+/,
+    /\b(what\s+is\s+\d+[\+\-\*\/])/i,
   ];
   for (const re of NOSEARCH_TASK_PATTERNS) {
     if (re.test(raw)) return { needsSearch: false, reason: 'computation/creative/code task' };
   }
 
-  // ── 4. Strong search signals ──
   const SEARCH_SIGNALS = [
-    // Temporal / freshness
     /\b(latest|recent|current|today|tonight|right now|this week|this month|2024|2025|2026)\b/i,
     /\b(news|breaking|update|just happened|just announced|launched)\b/i,
     /\b(live score|live|streaming|trending|viral)\b/i,
-
-    // Entity lookups
     /\b(who is|who are|who was|who were)\b/i,
     /\b(what is the (price|cost|rate|fee|charge) of)\b/i,
     /\b(where is|where are|where can i (find|buy|get|watch))\b/i,
     /\b(when (is|was|will|does|did))\b/i,
     /\b(how (much|many|long|far|tall|big|old))\b/i,
     /\b(phone number|address|contact|timing|hours|open|closed)\b/i,
-
-    // Commercial / product
     /\b(buy|purchase|order|shop|price|discount|offer|deal|coupon)\b/i,
     /\b(best|top|review|rating|vs|versus|compare|comparison|alternative)\b/i,
     /\b(specs|specifications|release date|launch date)\b/i,
-
-    // Fact / reference
     /\b(capital (of|city)|population|gdp|ceo|founder|chairman|owner|president|prime minister|minister)\b/i,
     /\b(movie|film|series|show|episode|season|trailer|cast|imdb)\b/i,
     /\b(stock|share price|market cap|nifty|sensex|nasdaq|bitcoin|crypto)\b/i,
@@ -98,17 +82,11 @@ function classifyIntent(query, history = []) {
     if (re.test(raw)) return { needsSearch: true, reason: 'search signal matched' };
   }
 
-  // ── 5. Conversation continuity check ──
-  // If it looks like a follow-up to a previous AI message (short, pronoun-heavy),
-  // and the last AI reply didn't use search results → skip search
   if (words.length <= 5 && history.length >= 2) {
     const FOLLOW_UP_RE = /^(what about|and|but|also|tell me more|more|elaborate|go on|continue|why|how so|really|seriously|then what)[?!. ]*/i;
     if (FOLLOW_UP_RE.test(raw)) return { needsSearch: false, reason: 'conversational follow-up' };
   }
 
-  // ── 6. Question heuristic (default for questions) ──
-  // A sentence ending with ? or starting with question word that passed all above
-  // → lean toward searching unless it's a pure opinion/creative question
   const OPINION_RE = /^(what do you think|what('s| is) your (opinion|view|take)|do you (like|prefer|believe|think)|in your opinion|aap kya sochte|tumhara kya khayal)/i;
   if (OPINION_RE.test(raw)) return { needsSearch: false, reason: 'opinion question' };
 
@@ -116,11 +94,8 @@ function classifyIntent(query, history = []) {
     return { needsSearch: true, reason: 'question heuristic' };
   }
 
-  // ── 7. Default by length ──
-  // Very short statements that survived all above → probably conversational
   if (words.length <= 3) return { needsSearch: false, reason: 'short non-question' };
 
-  // Longer statements → search to be safe (avoids hallucination on factual claims)
   return { needsSearch: true, reason: 'long query default' };
 }
 
@@ -200,11 +175,11 @@ export async function onRequestPost(context) {
         }
       }
     } catch (_) {
-      // Search failed silently — Mistral answers from internal knowledge
+      // Search failed silently — Groq answers from internal knowledge
     }
   }
 
-  /* ── Step 2: Stream Mistral response ── */
+  /* ── Step 2: Stream Groq (Qwen 3.6 27B) response ── */
   const { readable, writable } = new TransformStream();
   const writer = writable.getWriter();
   const enc    = new TextEncoder();
@@ -219,14 +194,16 @@ export async function onRequestPost(context) {
         ? `${SYSTEM_PROMPT}\n\n${searchContext}`
         : SYSTEM_PROMPT;
 
-      const mistralResp = await fetch('https://api.mistral.ai/v1/chat/completions', {
+      const groqResp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
         method: 'POST',
         headers: {
           'Content-Type':  'application/json',
-          'Authorization': `Bearer ${env.MISTRAL_API_KEY}`,
+          'Authorization': `Bearer ${env.GROQ_API_KEY}`,
         },
         body: JSON.stringify({
-          model:    'ministral-14b-2512',
+          model:            'qwen/qwen3.6-27b',
+          reasoning_effort: 'none',
+          reasoning_format: 'hidden',
           messages: [
             { role: 'system', content: systemContent },
             ...historyArr.slice(-100),
@@ -238,14 +215,14 @@ export async function onRequestPost(context) {
         }),
       });
 
-      if (!mistralResp.ok) {
-        const errText = await mistralResp.text();
+      if (!groqResp.ok) {
+        const errText = await groqResp.text();
         await writer.write(enc.encode(`data: ${JSON.stringify({ error: errText })}\n\n`));
         await writer.close();
         return;
       }
 
-      const reader = mistralResp.body.getReader();
+      const reader = groqResp.body.getReader();
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
@@ -285,4 +262,4 @@ function _errJson(msg, status) {
     status,
     headers: { 'Content-Type': 'application/json' },
   });
-}
+     }

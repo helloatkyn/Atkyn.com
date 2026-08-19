@@ -88,12 +88,17 @@
 .wc-text { flex: 1; min-width: 0; }
 
 .wc-title {
-  display: block;
-  font-size: 1rem;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  font-size: 1.08rem;
   font-weight: 700;
   color: #000080;
-  line-height: 1.35;
+  line-height: 1.4;
   margin: 0 0 6px;
+  word-break: break-word;
+  overflow-wrap: break-word;
 }
 
 .wc-snippet {

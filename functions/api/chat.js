@@ -1,3 +1,8 @@
+/* ═══════════════════════════════════════════════════════════════
+   functions/api/chat.js — Atkyn Answer tab
+   Intent check → SearXNG → Mistral streaming response
+   ═══════════════════════════════════════════════════════════════ */
+
 import { SYSTEM_PROMPT } from './systemPrompt.js';
 
 async function fetchPageText(url) {
@@ -8,13 +13,13 @@ async function fetchPageText(url) {
     });
     if (!resp.ok) return '';
     const html = await resp.text();
-    const clean = html
+    return html
       .replace(/<script[\s\S]*?<\/script>/gi, '')
       .replace(/<style[\s\S]*?<\/style>/gi, '')
       .replace(/<[^>]+>/g, ' ')
       .replace(/\s+/g, ' ')
-      .trim();
-    return clean.slice(0, 5000);
+      .trim()
+      .slice(0, 5000);
   } catch {
     return '';
   }
@@ -27,107 +32,96 @@ export async function onRequestPost(context) {
   try {
     ({ query, history } = await request.json());
   } catch {
-    return new Response(JSON.stringify({ error: 'Invalid request body' }), {
-      status: 400,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    return _errJson('Invalid request body', 400);
   }
 
-  if (!query?.trim()) {
-    return new Response(JSON.stringify({ error: 'Empty query' }), {
-      status: 400,
-      headers: { 'Content-Type': 'application/json' },
+  if (!query?.trim()) return _errJson('Empty query', 400);
+
+  /* ── Step 1: Intent check ── */
+  let needsSearch = false;
+  try {
+    const intentResp = await fetch('https://api.mistral.ai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type':  'application/json',
+        'Authorization': `Bearer ${env.MISTRAL_API_KEY}`,
+      },
+      body: JSON.stringify({
+        model:       'ministral-14b-2512',
+        messages: [
+          { role: 'system', content: 'You decide if a web search is needed to answer the user query. Reply with only [SEARCH] or [NO_SEARCH]. Nothing else.' },
+          { role: 'user',   content: query },
+        ],
+        stream:      false,
+        max_tokens:  10,
+        temperature: 0,
+      }),
     });
-  }
+    if (intentResp.ok) {
+      const d = await intentResp.json();
+      needsSearch = d.choices?.[0]?.message?.content?.trim() === '[SEARCH]';
+    }
+  } catch (_) {}
 
-  // Step 1: Intent check — Mistral pe ministral-14b-2512
-  const intentResp = await fetch('https://api.mistral.ai/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${env.MISTRAL_API_KEY}`,
-    },
-    body: JSON.stringify({
-      model: 'ministral-14b-2512',
-      messages: [
-        { role: 'system', content: 'You decide if a web search is needed to answer the user query. Reply with only [SEARCH] or [NO_SEARCH]. Nothing else.' },
-        { role: 'user', content: query },
-      ],
-      stream: false,
-      max_tokens: 10,
-      temperature: 0,
-    }),
-  });
-
+  /* ── Step 2: SearXNG (only when needed) ── */
   let searchResults = [];
   let searchContext = '';
 
-  if (intentResp.ok) {
-    const intentData = await intentResp.json();
-    const decision = intentData.choices?.[0]?.message?.content?.trim();
+  if (needsSearch) {
+    try {
+      const searxResp = await fetch(
+        `${env.SEARXNG_URL}/search?q=${encodeURIComponent(query)}&format=json&categories=general&language=en`,
+        { headers: { 'Accept': 'application/json' }, signal: AbortSignal.timeout(8000) }
+      );
+      if (searxResp.ok) {
+        const data = await searxResp.json();
+        const raw  = (data.results || []).slice(0, 6);
 
-    if (decision === '[SEARCH]') {
-      try {
-        const searxResp = await fetch(
-          `${env.SEARXNG_URL}/search?q=${encodeURIComponent(query)}&format=json&categories=general&language=en`,
-          { headers: { 'Accept': 'application/json' } }
+        searchResults = await Promise.all(
+          raw.map(async (r, i) => {
+            let content = r.content || '';
+            if (i < 5) {
+              const pageText = await fetchPageText(r.url);
+              if (pageText) content = pageText;
+            }
+            return { title: r.title || '', url: r.url || '', snippet: content };
+          })
         );
 
-        if (searxResp.ok) {
-          const data = await searxResp.json();
-          const raw = (data.results || []).slice(0, 6);
-
-          const enriched = await Promise.all(
-            raw.map(async (r, i) => {
-              let content = r.content || '';
-              if (i < 5) {
-                const pageText = await fetchPageText(r.url);
-                if (pageText) content = pageText;
-              }
-              return {
-                title:   r.title || '',
-                url:     r.url   || '',
-                snippet: content,
-              };
-            })
-          );
-
-          searchResults = enriched;
-          if (searchResults.length > 0) {
-            searchContext = 'Web search results:\n' +
-              searchResults.map((r, i) => `[${i + 1}] ${r.title}\nURL: ${r.url}\n${r.snippet}`).join('\n\n');
-          }
+        if (searchResults.length) {
+          searchContext = 'Web search results:\n' +
+            searchResults.map((r, i) => `[${i + 1}] ${r.title}\nURL: ${r.url}\n${r.snippet}`).join('\n\n');
         }
-      } catch (_) {}
-    }
+      }
+    } catch (_) {}
   }
 
-  // Step 2: Main response — Mistral pe ministral-14b-2512
+  /* ── Step 3: Stream Mistral response ── */
   const { readable, writable } = new TransformStream();
   const writer = writable.getWriter();
   const enc    = new TextEncoder();
 
   (async () => {
     try {
-      if (searchResults.length > 0) {
+      if (searchResults.length) {
         await writer.write(enc.encode(`event: results\ndata: ${JSON.stringify(searchResults)}\n\n`));
       }
 
       const mistralResp = await fetch('https://api.mistral.ai/v1/chat/completions', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
+          'Content-Type':  'application/json',
           'Authorization': `Bearer ${env.MISTRAL_API_KEY}`,
         },
         body: JSON.stringify({
-          model: 'ministral-14b-2512',
+          model:    'ministral-14b-2512',
           messages: [
             { role: 'system', content: searchContext ? `${SYSTEM_PROMPT}\n\n${searchContext}` : SYSTEM_PROMPT },
             ...(Array.isArray(history) ? history.slice(-100) : []),
             { role: 'user', content: query },
           ],
-          stream: true,
-          max_tokens: 2048,
+          stream:      true,
+          max_tokens:  2048,
           temperature: 0.6,
         }),
       });
@@ -144,8 +138,8 @@ export async function onRequestPost(context) {
         if (done) break;
         await writer.write(value);
       }
-
       await writer.close();
+
     } catch (err) {
       try {
         await writer.write(enc.encode(`data: ${JSON.stringify({ error: String(err) })}\n\n`));
@@ -156,9 +150,9 @@ export async function onRequestPost(context) {
 
   return new Response(readable, {
     headers: {
-      'Content-Type': 'text/event-stream',
-      'Cache-Control': 'no-cache',
-      'X-Accel-Buffering': 'no',
+      'Content-Type':     'text/event-stream',
+      'Cache-Control':    'no-cache',
+      'X-Accel-Buffering':'no',
     },
   });
 }
@@ -166,9 +160,16 @@ export async function onRequestPost(context) {
 export async function onRequestOptions() {
   return new Response(null, {
     headers: {
-      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Origin':  '*',
       'Access-Control-Allow-Methods': 'POST, OPTIONS',
       'Access-Control-Allow-Headers': 'Content-Type',
     },
+  });
+}
+
+function _errJson(msg, status) {
+  return new Response(JSON.stringify({ error: msg }), {
+    status,
+    headers: { 'Content-Type': 'application/json' },
   });
 }

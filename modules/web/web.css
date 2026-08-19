@@ -122,6 +122,76 @@
   display: block;
 }
 
+/* ── Sitelinks ── */
+.wc-sitelinks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid #f0f0f0;
+}
+.wc-sitelink {
+  display: inline-block;
+  text-decoration: none;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: #000080;
+  background: #f0f4ff;
+  border-radius: 20px;
+  padding: 4px 11px;
+  white-space: nowrap;
+  transition: background 0.15s, color 0.15s;
+  -webkit-tap-highlight-color: transparent;
+}
+.wc-sitelink:active {
+  background: #dce6ff;
+}
+
+/* ── Autocomplete dropdown ── */
+.wc-suggest-drop {
+  position: fixed;
+  z-index: 9999;
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.13);
+  overflow: hidden;
+  display: none;
+  flex-direction: column;
+  padding: 6px 0;
+}
+.wc-suggest-drop.visible {
+  display: flex;
+}
+.wc-suggest-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  font-size: 0.92rem;
+  color: #222;
+  cursor: pointer;
+  transition: background 0.1s;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.wc-suggest-item:active,
+.wc-suggest-item.active {
+  background: #f0f4ff;
+  color: #000080;
+}
+.wc-suggest-icon {
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+  color: #aaa;
+  stroke-width: 2.2;
+}
+.wc-suggest-item.active .wc-suggest-icon {
+  color: #000080;
+}
+
+/* ── Dark mode ── */
 @media (prefers-color-scheme: dark) {
   .wc-list { background: #000; }
   .wc-card { background: #1c1c1e; box-shadow: 0 1px 4px rgba(0,0,0,0.3); }
@@ -132,4 +202,17 @@
   .wc-path { color: rgba(255,255,255,0.3); }
   .wc-fav-wrap { background: #2c2c2e; }
   .wc-dots svg { fill: #555; }
-}
+
+  /* sitelinks dark */
+  .wc-sitelinks { border-top-color: #2c2c2e; }
+  .wc-sitelink { color: #4BA8D8; background: #1a2a3a; }
+  .wc-sitelink:active { background: #1e3550; }
+
+  /* suggestions dark */
+  .wc-suggest-drop { background: #1c1c1e; box-shadow: 0 4px 24px rgba(0,0,0,0.5); }
+  .wc-suggest-item { color: #f0f0f0; }
+  .wc-suggest-item:active,
+  .wc-suggest-item.active { background: #2a2a2c; color: #4BA8D8; }
+  .wc-suggest-icon { color: #555; }
+  .wc-suggest-item.active .wc-suggest-icon { color: #4BA8D8; }
+    }

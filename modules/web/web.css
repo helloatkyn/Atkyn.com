@@ -125,27 +125,36 @@
 /* ── Sitelinks ── */
 .wc-sitelinks {
   display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
+  flex-direction: column;
   margin-top: 10px;
-  padding-top: 10px;
   border-top: 1px solid #f0f0f0;
 }
 .wc-sitelink {
-  display: inline-block;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   text-decoration: none;
-  font-size: 0.75rem;
-  font-weight: 500;
-  color: #000080;
-  background: #f0f4ff;
-  border-radius: 20px;
-  padding: 4px 11px;
-  white-space: nowrap;
-  transition: background 0.15s, color 0.15s;
+  padding: 9px 2px;
+  border-bottom: 1px solid #f0f0f0;
   -webkit-tap-highlight-color: transparent;
+  transition: background 0.1s;
+}
+.wc-sitelink:last-child {
+  border-bottom: none;
 }
 .wc-sitelink:active {
-  background: #dce6ff;
+  background: #f5f7ff;
+}
+.wc-sitelink-title {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #000080;
+}
+.wc-sitelink-arrow {
+  width: 14px;
+  height: 14px;
+  color: #bbb;
+  flex-shrink: 0;
 }
 
 /* ── Autocomplete dropdown ── */
@@ -205,8 +214,10 @@
 
   /* sitelinks dark */
   .wc-sitelinks { border-top-color: #2c2c2e; }
-  .wc-sitelink { color: #4BA8D8; background: #1a2a3a; }
-  .wc-sitelink:active { background: #1e3550; }
+  .wc-sitelink { border-bottom-color: #2c2c2e; }
+  .wc-sitelink:active { background: #1e1e20; }
+  .wc-sitelink-title { color: #4BA8D8; }
+  .wc-sitelink-arrow { color: #444; }
 
   /* suggestions dark */
   .wc-suggest-drop { background: #1c1c1e; box-shadow: 0 4px 24px rgba(0,0,0,0.5); }
@@ -215,4 +226,4 @@
   .wc-suggest-item.active { background: #2a2a2c; color: #4BA8D8; }
   .wc-suggest-icon { color: #555; }
   .wc-suggest-item.active .wc-suggest-icon { color: #4BA8D8; }
-    }
+}

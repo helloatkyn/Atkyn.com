@@ -1,6 +1,6 @@
 /* ═══════════════════════════════════════════════════════════════
    functions/api/chat.js — Atkyn Answer tab
-   Intent check → SearXNG → Mistral streaming response
+   SearXNG → Mistral streaming response
    ═══════════════════════════════════════════════════════════════ */
 
 import { SYSTEM_PROMPT } from './systemPrompt.js';
@@ -37,66 +37,38 @@ export async function onRequestPost(context) {
 
   if (!query?.trim()) return _errJson('Empty query', 400);
 
-  /* ── Step 1: Intent check ── */
-  let needsSearch = false;
-  try {
-    const intentResp = await fetch('https://api.mistral.ai/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type':  'application/json',
-        'Authorization': `Bearer ${env.MISTRAL_API_KEY}`,
-      },
-      body: JSON.stringify({
-        model:       'ministral-14b-2512',
-        messages: [
-          { role: 'system', content: 'You decide if a web search is needed to answer the user query. Reply with only [SEARCH] or [NO_SEARCH]. Nothing else.' },
-          { role: 'user',   content: query },
-        ],
-        stream:      false,
-        max_tokens:  10,
-        temperature: 0,
-      }),
-    });
-    if (intentResp.ok) {
-      const d = await intentResp.json();
-      needsSearch = d.choices?.[0]?.message?.content?.trim() === '[SEARCH]';
-    }
-  } catch (_) {}
-
-  /* ── Step 2: SearXNG (only when needed) ── */
+  /* ── Step 1: SearXNG ── */
   let searchResults = [];
   let searchContext = '';
 
-  if (needsSearch) {
-    try {
-      const searxResp = await fetch(
-        `${env.SEARXNG_URL}/search?q=${encodeURIComponent(query)}&format=json&categories=general&language=en`,
-        { headers: { 'Accept': 'application/json' }, signal: AbortSignal.timeout(8000) }
+  try {
+    const searxResp = await fetch(
+      `${env.SEARXNG_URL}/search?q=${encodeURIComponent(query)}&format=json&categories=general&language=en`,
+      { headers: { 'Accept': 'application/json' }, signal: AbortSignal.timeout(8000) }
+    );
+    if (searxResp.ok) {
+      const data = await searxResp.json();
+      const raw  = (data.results || []).slice(0, 6);
+
+      searchResults = await Promise.all(
+        raw.map(async (r, i) => {
+          let content = r.content || '';
+          if (i < 5) {
+            const pageText = await fetchPageText(r.url);
+            if (pageText) content = pageText;
+          }
+          return { title: r.title || '', url: r.url || '', snippet: content };
+        })
       );
-      if (searxResp.ok) {
-        const data = await searxResp.json();
-        const raw  = (data.results || []).slice(0, 6);
 
-        searchResults = await Promise.all(
-          raw.map(async (r, i) => {
-            let content = r.content || '';
-            if (i < 5) {
-              const pageText = await fetchPageText(r.url);
-              if (pageText) content = pageText;
-            }
-            return { title: r.title || '', url: r.url || '', snippet: content };
-          })
-        );
-
-        if (searchResults.length) {
-          searchContext = 'Web search results:\n' +
-            searchResults.map((r, i) => `[${i + 1}] ${r.title}\nURL: ${r.url}\n${r.snippet}`).join('\n\n');
-        }
+      if (searchResults.length) {
+        searchContext = 'Web search results:\n' +
+          searchResults.map((r, i) => `[${i + 1}] ${r.title}\nURL: ${r.url}\n${r.snippet}`).join('\n\n');
       }
-    } catch (_) {}
-  }
+    }
+  } catch (_) {}
 
-  /* ── Step 3: Stream Mistral response ── */
+  /* ── Step 2: Stream Mistral response ── */
   const { readable, writable } = new TransformStream();
   const writer = writable.getWriter();
   const enc    = new TextEncoder();
@@ -150,9 +122,9 @@ export async function onRequestPost(context) {
 
   return new Response(readable, {
     headers: {
-      'Content-Type':     'text/event-stream',
-      'Cache-Control':    'no-cache',
-      'X-Accel-Buffering':'no',
+      'Content-Type':      'text/event-stream',
+      'Cache-Control':     'no-cache',
+      'X-Accel-Buffering': 'no',
     },
   });
 }

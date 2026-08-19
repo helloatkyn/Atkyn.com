@@ -110,6 +110,16 @@
 }
 .search-input::placeholder { color: transparent; }
 
+/* Hide browser default search X button */
+.search-input::-webkit-search-cancel-button,
+.search-input::-webkit-search-decoration,
+.search-input::-webkit-search-results-button,
+.search-input::-webkit-search-results-decoration {
+  -webkit-appearance: none;
+  appearance: none;
+  display: none;
+}
+
 @media (prefers-color-scheme: dark) {
   .search-input { color: var(--color-text-dark-alt); }
 }

@@ -106,8 +106,8 @@
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 3;
   overflow: hidden;
-  font-size: 0.875rem;
-  color: #555;
+  font-size: 0.925rem;
+  color: #3a3a3a;
   line-height: 1.55;
   margin: 0;
 }
@@ -144,7 +144,6 @@
   padding-bottom: 2px;
 }
 .wc-sitelink:active { background: #f5f7ff; }
-
 .wc-sitelink-title {
   font-size: 1.05rem;
   font-weight: 500;
@@ -162,6 +161,24 @@
   color: #bbb;
   flex-shrink: 0;
 }
+.wc-sitelinks-hidden {
+  flex-direction: column;
+}
+.wc-sitelink-more {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 12px 2px;
+  border: none;
+  background: none;
+  font-size: 0.92rem;
+  font-weight: 500;
+  color: #000080;
+  cursor: pointer;
+  text-align: left;
+  -webkit-tap-highlight-color: transparent;
+}
+.wc-sitelink-more:active { opacity: 0.7; }
 
 /* ── Autocomplete dropdown ── */
 .wc-suggest-drop {
@@ -219,6 +236,7 @@
   .wc-sitelink:active { background: #1e1e20; }
   .wc-sitelink-title { color: #4BA8D8; }
   .wc-sitelink-arrow { color: #444; }
+  .wc-sitelink-more { color: #4BA8D8; }
 
   .wc-suggest-drop { background: #1c1c1e; box-shadow: 0 4px 24px rgba(0,0,0,0.5); }
   .wc-suggest-item { color: #f0f0f0; }

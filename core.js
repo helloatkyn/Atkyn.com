@@ -393,6 +393,16 @@ tabBar.addEventListener('click', async e => {
   tab.classList.add('active');
   _currentTabKey = key;
 
+  /* Chatbar: show query on non-Answer tabs, clear on Answer tab */
+  const q = sessionStorage.getItem('atkyn_last_query') || '';
+  if (key === 'ai') {
+    input.value = '';
+    pill.classList.remove('has-text');
+  } else if (q) {
+    input.value = q;
+    pill.classList.add('has-text');
+  }
+
   scrollHost.scrollTo({ top: 0, behavior: _prefersReducedMotion ? 'auto' : 'smooth' });
   resetScrollAccum();
 

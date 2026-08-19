@@ -113,9 +113,19 @@ async function _fetch(q) {
   }
 }
 
+/* ── Fill chatbar with current query ── */
+function _syncChatbar(q) {
+  const cb  = document.getElementById('cbInput');
+  const pll = document.getElementById('pill');
+  if (!cb || !pll) return;
+  cb.value = q;
+  pll.classList.toggle('has-text', q.length > 0);
+}
+
 /* ── Init ── */
 function _init() {
   const q      = sessionStorage.getItem('atkyn_last_query') || '';
+  _syncChatbar(q);
   const cached = sessionStorage.getItem('atkyn_web_results');
 
   if (cached) {

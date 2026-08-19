@@ -20,41 +20,12 @@ function _safeUrl(u) {
   } catch (_) { return '#'; }
 }
 
-/* ── Search bar ── */
-function _renderSearchBar(q) {
-  const wrap = document.createElement('div');
-  wrap.className = 'web-searchbar-wrap';
-  wrap.innerHTML = `
-    <div class="web-searchbar">
-      <svg class="web-searchbar-icon" viewBox="0 0 24 24" fill="none"
-           stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
-      </svg>
-      <input class="web-searchbar-input" type="search" value="${_esc(q)}"
-             placeholder="Search the web…" autocomplete="off" spellcheck="false">
-    </div>`;
-
-  const input = wrap.querySelector('.web-searchbar-input');
-
-  input.addEventListener('keydown', (e) => {
-    if (e.key !== 'Enter') return;
-    const val = input.value.trim();
-    if (!val) return;
-    sessionStorage.setItem('atkyn_last_query', val);
-    sessionStorage.removeItem('atkyn_web_results');
-    _init();
-  });
-
-  /* Keep main chatbar in sync */
-  input.addEventListener('input', () => {
-    const cbInput = document.getElementById('cbInput');
-    if (cbInput) {
-      cbInput.value = input.value;
-      cbInput.dispatchEvent(new Event('input'));
-    }
-  });
-
-  return wrap;
+/* ── Sync query into chatbar ── */
+function _syncChatbar(q) {
+  const cb = document.getElementById('cbInput');
+  if (!cb) return;
+  cb.value = q;
+  cb.dispatchEvent(new Event('input'));
 }
 
 /* ── Card builder ── */
@@ -114,31 +85,22 @@ function _buildCard(r) {
 
 /* ── Render results ── */
 function _render(q, results) {
-  const pc = window._atkynPageContent;
-  const frag = document.createDocumentFragment();
-
-  frag.appendChild(_renderSearchBar(q));
-
+  const pc   = window._atkynPageContent;
   const list = document.createElement('div');
   list.className = 'wc-list';
   results.forEach(r => list.appendChild(_buildCard(r)));
-  frag.appendChild(list);
-
   pc.innerHTML = '';
-  pc.appendChild(frag);
+  pc.appendChild(list);
   window._atkynAnimateIn();
+  _syncChatbar(q);
 }
 
-/* ── Fetch from /api/search (pure SearXNG, no AI) ── */
+/* ── Fetch from /api/search (SearXNG, no AI) ── */
 async function _fetch(q) {
   const pc = window._atkynPageContent;
-
-  /* Show search bar immediately with skeleton below */
-  pc.innerHTML = '';
-  pc.appendChild(_renderSearchBar(q));
-  pc.insertAdjacentHTML('beforeend',
-    '<div class="tab-skeleton"><div class="sk-line"></div><div class="sk-line sk-short"></div>' +
-    '<div class="sk-line"></div><div class="sk-line sk-short"></div></div>');
+  pc.innerHTML = '<div class="tab-skeleton"><div class="sk-line"></div><div class="sk-line sk-short"></div>' +
+    '<div class="sk-line"></div><div class="sk-line sk-short"></div></div>';
+  _syncChatbar(q);
 
   try {
     const resp = await fetch(`/api/search?q=${encodeURIComponent(q)}`, {
@@ -149,21 +111,15 @@ async function _fetch(q) {
     const results = await resp.json();
 
     if (!Array.isArray(results) || !results.length) {
-      pc.innerHTML = '';
-      pc.appendChild(_renderSearchBar(q));
-      pc.insertAdjacentHTML('beforeend',
-        '<div class="tab-empty"><p>No results found</p></div>');
+      pc.innerHTML = '<div class="tab-empty"><p>No results found</p></div>';
       return;
     }
 
     try { sessionStorage.setItem('atkyn_web_results', JSON.stringify({ q, results })); } catch (_) {}
     _render(q, results);
 
-  } catch (err) {
-    pc.innerHTML = '';
-    pc.appendChild(_renderSearchBar(q));
-    pc.insertAdjacentHTML('beforeend',
-      '<div class="tab-empty"><p>Could not load results</p></div>');
+  } catch (_) {
+    pc.innerHTML = '<div class="tab-empty"><p>Could not load results</p></div>';
   }
 }
 
@@ -184,15 +140,11 @@ function _init() {
 
   if (q) { _fetch(q); return; }
 
-  const pc = window._atkynPageContent;
-  pc.innerHTML = '';
-  pc.appendChild(_renderSearchBar(''));
-  pc.insertAdjacentHTML('beforeend',
-    '<div class="tab-empty"><p>Search something to see web results</p></div>');
+  window._atkynPageContent.innerHTML =
+    '<div class="tab-empty"><p>Search something to see web results</p></div>';
 }
 
 window._atkynInit_web = _init;
 _init();
 
 }());
-          

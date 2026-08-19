@@ -37,13 +37,9 @@ function _buildCard(r) {
             onerror="this.closest('.wc-thumb-wrap').remove()">`
     : '';
 
-  const MAX_VISIBLE = 6;
   let sitelinksHtml = '';
   if (r.sitelinks?.length) {
-    const visible = r.sitelinks.slice(0, MAX_VISIBLE);
-    const hidden  = r.sitelinks.slice(MAX_VISIBLE);
-
-    const visibleHtml = visible.map(s =>
+    const linksHtml = r.sitelinks.map(s =>
       `<a class="wc-sitelink" href="${_safeUrl(s.url)}" target="_blank" rel="noopener noreferrer">
         <span class="wc-sitelink-title">${_esc(s.title)}</span>
         <svg class="wc-sitelink-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
@@ -51,22 +47,7 @@ function _buildCard(r) {
         </svg>
       </a>`
     ).join('');
-
-    const hiddenHtml = hidden.length
-      ? `<div class="wc-sitelinks-hidden" style="display:none;flex-direction:column;">
-          ${hidden.map(s =>
-            `<a class="wc-sitelink" href="${_safeUrl(s.url)}" target="_blank" rel="noopener noreferrer">
-              <span class="wc-sitelink-title">${_esc(s.title)}</span>
-              <svg class="wc-sitelink-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                <polyline points="9 18 15 12 9 6"/>
-              </svg>
-            </a>`
-          ).join('')}
-        </div>
-        <button class="wc-sitelink-more">Show more</button>`
-      : '';
-
-    sitelinksHtml = `<div class="wc-sitelinks">${visibleHtml}${hiddenHtml}</div>`;
+    sitelinksHtml = `<div class="wc-sitelinks">${linksHtml}</div>`;
   }
 
   const a = document.createElement('a');
@@ -109,17 +90,6 @@ function _buildCard(r) {
   a.querySelectorAll('.wc-sitelink').forEach(sl => {
     sl.addEventListener('click', e => e.stopPropagation());
   });
-
-  const moreBtn = a.querySelector('.wc-sitelink-more');
-  if (moreBtn) {
-    moreBtn.addEventListener('click', e => {
-      e.preventDefault();
-      e.stopPropagation();
-      const hidden = moreBtn.previousElementSibling;
-      hidden.style.display = 'flex';
-      moreBtn.remove();
-    });
-  }
 
   return a;
 }

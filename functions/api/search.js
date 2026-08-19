@@ -1,6 +1,6 @@
 /* ═══════════════════════════════════════════════════════════════
    functions/api/search.js — Atkyn Web tab
-   Pure SearXNG proxy — zero AI calls.
+   Serper.dev proxy — zero AI calls.
    Returns: JSON array of { title, url, snippet, image?, sitelinks? }
    ═══════════════════════════════════════════════════════════════ */
 
@@ -13,26 +13,29 @@ export async function onRequestGet(context) {
   }
 
   try {
-    const searxResp = await fetch(
-      `${env.SEARXNG_URL}/search?q=${encodeURIComponent(q)}&format=json&categories=general&language=en`,
-      {
-        headers: { 'Accept': 'application/json' },
-        signal: AbortSignal.timeout(8000),
-      }
-    );
+    const serperResp = await fetch('https://google.serper.dev/search', {
+      method: 'POST',
+      headers: {
+        'X-API-KEY':    env.SERPER_API_KEY,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ q, num: 10, gl: 'in', hl: 'en' }),
+      signal: AbortSignal.timeout(8000),
+    });
 
-    if (!searxResp.ok) return _json({ error: 'Search backend error' }, 502);
+    if (!serperResp.ok) return _json({ error: 'Search backend error' }, 502);
 
-    const data = await searxResp.json();
-    const results = (data.results || []).slice(0, 10).map(r => ({
+    const data = await serperResp.json();
+
+    const results = (data.organic || []).slice(0, 10).map(r => ({
       title:   r.title   || '',
-      url:     r.url     || '',
-      snippet: r.content || '',
-      ...(r.img_src ? { image: r.img_src } : {}),
+      url:     r.link    || '',
+      snippet: r.snippet || '',
+      ...(r.imageUrl ? { image: r.imageUrl } : {}),
       ...(r.sitelinks?.length ? {
         sitelinks: r.sitelinks.slice(0, 4).map(s => ({
           title: s.title || '',
-          url:   s.url   || '',
+          url:   s.link  || '',
         }))
       } : {}),
     }));

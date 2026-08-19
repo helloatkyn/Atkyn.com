@@ -1,7 +1,7 @@
 /* ═══════════════════════════════════════════════════════════════
    functions/api/search.js — Atkyn Web tab
    Pure SearXNG proxy — zero AI calls.
-   Returns: JSON array of { title, url, snippet, image? }
+   Returns: JSON array of { title, url, snippet, image?, sitelinks? }
    ═══════════════════════════════════════════════════════════════ */
 
 export async function onRequestGet(context) {
@@ -29,6 +29,12 @@ export async function onRequestGet(context) {
       url:     r.url     || '',
       snippet: r.content || '',
       ...(r.img_src ? { image: r.img_src } : {}),
+      ...(r.sitelinks?.length ? {
+        sitelinks: r.sitelinks.slice(0, 4).map(s => ({
+          title: s.title || '',
+          url:   s.url   || '',
+        }))
+      } : {}),
     }));
 
     return _json(results);

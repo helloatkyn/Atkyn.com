@@ -33,7 +33,7 @@ export async function onRequestGet(context) {
       snippet: r.snippet || '',
       ...(r.imageUrl ? { image: r.imageUrl } : {}),
       ...(r.sitelinks?.length ? {
-        sitelinks: r.sitelinks.slice(0, 4).map(s => ({
+        sitelinks: r.sitelinks.map(s => ({
           title: s.title || '',
           url:   s.link  || '',
         }))

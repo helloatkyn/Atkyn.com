@@ -19,10 +19,10 @@
   -webkit-tap-highlight-color: transparent;
   content-visibility: auto;
   contain-intrinsic-size: 0 120px;
-  box-shadow: 0 1px 2px rgba(0,0,0,0.06);
-  transition: background 0.15s;
+  box-shadow: none;
+  transition: none;
 }
-.wc-card:active { background: #f5f5f5; }
+.wc-card:active { background: rgba(0,0,0,0.04); }
 
 .wc-meta {
   display: flex;
@@ -32,8 +32,8 @@
 }
 .wc-fav-wrap {
   flex-shrink: 0;
-  width: 28px;
-  height: 28px;
+  width: 30px;
+  height: 30px;
   border-radius: 50%;
   background: #f1f1f1;
   display: flex;
@@ -42,8 +42,8 @@
   overflow: hidden;
 }
 .wc-fav {
-  width: 16px;
-  height: 16px;
+  width: 18px;
+  height: 18px;
   display: block;
   object-fit: contain;
 }
@@ -92,7 +92,7 @@
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
   overflow: hidden;
-  font-size: 1.08rem;
+  font-size: 1.13rem;
   font-weight: 700;
   color: #000080;
   line-height: 1.4;
@@ -195,7 +195,7 @@
   background: #ffffff;
   border-radius: 16px;
   padding: 14px 14px 6px;
-  box-shadow: 0 1px 2px rgba(0,0,0,0.06);
+  box-shadow: none;
 }
 .wc-related-title {
   font-size: 0.8rem;
@@ -293,8 +293,8 @@
 /* ── Dark mode ── */
 @media (prefers-color-scheme: dark) {
   .wc-list { background: #000; }
-  .wc-card { background: #1c1c1e; box-shadow: 0 1px 4px rgba(0,0,0,0.3); }
-  .wc-card:active { background: #2a2a2c; }
+  .wc-card { background: #1c1c1e; box-shadow: none; }
+  .wc-card:active { background: rgba(255,255,255,0.05); }
   .wc-title { color: #4BA8D8; }
   .wc-snippet { color: #D4D4D6; }
   .wc-domain { color: rgba(255,255,255,0.75); }
@@ -310,7 +310,7 @@
   .wc-sitelink-title { color: #4BA8D8; }
   .wc-sitelink-arrow { color: #444; }
 
-  .wc-related { background: #1c1c1e; box-shadow: 0 1px 4px rgba(0,0,0,0.3); }
+  .wc-related { background: #1c1c1e; box-shadow: none; }
   .wc-related-title { color: #666; }
   .wc-related-item { border-bottom-color: #2c2c2e; }
   .wc-related-item:active { background: #2a2a2c; }
@@ -324,5 +324,4 @@
   .wc-suggest-item.active { background: #2a2a2c; color: #4BA8D8; }
   .wc-suggest-icon { color: #555; }
   .wc-suggest-item.active .wc-suggest-icon { color: #4BA8D8; }
-  }
-  
+}

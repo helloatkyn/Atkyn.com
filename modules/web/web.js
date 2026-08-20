@@ -240,7 +240,8 @@ function _init() {
   if (cached) {
     try {
       const { q: cq, results, relatedSearches, infobox, answers } = JSON.parse(cached);
-      if (cq === q && (results?.length || infobox || answers?.length)) {
+      const hasRelated = Array.isArray(relatedSearches) && relatedSearches.length > 0;
+      if (cq === q && (results?.length || infobox || answers?.length) && hasRelated) {
         _render(q, results || [], relatedSearches || [], infobox || null, answers || []);
         return;
       }
@@ -257,4 +258,4 @@ window._atkynInit_web = _init;
 _init();
 
 }());
- 
+     

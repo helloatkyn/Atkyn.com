@@ -42,8 +42,8 @@
   overflow: hidden;
 }
 .wc-fav {
-  width: 18px;
-  height: 18px;
+  width: 17px;
+  height: 17px;
   display: block;
   object-fit: contain;
 }
@@ -92,7 +92,7 @@
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
   overflow: hidden;
-  font-size: 1.13rem;
+  font-size: 1.1rem;
   font-weight: 700;
   color: #000080;
   line-height: 1.4;
@@ -122,7 +122,7 @@
   display: block;
 }
 
-/* ── Image Grid (Bing-style snippet) ── */
+/* ── Image Grid ── */
 .wc-img-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);

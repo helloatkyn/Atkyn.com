@@ -1,7 +1,7 @@
 /* ═══════════════════════════════════════════════════════════════
    functions/api/search.js — Atkyn Web tab
    Serper.dev proxy — zero AI calls.
-   Returns: JSON array of { title, url, snippet, image?, sitelinks? }
+   Returns: JSON { results, relatedSearches, images }
    ═══════════════════════════════════════════════════════════════ */
 
 export async function onRequestGet(context) {
@@ -32,6 +32,7 @@ export async function onRequestGet(context) {
       url:     r.link    || '',
       snippet: r.snippet || '',
       ...(r.imageUrl ? { image: r.imageUrl } : {}),
+      ...(r.images?.length ? { images: r.images.slice(0, 4).map(i => i.imageUrl).filter(Boolean) } : {}),
       ...(r.sitelinks?.length ? {
         sitelinks: r.sitelinks.map(s => ({
           title: s.title || '',
@@ -40,7 +41,10 @@ export async function onRequestGet(context) {
       } : {}),
     }));
 
-    return _json(results);
+    const relatedSearches = (data.relatedSearches || []).slice(0, 8).map(r => r.query || '').filter(Boolean);
+
+    return _json({ results, relatedSearches });
+
   } catch (err) {
     return _json({ error: String(err) }, 502);
   }

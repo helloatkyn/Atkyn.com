@@ -81,7 +81,7 @@ function _buildCard(r) {
   a.innerHTML = `
     <div class="wc-meta">
       <div class="wc-fav-wrap">
-        <img class="wc-fav" src="${_esc(fav)}" width="18" height="18"
+        <img class="wc-fav" src="${_esc(fav)}" width="17" height="17"
              loading="lazy" decoding="async" alt="">
       </div>
       <div class="wc-meta-text">
@@ -173,14 +173,11 @@ function _render(q, results, relatedSearches, infobox, answers) {
   const list = document.createElement('div');
   list.className = 'wc-list';
 
-  // Answer banner first (calculator etc.)
   const answerEl = _buildAnswerBanner(answers);
   if (answerEl) list.appendChild(answerEl);
 
-  // Infobox card with sitelinks
   if (infobox?.title) list.appendChild(_buildInfoboxCard(infobox));
 
-  // Regular results
   results.forEach(r => list.appendChild(_buildCard(r)));
 
   pc.appendChild(list);
@@ -206,10 +203,10 @@ async function _fetch(q) {
 
     const data = await resp.json();
 
-    const results         = Array.isArray(data) ? data          : (data.results         || []);
-    const relatedSearches = Array.isArray(data) ? []            : (data.relatedSearches || []);
-    const infobox         = Array.isArray(data) ? null          : (data.infobox         || null);
-    const answers         = Array.isArray(data) ? []            : (data.answers         || []);
+    const results         = Array.isArray(data) ? data : (data.results         || []);
+    const relatedSearches = Array.isArray(data) ? []   : (data.relatedSearches || []);
+    const infobox         = Array.isArray(data) ? null : (data.infobox         || null);
+    const answers         = Array.isArray(data) ? []   : (data.answers         || []);
 
     if (!results.length && !infobox && !answers.length) {
       pc.innerHTML = '<div class="tab-empty"><p>No results found</p></div>';
@@ -263,4 +260,4 @@ window._atkynInit_web = _init;
 _init();
 
 }());
-      
+                                          

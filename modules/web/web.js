@@ -173,9 +173,6 @@ function _render(q, results, relatedSearches, infobox, answers) {
   const list = document.createElement('div');
   list.className = 'wc-list';
 
-  const answerEl = _buildAnswerBanner(answers);
-  if (answerEl) list.appendChild(answerEl);
-
   if (infobox?.title) list.appendChild(_buildInfoboxCard(infobox));
 
   results.forEach(r => list.appendChild(_buildCard(r)));
@@ -260,4 +257,4 @@ window._atkynInit_web = _init;
 _init();
 
 }());
-                                          
+ 

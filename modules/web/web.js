@@ -155,18 +155,8 @@ function _buildRelated(q, relatedSearches) {
   return section;
 }
 
-/* ── Answer banner (calculator, time, etc.) ── */
-function _buildAnswerBanner(answers) {
-  if (!answers?.length) return null;
-  const div = document.createElement('div');
-  div.className = 'wc-card';
-  div.style.cssText = 'margin-bottom:2px;';
-  div.innerHTML = `<div class="wc-title" style="font-size:1.4rem;margin:0">${_esc(answers[0])}</div>`;
-  return div;
-}
-
 /* ── Render ── */
-function _render(q, results, relatedSearches, infobox, answers) {
+function _render(q, results, relatedSearches, infobox) {
   const pc = window._atkynPageContent;
   pc.innerHTML = '';
 
@@ -203,19 +193,18 @@ async function _fetch(q) {
     const results         = Array.isArray(data) ? data : (data.results         || []);
     const relatedSearches = Array.isArray(data) ? []   : (data.relatedSearches || []);
     const infobox         = Array.isArray(data) ? null : (data.infobox         || null);
-    const answers         = Array.isArray(data) ? []   : (data.answers         || []);
 
-    if (!results.length && !infobox && !answers.length) {
+    if (!results.length && !infobox) {
       pc.innerHTML = '<div class="tab-empty"><p>No results found</p></div>';
       return;
     }
 
     try {
       sessionStorage.setItem('atkyn_web_results',
-        JSON.stringify({ q, results, relatedSearches, infobox, answers }));
+        JSON.stringify({ q, results, relatedSearches, infobox }));
     } catch (_) {}
 
-    _render(q, results, relatedSearches, infobox, answers);
+    _render(q, results, relatedSearches, infobox);
 
   } catch (_) {
     pc.innerHTML = '<div class="tab-empty"><p>Could not load results</p></div>';
@@ -239,10 +228,9 @@ function _init() {
   const cached = sessionStorage.getItem('atkyn_web_results');
   if (cached) {
     try {
-      const { q: cq, results, relatedSearches, infobox, answers } = JSON.parse(cached);
-      const hasRelated = Array.isArray(relatedSearches) && relatedSearches.length > 0;
-      if (cq === q && (results?.length || infobox || answers?.length) && hasRelated) {
-        _render(q, results || [], relatedSearches || [], infobox || null, answers || []);
+      const { q: cq, results, relatedSearches, infobox } = JSON.parse(cached);
+      if (cq === q && results?.length) {
+        _render(q, results, relatedSearches || [], infobox || null);
         return;
       }
     } catch (_) {}
@@ -258,4 +246,3 @@ window._atkynInit_web = _init;
 _init();
 
 }());
-     

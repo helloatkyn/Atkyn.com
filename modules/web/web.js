@@ -158,10 +158,6 @@ function _render(q, data) {
   const pc   = window._atkynPageContent;
   const frag = document.createDocumentFragment();
 
-  // Answer pills
-  const answers = _buildAnswers(data.answers);
-  if (answers) frag.appendChild(answers);
-
   // Knowledge panel (infobox)
   const infobox = _buildInfobox(data.infobox);
   if (infobox) frag.appendChild(infobox);

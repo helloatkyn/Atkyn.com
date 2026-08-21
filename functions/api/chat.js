@@ -4,20 +4,18 @@ import { SYSTEM_PROMPT } from './systemPrompt.js';
 
 const GROQ_URL        = 'https://api.groq.com/openai/v1/chat/completions';
 const MODEL           = 'qwen/qwen3.6-27b';
-const MAX_TOOL_ROUNDS = 3;
+const MAX_TOOL_ROUNDS = 2; // ← only change
 
-// Token-budget limits — keep context tight
-const MAX_RESULTS        = 5;
-const MAX_TITLE_LEN      = 120;
-const MAX_URL_LEN        = 300;
-const MAX_SNIPPET_LEN    = 600;
-const MAX_PAGE_TEXT_LEN  = 3000;
-const SNIPPET_FETCH_MIN  = 350; // only fetch page when snippet shorter than this
+const MAX_RESULTS       = 5;
+const MAX_TITLE_LEN     = 120;
+const MAX_URL_LEN       = 300;
+const MAX_SNIPPET_LEN   = 600;
+const MAX_PAGE_TEXT_LEN = 3000;
+const SNIPPET_FETCH_MIN = 350;
 
-// Timeouts
 const TIMEOUT_SEARXNG_MS = 6_000;
 const TIMEOUT_PAGE_MS    = 4_000;
-const TIMEOUT_GROQ_MS    = 55_000; // Cloudflare worker max is 60 s
+const TIMEOUT_GROQ_MS    = 55_000;
 
 // ─── tool definition ─────────────────────────────────────────────────────────
 
@@ -26,20 +24,39 @@ const TOOLS = [
     type: 'function',
     function: {
       name: 'web_search',
-      description: [
-        'Search the web for current, real-time, or external information.',
-        'Use when: current news/events, latest versions, prices, availability,',
-        'recent changes, specific external facts, or anything time-sensitive.',
-        'Do NOT use for: stable general knowledge, math, reasoning, translation,',
-        'summarising content the user already provided, or creative writing.',
-        'Decide autonomously — the user does not need to say "search".',
-      ].join(' '),
+      description: `You MUST call this tool before answering whenever the user's request involves information that can change over time or requires external verification. This is the ONLY mechanism for retrieving current information. You cannot know current real-world state from memory — your training data is outdated.
+
+ALWAYS call web_search first (do NOT answer from memory) when the query involves ANY of:
+- Market capitalisation, valuation, stock price, share price, company worth
+- Cryptocurrency prices, exchange rates, commodity prices (gold, silver, oil, etc.)
+- Current news, recent events, latest developments
+- Latest or current software/app/OS/API versions (Android, iOS, React, Python, etc.)
+- Current product availability, pricing, or specifications
+- Weather, temperature, forecasts
+- Sports scores, fixtures, rankings, standings, results
+- Current regulations, laws, policies
+- Current leadership, executives, government officials
+- Any quantity, figure, or fact prefaced with words like: current, latest, today, now, recent, live, up-to-date, present, aaj, abhi, filhal, or equivalent in any language
+- Anything the user is asking about in real-time or present tense that is not a stable definition
+
+The user does NOT need to say "search". You decide autonomously.
+Never estimate, guess, or recall a current value from training memory.
+If freshness materially affects correctness, search first, always.
+
+Do NOT call this tool for:
+- Stable definitions, concepts, or explanations (e.g. "What is photosynthesis?", "Explain how Bitcoin works", "What is React?")
+- Mathematics, logic, or pure reasoning
+- Translation or rewriting
+- Summarising content the user has already provided
+- Creative writing
+- General factual knowledge that does not change (historical events, scientific constants, geography)
+- Questions about named entities where no current/live data is needed (e.g. "What is Apple?" — general company description does not require search; "What is Apple's current stock price?" does)`,
       parameters: {
         type: 'object',
         properties: {
           query: {
             type: 'string',
-            description: 'The search query string.',
+            description: 'The search query. Be specific and include relevant context (company name, metric type, date if relevant).',
           },
         },
         required: ['query'],
@@ -48,6 +65,22 @@ const TOOLS = [
     },
   },
 ];
+
+// ─── system addendum ──────────────────────────────────────────────────────────
+
+const SEARCH_POLICY =
+`You have access to a web_search tool that retrieves real-time information from the web.
+
+MANDATORY SEARCH POLICY — follow this without exception:
+- If the user asks for ANY current, live, latest, or time-sensitive information, you MUST call web_search before generating any answer.
+- This includes but is not limited to: market cap, valuation, stock price, crypto price, gold rate, product price, software version, news, weather, sports results, current regulations, or any figure that fluctuates over time.
+- You MUST NOT answer current-state questions from training memory. Your knowledge has a cutoff date and will be wrong.
+- You MUST NOT estimate, approximate, or recall a current numerical value from memory.
+- If the requested information can change over time, search first. Always.
+- The user does not need to explicitly ask you to search. Search autonomously.
+- "Current", "latest", "today", "aaj", "abhi", "filhal", "present", "live", "now" in any language are mandatory search triggers.
+
+Failure to call web_search when current information is needed is an error.`;
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
@@ -63,7 +96,6 @@ async function fetchPageText(url) {
       signal: AbortSignal.timeout(TIMEOUT_PAGE_MS),
     });
     if (!resp.ok) return '';
-    // Reject non-HTML to avoid binary blobs eating context
     const ct = resp.headers.get('content-type') ?? '';
     if (!ct.includes('html') && !ct.includes('text')) return '';
     const html = await resp.text();
@@ -80,11 +112,10 @@ async function fetchPageText(url) {
 }
 
 async function runSearXNG(rawQuery, env, seenUrls) {
-  // seenUrls: Set<string> shared across all rounds of this request
   const query = String(rawQuery ?? '').trim();
   if (!query) return [];
 
-  const params = new URLSearchParams({ q: query, format: 'json', language: 'en' });
+  const params   = new URLSearchParams({ q: query, format: 'json', language: 'en' });
   const endpoint = `${env.SEARXNG_URL}/search?${params}`;
 
   let rawResults;
@@ -105,7 +136,6 @@ async function runSearXNG(rawQuery, env, seenUrls) {
   for (const r of rawResults) {
     if (output.length >= MAX_RESULTS) break;
 
-    // Skip malformed or already-seen URLs
     const url = typeof r.url === 'string' ? r.url.trim() : '';
     if (!url || !/^https?:\/\//i.test(url)) continue;
     if (seenUrls.has(url)) continue;
@@ -115,7 +145,6 @@ async function runSearXNG(rawQuery, env, seenUrls) {
     const safeUrl = truncate(url, MAX_URL_LEN);
     let   snippet = truncate(r.content ?? r.snippet ?? '', MAX_SNIPPET_LEN);
 
-    // Only fetch page when snippet is genuinely thin
     if (snippet.length < SNIPPET_FETCH_MIN) {
       const pageText = await fetchPageText(url);
       if (pageText) snippet = truncate(pageText, MAX_SNIPPET_LEN);
@@ -141,7 +170,7 @@ function formatSearchResults(results, query) {
   );
 }
 
-// ─── groq helpers ────────────────────────────────────────────────────────────
+// ─── groq helpers ─────────────────────────────────────────────────────────────
 
 function buildGroqBody(messages, { stream, includeTools }) {
   return {
@@ -183,7 +212,6 @@ async function groqRequest(messages, options, env) {
   }
 }
 
-// Parse a complete (non-streaming) Groq response into { message, toolCalls }
 async function parseGroqJson(resp) {
   const json   = await resp.json();
   const choice = json.choices?.[0];
@@ -193,11 +221,8 @@ async function parseGroqJson(resp) {
   return { message, toolCalls };
 }
 
-// ─── SSE helpers ─────────────────────────────────────────────────────────────
+// ─── SSE helpers ──────────────────────────────────────────────────────────────
 
-// Emit one complete text answer as a single SSE data event in the
-// same format streaming would produce, so the frontend needs no changes.
-// We send a synthetic delta chunk followed by [DONE].
 function answerToSSE(text) {
   const chunk = JSON.stringify({
     choices: [{ delta: { content: text }, finish_reason: 'stop' }],
@@ -218,7 +243,6 @@ function errorSSE(msg) {
 export async function onRequestPost(context) {
   const { request, env } = context;
 
-  // ── parse request ──────────────────────────────────────────────────────────
   let query, history;
   try {
     ({ query, history } = await request.json());
@@ -243,7 +267,6 @@ export async function onRequestPost(context) {
     });
   }
 
-  // ── set up SSE stream ──────────────────────────────────────────────────────
   const { readable, writable } = new TransformStream();
   const writer = writable.getWriter();
   const enc    = new TextEncoder();
@@ -255,63 +278,43 @@ export async function onRequestPost(context) {
     try { await writer.close(); } catch { /* already closed */ }
   };
 
-  // ── async work (detached) ──────────────────────────────────────────────────
   (async () => {
     try {
-      const systemContent =
-        `${SYSTEM_PROMPT}\n\n` +
-        `You have access to a \`web_search\` tool. ` +
-        `Use it autonomously whenever current or external information would improve your answer. ` +
-        `You do not need the user to ask you to search.`;
+      const systemContent = `${SYSTEM_PROMPT}\n\n${SEARCH_POLICY}`;
 
-      // Build the base message list for this request.
-      // History is sliced to avoid mutating the original array; tool messages
-      // from previous turns are part of history as-is (frontend controls this).
-      const baseMessages = [
+      const messages = [
         { role: 'system', content: systemContent },
         ...(Array.isArray(history) ? history.slice(-100) : []),
         { role: 'user', content: query },
       ];
 
-      // Working message list — extended with tool calls/results each round.
-      // This is request-scoped and never persisted.
-      const messages = [...baseMessages];
-
-      // Per-request URL deduplication across all search rounds
-      const seenUrls = new Set();
-
-      // Accumulated search results for the SSE event
+      const seenUrls         = new Set();
       const allSearchResults = [];
 
       let round       = 0;
-      let finalAnswer = null; // string when we have it
+      let finalAnswer = null;
 
-      // ── tool-call loop ───────────────────────────────────────────────────
+      // ── tool-call loop (max MAX_TOOL_ROUNDS rounds) ───────────────────────
       while (round < MAX_TOOL_ROUNDS && finalAnswer === null) {
         round++;
 
-        // Non-streaming call so we can inspect tool calls before deciding
-        // what to do next. We only stream the truly final answer.
         const resp = await groqRequest(messages, { stream: false, includeTools: true }, env);
         const { message, toolCalls } = await parseGroqJson(resp);
 
         if (toolCalls.length === 0) {
-          // ── no tool call → this IS the final answer ──────────────────────
-          // content can be null when model uses tool_calls; guard here too.
+          // No tool call → this is the final answer
           finalAnswer = typeof message.content === 'string' ? message.content : '';
           break;
         }
 
-        // ── tool call(s) returned ────────────────────────────────────────
-        // 1. Append the assistant message exactly as Groq returned it.
-        //    Must include tool_calls array for the API to accept the follow-up.
+        // Append assistant message exactly as returned
         messages.push({
           role: 'assistant',
-          content: message.content ?? null, // preserve null if model sent it
+          content: message.content ?? null,
           tool_calls: toolCalls,
         });
 
-        // 2. Execute each tool call and append tool results.
+        // Execute each tool call and append tool results
         for (const tc of toolCalls) {
           const tcId = tc.id ?? '';
           let toolResult;
@@ -337,56 +340,45 @@ export async function onRequestPost(context) {
                 toolResult = formatSearchResults(results, searchQuery);
               }
             }
-          } catch (toolErr) {
+          } catch {
             toolResult = 'Search tool encountered an unexpected error.';
           }
 
-          // 3. Append tool result in Groq-compatible format.
           messages.push({
             role: 'tool',
             tool_call_id: tcId,
             content: toolResult,
           });
         }
-        // Loop → model will synthesise or optionally search again
+        // Loop continues → model synthesises or searches again (if round < MAX_TOOL_ROUNDS)
       }
 
-      // ── emit search results to frontend before the answer ────────────────
+      // ── emit search results before the answer ─────────────────────────────
       if (allSearchResults.length > 0) {
         await write(searchResultsSSE(allSearchResults));
       }
 
-      // ── emit final answer ────────────────────────────────────────────────
+      // ── emit final answer ─────────────────────────────────────────────────
       if (finalAnswer !== null) {
-        //
-        // The no-search path (round 1, no tool calls) already has the full
-        // answer in `finalAnswer`. The search path sets finalAnswer when the
-        // model's post-tool response contains no further tool calls.
-        //
-        // In both cases: emit as a single synthetic SSE chunk.
-        // This avoids a third AI call solely to re-stream known content.
-        //
+        // Clean finish inside the loop — emit as synthetic SSE, no extra AI call.
         await write(answerToSSE(finalAnswer));
       } else {
-        // Tool-round limit exhausted without a clean finish_reason stop.
-        // Make ONE final non-tool call so the model can wrap up with
-        // whatever context it has. Tools deliberately excluded to prevent
-        // further loops. This is the only case where round+1 occurs beyond
-        // MAX_TOOL_ROUNDS, and it is bounded to exactly one extra call.
+        // MAX_TOOL_ROUNDS exhausted without a clean stop.
+        // One final streaming call with tools disabled — the absolute last call.
         try {
           const finalResp = await groqRequest(
             messages,
             { stream: true, includeTools: false },
             env,
           );
-          // Stream this directly — it is the genuine final answer.
           const reader = finalResp.body.getReader();
+          const dec    = new TextDecoder();
           while (true) {
             const { done, value } = await reader.read();
             if (done) break;
-            await write(new TextDecoder().decode(value));
+            await write(dec.decode(value));
           }
-        } catch (streamErr) {
+        } catch {
           await write(errorSSE('Failed to retrieve a final answer after search.'));
         }
       }
@@ -397,7 +389,6 @@ export async function onRequestPost(context) {
     }
   })();
 
-  // Return the stream immediately
   return new Response(readable, {
     headers: {
       'Content-Type': 'text/event-stream',
@@ -415,4 +406,4 @@ export async function onRequestOptions() {
       'Access-Control-Allow-Headers': 'Content-Type',
     },
   });
-                        }
+}

@@ -41,43 +41,111 @@ export async function onRequestPost(context) {
     });
   }
 
+  // Step 1: Search intent decision — SEARCH_INTELLIGENCE_PROMPT se
+  const intentResp = await fetch('https://api.mistral.ai/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${env.MISTRAL_API_KEY}`,
+    },
+    body: JSON.stringify({
+      model: 'ministral-14b-2512',
+      messages: [
+        {
+          role: 'system',
+          content: `${SEARCH_INTELLIGENCE_PROMPT}\n\nBased on the above intelligence, decide if a web search is needed to answer the user query. Reply with only [SEARCH] or [NO_SEARCH]. Nothing else.`,
+        },
+        { role: 'user', content: query },
+      ],
+      stream: false,
+      max_tokens: 10,
+      temperature: 0,
+    }),
+  });
+
+  let searchResults = [];
+  let searchContext = '';
+
+  if (intentResp.ok) {
+    const intentData = await intentResp.json();
+    const decision = intentData.choices?.[0]?.message?.content?.trim();
+
+    if (decision === '[SEARCH]') {
+      try {
+        const searxResp = await fetch(
+          `${env.SEARXNG_URL}/search?q=${encodeURIComponent(query)}&format=json&categories=general&language=en`,
+          { headers: { 'Accept': 'application/json' } }
+        );
+
+        if (searxResp.ok) {
+          const data = await searxResp.json();
+          const raw = (data.results || []).slice(0, 6);
+
+          const enriched = await Promise.all(
+            raw.map(async (r, i) => {
+              let content = r.content || '';
+              if (i < 5) {
+                const pageText = await fetchPageText(r.url);
+                if (pageText) content = pageText;
+              }
+              return {
+                title:   r.title || '',
+                url:     r.url   || '',
+                snippet: content,
+              };
+            })
+          );
+
+          searchResults = enriched;
+          if (searchResults.length > 0) {
+            searchContext = 'Web search results:\n' +
+              searchResults.map((r, i) => `[${i + 1}] ${r.title}\nURL: ${r.url}\n${r.snippet}`).join('\n\n');
+          }
+        }
+      } catch (_) {}
+    }
+  }
+
+  // Step 2: Main response — SYSTEM_PROMPT + search context
   const { readable, writable } = new TransformStream();
   const writer = writable.getWriter();
   const enc    = new TextEncoder();
 
   (async () => {
     try {
-      const groqResp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      if (searchResults.length > 0) {
+        await writer.write(enc.encode(`event: results\ndata: ${JSON.stringify(searchResults)}\n\n`));
+      }
+
+      const mistralResp = await fetch('https://api.mistral.ai/v1/chat/completions', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${env.GROQ_API_KEY}`,
+          'Authorization': `Bearer ${env.MISTRAL_API_KEY}`,
         },
         body: JSON.stringify({
-          model: 'qwen/qwen3.6-27b',
+          model: 'ministral-14b-2512',
           messages: [
             {
               role: 'system',
-              content: `${SYSTEM_PROMPT}\n\n${SEARCH_INTELLIGENCE_PROMPT}`,
+              content: searchContext ? `${SYSTEM_PROMPT}\n\n${searchContext}` : SYSTEM_PROMPT,
             },
             ...(Array.isArray(history) ? history.slice(-100) : []),
             { role: 'user', content: query },
           ],
           stream: true,
           max_tokens: 2048,
-          temperature: 0.7,
-          top_p: 0.80,
-          reasoning_effort: 'none',
+          temperature: 0.6,
         }),
       });
 
-      if (!groqResp.ok) {
-        await writer.write(enc.encode(`data: ${JSON.stringify({ error: await groqResp.text() })}\n\n`));
+      if (!mistralResp.ok) {
+        await writer.write(enc.encode(`data: ${JSON.stringify({ error: await mistralResp.text() })}\n\n`));
         await writer.close();
         return;
       }
 
-      const reader = groqResp.body.getReader();
+      const reader = mistralResp.body.getReader();
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
@@ -110,4 +178,4 @@ export async function onRequestOptions() {
       'Access-Control-Allow-Headers': 'Content-Type',
     },
   });
-}
+      }

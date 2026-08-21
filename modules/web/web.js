@@ -58,11 +58,10 @@ function _buildCard(r) {
   return a;
 }
 
-/* ── Infobox — Knowledge Panel (kg-card style) ── */
+/* ── Infobox — Knowledge Panel ── */
 function _buildInfobox(box) {
   if (!box?.title) return null;
 
-  // Source URL — wikipedia ya jo bhi ho
   const sourceUrl = box.urls?.[0]?.url || '';
   let sourceHost = '';
   try { sourceHost = new URL(sourceUrl).hostname.replace(/^www\./, ''); } catch (_) {}
@@ -103,18 +102,9 @@ function _buildInfobox(box) {
   return el;
 }
 
-/* ── Answer pill ── */
-function _buildAnswers(answers) {
-  if (!answers?.length) return null;
-  const el = document.createElement('div');
-  el.className = 'wc-answers';
-  el.innerHTML = answers.map(a => `<div class="wc-answer-pill">${_esc(a)}</div>`).join('');
-  return el;
-}
-
 /* ── Related searches ── */
-function _buildRelated(q, relatedSearches) {
-  if (!relatedSearches?.length) return null;
+function _buildRelated(q, suggestions) {
+  if (!suggestions?.length) return null;
 
   const el = document.createElement('div');
   el.className = 'wc-related';
@@ -123,7 +113,7 @@ function _buildRelated(q, relatedSearches) {
   const list = document.createElement('div');
   list.className = 'wc-related-list';
 
-  relatedSearches.forEach(query => {
+  suggestions.forEach(query => {
     const btn = document.createElement('button');
     btn.className = 'wc-related-item';
     btn.innerHTML = `
@@ -142,6 +132,17 @@ function _buildRelated(q, relatedSearches) {
   return el;
 }
 
+/* ── Fetch DDG suggestions ── */
+async function _fetchSuggestions(q) {
+  try {
+    const resp = await fetch(`/api/suggest?q=${encodeURIComponent(q)}`, {
+      signal: AbortSignal.timeout(4000),
+    });
+    if (!resp.ok) return [];
+    return await resp.json();
+  } catch (_) { return []; }
+}
+
 /* ── Trigger new search ── */
 function _triggerSearch(query) {
   const cb   = document.getElementById('cbInput');
@@ -154,15 +155,15 @@ function _triggerSearch(query) {
 }
 
 /* ── Render ── */
-function _render(q, data) {
+async function _render(q, data) {
   const pc   = window._atkynPageContent;
   const frag = document.createDocumentFragment();
 
-  // Knowledge panel (infobox)
+  // Knowledge panel
   const infobox = _buildInfobox(data.infobox);
   if (infobox) frag.appendChild(infobox);
 
-  // Results — filter out wikipedia if infobox exists
+  // Results — filter wikipedia if infobox exists
   const results = data.infobox
     ? data.results.filter(r => !r.url.includes('wikipedia.org'))
     : data.results;
@@ -172,13 +173,14 @@ function _render(q, data) {
   results.forEach(r => list.appendChild(_buildCard(r)));
   frag.appendChild(list);
 
-  // Related searches
-  const related = _buildRelated(q, data.relatedSearches);
-  if (related) frag.appendChild(related);
-
   pc.innerHTML = '';
   pc.appendChild(frag);
   window._atkynAnimateIn();
+
+  // Suggestions — async after results shown
+  const suggestions = await _fetchSuggestions(q);
+  const related = _buildRelated(q, suggestions);
+  if (related) pc.appendChild(related);
 }
 
 /* ── Fetch ── */
@@ -204,8 +206,8 @@ async function _fetch(q) {
     }
 
     const payload = Array.isArray(data)
-      ? { results, infobox: null, relatedSearches: [], answers: [] }
-      : { results, infobox: data.infobox || null, relatedSearches: data.relatedSearches || [], answers: data.answers || [] };
+      ? { results, infobox: null }
+      : { results, infobox: data.infobox || null };
 
     try { sessionStorage.setItem('atkyn_web_results', JSON.stringify({ q, ...payload })); } catch (_) {}
     _render(q, payload);

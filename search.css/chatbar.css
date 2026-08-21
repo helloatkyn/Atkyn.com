@@ -1,6 +1,6 @@
 /* ════════════════════════════════════════════════════════════════
-   chatbar.css — Professional chatbar
-   Reference: Yandex-style clean X, Gemini-level pill, refined send
+   chatbar.css — Compact professional chatbar
+   White pill, zero shadow, hairline border, floating feel
 ════════════════════════════════════════════════════════════════ */
 
 /* ────────────────────────────────────────────────────────────────
@@ -8,47 +8,47 @@
 ──────────────────────────────────────────────────────────────── */
 .chatbar-wrap {
   flex-shrink: 0;
-  padding: 8px 16px calc(12px + env(safe-area-inset-bottom));
+  padding: 6px 14px calc(10px + env(safe-area-inset-bottom));
   position: relative;
   z-index: 10;
   will-change: transform;
   transform: translateZ(0);
-  background: #ffffff;
+  background: transparent;
 }
 @media (prefers-color-scheme: dark) {
-  .chatbar-wrap { background: var(--color-bg-dark); }
+  .chatbar-wrap { background: transparent; }
 }
 
 /* ────────────────────────────────────────────────────────────────
-   PILL
+   PILL — white, no shadow, hairline border only
 ──────────────────────────────────────────────────────────────── */
 .overlay-pill {
   width: 100%;
   display: flex;
   align-items: center;
-  background: #f5f5f5;
-  border: none;
+  background: #ffffff;
   border-radius: 100px;
-  padding: 0 10px 0 18px;
-  height: 52px;
-  gap: 10px;
+  border: 1px solid rgba(0, 0, 0, 0.09);
+  padding: 0 8px 0 14px;
+  height: 46px;
+  gap: 6px;
   box-shadow: none;
-  transition: background 0.18s, box-shadow 0.18s;
+  transition: border-color 0.18s;
 }
 .overlay-pill:focus-within {
-  background: #f0f0f0;
-  box-shadow: 0 0 0 1.5px rgba(0, 0, 0, 0.10);
+  border-color: rgba(0, 0, 0, 0.16);
+  box-shadow: none;
 }
 
 @media (prefers-color-scheme: dark) {
   .overlay-pill {
     background: var(--color-bg-alt-dark);
-    border: none;
+    border: 1px solid rgba(255, 255, 255, 0.08);
     box-shadow: none;
   }
   .overlay-pill:focus-within {
-    background: var(--color-bg-alt-dark);
-    box-shadow: 0 0 0 1.5px rgba(255, 255, 255, 0.10);
+    border-color: rgba(255, 255, 255, 0.14);
+    box-shadow: none;
   }
 }
 
@@ -64,15 +64,16 @@
   cursor: pointer;
   padding: 4px;
   border-radius: 50%;
-  color: rgba(0, 0, 0, 0.42);
-  transition: color 0.12s, background 0.12s;
+  color: rgba(0, 0, 0, 0.35);
+  transition: color 0.12s;
+  -webkit-tap-highlight-color: transparent;
 }
-.ico-plus:active { background: rgba(0, 0, 0, 0.06); color: rgba(0, 0, 0, 0.65); }
-.ico-plus svg    { width: 22px; height: 22px; }
+.ico-plus:active { color: rgba(0, 0, 0, 0.60); }
+.ico-plus svg    { width: 20px; height: 20px; }
 
 @media (prefers-color-scheme: dark) {
-  .ico-plus { color: rgba(255, 255, 255, 0.38); }
-  .ico-plus:active { background: rgba(255, 255, 255, 0.08); color: rgba(255, 255, 255, 0.6); }
+  .ico-plus { color: rgba(255, 255, 255, 0.35); }
+  .ico-plus:active { color: rgba(255, 255, 255, 0.65); }
 }
 
 /* ────────────────────────────────────────────────────────────────
@@ -94,7 +95,7 @@
   border: none;
   outline: none;
   background: transparent;
-  font-size: 0.975rem;
+  font-size: 0.95rem;
   font-weight: 400;
   color: var(--color-text);
   padding: 0;
@@ -104,7 +105,6 @@
 }
 .search-input::placeholder { color: transparent; }
 
-/* Hide browser default search X button */
 .search-input::-webkit-search-cancel-button,
 .search-input::-webkit-search-decoration,
 .search-input::-webkit-search-results-button,
@@ -119,7 +119,7 @@
 }
 
 /* ────────────────────────────────────────────────────────────────
-   ANIMATED SHIMMER PLACEHOLDER
+   SHIMMER PLACEHOLDER
 ──────────────────────────────────────────────────────────────── */
 .shimmer-overlay {
   position: absolute;
@@ -131,7 +131,7 @@
   overflow: hidden;
 }
 .shimmer-overlay span {
-  font-size: 0.975rem;
+  font-size: 0.95rem;
   white-space: nowrap;
   letter-spacing: 0.01em;
   background: linear-gradient(90deg,
@@ -151,28 +151,27 @@
 .search-input:not(:placeholder-shown) + .shimmer-overlay { display: none; }
 
 /* ────────────────────────────────────────────────────────────────
-   CLEAR (X) BUTTON — Yandex style: no circle, thin clean cross
+   CLEAR (X) BUTTON — Yandex style: bare thin cross, no bg
 ──────────────────────────────────────────────────────────────── */
 .ico-clear {
   flex-shrink: 0;
-  display: none;          /* shown via JS when has-text */
+  display: none;
   align-items: center;
   justify-content: center;
   border: none;
   background: none;
   cursor: pointer;
   padding: 6px;
-  color: rgba(0, 0, 0, 0.32);
+  color: rgba(0, 0, 0, 0.28);
   transition: color 0.12s;
   -webkit-tap-highlight-color: transparent;
 }
-.ico-clear:active { color: rgba(0, 0, 0, 0.65); }
+.ico-clear:active { color: rgba(0, 0, 0, 0.55); }
 
-/* The X drawn purely in CSS — two thin rotated lines */
 .ico-clear-icon {
   position: relative;
-  width: 14px;
-  height: 14px;
+  width: 13px;
+  height: 13px;
 }
 .ico-clear-icon::before,
 .ico-clear-icon::after {
@@ -181,26 +180,18 @@
   top: 50%;
   left: 0;
   width: 100%;
-  height: 1.6px;
+  height: 1.5px;
   background: currentColor;
   border-radius: 1px;
 }
 .ico-clear-icon::before { transform: translateY(-50%) rotate(45deg); }
 .ico-clear-icon::after  { transform: translateY(-50%) rotate(-45deg); }
 
-/* Also support SVG-based X if preferred */
-.ico-clear svg {
-  width: 16px;
-  height: 16px;
-  stroke-width: 1.8;
-}
-
 @media (prefers-color-scheme: dark) {
-  .ico-clear { color: rgba(255, 255, 255, 0.30); }
-  .ico-clear:active { color: rgba(255, 255, 255, 0.65); }
+  .ico-clear { color: rgba(255, 255, 255, 0.28); }
+  .ico-clear:active { color: rgba(255, 255, 255, 0.60); }
 }
 
-/* Show clear button when pill has text */
 .overlay-pill.has-text .ico-clear { display: flex; }
 
 /* ────────────────────────────────────────────────────────────────
@@ -215,53 +206,50 @@
   align-items: center;
   padding: 4px;
   border-radius: 50%;
-  color: rgba(0, 0, 0, 0.42);
-  transition: color 0.12s, background 0.12s;
+  color: rgba(0, 0, 0, 0.35);
+  transition: color 0.12s;
+  -webkit-tap-highlight-color: transparent;
 }
-.ico-camera:active { background: rgba(0, 0, 0, 0.06); color: rgba(0, 0, 0, 0.65); }
-.ico-camera svg    { width: 22px; height: 22px; }
+.ico-camera:active { color: rgba(0, 0, 0, 0.65); }
+.ico-camera svg    { width: 20px; height: 20px; }
 
 @media (prefers-color-scheme: dark) {
-  .ico-camera { color: rgba(255, 255, 255, 0.38); }
-  .ico-camera:active { background: rgba(255, 255, 255, 0.08); color: rgba(255, 255, 255, 0.6); }
+  .ico-camera { color: rgba(255, 255, 255, 0.35); }
+  .ico-camera:active { color: rgba(255, 255, 255, 0.65); }
 }
 
 /* ────────────────────────────────────────────────────────────────
-   SEND BUTTON — Clean filled circle, upward arrow
+   SEND BUTTON — compact circle, clean arrow
 ──────────────────────────────────────────────────────────────── */
 .send-btn {
   flex-shrink: 0;
   display: none;
   align-items: center;
   justify-content: center;
-  width: 36px;
-  height: 36px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
   border: none;
   background: var(--color-primary);
   cursor: pointer;
-  transition: transform 0.13s ease, opacity 0.13s ease;
+  transition: transform 0.12s ease, opacity 0.12s ease;
   -webkit-tap-highlight-color: transparent;
 }
-.send-btn:active  { transform: scale(0.86); }
-.send-btn:hover   { opacity: 0.90; }
-
-/* Arrow SVG inside — use this inline SVG in HTML */
+.send-btn:active { transform: scale(0.85); }
+.send-btn:hover  { opacity: 0.88; }
 .send-btn svg {
-  width: 16px;
-  height: 16px;
+  width: 15px;
+  height: 15px;
   stroke: #ffffff;
-  stroke-width: 2.2;
+  stroke-width: 2.4;
   stroke-linecap: round;
   stroke-linejoin: round;
   fill: none;
 }
 
-/* Toggle: camera → send when text present */
 .overlay-pill.has-text .ico-camera { display: none; }
 .overlay-pill.has-text .send-btn   { display: flex; }
 
-/* Dark mode send — keep same brand color or subtly adjust */
 @media (prefers-color-scheme: dark) {
   .send-btn { background: var(--color-primary); }
 }

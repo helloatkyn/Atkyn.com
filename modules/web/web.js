@@ -58,26 +58,47 @@ function _buildCard(r) {
   return a;
 }
 
-/* ── Infobox (entity panel) ── */
+/* ── Infobox — Knowledge Panel (kg-card style) ── */
 function _buildInfobox(box) {
   if (!box?.title) return null;
 
-  const el = document.createElement('div');
-  el.className = 'wc-infobox';
-  el.innerHTML = `<div class="wc-infobox-title">${_esc(box.title)}</div>
-    ${box.content ? `<div class="wc-infobox-content">${_esc(box.content)}</div>` : ''}`;
+  // Source URL — wikipedia ya jo bhi ho
+  const sourceUrl = box.urls?.[0]?.url || '';
+  let sourceHost = '';
+  try { sourceHost = new URL(sourceUrl).hostname.replace(/^www\./, ''); } catch (_) {}
+  const sourceFav = sourceHost
+    ? `https://www.google.com/s2/favicons?sz=64&domain=${encodeURIComponent(sourceHost)}`
+    : '';
 
-  if (box.urls?.length) {
-    const links = box.urls.map(u =>
-      `<a class="wc-sitelink" href="${_safeUrl(u.url)}" target="_blank" rel="noopener noreferrer">
-        <span class="wc-sitelink-title">${_esc(u.title)}</span>
-        <svg class="wc-sitelink-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-          <polyline points="9 18 15 12 9 6"/>
-        </svg>
-      </a>`
-    ).join('');
-    el.innerHTML += `<div class="wc-sitelinks">${links}</div>`;
-  }
+  const el = document.createElement('div');
+  el.className = 'wc-kg-card';
+  el.innerHTML = `
+    <div class="wc-kg-top">
+      <div class="wc-kg-title-wrap">
+        <div class="wc-kg-title">${_esc(box.title)}</div>
+      </div>
+      ${box.image ? `
+        <div class="wc-kg-image-box">
+          <img class="wc-kg-image" src="${_esc(box.image)}" loading="lazy" decoding="async" alt="${_esc(box.title)}"
+               onerror="this.closest('.wc-kg-image-box').remove()">
+        </div>` : ''}
+    </div>
+    ${box.content ? `<div class="wc-kg-desc">${_esc(box.content)}</div>` : ''}
+    ${sourceUrl ? `
+      <a class="wc-kg-source" href="${_safeUrl(sourceUrl)}" target="_blank" rel="noopener noreferrer">
+        ${sourceFav ? `<span class="wc-kg-source-fav" style="background-image:url('${_esc(sourceFav)}')"></span>` : ''}
+        <span class="wc-kg-source-text">${_esc(sourceHost)}</span>
+      </a>` : ''}
+    ${box.urls?.length > 1 ? `
+      <div class="wc-sitelinks">
+        ${box.urls.slice(1).map(u => `
+          <a class="wc-sitelink" href="${_safeUrl(u.url)}" target="_blank" rel="noopener noreferrer">
+            <span class="wc-sitelink-title">${_esc(u.title)}</span>
+            <svg class="wc-sitelink-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="9 18 15 12 9 6"/>
+            </svg>
+          </a>`).join('')}
+      </div>` : ''}`;
 
   return el;
 }
@@ -134,23 +155,31 @@ function _triggerSearch(query) {
 
 /* ── Render ── */
 function _render(q, data) {
+  const pc   = window._atkynPageContent;
   const frag = document.createDocumentFragment();
 
+  // Answer pills
   const answers = _buildAnswers(data.answers);
   if (answers) frag.appendChild(answers);
 
+  // Knowledge panel (infobox)
   const infobox = _buildInfobox(data.infobox);
   if (infobox) frag.appendChild(infobox);
 
+  // Results — filter out wikipedia if infobox exists
+  const results = data.infobox
+    ? data.results.filter(r => !r.url.includes('wikipedia.org'))
+    : data.results;
+
   const list = document.createElement('div');
   list.className = 'wc-list';
-  data.results.forEach(r => list.appendChild(_buildCard(r)));
+  results.forEach(r => list.appendChild(_buildCard(r)));
   frag.appendChild(list);
 
+  // Related searches
   const related = _buildRelated(q, data.relatedSearches);
   if (related) frag.appendChild(related);
 
-  const pc = window._atkynPageContent;
   pc.innerHTML = '';
   pc.appendChild(frag);
   window._atkynAnimateIn();

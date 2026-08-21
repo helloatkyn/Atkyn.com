@@ -82,8 +82,8 @@ function buildSearchContext(results) {
     ).join('\n\n');
 }
 
-async function mistralFetch(apiKey, body) {
-  const resp = await fetch('https://api.mistral.ai/v1/chat/completions', {
+async function groqFetch(apiKey, body) {
+  const resp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -105,7 +105,7 @@ function jsonError(message, status) {
 export async function onRequestPost(context) {
   const { request, env } = context;
 
-  if (!env.MISTRAL_API_KEY) {
+  if (!env.GROQ_API_KEY) {
     return jsonError('Server misconfiguration', 500);
   }
 
@@ -123,8 +123,8 @@ export async function onRequestPost(context) {
   // ── Step 1: Intent classification ───────────────────────
   let needsSearch = false;
   try {
-    const intentResp = await mistralFetch(env.MISTRAL_API_KEY, {
-      model: 'ministral-14b-2512',
+    const intentResp = await groqFetch(env.GROQ_API_KEY, {
+      model: 'qwen/qwen3.6-27b',
       messages: [
         { role: 'system', content: INTENT_SYSTEM },
         { role: 'user', content: query },
@@ -132,6 +132,7 @@ export async function onRequestPost(context) {
       stream: false,
       max_tokens: MAX_TOKENS_INTENT,
       temperature: 0,
+      reasoning_effort: 'none',
     });
 
     if (intentResp.ok) {
@@ -218,8 +219,8 @@ export async function onRequestPost(context) {
         ? `${SYSTEM_PROMPT}${ANSWER_INSTRUCTION}\n\n${searchContext}`
         : `${SYSTEM_PROMPT}${ANSWER_INSTRUCTION}`;
 
-      const groqResp = await mistralFetch(env.MISTRAL_API_KEY, {
-        model: 'ministral-14b-2512',
+      const groqResp = await groqFetch(env.GROQ_API_KEY, {
+        model: 'qwen/qwen3.6-27b',
         messages: [
           { role: 'system', content: systemContent },
           ...(Array.isArray(history) ? history.slice(-HISTORY_LIMIT) : []),
@@ -228,6 +229,7 @@ export async function onRequestPost(context) {
         stream: true,
         max_tokens: MAX_TOKENS_ANSWER,
         temperature: 0.3,
+        reasoning_effort: 'none',
       });
 
       if (!groqResp.ok) {

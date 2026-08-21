@@ -2,14 +2,25 @@ import { SYSTEM_PROMPT } from './systemPrompt.js';
 
 // ── Constants ──────────────────────────────────────────────
 const MAX_RESULTS       = 5;
-const MAX_PAGE_TEXT_LEN = 2000;
+const MAX_PAGE_TEXT_LEN = 2500;
 const MAX_TITLE_LEN     = 120;
 const MAX_URL_LEN       = 300;
-const MAX_SNIPPET_LEN   = 500;
+const MAX_SNIPPET_LEN   = 900;
 const PAGE_TIMEOUT_MS   = 4000;
 const MAX_TOKENS_INTENT = 10;
 const MAX_TOKENS_ANSWER = 350;
 const HISTORY_LIMIT     = 100;
+const THIN_SNIPPET_THRESHOLD = 300;
+
+const STOP_WORDS = new Set([
+  'a','an','the','and','or','but','in','on','at','to','for','of','with',
+  'is','are','was','were','be','been','being','have','has','had','do','does',
+  'did','will','would','could','should','may','might','can','this','that',
+  'these','those','it','its','i','you','he','she','we','they','what','which',
+  'who','how','when','where','why','not','no','so','if','as','by','from',
+  'about','up','out','into','than','then','just','also','more','other',
+  'some','any','all','each','both','few','most','only','own','same','such',
+]);
 
 const INTENT_SYSTEM = `You decide if a web search is needed to answer the user query.
 Reply with ONLY [SEARCH] or [NO_SEARCH]. Nothing else.
@@ -54,21 +65,127 @@ function trunc(str, len) {
   return str.length > len ? str.slice(0, len) : str;
 }
 
-async function fetchPageText(url) {
+function isValidUrl(url) {
+  if (!url || typeof url !== 'string') return false;
+  try {
+    const u = new URL(url);
+    return u.protocol === 'http:' || u.protocol === 'https:';
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Tokenize a query into meaningful terms by lowercasing, splitting, and
+ * removing stop words and very short tokens.
+ */
+function queryTerms(query) {
+  return query
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .split(/\s+/)
+    .filter(t => t.length > 2 && !STOP_WORDS.has(t));
+}
+
+/**
+ * Score a text window by how many distinct query terms it contains.
+ * Returns a count of matched unique terms.
+ */
+function scoreWindow(windowText, terms) {
+  const lower = windowText.toLowerCase();
+  let score = 0;
+  for (const term of terms) {
+    if (lower.includes(term)) score++;
+  }
+  return score;
+}
+
+/**
+ * Extract the most query-relevant passage from cleaned page text.
+ * Splits text into overlapping windows, scores each against query terms,
+ * and returns the highest-scoring window trimmed to MAX_PAGE_TEXT_LEN.
+ * Falls back to the start of the page if no terms match.
+ */
+function extractRelevantPassage(cleanedText, query) {
+  const terms = queryTerms(query);
+
+  // If no meaningful terms, just return the beginning
+  if (!terms.length) {
+    return cleanedText.slice(0, MAX_PAGE_TEXT_LEN);
+  }
+
+  // Use sentence-like boundaries for windows
+  // Split on '. ', '! ', '? ', '\n' to get rough sentences
+  const sentences = cleanedText
+    .split(/(?<=[.!?])\s+|\n+/)
+    .map(s => s.trim())
+    .filter(s => s.length > 20);  // drop tiny fragments
+
+  if (!sentences.length) {
+    return cleanedText.slice(0, MAX_PAGE_TEXT_LEN);
+  }
+
+  // Build windows of ~5 sentences each, stepping 2 sentences at a time
+  const WINDOW_SIZE = 5;
+  const STEP = 2;
+  let bestScore = -1;
+  let bestStart = 0;
+
+  for (let i = 0; i < sentences.length; i += STEP) {
+    const window = sentences.slice(i, i + WINDOW_SIZE).join(' ');
+    const score = scoreWindow(window, terms);
+    if (score > bestScore) {
+      bestScore = score;
+      bestStart = i;
+    }
+  }
+
+  // If best score is 0, no matches found — fall back to page start
+  if (bestScore === 0) {
+    return cleanedText.slice(0, MAX_PAGE_TEXT_LEN);
+  }
+
+  // Expand the best window into surrounding context up to MAX_PAGE_TEXT_LEN
+  let passage = '';
+  let idx = Math.max(0, bestStart - 1); // one sentence of context before
+  while (idx < sentences.length && passage.length < MAX_PAGE_TEXT_LEN) {
+    const next = (passage ? passage + ' ' : '') + sentences[idx];
+    if (next.length > MAX_PAGE_TEXT_LEN) break;
+    passage = next;
+    idx++;
+  }
+
+  return passage || cleanedText.slice(0, MAX_PAGE_TEXT_LEN);
+}
+
+async function fetchPageText(url, query) {
   try {
     const resp = await fetch(url, {
       headers: { 'User-Agent': 'Mozilla/5.0' },
       signal: AbortSignal.timeout(PAGE_TIMEOUT_MS),
     });
     if (!resp.ok) return '';
+
+    // Reject non-HTML responses (binary, PDFs, etc.)
+    const contentType = resp.headers.get('content-type') || '';
+    if (!contentType.includes('text/html') && !contentType.includes('text/plain')) {
+      return '';
+    }
+
     const html = await resp.text();
     const clean = html
       .replace(/<script[\s\S]*?<\/script>/gi, '')
       .replace(/<style[\s\S]*?<\/style>/gi, '')
+      .replace(/<nav[\s\S]*?<\/nav>/gi, '')
+      .replace(/<header[\s\S]*?<\/header>/gi, '')
+      .replace(/<footer[\s\S]*?<\/footer>/gi, '')
       .replace(/<[^>]+>/g, ' ')
       .replace(/\s+/g, ' ')
       .trim();
-    return clean.slice(0, MAX_PAGE_TEXT_LEN);
+
+    if (!clean) return '';
+
+    return extractRelevantPassage(clean, query);
   } catch {
     return '';
   }
@@ -180,9 +297,10 @@ export async function onRequestPost(context) {
               const rawTitle = trunc(r.title   || '', MAX_TITLE_LEN);
               let   snippet  = trunc(r.content || '', MAX_SNIPPET_LEN);
 
-              // Only fetch page text if snippet is thin AND it's one of first 3
-              if (snippet.length < 100 && i < 3 && rawUrl) {
-                const pageText = await fetchPageText(rawUrl);
+              // Enrich with page text only when snippet is genuinely thin
+              // and only for the first 3 results to control latency
+              if (snippet.length < THIN_SNIPPET_THRESHOLD && i < 3 && isValidUrl(rawUrl)) {
+                const pageText = await fetchPageText(rawUrl, query);
                 if (pageText) snippet = trunc(pageText, MAX_PAGE_TEXT_LEN);
               }
 
@@ -273,4 +391,4 @@ export async function onRequestOptions() {
       'Access-Control-Allow-Headers': 'Content-Type',
     },
   });
-}
+                      }

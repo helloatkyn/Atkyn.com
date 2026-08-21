@@ -1,6 +1,6 @@
 /* ═══════════════════════════════════════════════════════════════
    modules/web/web.js — Atkyn Web tab
-   Fetches from /api/search (SearXNG proxy — zero AI calls).
+   Fetches from /api/search (Serper.dev proxy — zero AI calls).
    Requires: core.js globals (_atkynPageContent, _atkynAnimateIn)
    ═══════════════════════════════════════════════════════════════ */
 
@@ -20,44 +20,7 @@ function _safeUrl(u) {
   } catch (_) { return '#'; }
 }
 
-/* ── Infobox card (entity panel with sitelinks) ── */
-function _buildInfoboxCard(box) {
-  const wrap = document.createElement('div');
-  wrap.className = 'wc-card';
-
-  const linksHtml = (box.urls || []).slice(0, 6).map(s =>
-    `<a class="wc-sitelink" href="${_safeUrl(s.url)}" target="_blank" rel="noopener noreferrer">
-      <span class="wc-sitelink-title">${_esc(s.title)}</span>
-      <svg class="wc-sitelink-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-           stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-        <polyline points="9 18 15 12 9 6"/>
-      </svg>
-    </a>`
-  ).join('');
-
-  wrap.innerHTML = `
-    <div class="wc-title" style="margin-bottom:10px">${_esc(box.title)}</div>
-    ${box.content ? `<div class="wc-snippet" style="margin-bottom:4px">${_esc(box.content)}</div>` : ''}
-    ${linksHtml ? `<div class="wc-sitelinks">${linksHtml}</div>` : ''}`;
-
-  wrap.querySelectorAll('.wc-sitelink').forEach(sl => {
-    sl.addEventListener('click', e => e.stopPropagation());
-  });
-
-  return wrap;
-}
-
-/* ── Answer banner (calculator, time, etc.) ── */
-function _buildAnswerBanner(answers) {
-  if (!answers?.length) return null;
-  const div = document.createElement('div');
-  div.className = 'wc-card';
-  div.style.cssText = 'margin-bottom:2px;';
-  div.innerHTML = `<div class="wc-title" style="font-size:1.4rem;margin:0">${_esc(answers[0])}</div>`;
-  return div;
-}
-
-/* ── Regular result card ── */
+/* ── Card builder ── */
 function _buildCard(r) {
   let host = r.url, path = r.url;
   try {
@@ -69,11 +32,13 @@ function _buildCard(r) {
   const fav  = `https://www.google.com/s2/favicons?sz=64&domain=${encodeURIComponent(host)}`;
   const fav2 = `https://icons.duckduckgo.com/ip3/${host}.ico`;
 
+  // Single thumbnail (existing)
   const thumb = r.image
     ? `<img class="wc-thumb" src="${_esc(r.image)}" loading="lazy" decoding="async" alt=""
             onerror="this.closest('.wc-thumb-wrap').remove()">`
     : '';
 
+  // Multi-image grid (like Bing snippets)
   let imagesHtml = '';
   if (r.images?.length >= 2) {
     const imgs = r.images.slice(0, 4).map(img =>
@@ -81,6 +46,20 @@ function _buildCard(r) {
             onerror="this.remove()">`
     ).join('');
     imagesHtml = `<div class="wc-img-grid">${imgs}</div>`;
+  }
+
+  // Sitelinks
+  let sitelinksHtml = '';
+  if (r.sitelinks?.length) {
+    const linksHtml = r.sitelinks.map(s =>
+      `<a class="wc-sitelink" href="${_safeUrl(s.url)}" target="_blank" rel="noopener noreferrer">
+        <span class="wc-sitelink-title">${_esc(s.title)}</span>
+        <svg class="wc-sitelink-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="9 18 15 12 9 6"/>
+        </svg>
+      </a>`
+    ).join('');
+    sitelinksHtml = `<div class="wc-sitelinks">${linksHtml}</div>`;
   }
 
   const a = document.createElement('a');
@@ -91,7 +70,7 @@ function _buildCard(r) {
   a.innerHTML = `
     <div class="wc-meta">
       <div class="wc-fav-wrap">
-        <img class="wc-fav" src="${_esc(fav)}" width="17" height="17"
+        <img class="wc-fav" src="${_esc(fav)}" width="16" height="16"
              loading="lazy" decoding="async" alt="">
       </div>
       <div class="wc-meta-text">
@@ -113,17 +92,22 @@ function _buildCard(r) {
       </div>
       ${!imagesHtml && thumb ? `<div class="wc-thumb-wrap">${thumb}</div>` : ''}
     </div>
-    ${imagesHtml}`;
+    ${imagesHtml}
+    ${sitelinksHtml}`;
 
   a.querySelector('.wc-fav').addEventListener('error', function () {
     if (this.src !== fav2) { this.src = fav2; }
     else { this.closest('.wc-fav-wrap').style.display = 'none'; }
   }, { passive: true });
 
+  a.querySelectorAll('.wc-sitelink').forEach(sl => {
+    sl.addEventListener('click', e => e.stopPropagation());
+  });
+
   return a;
 }
 
-/* ── Related searches ── */
+/* ── Related searches builder ── */
 function _buildRelated(q, relatedSearches) {
   if (!relatedSearches?.length) return null;
 
@@ -142,17 +126,15 @@ function _buildRelated(q, relatedSearches) {
     const btn = document.createElement('button');
     btn.className = 'wc-related-item';
     btn.innerHTML = `
-      <svg class="wc-related-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-           stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+      <svg class="wc-related-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
         <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
       </svg>
       <span>${_esc(query)}</span>
-      <svg class="wc-related-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-           stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <svg class="wc-related-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/>
       </svg>`;
     btn.addEventListener('click', () => {
-      const cb   = document.getElementById('cbInput');
+      const cb = document.getElementById('cbInput');
       const pill = document.getElementById('pill');
       if (cb) { cb.value = query; pill?.classList.add('has-text'); }
       sessionStorage.setItem('atkyn_last_query', query);
@@ -165,21 +147,14 @@ function _buildRelated(q, relatedSearches) {
   return section;
 }
 
-/* ── Render ── */
-function _render(q, results, relatedSearches, infobox, answers) {
+/* ── Render results ── */
+function _render(q, results, relatedSearches) {
   const pc = window._atkynPageContent;
   pc.innerHTML = '';
 
   const list = document.createElement('div');
   list.className = 'wc-list';
-
-  const answerEl = _buildAnswerBanner(answers);
-  if (answerEl) list.appendChild(answerEl);
-
-  if (infobox?.title) list.appendChild(_buildInfoboxCard(infobox));
-
   results.forEach(r => list.appendChild(_buildCard(r)));
-
   pc.appendChild(list);
 
   const related = _buildRelated(q, relatedSearches);
@@ -188,11 +163,10 @@ function _render(q, results, relatedSearches, infobox, answers) {
   window._atkynAnimateIn();
 }
 
-/* ── Fetch ── */
+/* ── Fetch from /api/search ── */
 async function _fetch(q) {
   const pc = window._atkynPageContent;
-  pc.innerHTML =
-    '<div class="tab-skeleton"><div class="sk-line"></div><div class="sk-line sk-short"></div>' +
+  pc.innerHTML = '<div class="tab-skeleton"><div class="sk-line"></div><div class="sk-line sk-short"></div>' +
     '<div class="sk-line"></div><div class="sk-line sk-short"></div></div>';
 
   try {
@@ -203,29 +177,24 @@ async function _fetch(q) {
 
     const data = await resp.json();
 
-    const results         = Array.isArray(data) ? data : (data.results         || []);
-    const relatedSearches = Array.isArray(data) ? []   : (data.relatedSearches || []);
-    const infobox         = Array.isArray(data) ? null : (data.infobox         || null);
-    const answers         = Array.isArray(data) ? []   : (data.answers         || []);
+    // Support both old array format and new object format
+    const results        = Array.isArray(data) ? data : (data.results || []);
+    const relatedSearches = Array.isArray(data) ? [] : (data.relatedSearches || []);
 
-    if (!results.length && !infobox && !answers.length) {
+    if (!results.length) {
       pc.innerHTML = '<div class="tab-empty"><p>No results found</p></div>';
       return;
     }
 
-    try {
-      sessionStorage.setItem('atkyn_web_results',
-        JSON.stringify({ q, results, relatedSearches, infobox, answers }));
-    } catch (_) {}
-
-    _render(q, results, relatedSearches, infobox, answers);
+    try { sessionStorage.setItem('atkyn_web_results', JSON.stringify({ q, results, relatedSearches })); } catch (_) {}
+    _render(q, results, relatedSearches);
 
   } catch (_) {
     pc.innerHTML = '<div class="tab-empty"><p>Could not load results</p></div>';
   }
 }
 
-/* ── Sync chatbar ── */
+/* ── Fill chatbar with current query ── */
 function _syncChatbar(q) {
   const cb  = document.getElementById('cbInput');
   const pll = document.getElementById('pill');
@@ -236,15 +205,15 @@ function _syncChatbar(q) {
 
 /* ── Init ── */
 function _init() {
-  const q = sessionStorage.getItem('atkyn_last_query') || '';
+  const q      = sessionStorage.getItem('atkyn_last_query') || '';
   _syncChatbar(q);
-
   const cached = sessionStorage.getItem('atkyn_web_results');
+
   if (cached) {
     try {
-      const { q: cq, results, relatedSearches, infobox, answers } = JSON.parse(cached);
-      if (cq === q && results?.length) {
-        _render(q, results, relatedSearches || [], infobox || null, answers || []);
+      const { q: cq, results, relatedSearches } = JSON.parse(cached);
+      if (cq === q && Array.isArray(results) && results.length) {
+        _render(q, results, relatedSearches || []);
         return;
       }
     } catch (_) {}
@@ -260,4 +229,3 @@ window._atkynInit_web = _init;
 _init();
 
 }());
-                 

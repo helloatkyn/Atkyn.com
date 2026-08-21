@@ -28,6 +28,9 @@ function _buildCard(r) {
   const fav  = `https://www.google.com/s2/favicons?sz=64&domain=${encodeURIComponent(host)}`;
   const fav2 = `https://icons.duckduckgo.com/ip3/${host}.ico`;
 
+  /* snippet: try all common field names SearXNG might return */
+  const snippet = r.content || r.snippet || r.description || r.summary || '';
+
   const a = document.createElement('a');
   a.className = 'wc-card';
   a.href      = _safeUrl(r.url);
@@ -49,7 +52,7 @@ function _buildCard(r) {
       </span>
     </div>
     <div class="wc-title">${_esc(r.title)}</div>
-    <div class="wc-snippet">${_esc(r.snippet)}</div>`;
+    ${snippet ? `<div class="wc-snippet">${_esc(snippet)}</div>` : ''}`;
 
   a.querySelector('.wc-fav').addEventListener('error', function () {
     this.src !== fav2 ? (this.src = fav2) : (this.closest('.wc-fav-wrap').style.display = 'none');
@@ -103,7 +106,7 @@ function _buildInfobox(box) {
 }
 
 /* ── Related searches ── */
-function _buildRelated(suggestions) {
+function _buildRelated(q, suggestions) {
   if (!suggestions?.length) return null;
 
   const el = document.createElement('div');
@@ -155,7 +158,7 @@ function _triggerSearch(query) {
 }
 
 /* ── Render ── */
-async function _render(q, data) {
+function _render(q, data) {
   const pc   = window._atkynPageContent;
   const frag = document.createDocumentFragment();
 
@@ -168,36 +171,20 @@ async function _render(q, data) {
     ? data.results.filter(r => !r.url.includes('wikipedia.org'))
     : data.results;
 
-  // Build list with inline "People also search for" after 4th card
   const list = document.createElement('div');
   list.className = 'wc-list';
-  results.forEach((r, i) => {
-    list.appendChild(_buildCard(r));
-
-    // Placeholder slot after 4th result (index 3) — filled async below
-    if (i === 3) {
-      const slot = document.createElement('div');
-      slot.id = 'wc-related-slot';
-      list.appendChild(slot);
-    }
-  });
+  results.forEach(r => list.appendChild(_buildCard(r)));
   frag.appendChild(list);
 
   pc.innerHTML = '';
   pc.appendChild(frag);
   window._atkynAnimateIn();
 
-  // Suggestions — async, injected inline at slot
-  const suggestions = await _fetchSuggestions(q);
-  const related = _buildRelated(suggestions);
-  if (related) {
-    const slot = document.getElementById('wc-related-slot');
-    if (slot) {
-      slot.replaceWith(related);   // inline, between results
-    } else {
-      pc.appendChild(related);     // fallback: append at bottom if <4 results
-    }
-  }
+  // Suggestions — fire and forget, append at bottom when ready
+  _fetchSuggestions(q).then(suggestions => {
+    const related = _buildRelated(q, suggestions);
+    if (related) pc.appendChild(related);
+  });
 }
 
 /* ── Fetch ── */
@@ -265,4 +252,4 @@ window._atkynInit_web = _init;
 _init();
 
 }());
-                         
+       

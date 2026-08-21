@@ -47,6 +47,16 @@ function _buildInfoboxCard(box) {
   return wrap;
 }
 
+/* ── Answer banner (calculator, time, etc.) ── */
+function _buildAnswerBanner(answers) {
+  if (!answers?.length) return null;
+  const div = document.createElement('div');
+  div.className = 'wc-card';
+  div.style.cssText = 'margin-bottom:2px;';
+  div.innerHTML = `<div class="wc-title" style="font-size:1.4rem;margin:0">${_esc(answers[0])}</div>`;
+  return div;
+}
+
 /* ── Regular result card ── */
 function _buildCard(r) {
   let host = r.url, path = r.url;
@@ -156,12 +166,15 @@ function _buildRelated(q, relatedSearches) {
 }
 
 /* ── Render ── */
-function _render(q, results, relatedSearches, infobox) {
+function _render(q, results, relatedSearches, infobox, answers) {
   const pc = window._atkynPageContent;
   pc.innerHTML = '';
 
   const list = document.createElement('div');
   list.className = 'wc-list';
+
+  const answerEl = _buildAnswerBanner(answers);
+  if (answerEl) list.appendChild(answerEl);
 
   if (infobox?.title) list.appendChild(_buildInfoboxCard(infobox));
 
@@ -193,18 +206,19 @@ async function _fetch(q) {
     const results         = Array.isArray(data) ? data : (data.results         || []);
     const relatedSearches = Array.isArray(data) ? []   : (data.relatedSearches || []);
     const infobox         = Array.isArray(data) ? null : (data.infobox         || null);
+    const answers         = Array.isArray(data) ? []   : (data.answers         || []);
 
-    if (!results.length && !infobox) {
+    if (!results.length && !infobox && !answers.length) {
       pc.innerHTML = '<div class="tab-empty"><p>No results found</p></div>';
       return;
     }
 
     try {
       sessionStorage.setItem('atkyn_web_results',
-        JSON.stringify({ q, results, relatedSearches, infobox }));
+        JSON.stringify({ q, results, relatedSearches, infobox, answers }));
     } catch (_) {}
 
-    _render(q, results, relatedSearches, infobox);
+    _render(q, results, relatedSearches, infobox, answers);
 
   } catch (_) {
     pc.innerHTML = '<div class="tab-empty"><p>Could not load results</p></div>';
@@ -228,9 +242,9 @@ function _init() {
   const cached = sessionStorage.getItem('atkyn_web_results');
   if (cached) {
     try {
-      const { q: cq, results, relatedSearches, infobox } = JSON.parse(cached);
+      const { q: cq, results, relatedSearches, infobox, answers } = JSON.parse(cached);
       if (cq === q && results?.length) {
-        _render(q, results, relatedSearches || [], infobox || null);
+        _render(q, results, relatedSearches || [], infobox || null, answers || []);
         return;
       }
     } catch (_) {}
@@ -246,3 +260,4 @@ window._atkynInit_web = _init;
 _init();
 
 }());
+                 

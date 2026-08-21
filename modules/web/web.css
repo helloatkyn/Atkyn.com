@@ -4,7 +4,7 @@
   display: flex;
   flex-direction: column;
   padding: 6px 0 24px;
-  background: #f8f9fa;
+  background: #ffffff;
 }
 
 /* ── Card ── */
@@ -228,7 +228,7 @@
 
 /* ── Dark mode ── */
 @media (prefers-color-scheme: dark) {
-  .wc-list { background: #000; }
+  .wc-list { background: #000000; }
 
   .wc-card { background: #1c1c1e; box-shadow: 0 1px 4px rgba(0,0,0,0.3); }
   .wc-card:active { background: #2a2a2c; }
@@ -268,5 +268,4 @@
   .wc-suggest-item.active { background: #2a2a2c; color: #4BA8D8; }
   .wc-suggest-icon { color: #555; }
   .wc-suggest-item.active .wc-suggest-icon { color: #4BA8D8; }
-    }
-                           
+}

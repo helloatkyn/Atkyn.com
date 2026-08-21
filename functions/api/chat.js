@@ -1,4 +1,5 @@
 import { SYSTEM_PROMPT } from './systemPrompt.js';
+import { SEARCH_INTELLIGENCE_PROMPT } from './searchIntelligence.js';
 
 async function fetchPageText(url) {
   try {
@@ -40,7 +41,7 @@ export async function onRequestPost(context) {
     });
   }
 
-  // Step 1: Intent check — Mistral pe ministral-14b-2512
+  // Step 1: Search intent decision — SEARCH_INTELLIGENCE_PROMPT se
   const intentResp = await fetch('https://api.mistral.ai/v1/chat/completions', {
     method: 'POST',
     headers: {
@@ -50,7 +51,10 @@ export async function onRequestPost(context) {
     body: JSON.stringify({
       model: 'ministral-14b-2512',
       messages: [
-        { role: 'system', content: 'You decide if a web search is needed to answer the user query. Reply with only [SEARCH] or [NO_SEARCH]. Nothing else.' },
+        {
+          role: 'system',
+          content: `${SEARCH_INTELLIGENCE_PROMPT}\n\nBased on the above intelligence, decide if a web search is needed to answer the user query. Reply with only [SEARCH] or [NO_SEARCH]. Nothing else.`,
+        },
         { role: 'user', content: query },
       ],
       stream: false,
@@ -102,7 +106,7 @@ export async function onRequestPost(context) {
     }
   }
 
-  // Step 2: Main response — Mistral pe ministral-14b-2512
+  // Step 2: Main response — SYSTEM_PROMPT + search context
   const { readable, writable } = new TransformStream();
   const writer = writable.getWriter();
   const enc    = new TextEncoder();
@@ -122,7 +126,10 @@ export async function onRequestPost(context) {
         body: JSON.stringify({
           model: 'ministral-14b-2512',
           messages: [
-            { role: 'system', content: searchContext ? `${SYSTEM_PROMPT}\n\n${searchContext}` : SYSTEM_PROMPT },
+            {
+              role: 'system',
+              content: searchContext ? `${SYSTEM_PROMPT}\n\n${searchContext}` : SYSTEM_PROMPT,
+            },
             ...(Array.isArray(history) ? history.slice(-100) : []),
             { role: 'user', content: query },
           ],
@@ -171,4 +178,4 @@ export async function onRequestOptions() {
       'Access-Control-Allow-Headers': 'Content-Type',
     },
   });
-         }
+}

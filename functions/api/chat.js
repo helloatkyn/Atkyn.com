@@ -80,15 +80,31 @@ const TICKER_MAP = {
 
 // Patterns that suggest a stock query
 const STOCK_QUERY_RE = /\b(stock|share\s*price|share price|market\s*cap|ticker|equity|nse|bse|nasdaq|nyse|sensex|nifty)\b/i;
-const TICKER_RE      = /\b([A-Z]{1,5})\s*(stock|price|share|chart|quote)?\b/g;
-const COMPANY_STOCK_RE = /price\s+of\s+(.+)|(.+)\s+stock\s*(?:price)?|(.+)\s+share\s*(?:price)?/i;
+
+// Company name → ticker (lowercase keys, longer first for matching)
+const COMPANY_NAME_MAP = {
+  'apple': 'AAPL', 'microsoft': 'MSFT', 'google': 'GOOGL', 'alphabet': 'GOOGL',
+  'amazon': 'AMZN', 'meta': 'META', 'facebook': 'META', 'tesla': 'TSLA',
+  'nvidia': 'NVDA', 'netflix': 'NFLX', 'amd': 'AMD', 'intel': 'INTC',
+  'oracle': 'ORCL', 'ibm': 'IBM', 'uber': 'UBER', 'lyft': 'LYFT',
+  'snap': 'SNAP', 'snapchat': 'SNAP', 'spotify': 'SPOT', 'shopify': 'SHOP',
+  'paypal': 'PYPL', 'visa': 'V', 'mastercard': 'MA', 'jpmorgan': 'JPM',
+  'goldman sachs': 'GS', 'goldman': 'GS', 'bank of america': 'BAC',
+  'walmart': 'WMT', 'costco': 'COST', 'disney': 'DIS', 'boeing': 'BA',
+  'tata consultancy': 'TCS', 'tata motors': 'TATAMOTORS',
+  'bajaj finance': 'BAJFINANCE', 'hdfc bank': 'HDFCBANK', 'hdfc': 'HDFCBANK',
+  'icici bank': 'ICICIBANK', 'icici': 'ICICIBANK',
+  'state bank': 'SBIN', 'reliance': 'RELIANCE',
+  'infosys': 'INFY', 'wipro': 'WIPRO', 'tcs': 'TCS',
+};
 
 /**
  * Try to extract a stock ticker from a query.
  * Returns { ticker, name } or null.
  */
 function detectStockQuery(query) {
-  const q = query.trim();
+  const q   = query.trim();
+  const qLo = q.toLowerCase();
 
   // Direct index queries
   if (/\b(sensex|bse\s*sensex)\b/i.test(q)) return { ticker: '^BSESN', name: 'BSE SENSEX' };
@@ -97,19 +113,27 @@ function detectStockQuery(query) {
   if (/\b(s&p\s*500|sp500)\b/i.test(q))      return { ticker: '^GSPC',  name: 'S&P 500' };
   if (/\b(nasdaq\s*composite)\b/i.test(q))   return { ticker: '^IXIC',  name: 'NASDAQ' };
 
-  // Must contain a stock-related keyword OR a known ticker
   const hasStockKeyword = STOCK_QUERY_RE.test(q);
 
-  // Check known tickers
+  // 1. Company name match (longer names first to avoid partial hits)
+  const sortedNames = Object.keys(COMPANY_NAME_MAP).sort((a, b) => b.length - a.length);
+  for (const name of sortedNames) {
+    if (qLo.includes(name)) {
+      const ticker = COMPANY_NAME_MAP[name];
+      return { ticker, name: TICKER_MAP[ticker] || ticker };
+    }
+  }
+
+  // 2. Exact ticker match in uppercase query
   const upperQ = q.toUpperCase();
   for (const [ticker, name] of Object.entries(TICKER_MAP)) {
     const re = new RegExp(`\\b${ticker}\\b`);
     if (re.test(upperQ)) return { ticker, name };
   }
 
-  // If has stock keyword, try to find 1-5 uppercase letter ticker
+  // 3. Stock keyword + bare uppercase word as ticker
   if (hasStockKeyword) {
-    const m = q.match(/\b([A-Z]{1,5})\b/);
+    const m = upperQ.match(/\b([A-Z]{2,5})\b/);
     if (m) return { ticker: m[1], name: m[1] };
   }
 
@@ -476,4 +500,5 @@ export async function onRequestOptions() {
       'Access-Control-Allow-Headers': 'Content-Type',
     },
   });
-                         }
+  }
+                

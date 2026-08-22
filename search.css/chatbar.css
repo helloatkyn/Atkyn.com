@@ -41,7 +41,7 @@
 
 @media (prefers-color-scheme: dark) {
   .overlay-pill {
-    background: #545454;
+    background: #363737;
     border: none;
     box-shadow: none;
   }
@@ -302,4 +302,4 @@
 
 @media (prefers-color-scheme: dark) {
   .pm-icon svg { stroke: var(--color-icon-dark); }
-}
+   }

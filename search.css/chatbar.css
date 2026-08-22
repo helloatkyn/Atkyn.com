@@ -227,6 +227,7 @@
 .plus-menu {
   position: fixed;
   left: 20px;
+  bottom: calc(90px + env(safe-area-inset-bottom));
   width: 220px;
   background: var(--color-glass-bg);
   -webkit-backdrop-filter: blur(32px) saturate(1.9);
@@ -254,8 +255,8 @@
 
 @media (prefers-color-scheme: dark) {
   .plus-menu {
-    background: var(--color-bg-plus-menu-dark);
-    border-color: var(--color-glass-border-dark);
+    background: #363737;
+    border-color: rgba(255, 255, 255, 0.08);
     box-shadow:
       0 2px 8px  rgba(0, 0, 0, 0.16),
       0 14px 40px rgba(0, 0, 0, 0.40);
@@ -302,4 +303,4 @@
 
 @media (prefers-color-scheme: dark) {
   .pm-icon svg { stroke: var(--color-icon-dark); }
-   }
+}

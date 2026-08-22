@@ -16,6 +16,31 @@ const _safeUrl = u => {
   catch (_) { return '#'; }
 };
 
+/* ── OG image fetch + inject (background, per card) ── */
+function _injectOg(url, cardEl) {
+  fetch(`/api/og?url=${encodeURIComponent(url)}`, {
+    signal: AbortSignal.timeout(6000),
+  })
+    .then(r => r.ok ? r.json() : null)
+    .then(data => {
+      if (!data?.image) return;
+      // Don't inject if card already has a thumb (from r.image)
+      if (cardEl.querySelector('.wc-thumb')) return;
+      const wrap = document.createElement('div');
+      wrap.className = 'wc-thumb-wrap';
+      const img = document.createElement('img');
+      img.className = 'wc-thumb';
+      img.src = data.image;
+      img.loading = 'lazy';
+      img.decoding = 'async';
+      img.alt = '';
+      img.addEventListener('error', () => wrap.remove(), { once: true });
+      wrap.appendChild(img);
+      cardEl.querySelector('.wc-card-inner').appendChild(wrap);
+    })
+    .catch(() => {});
+}
+
 /* ── Card builder ── */
 function _buildCard(r) {
   let host = '', path = '';
@@ -65,6 +90,9 @@ function _buildCard(r) {
   a.querySelector('.wc-fav').addEventListener('error', function () {
     this.src !== fav2 ? (this.src = fav2) : (this.closest('.wc-fav-wrap').style.display = 'none');
   }, { once: true, passive: true });
+
+  // OG fallback — only if SearXNG didn't give image
+  if (!r.image) _injectOg(r.url, a);
 
   return a;
 }
@@ -170,11 +198,9 @@ function _render(q, data) {
   const pc   = window._atkynPageContent;
   const frag = document.createDocumentFragment();
 
-  // Knowledge panel
   const infobox = _buildInfobox(data.infobox);
   if (infobox) frag.appendChild(infobox);
 
-  // Results — filter wikipedia if infobox exists
   const results = data.infobox
     ? data.results.filter(r => !r.url.includes('wikipedia.org'))
     : data.results;
@@ -188,7 +214,6 @@ function _render(q, data) {
   pc.appendChild(frag);
   window._atkynAnimateIn();
 
-  // Suggestions — fire and forget, append at bottom when ready
   _fetchSuggestions(q).then(suggestions => {
     const related = _buildRelated(q, suggestions);
     if (related) pc.appendChild(related);
@@ -260,4 +285,4 @@ window._atkynInit_web = _init;
 _init();
 
 }());
-  
+         

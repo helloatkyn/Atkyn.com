@@ -24,25 +24,18 @@ const STOP_WORDS = new Set([
 
 // Single classifier: intent + stock detection in one AI call.
 // Returns exactly one token: [SEARCH]  [NO_SEARCH]  [STOCK:TICKER]
-const INTENT_SYSTEM = `Classify the user query into exactly one token. Reply with ONLY the token, nothing else.
+const INTENT_SYSTEM = `Classify the user's query into exactly one token. Output ONLY one valid token.
 
-[STOCK:TICKER] — user is asking about a company stock, share price, chart, or market index — in ANY language or phrasing. Set TICKER to the correct exchange symbol.
-Examples:
-- "Apple stocks" → [STOCK:AAPL]
-- "Tesla ka ?" → [STOCK:TSLA]
-- "TSLA price" → [STOCK:TSLA]
-- "Nifty 50 aaj kaisa hai" → [STOCK:^NSEI]
-- "Sensex dekho" → [STOCK:^BSESN]
-- "Reliance share batao" → [STOCK:RELIANCE.NS]
-- "Apple stocks chart dikhao" → [STOCK:AAPL]
-- "TCS ka stock" → [STOCK:TCS.NS]
-- "Dow Jones today" → [STOCK:^DJI]
-- "S&P 500" → [STOCK:^GSPC]
-When in doubt whether a company query is stock-related, prefer [STOCK:TICKER].
+[STOCK:TICKER]
+Use when the primary intent is a company stock, share price, stock chart, market index, trading movement, or market performance. Infer the correct standard exchange ticker from the entity and context. Handle natural language, Hinglish, Hindi, abbreviations, follow-up queries, and implicit stock references. Prefer STOCK when financial-market intent is reasonably clear.
 
-[SEARCH] — needs live web data: news, weather, sports scores, forex rates, current events, valuations, funding rounds, product launches, anything time-sensitive. Also for Hinglish/Hindi queries asking to search or find info.
+[SEARCH]
+Use when answering requires current, live, recent, external, or time-sensitive information, including news, events, weather, sports, prices, markets, products, companies, people, laws, announcements, or factual information that may have changed. Also use for explicit requests to search, find, look up, verify, or browse the web.
 
-[NO_SEARCH] — math, definitions, stable facts, creative writing, translation, coding.`;
+[NO_SEARCH]
+Use for stable knowledge, explanations, definitions, mathematics, coding, rewriting, translation, summarization, creative tasks, casual conversation, opinions, or reasoning that does not require current external information.
+
+Determine the user's actual intent semantically rather than relying on keywords. Consider conversation context when available. Resolve ambiguity using the strongest contextual signal. Never explain, speculate, or output anything except the required token.`;
 
 const ANSWER_INSTRUCTION = `\n\nAnswer in 1–3 plain sentences. Use exact numbers from LIVE STOCK DATA if present. Never fabricate prices or valuations.\n\nFORMATTING (follow silently, never mention to user):\n- Plain text only. No asterisks, no bold, no italic, no markdown of any kind.\n- Never write *word* or **word** or ***word***. Never mix bold and italic.\n- No stray or unmatched asterisks. No bullet points. No headers.`;
 
@@ -443,5 +436,4 @@ export async function onRequestOptions() {
       'Access-Control-Allow-Headers': 'Content-Type',
     },
   });
-                                     }
-            
+            }

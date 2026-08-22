@@ -212,6 +212,18 @@ function buildSearchContext(results) {
     ).join('\n\n');
 }
 
+async function groqFetch(apiKey, body) {
+  const resp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify(body),
+  });
+  return resp;
+}
+
 async function mistralFetch(apiKey, body) {
   const resp = await fetch('https://api.mistral.ai/v1/chat/completions', {
     method: 'POST',
@@ -250,25 +262,28 @@ export async function onRequestPost(context) {
     return jsonError('Empty query', 400);
   }
 
-  // ── Step 1: Classify intent (includes stock detection) ────
+  // ── Step 1: Classify intent via Groq Qwen 27B ────────────
   let intent = { type: 'none' };
   let stockDataPromise = Promise.resolve(null);
-  try {
-    const intentResp = await mistralFetch(env.MISTRAL_API_KEY, {
-      model: 'mistral-small-latest',
-      messages: [
-        { role: 'system', content: INTENT_SYSTEM },
-        { role: 'user', content: query },
-      ],
-      stream: false,
-      max_tokens: MAX_TOKENS_INTENT,
-      temperature: 0,
-    });
-    if (intentResp.ok) {
-      const d = await intentResp.json().catch(() => null);
-      intent = parseIntent(d?.choices?.[0]?.message?.content);
-    }
-  } catch { /* classifier failed → intent stays none */ }
+  if (env.GROQ_API_KEY) {
+    try {
+      const intentResp = await groqFetch(env.GROQ_API_KEY, {
+        model: 'qwen/qwen3.6-27b',
+        messages: [
+          { role: 'system', content: INTENT_SYSTEM },
+          { role: 'user', content: query },
+        ],
+        stream: false,
+        max_tokens: MAX_TOKENS_INTENT,
+        temperature: 0,
+        reasoning_effort: 'none',
+      });
+      if (intentResp.ok) {
+        const d = await intentResp.json().catch(() => null);
+        intent = parseIntent(d?.choices?.[0]?.message?.content);
+      }
+    } catch { /* classifier failed → intent stays none */ }
+  }
 
   if (intent.type === 'stock' && env.FINNHUB_API_KEY) {
     stockDataPromise = fetchStockData(intent.ticker, env.FINNHUB_API_KEY);
@@ -417,3 +432,4 @@ export async function onRequestOptions() {
     },
   });
       }
+          

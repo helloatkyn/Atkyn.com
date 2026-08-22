@@ -22,42 +22,47 @@ const STOP_WORDS = new Set([
   'some','any','all','each','both','few','most','only','own','same','such',
 ]);
 
-const INTENT_SYSTEM = `You decide if a web search is needed to answer the user query.
-Reply with ONLY [SEARCH] or [NO_SEARCH]. Nothing else.
+const INTENT_SYSTEM = `You are a search intent classifier. Decide if a web search is needed and, if so, formulate the optimal search query.
+Reply with ONLY valid JSON. No markdown, no explanations.
 
-Return [SEARCH] for:
-- current / latest / today's / recent information
-- news, events, announcements
-- current prices: stocks, crypto, gold, silver, oil, commodities
-- market cap, valuation, funding
-- exchange rates, forex
-- weather conditions or forecasts
-- current software/app/product versions
-- product pricing or availability
-- current officials, leaders, or executives
-- current laws, regulations, policies
-- sports scores, results, standings, rankings
-- anything that materially changes over time
+NO_SEARCH format:
+{"search":false}
 
-Return [NO_SEARCH] for:
-- math, logic, calculations
-- translation or rewriting
-- summarization of user-provided content
-- creative writing or brainstorming
-- stable general knowledge or history
-- explanations of concepts, science, definitions`;
+SEARCH format:
+{"search":true,"query":"concise, information-dense search query"}
 
-const ANSWER_INSTRUCTION = `
+SEARCH WHEN:
+- Explicit requests to search, verify, find, check, or research.
+- Current, latest, recent, live, or time-sensitive info (prices, market cap, versions, availability, leadership, laws, schedules, rankings, sports, weather, news).
+- Specific products/services/companies where current external info materially matters.
+- Recommendations, comparisons, or reviews requiring current specs/pricing.
+- Verifying claims, facts, quotes, or statistics.
+- Implicit current intent (freshness affects correctness).
 
-OUTPUT RULES (hard limit: 150 tokens):
-- Complete your answer naturally before reaching the limit.
-- Answer the user's actual question first, directly.
-- Simple questions: 1–3 sentences max.
-- Complex/factual questions: essential verified facts only, no padding.
-- If search results are available, use the most important verified data.
-- If current data is unavailable, say so clearly — never fabricate prices, versions, or live stats.
-- Never start a sentence or list you cannot finish within the remaining budget.
-- Never fill tokens just because the limit is 150.`;
+DO NOT SEARCH WHEN:
+- Stable general knowledge, history, or definitions.
+- Math, logic, calculations, or reasoning.
+- Translation, rewriting, summarization, or formatting of provided text.
+- Creative writing, brainstorming, roleplay, or casual conversation.
+- Coding from stable knowledge (unless current docs/API behavior is explicitly needed).
+- Query is fully answerable from conversation context.
+
+SEARCH QUERY RULES:
+- Be concise and information-dense. Preserve key entities, dates, locations, and constraints.
+- Search for the specific fact needed, not the entire conversation.
+- Add current year/date only if useful for freshness.
+- Strip conversational filler, slang, or irrelevant context.
+- Handle English, Hindi, Hinglish, Urdu, slang, and typos naturally; focus on underlying intent.
+- Never fabricate missing details.
+
+Examples:
+"What is Apple?" → {"search":false}
+"Apple current market cap?" → {"search":true,"query":"Apple current market cap"}
+"Explain React hooks." → {"search":false}
+"Latest React version?" → {"search":true,"query":"latest React version release"}
+"Write Python calculator." → {"search":false}
+"Check latest Python docs for this API." → {"search":true,"query":"latest Python documentation API"}
+"Best laptops under ₹80,000 currently available." → {"search":true,"query":"best laptops under 80000 INR current availability reviews"}`;
 
 // ── Helpers ─────────────────────────────────────────────────
 function trunc(str, len) {
@@ -239,6 +244,7 @@ export async function onRequestPost(context) {
 
   // ── Step 1: Intent classification ───────────────────────
   let needsSearch = false;
+  let searchQuery = query;
   try {
     const intentResp = await groqFetch(env.GROQ_API_KEY, {
       model: 'qwen/qwen3.6-27b',
@@ -255,7 +261,18 @@ export async function onRequestPost(context) {
     if (intentResp.ok) {
       const intentData = await intentResp.json().catch(() => null);
       const decision = intentData?.choices?.[0]?.message?.content?.trim();
-      needsSearch = decision === '[SEARCH]';
+      try {
+        // Strip markdown code blocks if the model ignores "no markdown" instruction
+        const cleanDecision = decision.replace(/^```(?:json)?\s*|\s*```$/g, '').trim();
+        const parsed = JSON.parse(cleanDecision);
+        needsSearch = parsed.search === true;
+        if (needsSearch && typeof parsed.query === 'string' && parsed.query.trim()) {
+          searchQuery = parsed.query.trim();
+        }
+      } catch {
+        // Fallback to legacy [SEARCH] / [NO_SEARCH] format if JSON parsing fails
+        needsSearch = decision === '[SEARCH]';
+      }
     }
   } catch {
     // classifier failed → skip search conservatively
@@ -271,7 +288,7 @@ export async function onRequestPost(context) {
     } else {
       try {
         const searxResp = await fetch(
-          `${env.SEARXNG_URL}/search?q=${encodeURIComponent(query)}&format=json&categories=general&language=en`,
+          `${env.SEARXNG_URL}/search?q=${encodeURIComponent(searchQuery)}&format=json&categories=general&language=en`,
           {
             headers: { 'Accept': 'application/json' },
             signal: AbortSignal.timeout(6000),
@@ -391,4 +408,4 @@ export async function onRequestOptions() {
       'Access-Control-Allow-Headers': 'Content-Type',
     },
   });
-                      }
+}

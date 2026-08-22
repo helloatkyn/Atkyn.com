@@ -205,8 +205,8 @@ function buildSearchContext(results) {
     ).join('\n\n');
 }
 
-async function groqFetch(apiKey, body) {
-  const resp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+async function mistralFetch(apiKey, body) {
+  const resp = await fetch('https://api.mistral.ai/v1/chat/completions', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -228,7 +228,7 @@ function jsonError(message, status) {
 export async function onRequestPost(context) {
   const { request, env } = context;
 
-  if (!env.GROQ_API_KEY) {
+  if (!env.MISTRAL_API_KEY) {
     return jsonError('Server misconfiguration', 500);
   }
 
@@ -247,8 +247,8 @@ export async function onRequestPost(context) {
   let intent = { type: 'none' };
   let stockDataPromise = Promise.resolve(null);
   try {
-    const intentResp = await groqFetch(env.GROQ_API_KEY, {
-      model: 'qwen/qwen3.6-27b',
+    const intentResp = await mistralFetch(env.MISTRAL_API_KEY, {
+      model: 'mistral-large-latest',
       messages: [
         { role: 'system', content: INTENT_SYSTEM },
         { role: 'user', content: query },
@@ -256,7 +256,6 @@ export async function onRequestPost(context) {
       stream: false,
       max_tokens: MAX_TOKENS_INTENT,
       temperature: 0,
-      reasoning_effort: 'none',
     });
     if (intentResp.ok) {
       const d = await intentResp.json().catch(() => null);
@@ -347,12 +346,21 @@ export async function onRequestPost(context) {
         ));
       }
 
-      const systemContent = searchContext
-        ? `${SYSTEM_PROMPT}${ANSWER_INSTRUCTION}\n\n${searchContext}`
-        : `${SYSTEM_PROMPT}${ANSWER_INSTRUCTION}`;
+      // Build stock context so AI answers with real numbers, not training data
+      let stockContext = '';
+      if (stockData) {
+        const sd = stockData;
+        const sign = sd.change >= 0 ? '+' : '';
+        stockContext = `\n\nLIVE STOCK DATA (use these exact numbers):\n` +
+          `${sd.name} (${sd.ticker}): ${sd.currency === 'USD' ? '$' : ''}${sd.price.toFixed(2)} ` +
+          `(${sign}${sd.change.toFixed(2)}, ${sign}${sd.changePct.toFixed(2)}%)\n` +
+          `Open: ${sd.open?.toFixed(2) ?? '—'} | High: ${sd.high?.toFixed(2) ?? '—'} | Low: ${sd.low?.toFixed(2) ?? '—'} | Prev Close: ${sd.prevClose?.toFixed(2) ?? '—'}`;
+      }
 
-      const groqResp = await groqFetch(env.GROQ_API_KEY, {
-        model: 'qwen/qwen3.6-27b',
+      const systemContent = [SYSTEM_PROMPT, ANSWER_INSTRUCTION, stockContext, searchContext].filter(Boolean).join('\n\n');
+
+      const answerResp = await mistralFetch(env.MISTRAL_API_KEY, {
+        model: 'mistral-large-latest',
         messages: [
           { role: 'system', content: systemContent },
           ...(Array.isArray(history) ? history.slice(-HISTORY_LIMIT) : []),
@@ -361,10 +369,9 @@ export async function onRequestPost(context) {
         stream: true,
         max_tokens: MAX_TOKENS_ANSWER,
         temperature: 0.3,
-        reasoning_effort: 'none',
       });
 
-      if (!groqResp.ok) {
+      if (!answerResp.ok) {
         await safeWrite(enc.encode(
           `data: ${JSON.stringify({ error: 'AI response failed' })}\n\n`
         ));
@@ -372,7 +379,7 @@ export async function onRequestPost(context) {
         return;
       }
 
-      const reader = groqResp.body.getReader();
+      const reader = answerResp.body.getReader();
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
@@ -405,4 +412,5 @@ export async function onRequestOptions() {
       'Access-Control-Allow-Headers': 'Content-Type',
     },
   });
-  }
+      }
+                

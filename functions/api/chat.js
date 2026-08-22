@@ -22,122 +22,23 @@ const STOP_WORDS = new Set([
   'some','any','all','each','both','few','most','only','own','same','such',
 ]);
 
-const INTENT_SYSTEM = `You decide if a web search is needed to answer the user query.
-Reply with ONLY [SEARCH] or [NO_SEARCH]. Nothing else.
+// Single classifier: intent + stock detection in one AI call. No regex.
+// Returns exactly one token: [SEARCH]  [NO_SEARCH]  [STOCK:TICKER]
+const INTENT_SYSTEM = `Classify the query into exactly one token. Reply with ONLY the token, nothing else.
 
-Return [SEARCH] for:
-- current / latest / today's / recent information
-- news, events, announcements
-- current prices: stocks, crypto, gold, silver, oil, commodities
-- market cap, valuation, funding
-- exchange rates, forex
-- weather conditions or forecasts
-- current software/app/product versions
-- product pricing or availability
-- current officials, leaders, or executives
-- current laws, regulations, policies
-- sports scores, results, standings, rankings
-- anything that materially changes over time
+[STOCK:TICKER] — user wants price, chart, or market cap of a company or index. Set TICKER to the correct exchange symbol (e.g. AAPL, TSLA, RELIANCE.NS, TCS.NS, ^NSEI, ^BSESN, ^GSPC, ^DJI, ^IXIC).
+[SEARCH] — needs live web data: news, weather, sports scores, exchange rates, current events.
+[NO_SEARCH] — everything else: math, definitions, stable facts, creative writing.`;
 
-Return [NO_SEARCH] for:
-- math, logic, calculations
-- translation or rewriting
-- summarization of user-provided content
-- creative writing or brainstorming
-- stable general knowledge or history
-- explanations of concepts, science, definitions`;
+const ANSWER_INSTRUCTION = `\n\nAnswer in 1–3 sentences. Facts only, no padding. Never fabricate live data.`;
 
-const ANSWER_INSTRUCTION = `
-
-OUTPUT RULES (hard limit: 150 tokens):
-- Complete your answer naturally before reaching the limit.
-- Answer the user's actual question first, directly.
-- Simple questions: 1–3 sentences max.
-- Complex/factual questions: essential verified facts only, no padding.
-- If search results are available, use the most important verified data.
-- If current data is unavailable, say so clearly — never fabricate prices, versions, or live stats.
-- Never start a sentence or list you cannot finish within the remaining budget.
-- Never fill tokens just because the limit is 150.`;
-
-// ── Stock Detection ─────────────────────────────────────────
-// Common ticker → company name map (extend as needed)
-const TICKER_MAP = {
-  AAPL:'Apple Inc.', MSFT:'Microsoft Corp.', GOOGL:'Alphabet Inc.', GOOG:'Alphabet Inc.',
-  AMZN:'Amazon.com Inc.', META:'Meta Platforms', TSLA:'Tesla Inc.', NVDA:'NVIDIA Corp.',
-  NFLX:'Netflix Inc.', AMD:'Advanced Micro Devices', INTC:'Intel Corp.', ORCL:'Oracle Corp.',
-  IBM:'IBM Corp.', UBER:'Uber Technologies', LYFT:'Lyft Inc.', SNAP:'Snap Inc.',
-  TWTR:'Twitter Inc.', SPOT:'Spotify Technology', SHOP:'Shopify Inc.', SQ:'Block Inc.',
-  PYPL:'PayPal Holdings', V:'Visa Inc.', MA:'Mastercard Inc.', JPM:'JPMorgan Chase',
-  GS:'Goldman Sachs', BAC:'Bank of America', WMT:'Walmart Inc.', COST:'Costco Wholesale',
-  DIS:'Walt Disney Co.', NFLX:'Netflix Inc.', BA:'Boeing Co.', GE:'GE Aerospace',
-  // Indian stocks (NSE)
-  RELIANCE:'Reliance Industries', TCS:'Tata Consultancy', INFY:'Infosys Ltd.',
-  WIPRO:'Wipro Ltd.', HDFCBANK:'HDFC Bank', ICICIBANK:'ICICI Bank',
-  SBIN:'State Bank of India', TATAMOTORS:'Tata Motors', BAJFINANCE:'Bajaj Finance',
-  // Indices
-  SPY:'S&P 500 ETF', QQQ:'Nasdaq 100 ETF', DIA:'Dow Jones ETF',
-};
-
-// Patterns that suggest a stock query
-const STOCK_QUERY_RE = /\b(stock|share\s*price|share price|market\s*cap|ticker|equity|nse|bse|nasdaq|nyse|sensex|nifty)\b/i;
-
-// Company name → ticker (lowercase keys, longer first for matching)
-const COMPANY_NAME_MAP = {
-  'apple': 'AAPL', 'microsoft': 'MSFT', 'google': 'GOOGL', 'alphabet': 'GOOGL',
-  'amazon': 'AMZN', 'meta': 'META', 'facebook': 'META', 'tesla': 'TSLA',
-  'nvidia': 'NVDA', 'netflix': 'NFLX', 'amd': 'AMD', 'intel': 'INTC',
-  'oracle': 'ORCL', 'ibm': 'IBM', 'uber': 'UBER', 'lyft': 'LYFT',
-  'snap': 'SNAP', 'snapchat': 'SNAP', 'spotify': 'SPOT', 'shopify': 'SHOP',
-  'paypal': 'PYPL', 'visa': 'V', 'mastercard': 'MA', 'jpmorgan': 'JPM',
-  'goldman sachs': 'GS', 'goldman': 'GS', 'bank of america': 'BAC',
-  'walmart': 'WMT', 'costco': 'COST', 'disney': 'DIS', 'boeing': 'BA',
-  'tata consultancy': 'TCS', 'tata motors': 'TATAMOTORS',
-  'bajaj finance': 'BAJFINANCE', 'hdfc bank': 'HDFCBANK', 'hdfc': 'HDFCBANK',
-  'icici bank': 'ICICIBANK', 'icici': 'ICICIBANK',
-  'state bank': 'SBIN', 'reliance': 'RELIANCE',
-  'infosys': 'INFY', 'wipro': 'WIPRO', 'tcs': 'TCS',
-};
-
-/**
- * Try to extract a stock ticker from a query.
- * Returns { ticker, name } or null.
- */
-function detectStockQuery(query) {
-  const q   = query.trim();
-  const qLo = q.toLowerCase();
-
-  // Direct index queries
-  if (/\b(sensex|bse\s*sensex)\b/i.test(q)) return { ticker: '^BSESN', name: 'BSE SENSEX' };
-  if (/\b(nifty\s*50|nifty)\b/i.test(q))    return { ticker: '^NSEI',  name: 'NIFTY 50' };
-  if (/\b(dow\s*jones|djia)\b/i.test(q))     return { ticker: '^DJI',   name: 'Dow Jones' };
-  if (/\b(s&p\s*500|sp500)\b/i.test(q))      return { ticker: '^GSPC',  name: 'S&P 500' };
-  if (/\b(nasdaq\s*composite)\b/i.test(q))   return { ticker: '^IXIC',  name: 'NASDAQ' };
-
-  const hasStockKeyword = STOCK_QUERY_RE.test(q);
-
-  // 1. Company name match (longer names first to avoid partial hits)
-  const sortedNames = Object.keys(COMPANY_NAME_MAP).sort((a, b) => b.length - a.length);
-  for (const name of sortedNames) {
-    if (qLo.includes(name)) {
-      const ticker = COMPANY_NAME_MAP[name];
-      return { ticker, name: TICKER_MAP[ticker] || ticker };
-    }
-  }
-
-  // 2. Exact ticker match in uppercase query
-  const upperQ = q.toUpperCase();
-  for (const [ticker, name] of Object.entries(TICKER_MAP)) {
-    const re = new RegExp(`\\b${ticker}\\b`);
-    if (re.test(upperQ)) return { ticker, name };
-  }
-
-  // 3. Stock keyword + bare uppercase word as ticker
-  if (hasStockKeyword) {
-    const m = upperQ.match(/\b([A-Z]{2,5})\b/);
-    if (m) return { ticker: m[1], name: m[1] };
-  }
-
-  return null;
+// ── Parse classifier response ────────────────────────────────
+function parseIntent(raw) {
+  const t = (raw || '').trim();
+  const m = t.match(/^\[STOCK:([^\]]+)\]$/);
+  if (m) return { type: 'stock', ticker: m[1].trim() };
+  if (t === '[SEARCH]') return { type: 'search' };
+  return { type: 'none' };
 }
 
 // ── Finnhub Fetch ───────────────────────────────────────────
@@ -150,8 +51,8 @@ async function fetchStockData(ticker, apiKey) {
       // Company profile
       fetch(`https://finnhub.io/api/v1/stock/profile2?symbol=${encodeURIComponent(ticker)}&token=${apiKey}`,
         { signal: AbortSignal.timeout(5000) }),
-      // 1D candles: 5-minute resolution, last 24h
-      fetch(`https://finnhub.io/api/v1/stock/candle?symbol=${encodeURIComponent(ticker)}&resolution=5&from=${Math.floor(Date.now()/1000) - 86400}&to=${Math.floor(Date.now()/1000)}&token=${apiKey}`,
+      // 1D candles: 5-min resolution, last 4 days window — covers weekends & holidays
+      fetch(`https://finnhub.io/api/v1/stock/candle?symbol=${encodeURIComponent(ticker)}&resolution=5&from=${Math.floor(Date.now()/1000) - 4*86400}&to=${Math.floor(Date.now()/1000)}&token=${apiKey}`,
         { signal: AbortSignal.timeout(5000) }),
     ]);
 
@@ -162,10 +63,19 @@ async function fetchStockData(ticker, apiKey) {
     // quote must have a valid price
     if (!quote || typeof quote.c !== 'number' || quote.c === 0) return null;
 
-    // Build candle series [{t, c}] for chart
+    // Build candle series [{t, c}] for chart — keep only last trading day
     let series = [];
-    if (candle && candle.s === 'ok' && Array.isArray(candle.t)) {
-      series = candle.t.map((t, i) => ({ t, o: candle.o[i], h: candle.h[i], l: candle.l[i], c: candle.c[i] }));
+    if (candle && candle.s === 'ok' && Array.isArray(candle.t) && candle.t.length > 0) {
+      const allCandles = candle.t.map((t, i) => ({ t, o: candle.o[i], h: candle.h[i], l: candle.l[i], c: candle.c[i] }));
+      // Find the most recent trading day and filter to just that day's candles
+      const lastTs = allCandles[allCandles.length - 1].t;
+      const lastDate = new Date(lastTs * 1000);
+      const lastDay = `${lastDate.getUTCFullYear()}-${lastDate.getUTCMonth()}-${lastDate.getUTCDate()}`;
+      series = allCandles.filter(c => {
+        const d = new Date(c.t * 1000);
+        return `${d.getUTCFullYear()}-${d.getUTCMonth()}-${d.getUTCDate()}` === lastDay;
+      });
+      if (series.length === 0) series = allCandles; // fallback: use all if filter fails
     }
 
     return {
@@ -333,14 +243,9 @@ export async function onRequestPost(context) {
     return jsonError('Empty query', 400);
   }
 
-  // ── Step 1: Stock detection (runs in parallel with intent) ─
-  const stockInfo = detectStockQuery(query);
-  const stockDataPromise = (stockInfo && env.FINNHUB_API_KEY)
-    ? fetchStockData(stockInfo.ticker, env.FINNHUB_API_KEY)
-    : Promise.resolve(null);
-
-  // ── Step 2: Intent classification ───────────────────────
-  let needsSearch = false;
+  // ── Step 1: Classify intent + detect stock in one AI call ──
+  let intent = { type: 'none' };
+  let stockDataPromise = Promise.resolve(null);
   try {
     const intentResp = await groqFetch(env.GROQ_API_KEY, {
       model: 'qwen/qwen3.6-27b',
@@ -353,21 +258,21 @@ export async function onRequestPost(context) {
       temperature: 0,
       reasoning_effort: 'none',
     });
-
     if (intentResp.ok) {
-      const intentData = await intentResp.json().catch(() => null);
-      const decision = intentData?.choices?.[0]?.message?.content?.trim();
-      needsSearch = decision === '[SEARCH]';
+      const d = await intentResp.json().catch(() => null);
+      intent = parseIntent(d?.choices?.[0]?.message?.content);
     }
-  } catch {
-    // classifier failed → skip search conservatively
+  } catch { /* classifier failed → intent stays none */ }
+
+  if (intent.type === 'stock' && env.FINNHUB_API_KEY) {
+    stockDataPromise = fetchStockData(intent.ticker, env.FINNHUB_API_KEY);
   }
 
-  // ── Step 3: SearXNG (if needed) ─────────────────────────
+  // ── Step 2: SearXNG (only for [SEARCH]) ─────────────────
   let searchResults = [];
   let searchContext = '';
 
-  if (needsSearch) {
+  if (intent.type === 'search') {
     if (!env.SEARXNG_URL) {
       // No SearXNG configured — skip gracefully
     } else {
@@ -501,4 +406,3 @@ export async function onRequestOptions() {
     },
   });
   }
-                

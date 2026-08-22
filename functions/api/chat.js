@@ -30,7 +30,7 @@ const INTENT_SYSTEM = `Classify the query into exactly one token. Reply with ONL
 [SEARCH] — needs live web data: news, weather, sports scores, exchange rates, current events.
 [NO_SEARCH] — everything else: math, definitions, stable facts, creative writing.`;
 
-const ANSWER_INSTRUCTION = `\n\nAnswer in 1–3 sentences. Facts only, no padding. Never fabricate live data.`;
+const ANSWER_INSTRUCTION = `\n\nAnswer in 1–3 plain sentences. No markdown, no asterisks, no bold. Use exact numbers from LIVE STOCK DATA if present. Never fabricate prices.`;
 
 // ── Parse classifier response ────────────────────────────────
 function parseIntent(raw) {
@@ -248,7 +248,7 @@ export async function onRequestPost(context) {
   let stockDataPromise = Promise.resolve(null);
   try {
     const intentResp = await mistralFetch(env.MISTRAL_API_KEY, {
-      model: 'mistral-large-latest',
+      model: 'mistral-small-latest',
       messages: [
         { role: 'system', content: INTENT_SYSTEM },
         { role: 'user', content: query },
@@ -412,5 +412,5 @@ export async function onRequestOptions() {
       'Access-Control-Allow-Headers': 'Content-Type',
     },
   });
-      }
-                
+                                                                   }
+      

@@ -18,9 +18,8 @@ const _safeUrl = u => {
 
 /* ── Layout types ── */
 // 0 = full width below title
-// 1 = right side inline
-// 2 = grid (needs 2 images — falls back to full if only 1)
-const _LAYOUTS = [0, 0, 1, 1, 2]; // weighted: full & inline more common
+// 1 = right side inline (contain, no crop)
+const _LAYOUTS = [0, 0, 1, 1, 0]; // weighted: full more common
 
 function _pickLayout(index) {
   return _LAYOUTS[index % _LAYOUTS.length];
@@ -37,8 +36,8 @@ function _fetchOg(url) {
 }
 
 /* ── Inject image into card after OG fetch ── */
-function _injectOgImage(cardEl, layout, image1, image2) {
-  if (!image1) return;
+function _injectOgImage(cardEl, layout, image) {
+  if (!image) return;
 
   if (layout === 1) {
     // Right side inline — wrap snippet + image in a row
@@ -50,7 +49,7 @@ function _injectOgImage(cardEl, layout, image1, image2) {
     thumbWrap.className = 'wc-thumb-inline-wrap';
     const img = document.createElement('img');
     img.className = 'wc-thumb-inline';
-    img.src = image1;
+    img.src = image;
     img.loading = 'lazy';
     img.decoding = 'async';
     img.alt = '';
@@ -63,40 +62,14 @@ function _injectOgImage(cardEl, layout, image1, image2) {
     }
     row.appendChild(thumbWrap);
 
-  } else if (layout === 2 && image2) {
-    // Grid — 2 images side by side
-    const title = cardEl.querySelector('.wc-title');
-    const grid = document.createElement('div');
-    grid.className = 'wc-thumb-grid';
-
-    [image1, image2].forEach(src => {
-      const wrap = document.createElement('div');
-      wrap.className = 'wc-thumb-grid-item';
-      const img = document.createElement('img');
-      img.className = 'wc-thumb-grid-img';
-      img.src = src;
-      img.loading = 'lazy';
-      img.decoding = 'async';
-      img.alt = '';
-      img.addEventListener('error', () => wrap.remove(), { once: true });
-      wrap.appendChild(img);
-      grid.appendChild(wrap);
-    });
-
-    if (title && title.nextSibling) {
-      title.parentNode.insertBefore(grid, title.nextSibling);
-    } else if (title) {
-      title.parentNode.appendChild(grid);
-    }
-
   } else {
-    // Full width (layout 0, or grid fallback with 1 image)
+    // Full width (layout 0)
     const title = cardEl.querySelector('.wc-title');
     const wrap = document.createElement('div');
     wrap.className = 'wc-thumb-full-wrap';
     const img = document.createElement('img');
     img.className = 'wc-thumb-full';
-    img.src = image1;
+    img.src = image;
     img.loading = 'lazy';
     img.decoding = 'async';
     img.alt = '';
@@ -153,25 +126,9 @@ function _buildCard(r, index) {
   }, { once: true, passive: true });
 
   if (r.image) {
-    // SearXNG gave image — inject directly based on layout
-    if (layout === 2) {
-      // Grid needs 2 images — use r.image twice (slight variant) or just full
-      _injectOgImage(a, 0, r.image, null);
-    } else {
-      _injectOgImage(a, layout, r.image, null);
-    }
+    _injectOgImage(a, layout, r.image);
   } else {
-    // OG fetch
-    if (layout === 2) {
-      // Grid: fetch same URL twice is pointless, fetch og + use same image for both slots
-      _fetchOg(r.url).then(img1 => {
-        _injectOgImage(a, img1 ? 0 : -1, img1, null);
-      });
-    } else {
-      _fetchOg(r.url).then(img1 => {
-        _injectOgImage(a, layout, img1, null);
-      });
-    }
+    _fetchOg(r.url).then(img => _injectOgImage(a, layout, img));
   }
 
   return a;
@@ -365,4 +322,4 @@ window._atkynInit_web = _init;
 _init();
 
 }());
-     
+   

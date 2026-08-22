@@ -265,28 +265,28 @@
   .wc-thumb-full-wrap { background: #2c2c2e; }
   .wc-thumb-inline-wrap { background: #2c2c2e; }
 
-  .wc-kg-card { background: #1c1c1e; box-shadow: none; border: none; }
+  .wc-kg-card { background: #2c2c2e; box-shadow: none; border: none; }
   .wc-kg-title { color: #f0f0f0; }
   .wc-kg-desc { color: #ccc; }
-  .wc-kg-image-box { background: #2c2c2e; }
-  .wc-kg-source { background: #2c2c2e; }
+  .wc-kg-image-box { background: #3a3a3c; }
+  .wc-kg-source { background: #3a3a3c; }
   .wc-kg-source-text { color: #aaa; }
 
-  .wc-sitelinks { border-top-color: #2c2c2e; }
-  .wc-sitelink { border-bottom-color: #2c2c2e; }
+  .wc-sitelinks { border-top-color: #3a3a3c; }
+  .wc-sitelink { border-bottom-color: #3a3a3c; }
   .wc-sitelink:active { background: #1e1e20; }
   .wc-sitelink-title { color: #4BA8D8; }
-  .wc-sitelink-arrow { color: #444; }
+  .wc-sitelink-arrow { color: #555; }
 
-  .wc-answer-pill { background: #1c1c1e; color: #f0f0f0; box-shadow: none; }
+  .wc-answer-pill { background: #2c2c2e; color: #f0f0f0; box-shadow: none; }
 
-  .wc-related { background: #1c1c1e; box-shadow: none; border: none; }
+  .wc-related { background: #2c2c2e; box-shadow: none; border: none; }
   .wc-related-title { color: #f0f0f0; }
-  .wc-related-item { border-bottom-color: #2c2c2e; }
-  .wc-related-item:active { background: #2a2a2c; }
+  .wc-related-item { border-bottom-color: #3a3a3c; }
+  .wc-related-item:active { background: #3a3a3c; }
   .wc-related-item span { color: #e0e0e0; }
-  .wc-related-icon { color: #555; }
-  .wc-related-arrow { color: #444; }
+  .wc-related-icon { color: #666; }
+  .wc-related-arrow { color: #555; }
 
   .wc-suggest-drop { background: #1c1c1e; box-shadow: 0 4px 24px rgba(0,0,0,0.4); }
   .wc-suggest-item { color: #f0f0f0; }
@@ -294,4 +294,4 @@
   .wc-suggest-item.active { background: #2a2a2c; color: #4BA8D8; }
   .wc-suggest-icon { color: #555; }
   .wc-suggest-item.active .wc-suggest-icon { color: #4BA8D8; }
-  }
+}

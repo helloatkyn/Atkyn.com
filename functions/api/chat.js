@@ -299,32 +299,39 @@ export async function onRequestPost(context) {
     { role: 'user', content: query },
   ];
 
-  // ── Step 1: Tool-selection call (non-streaming) ───────────
-  let toolCall = null;
+  // ── Step 1: Call 1 — Mistral with tools (non-streaming) ────
+  // Model decides: tool call OR direct answer
+  let toolCall        = null;
+  let directAnswer    = null;  // msg.content when no tool chosen
+  let firstAssistMsg  = null;  // full assistant message for conversation continuity
+
   try {
-    const toolResp = await mistralFetch(env.MISTRAL_API_KEY, {
+    const call1Resp = await mistralFetch(env.MISTRAL_API_KEY, {
       model: 'mistral-large-latest',
       messages,
       tools: TOOLS,
       tool_choice: 'auto',
       parallel_tool_calls: false,
       stream: false,
-      max_tokens: 60,
-      temperature: 0,
+      max_tokens: MAX_TOKENS_ANSWER,
+      temperature: 0.3,
     });
 
-    if (toolResp.ok) {
-      const d = await toolResp.json().catch(() => null);
+    if (call1Resp.ok) {
+      const d   = await call1Resp.json().catch(() => null);
       const msg = d?.choices?.[0]?.message;
+      firstAssistMsg = msg;
       if (msg?.tool_calls?.length) {
         toolCall = msg.tool_calls[0];
+      } else if (msg?.content) {
+        directAnswer = msg.content;  // No tool needed — use this directly
       }
     }
-  } catch { /* tool-selection failed → answer directly */ }
+  } catch { /* call 1 failed → fall through, directAnswer stays null */ }
 
-  // ── Step 2: Execute tool ──────────────────────────────────
-  let stockData     = null;
-  let searchResults = [];
+  // ── Step 2: Execute tool (only if model chose one) ────────
+  let stockData         = null;
+  let searchResults     = [];
   let toolResultContent = '';
 
   if (toolCall) {
@@ -345,53 +352,27 @@ export async function onRequestPost(context) {
           `Open: ${sd.open?.toFixed(2) ?? '—'} | High: ${sd.high?.toFixed(2) ?? '—'} | ` +
           `Low: ${sd.low?.toFixed(2) ?? '—'} | Prev Close: ${sd.prevClose?.toFixed(2) ?? '—'}`;
       } else {
-        // Stock fetch failed — let model decide next step via fallback call
-        toolResultContent = `ERROR: Could not fetch stock data for ticker "${fnArgs.ticker}". Data may be unavailable (unsupported exchange, delisted, or API error). You may try web_search to find this information instead.`;
+        // Finnhub failed — pre-execute web_search fallback so Call 2 gets real data
+        // This keeps failure case at 2 model calls total (not 3)
+        if (env.SEARXNG_URL) {
+          const fallbackQuery = `${fnArgs.ticker} stock price today`;
+          searchResults = await fetchSearchResults(fallbackQuery, env.SEARXNG_URL);
+          const searchCtx = buildSearchContext(searchResults);
+          toolResultContent =
+            `ERROR: Real-time data unavailable for "${fnArgs.ticker}" (unsupported exchange or API error).\n\n` +
+            (searchCtx || 'No web fallback data found either.');
+        } else {
+          toolResultContent = `ERROR: Real-time data unavailable for "${fnArgs.ticker}".`;
+        }
       }
 
     } else if (fnName === 'web_search' && fnArgs.query && env.SEARXNG_URL) {
       searchResults = await fetchSearchResults(fnArgs.query, env.SEARXNG_URL);
-      toolResultContent = buildSearchContext(searchResults);
-      if (!toolResultContent) toolResultContent = 'No search results found.';
+      toolResultContent = buildSearchContext(searchResults) || 'No search results found.';
     }
   }
 
-  // ── Step 3: Stock failure fallback (optional web_search) ────
-  // If get_stock_data returned an error, give model one chance to call web_search
-  if (toolCall?.function?.name === 'get_stock_data' && !stockData && env.SEARXNG_URL) {
-    try {
-      const fallbackMessages = [
-        ...messages,
-        { role: 'assistant', content: null, tool_calls: [toolCall] },
-        { role: 'tool', tool_call_id: toolCall.id, content: toolResultContent },
-      ];
-      const fallbackResp = await mistralFetch(env.MISTRAL_API_KEY, {
-        model: 'mistral-large-latest',
-        messages: fallbackMessages,
-        tools: TOOLS,
-        tool_choice: 'auto',
-        parallel_tool_calls: false,
-        stream: false,
-        max_tokens: 60,
-        temperature: 0,
-      });
-      if (fallbackResp.ok) {
-        const fd  = await fallbackResp.json().catch(() => null);
-        const ftc = fd?.choices?.[0]?.message?.tool_calls?.[0];
-        if (ftc?.function?.name === 'web_search') {
-          let ftcArgs = {};
-          try { ftcArgs = JSON.parse(ftc.function?.arguments || '{}'); } catch { /* ignore */ }
-          if (ftcArgs.query) {
-            searchResults = await fetchSearchResults(ftcArgs.query, env.SEARXNG_URL);
-            toolResultContent = buildSearchContext(searchResults) || 'No search results found.';
-            toolCall = ftc; // swap to the fallback web_search call for final message build
-          }
-        }
-      }
-    } catch { /* fallback failed — continue with error context */ }
-  }
-
-  // ── Step 4: Stream final answer ───────────────────────────
+  // ── Step 3: Stream answer ─────────────────────────────────
   const { readable, writable } = new TransformStream();
   const writer = writable.getWriter();
   const enc    = new TextEncoder();
@@ -402,7 +383,7 @@ export async function onRequestPost(context) {
 
   (async () => {
     try {
-      // Send SSE events for UI rendering
+      // Send SSE events for UI
       if (stockData) {
         await safeWrite(enc.encode(`event: stock\ndata: ${JSON.stringify(stockData)}\n\n`));
       }
@@ -410,20 +391,21 @@ export async function onRequestPost(context) {
         await safeWrite(enc.encode(`event: results\ndata: ${JSON.stringify(searchResults)}\n\n`));
       }
 
-      // Build final messages with tool result injected
-      const finalMessages = [...messages];
-      if (toolCall && toolResultContent) {
-        finalMessages.push({
-          role: 'assistant',
-          content: null,
-          tool_calls: [toolCall],
-        });
-        finalMessages.push({
-          role: 'tool',
-          tool_call_id: toolCall.id,
-          content: toolResultContent,
-        });
+      // ── No tool chosen: stream directAnswer from Call 1 ──
+      if (!toolCall && directAnswer) {
+        const text = enc.encode(`data: ${JSON.stringify({ choices: [{ delta: { content: directAnswer } }] })}\n\n`);
+        await safeWrite(text);
+        await safeWrite(enc.encode('data: [DONE]\n\n'));
+        await writer.close();
+        return;
       }
+
+      // ── Tool was called: Call 2 — final answer (streaming) ─
+      const finalMessages = [
+        ...messages,
+        { role: 'assistant', content: firstAssistMsg?.content ?? null, tool_calls: [toolCall] },
+        { role: 'tool', tool_call_id: toolCall.id, content: toolResultContent },
+      ];
 
       const answerResp = await mistralFetch(env.MISTRAL_API_KEY, {
         model: 'mistral-large-latest',
@@ -470,5 +452,5 @@ export async function onRequestOptions() {
       'Access-Control-Allow-Headers': 'Content-Type',
     },
   });
-        }
-       
+      }
+          

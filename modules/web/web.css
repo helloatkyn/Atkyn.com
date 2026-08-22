@@ -256,7 +256,7 @@
   .wc-card { background: #1c1c1e; box-shadow: 0 1px 4px rgba(0,0,0,0.3); }
   .wc-card:active { background: #2a2a2c; }
   .wc-title { color: #4BA8D8; }
-  .wc-snippet { color: #D4D4D6; }
+  .wc-snippet { color: #d4d4d6; }
   .wc-domain { color: rgba(255,255,255,0.75); }
   .wc-path { color: rgba(255,255,255,0.3); }
   .wc-fav-wrap { background: #2c2c2e; }
@@ -294,4 +294,4 @@
   .wc-suggest-item.active { background: #2a2a2c; color: #4BA8D8; }
   .wc-suggest-icon { color: #555; }
   .wc-suggest-item.active .wc-suggest-icon { color: #4BA8D8; }
-}
+  }

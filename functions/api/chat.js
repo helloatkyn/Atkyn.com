@@ -7,9 +7,13 @@ const MAX_TITLE_LEN          = 120;
 const MAX_URL_LEN            = 300;
 const MAX_SNIPPET_LEN        = 900;
 const PAGE_TIMEOUT_MS        = 4000;
-const MAX_TOKENS_ANSWER      = 350;
+const MAX_TOKENS_TOOL_SELECT = 150;   // Call 1: only needs a tool call or a short direct answer
+const MAX_TOKENS_ANSWER      = 350;   // Call 2: final answer
 const HISTORY_LIMIT          = 10;
 const THIN_SNIPPET_THRESHOLD = 300;
+
+// Injection-attempt marker — if this appears in tool output, sanitise before forwarding
+const INJECTION_SENTINEL_RE = /ignore (previous|above|all) instructions?|forget (your|the) (system|instructions?)|you are now|new instructions?:/i;
 
 const STOP_WORDS = new Set([
   'a','an','the','and','or','but','in','on','at','to','for','of','with',
@@ -27,13 +31,30 @@ const TOOLS = [
     type: 'function',
     function: {
       name: 'get_stock_data',
-      description: 'Fetch real-time trading data (price, change, open, high, low, prev close, intraday chart) for a publicly traded stock or market index. Use when the user's intended request is current market/trading information and the target security can be identified with high confidence. Understand natural, abbreviated, multilingual, and conversational phrasing — do not require the words "price" or "stock" to appear. Do NOT use for: market cap, earnings, revenue, P/E, dividends, news, crypto, forex, commodities. Never guess a ticker.',
+      description:
+        'Fetch real-time trading data — price, daily change, open, high, low, previous close, ' +
+        'and intraday chart — for a publicly traded stock or market index. ' +
+        'Use when the user is asking about the current market price or trading performance of ' +
+        'a specific company or index, even when phrased naturally, informally, in Hindi, Hinglish, ' +
+        'Urdu-in-Latin-script, slang, or abbreviated form. ' +
+        'Example intents that should use this tool: ' +
+        '"Apple kitne par chal raha hai", "Tesla aaj kaisa hai", "Reliance ka rate", ' +
+        '"Nifty today", "what is AAPL trading at", "how is MSFT doing right now". ' +
+        'Also use for follow-up questions that clearly refer to a stock discussed earlier in the conversation. ' +
+        'Do NOT use for: market cap, valuation, earnings, revenue, P/E ratio, dividends, ' +
+        'financial statements, analyst targets, company news, product news, ' +
+        'crypto, forex, or commodities. ' +
+        'Never fabricate or guess a ticker symbol.',
       parameters: {
         type: 'object',
         properties: {
           ticker: {
             type: 'string',
-            description: 'Primary exchange ticker in uppercase, no exchange suffix. Examples: AAPL, TSLA, MSFT, GOOGL, NVDA, RELIANCE, TCS, ^NSEI, ^BSESN, SPY, ^DJI. Never fabricate.',
+            description:
+              'Primary exchange ticker in uppercase, no exchange suffix. ' +
+              'Examples: AAPL, TSLA, MSFT, GOOGL, NVDA, RELIANCE, TCS, ^NSEI, ^BSESN, SPY, ^DJI. ' +
+              'Only provide a ticker you can resolve with high confidence from the conversation. ' +
+              'Never fabricate.',
           },
         },
         required: ['ticker'],
@@ -44,13 +65,27 @@ const TOOLS = [
     type: 'function',
     function: {
       name: 'web_search',
-      description: 'Search the live web when answering requires current, recent, changing, or externally verifiable information. Use whenever the answer cannot be reliably obtained from conversation context or get_stock_data. Generate a concise query preserving the user's intent, entities, location, and timeframe. Do not use for stable knowledge, mathematics, coding, rewriting, translation, or ordinary conversation.',
+      description:
+        'Search the live web when the answer requires current, recent, changing, or externally ' +
+        'verifiable information that cannot be reliably obtained from conversation context or ' +
+        'from get_stock_data. ' +
+        'Use for: news, current events, product information and pricing, company information, ' +
+        'executive changes, launches, weather, sports, laws and regulations, ' +
+        'financial fundamentals (market cap, P/E, earnings, revenue, dividends), ' +
+        'valuations, funding rounds, crypto, forex, commodities, statistics, and any ' +
+        'topic that changes over time or requires an authoritative external source. ' +
+        'Generate a concise search query that preserves the user\'s intent, the exact entity, ' +
+        'requested metric, country or region, and timeframe. ' +
+        'Do NOT use for: stable knowledge, mathematics, coding questions, text rewriting, ' +
+        'translation, or ordinary conversation where no live data is needed.',
       parameters: {
         type: 'object',
         properties: {
           query: {
             type: 'string',
-            description: 'Concise search query that preserves the user's actual intent.',
+            description:
+              'Concise search query preserving the user\'s actual intent, entity, location, ' +
+              'and timeframe. Minimum 2 characters.',
           },
         },
         required: ['query'],
@@ -77,6 +112,21 @@ function isValidUrl(url) {
     const u = new URL(url);
     return u.protocol === 'http:' || u.protocol === 'https:';
   } catch { return false; }
+}
+
+function isValidTicker(ticker) {
+  if (!ticker || typeof ticker !== 'string') return false;
+  // Allow 1–12 uppercase alphanumeric chars, optional leading ^ for indices, optional . separator
+  return /^\^?[A-Z0-9]{1,11}(\.[A-Z]{1,4})?$/.test(ticker.trim());
+}
+
+function sanitiseToolOutput(text) {
+  // Replace suspected prompt-injection attempts with a safe placeholder
+  // Tool output is data, not instructions
+  if (INJECTION_SENTINEL_RE.test(text)) {
+    return '[SANITISED: tool result contained instruction-like content and was removed]';
+  }
+  return text;
 }
 
 function queryTerms(query) {
@@ -164,6 +214,28 @@ function buildSearchContext(results) {
     ).join('\n\n');
 }
 
+// ── History Validation ─────────────────────────────────────
+const VALID_ROLES = new Set(['user', 'assistant', 'system', 'tool']);
+
+function sanitiseHistory(raw) {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .filter(m =>
+      m &&
+      typeof m === 'object' &&
+      typeof m.role === 'string' &&
+      VALID_ROLES.has(m.role) &&
+      (typeof m.content === 'string' || m.content === null || m.content === undefined)
+    )
+    .map(m => {
+      // Strip any keys we don't control to avoid injecting unexpected fields
+      const clean = { role: m.role, content: m.content ?? '' };
+      if (m.tool_call_id) clean.tool_call_id = String(m.tool_call_id);
+      if (Array.isArray(m.tool_calls)) clean.tool_calls = m.tool_calls;
+      return clean;
+    });
+}
+
 // ── Finnhub Fetch ──────────────────────────────────────────
 async function fetchStockData(ticker, apiKey) {
   try {
@@ -179,11 +251,12 @@ async function fetchStockData(ticker, apiKey) {
         { signal: AbortSignal.timeout(5000) }),
     ]);
 
-    const quote   = quoteResp.ok   ? await quoteResp.json().catch(() => null) : null;
+    const quote   = quoteResp.ok   ? await quoteResp.json().catch(() => null)   : null;
     const profile = profileResp.ok ? await profileResp.json().catch(() => null) : null;
-    const candle  = candleResp.ok  ? await candleResp.json().catch(() => null) : null;
+    const candle  = candleResp.ok  ? await candleResp.json().catch(() => null)  : null;
 
-    const price = quote?.c || quote?.pc;
+    // Treat price = 0 as invalid (Finnhub returns 0 for unsupported tickers)
+    const price = quote?.c > 0 ? quote.c : (quote?.pc > 0 ? quote.pc : null);
     if (!quote || !price) return null;
 
     let series = [];
@@ -285,6 +358,11 @@ export async function onRequestPost(context) {
 
   if (!env.MISTRAL_API_KEY) return jsonError('Server misconfiguration', 500);
 
+  // Model is configurable via env; falls back to mistral-small-latest for tool selection
+  // and mistral-large-latest for the final answer if not overridden.
+  const MODEL_TOOL_SELECT = env.MISTRAL_MODEL_TOOL_SELECT || 'mistral-small-latest';
+  const MODEL_ANSWER      = env.MISTRAL_MODEL_ANSWER      || 'mistral-large-latest';
+
   let query, history;
   try {
     ({ query, history } = await request.json());
@@ -295,52 +373,114 @@ export async function onRequestPost(context) {
   const systemContent = `${SYSTEM_PROMPT}\n\n${ANSWER_INSTRUCTION}`;
   const messages = [
     { role: 'system', content: systemContent },
-    ...(Array.isArray(history) ? history.slice(-HISTORY_LIMIT) : []),
-    { role: 'user', content: query },
+    ...sanitiseHistory(history).slice(-HISTORY_LIMIT),
+    { role: 'user', content: query.trim() },
   ];
 
-  // ── Step 1: Call 1 — Mistral with tools (non-streaming) ────
-  // Model decides: tool call OR direct answer
-  let toolCall        = null;
-  let directAnswer    = null;  // msg.content when no tool chosen
-  let firstAssistMsg  = null;  // full assistant message for conversation continuity
+  // ── Call 1: Tool selection (non-streaming, low token budget) ──────────────
+  // The model returns either:
+  //   A) a tool call   → toolCall is set
+  //   B) a direct text answer → directAnswer is set
+  // A third outcome (null) means Call 1 itself failed.
+
+  let toolCall       = null;
+  let directAnswer   = null;
+  let firstAssistMsg = null;
 
   try {
     const call1Resp = await mistralFetch(env.MISTRAL_API_KEY, {
-      model: 'mistral-large-latest',
+      model:                MODEL_TOOL_SELECT,
       messages,
-      tools: TOOLS,
-      tool_choice: 'auto',
-      parallel_tool_calls: false,
-      stream: false,
-      max_tokens: MAX_TOKENS_ANSWER,
-      temperature: 0.3,
+      tools:                TOOLS,
+      tool_choice:          'auto',
+      parallel_tool_calls:  false,
+      stream:               false,
+      max_tokens:           MAX_TOKENS_TOOL_SELECT,
+      temperature:          0.2,
     });
 
-    if (call1Resp.ok) {
+    if (!call1Resp.ok) {
+      const errText = await call1Resp.text().catch(() => '');
+      console.error(`[Call1] Mistral error ${call1Resp.status}: ${errText}`);
+      // Fall through — both toolCall and directAnswer remain null
+    } else {
       const d   = await call1Resp.json().catch(() => null);
       const msg = d?.choices?.[0]?.message;
-      firstAssistMsg = msg;
+      firstAssistMsg = msg ?? null;
+
       if (msg?.tool_calls?.length) {
         toolCall = msg.tool_calls[0];
-      } else if (msg?.content) {
-        directAnswer = msg.content;  // No tool needed — use this directly
+      } else if (typeof msg?.content === 'string' && msg.content.trim()) {
+        directAnswer = msg.content.trim();
       }
     }
-  } catch { /* call 1 failed → fall through, directAnswer stays null */ }
+  } catch (err) {
+    console.error('[Call1] fetch threw:', err);
+    // Fall through — both remain null
+  }
 
-  // ── Step 2: Execute tool (only if model chose one) ────────
+  // ── Call 1 complete failure: nothing returned ─────────────────────────────
+  if (!toolCall && !directAnswer) {
+    return jsonError('AI service unavailable', 503);
+  }
+
+  // ── Call 2 not needed: direct answer from Call 1 ──────────────────────────
+  // Build SSE response from directAnswer without a second model call.
+  if (!toolCall && directAnswer) {
+    const { readable, writable } = new TransformStream();
+    const writer = writable.getWriter();
+    const enc    = new TextEncoder();
+    (async () => {
+      try {
+        await writer.write(enc.encode(
+          `data: ${JSON.stringify({ choices: [{ delta: { content: directAnswer } }] })}\n\n`
+        ));
+        await writer.write(enc.encode('data: [DONE]\n\n'));
+      } catch { /* ignore */ } finally {
+        try { await writer.close(); } catch { /* already closed */ }
+      }
+    })();
+    return new Response(readable, {
+      headers: {
+        'Content-Type':      'text/event-stream',
+        'Cache-Control':     'no-cache',
+        'X-Accel-Buffering': 'no',
+      },
+    });
+  }
+
+  // ── Tool was chosen: validate arguments before execution ──────────────────
+  const fnName = toolCall.function?.name;
+  const toolCallId = toolCall.id ?? `tool_${Date.now()}`; // defensive: id should always be present
+
+  let fnArgs = {};
+  let argParseError = false;
+  try {
+    fnArgs = JSON.parse(toolCall.function?.arguments || '{}');
+    if (typeof fnArgs !== 'object' || fnArgs === null) { fnArgs = {}; argParseError = true; }
+  } catch {
+    argParseError = true;
+  }
+
+  // ── Execute tool ──────────────────────────────────────────────────────────
   let stockData         = null;
   let searchResults     = [];
   let toolResultContent = '';
 
-  if (toolCall) {
-    const fnName = toolCall.function?.name;
-    let fnArgs = {};
-    try { fnArgs = JSON.parse(toolCall.function?.arguments || '{}'); } catch { /* ignore */ }
+  if (argParseError) {
+    toolResultContent = 'ERROR: Tool arguments were malformed and could not be parsed.';
 
-    if (fnName === 'get_stock_data' && fnArgs.ticker && env.FINNHUB_API_KEY) {
-      stockData = await fetchStockData(fnArgs.ticker, env.FINNHUB_API_KEY);
+  } else if (fnName === 'get_stock_data') {
+    const ticker = typeof fnArgs.ticker === 'string' ? fnArgs.ticker.trim().toUpperCase() : '';
+
+    if (!ticker) {
+      toolResultContent = 'ERROR: No ticker symbol was provided.';
+    } else if (!isValidTicker(ticker)) {
+      toolResultContent = `ERROR: "${ticker}" is not a valid ticker format.`;
+    } else if (!env.FINNHUB_API_KEY) {
+      toolResultContent = 'ERROR: Stock data provider is not configured.';
+    } else {
+      stockData = await fetchStockData(ticker, env.FINNHUB_API_KEY);
       if (stockData) {
         const sd   = stockData;
         const sign = sd.change >= 0 ? '+' : '';
@@ -352,105 +492,27 @@ export async function onRequestPost(context) {
           `Open: ${sd.open?.toFixed(2) ?? '—'} | High: ${sd.high?.toFixed(2) ?? '—'} | ` +
           `Low: ${sd.low?.toFixed(2) ?? '—'} | Prev Close: ${sd.prevClose?.toFixed(2) ?? '—'}`;
       } else {
-        // Finnhub failed — pre-execute web_search fallback so Call 2 gets real data
-        // This keeps failure case at 2 model calls total (not 3)
+        // Finnhub returned no data — fall back to web search without a third model call
         if (env.SEARXNG_URL) {
-          const fallbackQuery = `${fnArgs.ticker} stock price today`;
+          const fallbackQuery = `${ticker} stock price today`;
           searchResults = await fetchSearchResults(fallbackQuery, env.SEARXNG_URL);
           const searchCtx = buildSearchContext(searchResults);
           toolResultContent =
-            `ERROR: Real-time data unavailable for "${fnArgs.ticker}" (unsupported exchange or API error).\n\n` +
+            `ERROR: Real-time stock data is unavailable for "${ticker}" ` +
+            `(unsupported exchange, invalid ticker, or provider error).\n` +
+            `[FALLBACK — WEB DATA, NOT LIVE STRUCTURED QUOTE]:\n` +
             (searchCtx || 'No web fallback data found either.');
         } else {
-          toolResultContent = `ERROR: Real-time data unavailable for "${fnArgs.ticker}".`;
+          toolResultContent =
+            `ERROR: Real-time stock data is unavailable for "${ticker}" ` +
+            `and no web fallback is configured.`;
         }
       }
-
-    } else if (fnName === 'web_search' && fnArgs.query && env.SEARXNG_URL) {
-      searchResults = await fetchSearchResults(fnArgs.query, env.SEARXNG_URL);
-      toolResultContent = buildSearchContext(searchResults) || 'No search results found.';
     }
-  }
 
-  // ── Step 3: Stream answer ─────────────────────────────────
-  const { readable, writable } = new TransformStream();
-  const writer = writable.getWriter();
-  const enc    = new TextEncoder();
+  } else if (fnName === 'web_search') {
+    const rawQuery = typeof fnArgs.query === 'string' ? fnArgs.query.trim() : '';
 
-  const safeWrite = async (chunk) => {
-    try { await writer.write(chunk); } catch { /* writer closed */ }
-  };
-
-  (async () => {
-    try {
-      // Send SSE events for UI
-      if (stockData) {
-        await safeWrite(enc.encode(`event: stock\ndata: ${JSON.stringify(stockData)}\n\n`));
-      }
-      if (searchResults.length > 0) {
-        await safeWrite(enc.encode(`event: results\ndata: ${JSON.stringify(searchResults)}\n\n`));
-      }
-
-      // ── No tool chosen: stream directAnswer from Call 1 ──
-      if (!toolCall && directAnswer) {
-        const text = enc.encode(`data: ${JSON.stringify({ choices: [{ delta: { content: directAnswer } }] })}\n\n`);
-        await safeWrite(text);
-        await safeWrite(enc.encode('data: [DONE]\n\n'));
-        await writer.close();
-        return;
-      }
-
-      // ── Tool was called: Call 2 — final answer (streaming) ─
-      const finalMessages = [
-        ...messages,
-        { role: 'assistant', content: firstAssistMsg?.content ?? null, tool_calls: [toolCall] },
-        { role: 'tool', tool_call_id: toolCall.id, content: toolResultContent },
-      ];
-
-      const answerResp = await mistralFetch(env.MISTRAL_API_KEY, {
-        model: 'mistral-large-latest',
-        messages: finalMessages,
-        stream: true,
-        max_tokens: MAX_TOKENS_ANSWER,
-        temperature: 0.3,
-      });
-
-      if (!answerResp.ok) {
-        await safeWrite(enc.encode(`data: ${JSON.stringify({ error: 'AI response failed' })}\n\n`));
-        await writer.close();
-        return;
-      }
-
-      const reader = answerResp.body.getReader();
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        await safeWrite(value);
-      }
-
-      await writer.close();
-    } catch {
-      await safeWrite(enc.encode(`data: ${JSON.stringify({ error: 'Internal error' })}\n\n`));
-      try { await writer.close(); } catch { /* already closed */ }
-    }
-  })();
-
-  return new Response(readable, {
-    headers: {
-      'Content-Type': 'text/event-stream',
-      'Cache-Control': 'no-cache',
-      'X-Accel-Buffering': 'no',
-    },
-  });
-}
-
-export async function onRequestOptions() {
-  return new Response(null, {
-    headers: {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type',
-    },
-  });
-      }
-          
+    if (!rawQuery || rawQuery.length < 2) {
+      toolResultContent = 'ERROR: Search query was empty or too short.';
+    } else

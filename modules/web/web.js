@@ -16,38 +16,103 @@ const _safeUrl = u => {
   catch (_) { return '#'; }
 };
 
-/* ── OG image fetch + inject (background, per card) ── */
-function _injectOg(url, cardEl) {
-  fetch(`/api/og?url=${encodeURIComponent(url)}`, {
+/* ── Layout types ── */
+// 0 = full width below title
+// 1 = right side inline
+// 2 = grid (needs 2 images — falls back to full if only 1)
+const _LAYOUTS = [0, 0, 1, 1, 2]; // weighted: full & inline more common
+
+function _pickLayout(index) {
+  return _LAYOUTS[index % _LAYOUTS.length];
+}
+
+/* ── OG image fetch ── */
+function _fetchOg(url) {
+  return fetch(`/api/og?url=${encodeURIComponent(url)}`, {
     signal: AbortSignal.timeout(6000),
   })
     .then(r => r.ok ? r.json() : null)
-    .then(data => {
-      if (!data?.image) return;
-      if (cardEl.querySelector('.wc-thumb')) return;
+    .then(data => data?.image || null)
+    .catch(() => null);
+}
+
+/* ── Inject image into card after OG fetch ── */
+function _injectOgImage(cardEl, layout, image1, image2) {
+  if (!image1) return;
+
+  if (layout === 1) {
+    // Right side inline — wrap snippet + image in a row
+    const snippet = cardEl.querySelector('.wc-snippet');
+    const row = document.createElement('div');
+    row.className = 'wc-inline-row';
+
+    const thumbWrap = document.createElement('div');
+    thumbWrap.className = 'wc-thumb-inline-wrap';
+    const img = document.createElement('img');
+    img.className = 'wc-thumb-inline';
+    img.src = image1;
+    img.loading = 'lazy';
+    img.decoding = 'async';
+    img.alt = '';
+    img.addEventListener('error', () => thumbWrap.remove(), { once: true });
+    thumbWrap.appendChild(img);
+
+    if (snippet) {
+      snippet.parentNode.insertBefore(row, snippet);
+      row.appendChild(snippet);
+    }
+    row.appendChild(thumbWrap);
+
+  } else if (layout === 2 && image2) {
+    // Grid — 2 images side by side
+    const title = cardEl.querySelector('.wc-title');
+    const grid = document.createElement('div');
+    grid.className = 'wc-thumb-grid';
+
+    [image1, image2].forEach(src => {
       const wrap = document.createElement('div');
-      wrap.className = 'wc-thumb-wrap';
+      wrap.className = 'wc-thumb-grid-item';
       const img = document.createElement('img');
-      img.className = 'wc-thumb';
-      img.src = data.image;
+      img.className = 'wc-thumb-grid-img';
+      img.src = src;
       img.loading = 'lazy';
       img.decoding = 'async';
       img.alt = '';
       img.addEventListener('error', () => wrap.remove(), { once: true });
       wrap.appendChild(img);
-      // Insert after wc-title
-      const title = cardEl.querySelector('.wc-title');
-      if (title && title.nextSibling) {
-        title.parentNode.insertBefore(wrap, title.nextSibling);
-      } else if (title) {
-        title.parentNode.appendChild(wrap);
-      }
-    })
-    .catch(() => {});
+      grid.appendChild(wrap);
+    });
+
+    if (title && title.nextSibling) {
+      title.parentNode.insertBefore(grid, title.nextSibling);
+    } else if (title) {
+      title.parentNode.appendChild(grid);
+    }
+
+  } else {
+    // Full width (layout 0, or grid fallback with 1 image)
+    const title = cardEl.querySelector('.wc-title');
+    const wrap = document.createElement('div');
+    wrap.className = 'wc-thumb-full-wrap';
+    const img = document.createElement('img');
+    img.className = 'wc-thumb-full';
+    img.src = image1;
+    img.loading = 'lazy';
+    img.decoding = 'async';
+    img.alt = '';
+    img.addEventListener('error', () => wrap.remove(), { once: true });
+    wrap.appendChild(img);
+
+    if (title && title.nextSibling) {
+      title.parentNode.insertBefore(wrap, title.nextSibling);
+    } else if (title) {
+      title.parentNode.appendChild(wrap);
+    }
+  }
 }
 
 /* ── Card builder ── */
-function _buildCard(r) {
+function _buildCard(r, index) {
   let host = '', path = '';
   try {
     const u = new URL(r.url);
@@ -57,8 +122,8 @@ function _buildCard(r) {
 
   const fav  = `https://www.google.com/s2/favicons?sz=64&domain=${encodeURIComponent(host)}`;
   const fav2 = `https://icons.duckduckgo.com/ip3/${host}.ico`;
-
   const snippet = r.content || r.snippet || r.description || r.summary || '';
+  const layout = _pickLayout(index);
 
   const a = document.createElement('a');
   a.className = 'wc-card';
@@ -81,19 +146,33 @@ function _buildCard(r) {
       </span>
     </div>
     <div class="wc-title">${_esc(r.title)}</div>
-    ${r.image ? `
-      <div class="wc-thumb-wrap">
-        <img class="wc-thumb" src="${_esc(r.image)}" loading="lazy" decoding="async" alt=""
-             onerror="this.closest('.wc-thumb-wrap').remove()">
-      </div>` : ''}
     ${snippet ? `<div class="wc-snippet">${_esc(snippet)}</div>` : ''}`;
 
   a.querySelector('.wc-fav').addEventListener('error', function () {
     this.src !== fav2 ? (this.src = fav2) : (this.closest('.wc-fav-wrap').style.display = 'none');
   }, { once: true, passive: true });
 
-  // OG fallback — only if SearXNG didn't give image
-  if (!r.image) _injectOg(r.url, a);
+  if (r.image) {
+    // SearXNG gave image — inject directly based on layout
+    if (layout === 2) {
+      // Grid needs 2 images — use r.image twice (slight variant) or just full
+      _injectOgImage(a, 0, r.image, null);
+    } else {
+      _injectOgImage(a, layout, r.image, null);
+    }
+  } else {
+    // OG fetch
+    if (layout === 2) {
+      // Grid: fetch same URL twice is pointless, fetch og + use same image for both slots
+      _fetchOg(r.url).then(img1 => {
+        _injectOgImage(a, img1 ? 0 : -1, img1, null);
+      });
+    } else {
+      _fetchOg(r.url).then(img1 => {
+        _injectOgImage(a, layout, img1, null);
+      });
+    }
+  }
 
   return a;
 }
@@ -208,7 +287,7 @@ function _render(q, data) {
 
   const list = document.createElement('div');
   list.className = 'wc-list';
-  results.forEach(r => list.appendChild(_buildCard(r)));
+  results.forEach((r, i) => list.appendChild(_buildCard(r, i)));
   frag.appendChild(list);
 
   pc.innerHTML = '';
@@ -286,3 +365,4 @@ window._atkynInit_web = _init;
 _init();
 
 }());
+     

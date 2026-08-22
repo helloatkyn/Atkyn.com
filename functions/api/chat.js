@@ -1,15 +1,15 @@
 import { SYSTEM_PROMPT } from './systemPrompt.js';
 
 // ── Constants ──────────────────────────────────────────────
-const MAX_RESULTS       = 5;
-const MAX_PAGE_TEXT_LEN = 2500;
-const MAX_TITLE_LEN     = 120;
-const MAX_URL_LEN       = 300;
-const MAX_SNIPPET_LEN   = 900;
-const PAGE_TIMEOUT_MS   = 4000;
-const MAX_TOKENS_INTENT = 10;
-const MAX_TOKENS_ANSWER = 350;
-const HISTORY_LIMIT     = 100;
+const MAX_RESULTS            = 5;
+const MAX_PAGE_TEXT_LEN      = 2500;
+const MAX_TITLE_LEN          = 120;
+const MAX_URL_LEN            = 300;
+const MAX_SNIPPET_LEN        = 900;
+const PAGE_TIMEOUT_MS        = 4000;
+const MAX_TOKENS_INTENT      = 20;
+const MAX_TOKENS_ANSWER      = 350;
+const HISTORY_LIMIT          = 100;
 const THIN_SNIPPET_THRESHOLD = 300;
 
 const STOP_WORDS = new Set([
@@ -22,15 +22,18 @@ const STOP_WORDS = new Set([
   'some','any','all','each','both','few','most','only','own','same','such',
 ]);
 
-// Single classifier: intent + stock detection in one AI call. No regex.
+// Single classifier: intent + stock detection in one AI call.
 // Returns exactly one token: [SEARCH]  [NO_SEARCH]  [STOCK:TICKER]
-const INTENT_SYSTEM = `Classify the query into exactly one token. Reply with ONLY the token, nothing else.
+const INTENT_SYSTEM = `Classify the user query into exactly one token. Reply with ONLY the token, nothing else.
 
-[STOCK:TICKER] — user wants price, chart, or market cap of a company or index. Set TICKER to the correct exchange symbol (e.g. AAPL, TSLA, RELIANCE.NS, TCS.NS, ^NSEI, ^BSESN, ^GSPC, ^DJI, ^IXIC).
-[SEARCH] — needs live web data: news, weather, sports scores, exchange rates, current events.
-[NO_SEARCH] — everything else: math, definitions, stable facts, creative writing.`;
+[STOCK:TICKER] — user wants price, chart, or market data of a stock/index. Set TICKER to the correct symbol (e.g. AAPL, TSLA, RELIANCE.NS, TCS.NS, ^NSEI, ^BSESN, ^GSPC, ^DJI, ^IXIC).
 
-const ANSWER_INSTRUCTION = `\n\nAnswer in 1–3 plain sentences. No markdown, no asterisks, no bold. Use exact numbers from LIVE STOCK DATA if present. Never fabricate prices.`;
+[SEARCH] — needs live web data: news, weather, sports scores, exchange rates, current events, current valuations/funding, recent product launches, anything time-sensitive.
+Also return [SEARCH] for queries in any language (Hindi, Hinglish, Urdu, etc.) that ask to search, look up, or find information.
+
+[NO_SEARCH] — math, definitions, stable facts, creative writing, translation, coding help.`;
+
+const ANSWER_INSTRUCTION = `\n\nAnswer in 1–3 plain sentences. No markdown, no asterisks, no bold. Use exact numbers from LIVE STOCK DATA if present. Never fabricate prices or valuations.`;
 
 // ── Parse classifier response ────────────────────────────────
 function parseIntent(raw) {
@@ -44,15 +47,15 @@ function parseIntent(raw) {
 // ── Finnhub Fetch ───────────────────────────────────────────
 async function fetchStockData(ticker, apiKey) {
   try {
+    const now  = Math.floor(Date.now() / 1000);
+    const from = now - 5 * 86400; // 5-day window covers weekends + holidays
+
     const [quoteResp, profileResp, candleResp] = await Promise.all([
-      // Current quote
       fetch(`https://finnhub.io/api/v1/quote?symbol=${encodeURIComponent(ticker)}&token=${apiKey}`,
         { signal: AbortSignal.timeout(5000) }),
-      // Company profile
       fetch(`https://finnhub.io/api/v1/stock/profile2?symbol=${encodeURIComponent(ticker)}&token=${apiKey}`,
         { signal: AbortSignal.timeout(5000) }),
-      // 1D candles: 5-min resolution, last 4 days window — covers weekends & holidays
-      fetch(`https://finnhub.io/api/v1/stock/candle?symbol=${encodeURIComponent(ticker)}&resolution=5&from=${Math.floor(Date.now()/1000) - 4*86400}&to=${Math.floor(Date.now()/1000)}&token=${apiKey}`,
+      fetch(`https://finnhub.io/api/v1/stock/candle?symbol=${encodeURIComponent(ticker)}&resolution=5&from=${from}&to=${now}&token=${apiKey}`,
         { signal: AbortSignal.timeout(5000) }),
     ]);
 
@@ -60,39 +63,43 @@ async function fetchStockData(ticker, apiKey) {
     const profile = profileResp.ok ? await profileResp.json().catch(() => null) : null;
     const candle  = candleResp.ok  ? await candleResp.json().catch(() => null)  : null;
 
-    // quote must have a valid price
-    if (!quote || typeof quote.c !== 'number' || quote.c === 0) return null;
+    // Need a valid price (use prevClose as fallback for after-hours/weekend)
+    const price = quote?.c || quote?.pc;
+    if (!quote || !price) return null;
 
-    // Build candle series [{t, c}] for chart — keep only last trading day
+    // Build series — filter to most recent trading day only
     let series = [];
     if (candle && candle.s === 'ok' && Array.isArray(candle.t) && candle.t.length > 0) {
-      const allCandles = candle.t.map((t, i) => ({ t, o: candle.o[i], h: candle.h[i], l: candle.l[i], c: candle.c[i] }));
-      // Find the most recent trading day and filter to just that day's candles
-      const lastTs = allCandles[allCandles.length - 1].t;
+      const allCandles = candle.t.map((t, i) => ({
+        t, o: candle.o[i], h: candle.h[i], l: candle.l[i], c: candle.c[i],
+      }));
+      const lastTs   = allCandles[allCandles.length - 1].t;
       const lastDate = new Date(lastTs * 1000);
-      const lastDay = `${lastDate.getUTCFullYear()}-${lastDate.getUTCMonth()}-${lastDate.getUTCDate()}`;
-      series = allCandles.filter(c => {
-        const d = new Date(c.t * 1000);
+      const lastDay  = `${lastDate.getUTCFullYear()}-${lastDate.getUTCMonth()}-${lastDate.getUTCDate()}`;
+      series = allCandles.filter(({ t }) => {
+        const d = new Date(t * 1000);
         return `${d.getUTCFullYear()}-${d.getUTCMonth()}-${d.getUTCDate()}` === lastDay;
       });
-      if (series.length === 0) series = allCandles; // fallback: use all if filter fails
+      if (series.length === 0) series = allCandles;
     }
+
+    const prevClose = quote.pc || 0;
+    const change    = +(price - prevClose).toFixed(2);
+    const changePct = prevClose ? +(((price - prevClose) / prevClose) * 100).toFixed(2) : 0;
 
     return {
       ticker,
-      name:     profile?.name     || ticker,
-      exchange: profile?.exchange || '',
-      logo:     profile?.logo     || '',
-      currency: profile?.currency || 'USD',
-      // Quote fields
-      price:    quote.c,
-      open:     quote.o,
-      high:     quote.h,
-      low:      quote.l,
-      prevClose:quote.pc,
-      change:   +(quote.c - quote.pc).toFixed(2),
-      changePct:+(((quote.c - quote.pc) / quote.pc) * 100).toFixed(2),
-      // Chart data
+      name:      profile?.name     || ticker,
+      exchange:  profile?.exchange || '',
+      logo:      profile?.logo     || '',
+      currency:  profile?.currency || 'USD',
+      price,
+      open:      quote.o  || null,
+      high:      quote.h  || null,
+      low:       quote.l  || null,
+      prevClose,
+      change,
+      changePct,
       series,
     };
   } catch {
@@ -151,7 +158,7 @@ function extractRelevantPassage(cleanedText, query) {
 
   for (let i = 0; i < sentences.length; i += STEP) {
     const window = sentences.slice(i, i + WINDOW_SIZE).join(' ');
-    const score = scoreWindow(window, terms);
+    const score  = scoreWindow(window, terms);
     if (score > bestScore) { bestScore = score; bestStart = i; }
   }
 
@@ -243,7 +250,7 @@ export async function onRequestPost(context) {
     return jsonError('Empty query', 400);
   }
 
-  // ── Step 1: Classify intent + detect stock in one AI call ──
+  // ── Step 1: Classify intent (includes stock detection) ────
   let intent = { type: 'none' };
   let stockDataPromise = Promise.resolve(null);
   try {
@@ -267,62 +274,56 @@ export async function onRequestPost(context) {
     stockDataPromise = fetchStockData(intent.ticker, env.FINNHUB_API_KEY);
   }
 
-  // ── Step 2: SearXNG (only for [SEARCH]) ─────────────────
+  // ── Step 2: SearXNG (only for [SEARCH]) ──────────────────
   let searchResults = [];
   let searchContext = '';
 
-  if (intent.type === 'search') {
-    if (!env.SEARXNG_URL) {
-      // No SearXNG configured — skip gracefully
-    } else {
-      try {
-        const searxResp = await fetch(
-          `${env.SEARXNG_URL}/search?q=${encodeURIComponent(query)}&format=json&categories=general&language=en`,
-          {
-            headers: { 'Accept': 'application/json' },
-            signal: AbortSignal.timeout(6000),
-          }
+  if (intent.type === 'search' && env.SEARXNG_URL) {
+    try {
+      const searxResp = await fetch(
+        `${env.SEARXNG_URL}/search?q=${encodeURIComponent(query)}&format=json&categories=general&language=en`,
+        {
+          headers: { 'Accept': 'application/json' },
+          signal: AbortSignal.timeout(6000),
+        }
+      );
+
+      if (searxResp.ok) {
+        const data = await searxResp.json().catch(() => null);
+        const raw  = Array.isArray(data?.results) ? data.results.slice(0, MAX_RESULTS) : [];
+
+        const seenUrls = new Set();
+        const deduped  = raw.filter(r => {
+          const url = r?.url;
+          if (!url || seenUrls.has(url)) return false;
+          seenUrls.add(url);
+          return true;
+        });
+
+        searchResults = await Promise.all(
+          deduped.map(async (r, i) => {
+            const rawUrl   = trunc(r.url     || '', MAX_URL_LEN);
+            const rawTitle = trunc(r.title   || '', MAX_TITLE_LEN);
+            let   snippet  = trunc(r.content || '', MAX_SNIPPET_LEN);
+
+            if (snippet.length < THIN_SNIPPET_THRESHOLD && i < 3 && isValidUrl(rawUrl)) {
+              const pageText = await fetchPageText(rawUrl, query);
+              if (pageText) snippet = trunc(pageText, MAX_PAGE_TEXT_LEN);
+            }
+
+            return { title: rawTitle, url: rawUrl, snippet };
+          })
         );
 
-        if (searxResp.ok) {
-          const data = await searxResp.json().catch(() => null);
-          const raw = Array.isArray(data?.results) ? data.results.slice(0, MAX_RESULTS) : [];
-
-          const seenUrls = new Set();
-          const deduped = raw.filter(r => {
-            const url = r?.url;
-            if (!url || seenUrls.has(url)) return false;
-            seenUrls.add(url);
-            return true;
-          });
-
-          searchResults = await Promise.all(
-            deduped.map(async (r, i) => {
-              const rawUrl   = trunc(r.url     || '', MAX_URL_LEN);
-              const rawTitle = trunc(r.title   || '', MAX_TITLE_LEN);
-              let   snippet  = trunc(r.content || '', MAX_SNIPPET_LEN);
-
-              if (snippet.length < THIN_SNIPPET_THRESHOLD && i < 3 && isValidUrl(rawUrl)) {
-                const pageText = await fetchPageText(rawUrl, query);
-                if (pageText) snippet = trunc(pageText, MAX_PAGE_TEXT_LEN);
-              }
-
-              return { title: rawTitle, url: rawUrl, snippet };
-            })
-          );
-
-          searchContext = buildSearchContext(searchResults);
-        }
-      } catch {
-        // SearXNG failed → continue without search data
+        searchContext = buildSearchContext(searchResults);
       }
-    }
+    } catch { /* SearXNG failed → continue without */ }
   }
 
-  // ── Step 4: Await stock data ─────────────────────────────
+  // ── Step 3: Await stock data ──────────────────────────────
   const stockData = await stockDataPromise;
 
-  // ── Step 5: Stream final answer ──────────────────────────
+  // ── Step 4: Stream final answer ───────────────────────────
   const { readable, writable } = new TransformStream();
   const writer = writable.getWriter();
   const enc    = new TextEncoder();
@@ -333,7 +334,6 @@ export async function onRequestPost(context) {
 
   (async () => {
     try {
-      // Emit stock data first (before web results)
       if (stockData) {
         await safeWrite(enc.encode(
           `event: stock\ndata: ${JSON.stringify(stockData)}\n\n`
@@ -346,18 +346,22 @@ export async function onRequestPost(context) {
         ));
       }
 
-      // Build stock context so AI answers with real numbers, not training data
+      // Build stock context so AI uses real numbers, not training data
       let stockContext = '';
       if (stockData) {
-        const sd = stockData;
+        const sd   = stockData;
         const sign = sd.change >= 0 ? '+' : '';
-        stockContext = `\n\nLIVE STOCK DATA (use these exact numbers):\n` +
-          `${sd.name} (${sd.ticker}): ${sd.currency === 'USD' ? '$' : ''}${sd.price.toFixed(2)} ` +
+        const sym  = sd.currency === 'USD' ? '$' : '';
+        stockContext =
+          `\n\nLIVE STOCK DATA (use these exact numbers):\n` +
+          `${sd.name} (${sd.ticker}): ${sym}${sd.price.toFixed(2)} ` +
           `(${sign}${sd.change.toFixed(2)}, ${sign}${sd.changePct.toFixed(2)}%)\n` +
-          `Open: ${sd.open?.toFixed(2) ?? '—'} | High: ${sd.high?.toFixed(2) ?? '—'} | Low: ${sd.low?.toFixed(2) ?? '—'} | Prev Close: ${sd.prevClose?.toFixed(2) ?? '—'}`;
+          `Open: ${sd.open?.toFixed(2) ?? '—'} | High: ${sd.high?.toFixed(2) ?? '—'} | ` +
+          `Low: ${sd.low?.toFixed(2) ?? '—'} | Prev Close: ${sd.prevClose?.toFixed(2) ?? '—'}`;
       }
 
-      const systemContent = [SYSTEM_PROMPT, ANSWER_INSTRUCTION, stockContext, searchContext].filter(Boolean).join('\n\n');
+      const systemContent = [SYSTEM_PROMPT, ANSWER_INSTRUCTION, stockContext, searchContext]
+        .filter(Boolean).join('\n\n');
 
       const answerResp = await mistralFetch(env.MISTRAL_API_KEY, {
         model: 'mistral-large-latest',
@@ -412,5 +416,4 @@ export async function onRequestOptions() {
       'Access-Control-Allow-Headers': 'Content-Type',
     },
   });
-                                                                   }
-      
+      }

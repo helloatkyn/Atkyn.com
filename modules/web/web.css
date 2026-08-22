@@ -25,33 +25,7 @@
 }
 .wc-card:active { background: #f5f5f5; }
 
-/* ── Card inner layout (body + thumbnail) ── */
-.wc-card-inner {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-.wc-card-body {
-  flex: 1;
-  min-width: 0;
-}
-
-/* ── Thumbnail ── */
-.wc-thumb-wrap {
-  flex-shrink: 0;
-  width: 80px;
-  height: 80px;
-  border-radius: 12px;
-  overflow: hidden;
-  background: #f0f0f0;
-}
-.wc-thumb {
-  width: 80px;
-  height: 80px;
-  object-fit: cover;
-  display: block;
-}
-
+/* ── Meta row ── */
 .wc-meta {
   display: flex;
   align-items: center;
@@ -79,6 +53,7 @@
 .wc-dots { flex-shrink: 0; display: flex; align-items: center; padding-left: 4px; }
 .wc-dots svg { width: 14px; height: 14px; fill: #bbb; }
 
+/* ── Title ── */
 .wc-title {
   display: -webkit-box;
   -webkit-box-orient: vertical;
@@ -86,9 +61,32 @@
   overflow: hidden;
   font-size: 1.05rem; font-weight: 700;
   color: #000080; line-height: 1.4;
-  margin: 0 0 5px;
+  margin: 0 0 8px;
   word-break: break-word;
 }
+
+/* ── Thumbnail — below title, full width, Bing style ── */
+.wc-thumb-wrap {
+  width: 100%;
+  margin: 0 0 8px;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #f0f2f4;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  max-height: 180px;
+}
+.wc-thumb {
+  width: 100%;
+  height: auto;
+  max-height: 180px;
+  object-fit: contain;
+  display: block;
+  border-radius: 12px;
+}
+
+/* ── Snippet ── */
 .wc-snippet {
   display: -webkit-box;
   -webkit-box-orient: vertical;
@@ -99,7 +97,7 @@
 }
 
 /* ══════════════════════════════════════════════════
-   KNOWLEDGE PANEL (kg-card) — clean, no shadow blur
+   KNOWLEDGE PANEL (kg-card)
 ══════════════════════════════════════════════════ */
 .wc-kg-card {
   background: #fff;
@@ -164,7 +162,7 @@
   font-weight: 500;
 }
 
-/* ── Sitelinks (inside kg-card) ── */
+/* ── Sitelinks ── */
 .wc-sitelinks {
   display: flex; flex-direction: column;
   border-top: 1px solid #f0f0f0;
@@ -204,8 +202,7 @@
 }
 
 /* ══════════════════════════════════════════════════
-   PEOPLE ALSO SEARCH / PEOPLE ALSO ASK
-   — Google-style inline section, clean, no shadow
+   PEOPLE ALSO SEARCH
 ══════════════════════════════════════════════════ */
 .wc-related {
   margin: 8px 8px 4px;
@@ -219,8 +216,6 @@
   font-weight: 700;
   color: #111;
   margin-bottom: 4px;
-  letter-spacing: 0;
-  text-transform: none;
 }
 .wc-related-list { display: flex; flex-direction: column; }
 .wc-related-item {
@@ -277,7 +272,6 @@
   .wc-fav-wrap { background: #2c2c2e; }
   .wc-dots svg { fill: #555; }
 
-  /* thumbnail dark */
   .wc-thumb-wrap { background: #2c2c2e; }
 
   .wc-kg-card { background: #1c1c1e; box-shadow: 0 1px 4px rgba(0,0,0,0.3); }
@@ -309,5 +303,4 @@
   .wc-suggest-item.active { background: #2a2a2c; color: #4BA8D8; }
   .wc-suggest-icon { color: #555; }
   .wc-suggest-item.active .wc-suggest-icon { color: #4BA8D8; }
-  }
-  
+}

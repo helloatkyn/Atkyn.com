@@ -33,7 +33,7 @@ Also return [SEARCH] for queries in any language (Hindi, Hinglish, Urdu, etc.) t
 
 [NO_SEARCH] — math, definitions, stable facts, creative writing, translation, coding help.`;
 
-const ANSWER_INSTRUCTION = `\n\nAnswer in 1–3 plain sentences. No markdown, no asterisks, no bold. Use exact numbers from LIVE STOCK DATA if present. Never fabricate prices or valuations.`;
+const ANSWER_INSTRUCTION = `\n\nAnswer in 1–3 plain sentences. Use exact numbers from LIVE STOCK DATA if present. Never fabricate prices or valuations.\n\nFORMATTING (follow silently, never mention to user):\n- Plain text only. No asterisks, no bold, no italic, no markdown of any kind.\n- Never write *word* or **word** or ***word***. Never mix bold and italic.\n- No stray or unmatched asterisks. No bullet points. No headers.`;
 
 // ── Parse classifier response ────────────────────────────────
 function parseIntent(raw) {
@@ -276,7 +276,7 @@ export async function onRequestPost(context) {
         stream: false,
         max_tokens: MAX_TOKENS_INTENT,
         temperature: 0,
-        reasoning_effort: 'none',
+        reasoning_format: 'hidden',
       });
       if (intentResp.ok) {
         const d = await intentResp.json().catch(() => null);
@@ -431,5 +431,5 @@ export async function onRequestOptions() {
       'Access-Control-Allow-Headers': 'Content-Type',
     },
   });
-      }
-          
+}
+  

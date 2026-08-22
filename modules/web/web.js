@@ -24,7 +24,6 @@ function _injectOg(url, cardEl) {
     .then(r => r.ok ? r.json() : null)
     .then(data => {
       if (!data?.image) return;
-      // Don't inject if card already has a thumb (from r.image)
       if (cardEl.querySelector('.wc-thumb')) return;
       const wrap = document.createElement('div');
       wrap.className = 'wc-thumb-wrap';
@@ -36,7 +35,13 @@ function _injectOg(url, cardEl) {
       img.alt = '';
       img.addEventListener('error', () => wrap.remove(), { once: true });
       wrap.appendChild(img);
-      cardEl.querySelector('.wc-card-inner').appendChild(wrap);
+      // Insert after wc-title
+      const title = cardEl.querySelector('.wc-title');
+      if (title && title.nextSibling) {
+        title.parentNode.insertBefore(wrap, title.nextSibling);
+      } else if (title) {
+        title.parentNode.appendChild(wrap);
+      }
     })
     .catch(() => {});
 }
@@ -61,31 +66,27 @@ function _buildCard(r) {
   a.target    = '_blank';
   a.rel       = 'noopener noreferrer';
   a.innerHTML = `
-    <div class="wc-card-inner">
-      <div class="wc-card-body">
-        <div class="wc-meta">
-          <div class="wc-fav-wrap">
-            <img class="wc-fav" src="${_esc(fav)}" width="16" height="16" loading="lazy" decoding="async" alt="">
-          </div>
-          <div class="wc-meta-text">
-            <span class="wc-domain">${_esc(host)}</span>
-            <span class="wc-path">${_esc(path)}</span>
-          </div>
-          <span class="wc-dots" aria-hidden="true">
-            <svg viewBox="0 0 4 16" xmlns="http://www.w3.org/2000/svg">
-              <circle cx="2" cy="2" r="1.5"/><circle cx="2" cy="8" r="1.5"/><circle cx="2" cy="14" r="1.5"/>
-            </svg>
-          </span>
-        </div>
-        <div class="wc-title">${_esc(r.title)}</div>
-        ${snippet ? `<div class="wc-snippet">${_esc(snippet)}</div>` : ''}
+    <div class="wc-meta">
+      <div class="wc-fav-wrap">
+        <img class="wc-fav" src="${_esc(fav)}" width="16" height="16" loading="lazy" decoding="async" alt="">
       </div>
-      ${r.image ? `
-        <div class="wc-thumb-wrap">
-          <img class="wc-thumb" src="${_esc(r.image)}" loading="lazy" decoding="async" alt=""
-               onerror="this.closest('.wc-thumb-wrap').remove()">
-        </div>` : ''}
-    </div>`;
+      <div class="wc-meta-text">
+        <span class="wc-domain">${_esc(host)}</span>
+        <span class="wc-path">${_esc(path)}</span>
+      </div>
+      <span class="wc-dots" aria-hidden="true">
+        <svg viewBox="0 0 4 16" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="2" cy="2" r="1.5"/><circle cx="2" cy="8" r="1.5"/><circle cx="2" cy="14" r="1.5"/>
+        </svg>
+      </span>
+    </div>
+    <div class="wc-title">${_esc(r.title)}</div>
+    ${r.image ? `
+      <div class="wc-thumb-wrap">
+        <img class="wc-thumb" src="${_esc(r.image)}" loading="lazy" decoding="async" alt=""
+             onerror="this.closest('.wc-thumb-wrap').remove()">
+      </div>` : ''}
+    ${snippet ? `<div class="wc-snippet">${_esc(snippet)}</div>` : ''}`;
 
   a.querySelector('.wc-fav').addEventListener('error', function () {
     this.src !== fav2 ? (this.src = fav2) : (this.closest('.wc-fav-wrap').style.display = 'none');
@@ -285,4 +286,3 @@ window._atkynInit_web = _init;
 _init();
 
 }());
-         

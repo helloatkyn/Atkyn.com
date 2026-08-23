@@ -7,7 +7,7 @@ const MAX_TITLE_LEN     = 120;
 const MAX_URL_LEN       = 300;
 const MAX_SNIPPET_LEN   = 500;
 const PAGE_TIMEOUT_MS   = 4000;
-const MAX_TOKENS_ANSWER = 450;
+const MAX_TOKENS_ANSWER = 500;
 const HISTORY_LIMIT     = 100;
 
 // ── Tool definition ─────────────────────────────────────────
@@ -105,7 +105,6 @@ async function executeWebSearch(searchQuery, env) {
     const data = await searxResp.json().catch(() => null);
     const raw = Array.isArray(data?.results) ? data.results.slice(0, MAX_RESULTS) : [];
 
-    // Deduplicate by URL
     const seenUrls = new Set();
     const deduped = raw.filter(r => {
       const url = r?.url;
@@ -120,7 +119,6 @@ async function executeWebSearch(searchQuery, env) {
         const rawTitle = trunc(r.title   || '', MAX_TITLE_LEN);
         let   snippet  = trunc(r.content || '', MAX_SNIPPET_LEN);
 
-        // Only fetch page text if snippet is thin AND it's one of first 3
         if (snippet.length < 100 && i < 3 && rawUrl) {
           const pageText = await fetchPageText(rawUrl);
           if (pageText) snippet = trunc(pageText, MAX_PAGE_TEXT_LEN);
@@ -136,7 +134,7 @@ async function executeWebSearch(searchQuery, env) {
   }
 }
 
-// ── Parse SSE lines into delta objects ───────────────────────
+// ── Parse SSE lines ──────────────────────────────────────────
 function parseSseLine(line) {
   if (!line.startsWith('data: ')) return null;
   const payload = line.slice(6).trim();
@@ -144,7 +142,7 @@ function parseSseLine(line) {
   try { return JSON.parse(payload); } catch { return null; }
 }
 
-// ── Assemble streamed tool call chunks into complete tool calls ─
+// ── Assemble tool calls ──────────────────────────────────────
 function assembleToolCalls(accumulated) {
   const result = [];
   for (const [, tc] of accumulated) {
@@ -190,8 +188,9 @@ export async function onRequestPost(context) {
 
   (async () => {
     try {
+      // ── 1st call: fast model for tool detection ───────────
       const firstResp = await mistralFetch(env.MISTRAL_API_KEY, {
-        model: 'ministral-14b-2512',
+        model: 'ministral-8b-2410',
         messages: [{ role: 'system', content: SYSTEM_PROMPT }, ...messages],
         tools: env.SEARXNG_URL ? TOOLS : [],
         tool_choice: env.SEARXNG_URL ? 'auto' : 'none',
@@ -212,8 +211,8 @@ export async function onRequestPost(context) {
       const dec      = new TextDecoder();
       let   leftover = '';
 
-      const toolCallMap = new Map();
-      let   hasToolCalls = false;
+      const toolCallMap    = new Map();
+      let   hasToolCalls   = false;
       let   assistantContent = '';
 
       while (true) {
@@ -258,11 +257,13 @@ export async function onRequestPost(context) {
         }
       }
 
+      // ── Direct answer, no tool call ───────────────────────
       if (!hasToolCalls) {
         await writer.close();
         return;
       }
 
+      // ── Execute search ────────────────────────────────────
       const toolCalls        = assembleToolCalls(toolCallMap);
       const allSearchResults = [];
 
@@ -303,8 +304,9 @@ export async function onRequestPost(context) {
         ));
       }
 
+      // ── 2nd call: best model for final answer ─────────────
       const finalResp = await mistralFetch(env.MISTRAL_API_KEY, {
-        model: 'ministral-14b-2512',
+        model: 'mistral-large-2411',
         messages: [{ role: 'system', content: SYSTEM_PROMPT }, ...updatedMessages],
         stream: true,
         max_tokens: MAX_TOKENS_ANSWER,

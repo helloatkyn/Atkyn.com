@@ -12,7 +12,6 @@
   let _scrollIo     = null;
   let _lazyIo       = null;
 
-  /* ── Random grid pattern ── */
   const PATTERNS = [
     [2, 1, 1],
     [1, 1, 2],
@@ -29,7 +28,6 @@
     return _patternQueue.shift();
   }
 
-  /* ── Build one tile ── */
   function _buildTile(img, span) {
     const src   = img.img_src       || img.thumbnail_src || '';
     const thumb = img.thumbnail_src || img.img_src       || '';
@@ -45,12 +43,12 @@
     a.target = '_blank';
     a.rel    = 'noopener noreferrer';
 
-    /* aspect ratio box — use actual w/h, fallback sensible defaults */
+    /* aspect ratio — actual dimensions ya sensible fallback */
     let ratio;
     if (w && h) {
       ratio = ((h / w) * 100).toFixed(2);
     } else {
-      ratio = span === 2 ? '60' : '100';
+      ratio = span === 2 ? '56' : '75';
     }
 
     const box = document.createElement('div');
@@ -77,13 +75,9 @@
     return a;
   }
 
-  /* ── Render batch from memory ── */
   function _renderBatch(count) {
     const chunk = _allResults.slice(_rendered, _rendered + count);
-    if (!chunk.length) {
-      _sentinel?.remove();
-      return;
-    }
+    if (!chunk.length) { _sentinel?.remove(); return; }
 
     const frag = document.createDocumentFragment();
     chunk.forEach(img => {
@@ -91,7 +85,7 @@
       if (tile) frag.appendChild(tile);
     });
 
-    if (_sentinel && _sentinel.parentNode === _grid) {
+    if (_sentinel?.parentNode === _grid) {
       _grid.insertBefore(frag, _sentinel);
     } else {
       _grid.appendChild(frag);
@@ -99,7 +93,6 @@
 
     _rendered += chunk.length;
 
-    /* observe new lazy images */
     _grid.querySelectorAll('.img-lazy:not([data-ob])').forEach(img => {
       img.dataset.ob = '1';
       _lazyIo.observe(img);
@@ -111,7 +104,6 @@
     }
   }
 
-  /* ── Init ── */
   window._atkynInit_images = function () {
     _allResults   = [];
     _rendered     = 0;
@@ -129,7 +121,6 @@
 
     pc.innerHTML = '<div class="tab-skeleton grid"><div class="sk-img"></div><div class="sk-img"></div><div class="sk-img"></div><div class="sk-img"></div></div>';
 
-    /* Lazy image IntersectionObserver */
     _lazyIo = new IntersectionObserver((entries, obs) => {
       entries.forEach(entry => {
         if (!entry.isIntersecting) return;
@@ -140,7 +131,6 @@
       });
     }, { rootMargin: '400px' });
 
-    /* Scroll sentinel */
     _sentinel = document.createElement('div');
     _sentinel.className = 'img-sentinel';
 
@@ -149,7 +139,6 @@
       _renderBatch(NEXT_BATCH);
     }, { rootMargin: '300px' });
 
-    /* Grid */
     _grid = document.createElement('div');
     _grid.className = 'images-grid';
     _grid.appendChild(_sentinel);
@@ -158,9 +147,8 @@
     pc.innerHTML = '';
     pc.appendChild(_grid);
 
-    /* Single API call */
     fetch(`/api/images?q=${encodeURIComponent(q)}`)
-      .then(r => r.ok ? r.json() : Promise.reject('API error'))
+      .then(r => r.ok ? r.json() : Promise.reject())
       .then(data => {
         _allResults = data.results || [];
         if (!_allResults.length) throw new Error('empty');
@@ -172,6 +160,5 @@
   };
 
   window._atkynInit_images();
-
 }());
-          
+  

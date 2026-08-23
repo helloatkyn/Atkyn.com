@@ -12,7 +12,7 @@
   let _loader       = null;
   let _scrollIo     = null;
   let _lazyIo       = null;
-  let _loading      = false; // guard — double trigger prevent
+  let _loading      = false;
 
   const PATTERNS = [
     [2, 1, 1],
@@ -108,7 +108,6 @@
       if (tile) frag.appendChild(tile);
     });
 
-    // Sentinel ke BAHAR grid mein append karo
     if (_sentinel?.parentNode === _grid) {
       _grid.insertBefore(frag, _sentinel);
     } else {
@@ -117,7 +116,6 @@
 
     _rendered += chunk.length;
 
-    // Naye lazy images observe karo
     _grid.querySelectorAll('.img-lazy:not([data-ob])').forEach(img => {
       img.dataset.ob = '1';
       _lazyIo.observe(img);
@@ -130,7 +128,6 @@
       _sentinel = null;
     } else {
       _showLoader();
-      // Sentinel ko unobserve/re-observe karo — position refresh
       if (_sentinel && _scrollIo) {
         _scrollIo.unobserve(_sentinel);
         _scrollIo.observe(_sentinel);
@@ -160,7 +157,6 @@
 
     pc.innerHTML = '<div class="tab-skeleton grid"><div class="sk-img"></div><div class="sk-img"></div><div class="sk-img"></div><div class="sk-img"></div></div>';
 
-    // Lazy image loader
     _lazyIo = new IntersectionObserver((entries, obs) => {
       entries.forEach(entry => {
         if (!entry.isIntersecting) return;
@@ -171,7 +167,6 @@
       });
     }, { rootMargin: '600px' });
 
-    // Loader spinner — grid ke BAHAR
     _loader = document.createElement('div');
     _loader.className = 'img-loader';
     _loader.style.display = 'none';
@@ -181,26 +176,21 @@
         <path d="M12 2a10 10 0 0 1 10 10" stroke="#0077B5" stroke-width="2.5" stroke-linecap="round"/>
       </svg>`;
 
-    // Grid — sentinel NAHI hai andar abhi
+    _sentinel = document.createElement('div');
+    _sentinel.className = 'img-sentinel';
+
     _grid = document.createElement('div');
     _grid.className = 'images-grid';
+    _grid.appendChild(_sentinel);
 
     pc.innerHTML = '';
     pc.appendChild(_grid);
     pc.appendChild(_loader);
 
-    // Scroll sentinel — grid ke BAHAR, loader ke baad
-    _sentinel = document.createElement('div');
-    _sentinel.className = 'img-sentinel';
-    _sentinel.style.height = '1px';
-    pc.appendChild(_sentinel);
-
-    // Scroll observer
     _scrollIo = new IntersectionObserver((entries) => {
       if (!entries[0].isIntersecting) return;
       if (_loading) return;
-      _showLoader();
-      setTimeout(() => _renderBatch(NEXT_BATCH), 50);
+      _renderBatch(NEXT_BATCH);
     }, { rootMargin: '400px' });
 
     _scrollIo.observe(_sentinel);

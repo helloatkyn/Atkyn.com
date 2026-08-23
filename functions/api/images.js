@@ -12,38 +12,39 @@ export async function onRequestGet(context) {
   }
 
   try {
-    // 8 pages parallel — Google Images ~20/page + Bing Images ~35/page = ~200+ results
-    const fetches = [1,2,3,4,5,6,7,8].map(pageno =>
-      fetch(
-        `${env.SEARXNG_URL}/search?q=${encodeURIComponent(q)}&format=json&categories=images&engines=google%20images,bing%20images&language=en&safesearch=0&pageno=${pageno}`,
-        {
-          headers: { 'Accept': 'application/json' },
-          signal: AbortSignal.timeout(10000),
-        }
-      )
-      .then(r => r.ok ? r.json() : { results: [] })
-      .catch(() => ({ results: [] }))
+    // 5 pages × num=100 = 500 results parallel
+    const fetches = [1, 2, 3, 4, 5].map(page =>
+      fetch('https://google.serper.dev/images', {
+        method: 'POST',
+        headers: {
+          'X-API-KEY':    env.SERPER_API_KEY,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ q, num: 100, page, gl: 'us' }),
+      })
+      .then(r => r.ok ? r.json() : { images: [] })
+      .catch(() => ({ images: [] }))
     );
 
     const pages = await Promise.all(fetches);
 
     const seen   = new Set();
     const merged = pages
-      .flatMap(d => d.results || [])
+      .flatMap(d => d.images || [])
       .filter(r => {
-        const key = r.img_src || r.url;
+        const key = r.imageUrl;
         if (!key || seen.has(key)) return false;
         seen.add(key);
         return true;
       });
 
-    const results = merged.slice(0, 200).map(r => ({
-      title:         r.title         || '',
-      url:           r.url           || '',
-      img_src:       r.img_src       || '',
-      thumbnail_src: r.thumbnail_src || r.img_src || '',
-      width:         r.img_width     || 0,
-      height:        r.img_height    || 0,
+    const results = merged.slice(0, 500).map(r => ({
+      title:         r.title        || '',
+      url:           r.link         || '',
+      img_src:       r.imageUrl     || '',
+      thumbnail_src: r.thumbnailUrl || r.imageUrl || '',
+      width:         r.imageWidth   || 0,
+      height:        r.imageHeight  || 0,
     }));
 
     return new Response(JSON.stringify({ results }), {

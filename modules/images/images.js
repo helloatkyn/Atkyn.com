@@ -1,14 +1,15 @@
 /* modules/images.js — Images tab */
 (function () {
 
-  const FIRST_BATCH = 20;
-  const NEXT_BATCH  = 20;
+  const FIRST_BATCH = 24;
+  const NEXT_BATCH  = 24;
 
   let _allResults   = [];
   let _rendered     = 0;
   let _patternQueue = [];
   let _grid         = null;
   let _sentinel     = null;
+  let _loader       = null;
   let _scrollIo     = null;
   let _lazyIo       = null;
 
@@ -43,17 +44,9 @@
     a.target = '_blank';
     a.rel    = 'noopener noreferrer';
 
-    /* aspect ratio — actual dimensions ya sensible fallback */
-    let ratio;
-    if (w && h) {
-      ratio = ((h / w) * 100).toFixed(2);
-    } else {
-      ratio = span === 2 ? '56' : '75';
-    }
-
-    const box = document.createElement('div');
-    box.className = 'img-tile__box';
-    box.style.paddingBottom = ratio + '%';
+    /* wrapper — natural height, no forced aspect ratio box */
+    const wrap = document.createElement('div');
+    wrap.className = 'img-tile__wrap';
 
     const imgEl    = document.createElement('img');
     imgEl.alt      = img.title || '';
@@ -61,6 +54,12 @@
     imgEl.dataset.src   = src;
     imgEl.dataset.thumb = thumb;
     imgEl.classList.add('img-lazy');
+
+    /* set explicit width/height so browser reserves space */
+    if (w && h) {
+      imgEl.width  = w;
+      imgEl.height = h;
+    }
 
     imgEl.onerror = function () {
       if (this.src !== thumb && thumb !== src) {
@@ -70,14 +69,29 @@
       }
     };
 
-    box.appendChild(imgEl);
-    a.appendChild(box);
+    wrap.appendChild(imgEl);
+    a.appendChild(wrap);
     return a;
+  }
+
+  function _showLoader() {
+    if (!_loader || !_loader.parentNode) return;
+    _loader.style.display = 'flex';
+  }
+
+  function _hideLoader() {
+    if (!_loader) return;
+    _loader.style.display = 'none';
   }
 
   function _renderBatch(count) {
     const chunk = _allResults.slice(_rendered, _rendered + count);
-    if (!chunk.length) { _sentinel?.remove(); return; }
+    _hideLoader();
+
+    if (!chunk.length) {
+      _sentinel?.remove();
+      return;
+    }
 
     const frag = document.createDocumentFragment();
     chunk.forEach(img => {
@@ -85,6 +99,7 @@
       if (tile) frag.appendChild(tile);
     });
 
+    /* insert before sentinel */
     if (_sentinel?.parentNode === _grid) {
       _grid.insertBefore(frag, _sentinel);
     } else {
@@ -93,6 +108,7 @@
 
     _rendered += chunk.length;
 
+    /* observe new lazy images */
     _grid.querySelectorAll('.img-lazy:not([data-ob])').forEach(img => {
       img.dataset.ob = '1';
       _lazyIo.observe(img);
@@ -101,6 +117,8 @@
     if (_rendered >= _allResults.length) {
       _sentinel?.remove();
       _sentinel = null;
+    } else {
+      _showLoader();
     }
   }
 
@@ -110,6 +128,7 @@
     _patternQueue = [];
     _grid         = null;
     _sentinel     = null;
+    _loader       = null;
 
     const q  = sessionStorage.getItem('atkyn_last_query') || '';
     const pc = document.getElementById('pageContent');
@@ -121,6 +140,7 @@
 
     pc.innerHTML = '<div class="tab-skeleton grid"><div class="sk-img"></div><div class="sk-img"></div><div class="sk-img"></div><div class="sk-img"></div></div>';
 
+    /* Lazy image loader */
     _lazyIo = new IntersectionObserver((entries, obs) => {
       entries.forEach(entry => {
         if (!entry.isIntersecting) return;
@@ -129,13 +149,25 @@
         img.onload = () => img.classList.add('img-loaded');
         obs.unobserve(img);
       });
-    }, { rootMargin: '400px' });
+    }, { rootMargin: '500px' });
 
+    /* Scroll sentinel */
     _sentinel = document.createElement('div');
     _sentinel.className = 'img-sentinel';
 
+    /* Loading spinner */
+    _loader = document.createElement('div');
+    _loader.className = 'img-loader';
+    _loader.style.display = 'none';
+    _loader.innerHTML = `
+      <svg viewBox="0 0 24 24" fill="none">
+        <circle cx="12" cy="12" r="10" stroke="#ddd" stroke-width="2.5"/>
+        <path d="M12 2a10 10 0 0 1 10 10" stroke="#0077B5" stroke-width="2.5" stroke-linecap="round"/>
+      </svg>`;
+
     _scrollIo = new IntersectionObserver((entries) => {
       if (!entries[0].isIntersecting) return;
+      _showLoader();
       _renderBatch(NEXT_BATCH);
     }, { rootMargin: '300px' });
 
@@ -146,6 +178,7 @@
 
     pc.innerHTML = '';
     pc.appendChild(_grid);
+    pc.appendChild(_loader);
 
     fetch(`/api/images?q=${encodeURIComponent(q)}`)
       .then(r => r.ok ? r.json() : Promise.reject())
@@ -161,4 +194,3 @@
 
   window._atkynInit_images();
 }());
-  

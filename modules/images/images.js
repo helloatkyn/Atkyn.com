@@ -1,17 +1,16 @@
 /* modules/images.js — Images tab */
 (function () {
 
-  const FIRST_BATCH = 24;
-  const NEXT_BATCH  = 24;
+  const BATCH = 24;
 
-  let _allResults   = [];
-  let _rendered     = 0;
-  let _patternQueue = [];
-  let _grid         = null;
-  let _sentinel     = null;
-  let _scrollIo     = null;
-  let _lazyIo       = null;
-  let _loading      = false;
+  let _seen       = new Set();
+  let _offset     = 0;
+  let _grid       = null;
+  let _sentinel   = null;
+  let _scrollIo   = null;
+  let _lazyIo     = null;
+  let _loading    = false;
+  let _exhausted  = false;
 
   const PATTERNS = [
     [2, 1, 1],
@@ -20,6 +19,8 @@
     [2, 1, 1, 2],
     [1, 1, 2, 1, 1],
   ];
+
+  let _patternQueue = [];
 
   function _nextSpan() {
     if (!_patternQueue.length) {
@@ -33,9 +34,6 @@
     const src   = img.img_src       || img.thumbnail_src || '';
     const thumb = img.thumbnail_src || img.img_src       || '';
     if (!src) return null;
-
-    const w = img.width  || 0;
-    const h = img.height || 0;
 
     const a = document.createElement('a');
     a.className = 'img-tile';
@@ -54,9 +52,9 @@
     imgEl.dataset.thumb = thumb;
     imgEl.classList.add('img-lazy');
 
-    if (w && h) {
-      imgEl.width  = w;
-      imgEl.height = h;
+    if (img.width && img.height) {
+      imgEl.width  = img.width;
+      imgEl.height = img.height;
     }
 
     imgEl.onerror = function () {
@@ -79,22 +77,19 @@
     return a;
   }
 
-  function _renderBatch(count) {
-    if (_loading) return;
-    _loading = true;
+  function _appendTiles(results) {
+    // Dedupe
+    const fresh = results.filter(r => {
+      const key = r.img_src;
+      if (!key || _seen.has(key)) return false;
+      _seen.add(key);
+      return true;
+    });
 
-    const chunk = _allResults.slice(_rendered, _rendered + count);
-
-    if (!chunk.length) {
-      _sentinel?.remove();
-      _sentinel = null;
-      _scrollIo?.disconnect();
-      _loading = false;
-      return;
-    }
+    if (!fresh.length) return;
 
     const frag = document.createDocumentFragment();
-    chunk.forEach(img => {
+    fresh.forEach(img => {
       const tile = _buildTile(img, _nextSpan());
       if (tile) frag.appendChild(tile);
     });
@@ -105,34 +100,57 @@
       _grid.appendChild(frag);
     }
 
-    _rendered += chunk.length;
-
     _grid.querySelectorAll('.img-lazy:not([data-ob])').forEach(img => {
       img.dataset.ob = '1';
       _lazyIo.observe(img);
     });
+  }
 
-    _loading = false;
+  function _fetchNext(q) {
+    if (_loading || _exhausted) return;
+    _loading = true;
 
-    if (_rendered >= _allResults.length) {
-      _sentinel?.remove();
-      _sentinel = null;
-      _scrollIo?.disconnect();
-    } else {
-      if (_sentinel && _scrollIo) {
-        _scrollIo.unobserve(_sentinel);
-        _scrollIo.observe(_sentinel);
-      }
-    }
+    fetch(`/api/images?q=${encodeURIComponent(q)}&offset=${_offset}`)
+      .then(r => r.ok ? r.json() : Promise.reject())
+      .then(data => {
+        const results = data.results || [];
+        _offset++;
+
+        if (!results.length) {
+          _exhausted = true;
+          _sentinel?.remove();
+          _sentinel = null;
+          _scrollIo?.disconnect();
+          _loading = false;
+          return;
+        }
+
+        _appendTiles(results);
+        _loading = false;
+
+        // Re-observe sentinel
+        if (_sentinel && _scrollIo) {
+          _scrollIo.unobserve(_sentinel);
+          _scrollIo.observe(_sentinel);
+        }
+      })
+      .catch(() => {
+        _exhausted = true;
+        _loading   = false;
+        _sentinel?.remove();
+        _sentinel = null;
+        _scrollIo?.disconnect();
+      });
   }
 
   window._atkynInit_images = function () {
-    _allResults   = [];
-    _rendered     = 0;
-    _patternQueue = [];
+    _seen         = new Set();
+    _offset       = 0;
     _grid         = null;
     _sentinel     = null;
     _loading      = false;
+    _exhausted    = false;
+    _patternQueue = [];
 
     if (_scrollIo) { _scrollIo.disconnect(); _scrollIo = null; }
     if (_lazyIo)   { _lazyIo.disconnect();   _lazyIo   = null; }
@@ -169,28 +187,13 @@
 
     _scrollIo = new IntersectionObserver((entries) => {
       if (!entries[0].isIntersecting) return;
-      if (_loading) return;
-      if (_rendered >= _allResults.length) {
-        _sentinel?.remove();
-        _sentinel = null;
-        _scrollIo?.disconnect();
-        return;
-      }
-      _renderBatch(NEXT_BATCH);
+      _fetchNext(q);
     }, { rootMargin: '400px' });
 
     _scrollIo.observe(_sentinel);
 
-    fetch(`/api/images?q=${encodeURIComponent(q)}`)
-      .then(r => r.ok ? r.json() : Promise.reject())
-      .then(data => {
-        _allResults = data.results || [];
-        if (!_allResults.length) throw new Error('empty');
-        _renderBatch(FIRST_BATCH);
-      })
-      .catch(() => {
-        pc.innerHTML = '<div class="tab-empty"><p>Could not load images</p></div>';
-      });
+    // Pehli batch turant load
+    _fetchNext(q);
   };
 
   window._atkynInit_images();

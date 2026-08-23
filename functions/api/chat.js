@@ -7,7 +7,7 @@ const MAX_TITLE_LEN     = 120;
 const MAX_URL_LEN       = 300;
 const MAX_SNIPPET_LEN   = 500;
 const PAGE_TIMEOUT_MS   = 4000;
-const MAX_TOKENS_ANSWER = 350;
+const MAX_TOKENS_ANSWER = 450;
 const HISTORY_LIMIT     = 100;
 
 // ── Tool definition ─────────────────────────────────────────

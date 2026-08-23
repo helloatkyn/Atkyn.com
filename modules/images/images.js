@@ -1,8 +1,6 @@
 /* modules/images.js — Images tab */
 (function () {
 
-  const MAX_CALLS = 3;
-
   let _seen         = new Set();
   let _offset       = 0;
   let _grid         = null;
@@ -12,6 +10,7 @@
   let _loading      = false;
   let _exhausted    = false;
   let _patternQueue = [];
+  let _q            = '';
 
   const PATTERNS = [
     [2, 1, 1],
@@ -43,25 +42,45 @@
 
     const wrap = document.createElement('div');
     wrap.className = 'img-tile__wrap';
+    // Default 4:3 aspect ratio — image load hone pe natural size lega
+    wrap.style.paddingBottom = '75%';
+    wrap.style.position      = 'relative';
+    wrap.style.overflow      = 'hidden';
+    wrap.style.background    = '#f2f2f2';
 
     const imgEl    = document.createElement('img');
     imgEl.alt      = img.title || '';
     imgEl.decoding = 'async';
-    // width/height bilkul nahi — browser natural size use karega
     imgEl.dataset.src   = src;
     imgEl.dataset.thumb = thumb;
     imgEl.classList.add('img-lazy');
+    imgEl.style.cssText = `
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      opacity: 0;
+      transition: opacity 0.2s ease;
+    `;
 
     imgEl.onerror = function () {
-      // Thumbnail try karo
       if (this.dataset.triedThumb !== '1' && thumb && thumb !== this.src) {
         this.dataset.triedThumb = '1';
         this.src = thumb;
         return;
       }
-      // Dono fail — tile completely remove, koi placeholder nahi
       const tile = this.closest('.img-tile');
       if (tile) tile.remove();
+    };
+
+    imgEl.onload = function () {
+      // Natural aspect ratio restore karo
+      const nat = this.naturalWidth && this.naturalHeight
+        ? (this.naturalHeight / this.naturalWidth * 100).toFixed(2)
+        : null;
+      if (nat) wrap.style.paddingBottom = nat + '%';
+      this.style.opacity = '1';
     };
 
     wrap.appendChild(imgEl);
@@ -76,8 +95,7 @@
       _seen.add(key);
       return true;
     });
-
-    if (!fresh.length) return 0;
+    if (!fresh.length) return;
 
     const frag = document.createDocumentFragment();
     fresh.forEach(img => {
@@ -95,8 +113,6 @@
       img.dataset.ob = '1';
       _lazyIo.observe(img);
     });
-
-    return fresh.length;
   }
 
   function _done() {
@@ -106,28 +122,23 @@
     _scrollIo?.disconnect();
   }
 
-  function _fetchNext(q) {
+  function _fetchNext() {
     if (_loading || _exhausted) return;
-    if (_offset >= MAX_CALLS) { _done(); return; }
+    if (_offset >= 2) { _done(); return; }
     _loading = true;
 
-    fetch(`/api/images?q=${encodeURIComponent(q)}&offset=${_offset}`)
+    fetch(`/api/images?q=${encodeURIComponent(_q)}&offset=${_offset}`)
       .then(r => r.ok ? r.json() : Promise.reject())
       .then(data => {
         _offset++;
         const results = data.results || [];
-
         if (!results.length) { _done(); _loading = false; return; }
-
         _appendTiles(results);
         _loading = false;
 
-        if (_offset >= MAX_CALLS) {
+        if (_offset >= 2) {
           _done();
-          return;
-        }
-
-        if (_sentinel && _scrollIo) {
+        } else if (_sentinel && _scrollIo) {
           _scrollIo.unobserve(_sentinel);
           _scrollIo.observe(_sentinel);
         }
@@ -143,36 +154,34 @@
     _loading      = false;
     _exhausted    = false;
     _patternQueue = [];
+    _q            = sessionStorage.getItem('atkyn_last_query') || '';
 
     if (_scrollIo) { _scrollIo.disconnect(); _scrollIo = null; }
     if (_lazyIo)   { _lazyIo.disconnect();   _lazyIo   = null; }
 
-    const q  = sessionStorage.getItem('atkyn_last_query') || '';
     const pc = document.getElementById('pageContent');
 
-    if (!q) {
+    if (!_q) {
       pc.innerHTML = '<div class="tab-empty"><p>Search something to see images</p></div>';
       return;
     }
 
     pc.innerHTML = '<div class="tab-skeleton grid"><div class="sk-img"></div><div class="sk-img"></div><div class="sk-img"></div><div class="sk-img"></div></div>';
 
-    // Thumbnail fast load — src seedha set, lazy nahi
     _lazyIo = new IntersectionObserver((entries, obs) => {
       entries.forEach(entry => {
         if (!entry.isIntersecting) return;
         const img = entry.target;
-        // Pehle thumbnail dikhao, phir full swap
+        // Thumbnail pehle — instant feel
         img.src = img.dataset.thumb || img.dataset.src;
-        img.onload = () => {
-          img.classList.add('img-loaded');
-          // Full src alag hai toh background mein load karo
-          if (img.dataset.src !== img.src) {
-            const full = new Image();
-            full.onload = () => { img.src = img.dataset.src; };
-            full.src = img.dataset.src;
-          }
-        };
+        // Full image background mein swap
+        if (img.dataset.src && img.dataset.src !== img.src) {
+          const full = new Image();
+          full.onload = () => {
+            if (img.isConnected) img.src = img.dataset.src;
+          };
+          full.src = img.dataset.src;
+        }
         obs.unobserve(img);
       });
     }, { rootMargin: '800px' });
@@ -187,15 +196,17 @@
     pc.innerHTML = '';
     pc.appendChild(_grid);
 
+    // 2nd call sirf scroll pe — aur sirf ek baar
     _scrollIo = new IntersectionObserver((entries) => {
       if (!entries[0].isIntersecting) return;
-      _fetchNext(q);
-    }, { rootMargin: '600px' });
+      if (_offset < 1) return; // Pehli call complete hone do
+      _fetchNext();
+    }, { rootMargin: '400px' });
 
     _scrollIo.observe(_sentinel);
 
-    // Pehli call turant
-    _fetchNext(q);
+    // 1st call tab click pe hi — turant
+    _fetchNext();
   };
 
   window._atkynInit_images();

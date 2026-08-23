@@ -12,17 +12,17 @@ export async function onRequestGet(context) {
   }
 
   try {
-    /* 2 parallel calls — global + us region — more results */
+    /* 2 parallel calls — 5 regions spread across both */
     const [r1, r2] = await Promise.all([
       fetch('https://google.serper.dev/images', {
         method: 'POST',
         headers: { 'X-API-KEY': env.SERPER_API_KEY, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ q, num: 100 }),
+        body: JSON.stringify({ q, num: 100, gl: 'us' }),
       }),
       fetch('https://google.serper.dev/images', {
         method: 'POST',
         headers: { 'X-API-KEY': env.SERPER_API_KEY, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ q, num: 100, gl: 'us' }),
+        body: JSON.stringify({ q, num: 100, gl: 'gb' }),
       }),
     ]);
 
@@ -31,7 +31,6 @@ export async function onRequestGet(context) {
       r2.ok ? r2.json() : { images: [] },
     ]);
 
-    /* Merge + deduplicate by imageUrl */
     const seen   = new Set();
     const merged = [...(d1.images || []), ...(d2.images || [])].filter(r => {
       if (!r.imageUrl || seen.has(r.imageUrl)) return false;
@@ -39,13 +38,13 @@ export async function onRequestGet(context) {
       return true;
     });
 
-    const results = merged.slice(0, 150).map(r => ({
-      title:         r.title         || '',
-      url:           r.link          || '',
-      img_src:       r.imageUrl      || '',
-      thumbnail_src: r.thumbnailUrl  || '',
-      width:         r.imageWidth    || 0,
-      height:        r.imageHeight   || 0,
+    const results = merged.slice(0, 200).map(r => ({
+      title:         r.title        || '',
+      url:           r.link         || '',
+      img_src:       r.imageUrl     || '',
+      thumbnail_src: r.thumbnailUrl || '',
+      width:         r.imageWidth   || 0,
+      height:        r.imageHeight  || 0,
     }));
 
     return new Response(JSON.stringify({ results }), {

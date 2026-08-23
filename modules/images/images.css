@@ -1,35 +1,56 @@
 /* modules/images/images.css */
 
-.images-masonry {
-  columns: 2;
-  column-gap: 8px;
+.images-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 6px;
   padding: 8px;
+}
+
+/* Wide image — full width span */
+.img-tile--wide {
+  grid-column: span 2;
 }
 
 .img-tile {
   display: block;
-  break-inside: avoid;
-  margin-bottom: 8px;
   border-radius: 12px;
   overflow: hidden;
-  background: #f1f1f1;
+  background: #e8e8e8;
   -webkit-tap-highlight-color: transparent;
+  position: relative;
 }
 
-.img-tile img {
-  display: block;
+/* Aspect ratio box — space reserve karo pehle se, no layout jump */
+.img-tile__box {
+  position: relative;
   width: 100%;
-  height: auto;
+  height: 0;
+  overflow: hidden;
+}
+
+.img-tile__box img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
   object-fit: cover;
   border-radius: 12px;
-  transition: opacity 0.2s ease;
+  opacity: 0;
+  transition: opacity 0.25s ease;
 }
 
-.img-tile img[src=""],
-.img-tile img:not([src]) {
-  display: none;
+.img-tile__box img.img-loaded {
+  opacity: 1;
+}
+
+/* Tap feedback */
+.img-tile:active {
+  opacity: 0.85;
+  transform: scale(0.98);
+  transition: transform 0.1s ease, opacity 0.1s ease;
 }
 
 @media (prefers-color-scheme: dark) {
-  .img-tile { background: #2c2c2e; }
+  .img-tile         { background: #2c2c2e; }
 }

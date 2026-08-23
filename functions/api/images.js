@@ -12,19 +12,25 @@ export async function onRequestGet(context) {
   }
 
   try {
-    const searxResp = await fetch(
-      `${env.SEARXNG_URL}/search?q=${encodeURIComponent(q)}&format=json&categories=images&language=en`,
-      { headers: { 'Accept': 'application/json' } }
-    );
+    const serperResp = await fetch('https://google.serper.dev/images', {
+      method: 'POST',
+      headers: {
+        'X-API-KEY':    env.SERPER_API_KEY,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ q, num: 30 }),
+    });
 
-    if (!searxResp.ok) throw new Error('SearXNG error');
+    if (!serperResp.ok) throw new Error('Serper error');
 
-    const data    = await searxResp.json();
-    const results = (data.results || []).slice(0, 30).map(r => ({
-      title:         r.title         || '',
-      url:           r.url           || '',
-      img_src:       r.img_src       || '',
-      thumbnail_src: r.thumbnail_src || '',
+    const data    = await serperResp.json();
+    const results = (data.images || []).slice(0, 30).map(r => ({
+      title:         r.title       || '',
+      url:           r.link        || '',
+      img_src:       r.imageUrl    || '',
+      thumbnail_src: r.thumbnailUrl|| '',
+      width:         r.imageWidth  || 0,
+      height:        r.imageHeight || 0,
     }));
 
     return new Response(JSON.stringify({ results }), {

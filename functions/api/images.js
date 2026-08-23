@@ -12,29 +12,27 @@ export async function onRequestGet(context) {
   }
 
   try {
-    const [r1, r2] = await Promise.all([
+    // 5 pages parallel — ~35-50 per page = ~175-250 results
+    const pages = [1, 2, 3, 4, 5];
+    const fetches = pages.map(pageno =>
       fetch(
-        `${env.SEARXNG_URL}/search?q=${encodeURIComponent(q)}&format=json&categories=images&language=en&safesearch=0&pageno=1`,
-        { headers: { 'Accept': 'application/json' } }
-      ),
-      fetch(
-        `${env.SEARXNG_URL}/search?q=${encodeURIComponent(q)}&format=json&categories=images&language=en&safesearch=0&pageno=2`,
-        { headers: { 'Accept': 'application/json' } }
-      ),
-    ]);
+        `${env.SEARXNG_URL}/search?q=${encodeURIComponent(`"${q}"`)}&format=json&categories=images&engines=google+images,bing+images&language=en&safesearch=0&pageno=${pageno}`,
+        { headers: { 'Accept': 'application/json' }, signal: AbortSignal.timeout(8000) }
+      ).then(r => r.ok ? r.json() : { results: [] })
+       .catch(() => ({ results: [] }))
+    );
 
-    const [d1, d2] = await Promise.all([
-      r1.ok ? r1.json() : { results: [] },
-      r2.ok ? r2.json() : { results: [] },
-    ]);
+    const pages_data = await Promise.all(fetches);
 
     const seen   = new Set();
-    const merged = [...(d1.results || []), ...(d2.results || [])].filter(r => {
-      const key = r.img_src || r.url;
-      if (!key || seen.has(key)) return false;
-      seen.add(key);
-      return true;
-    });
+    const merged = pages_data
+      .flatMap(d => d.results || [])
+      .filter(r => {
+        const key = r.img_src || r.url;
+        if (!key || seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
 
     const results = merged.slice(0, 200).map(r => ({
       title:         r.title         || '',

@@ -10,6 +10,9 @@ const PAGE_TIMEOUT_MS   = 4000;
 const MAX_TOKENS_ANSWER = 500;
 const HISTORY_LIMIT     = 100;
 
+const QWEN_BASE_URL = 'https://dashscope-intl.aliyuncs.com/compatible-mode/v1/chat/completions';
+const QWEN_MODEL    = 'qwen3.7-flash';
+
 // ── Tool definition ─────────────────────────────────────────
 const TOOLS = [
   {
@@ -68,8 +71,8 @@ function buildSearchContext(results) {
     ).join('\n\n');
 }
 
-async function mistralFetch(apiKey, body) {
-  const resp = await fetch('https://api.mistral.ai/v1/chat/completions', {
+async function qwenFetch(apiKey, body) {
+  const resp = await fetch(QWEN_BASE_URL, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -158,7 +161,7 @@ function assembleToolCalls(accumulated) {
 export async function onRequestPost(context) {
   const { request, env } = context;
 
-  if (!env.MISTRAL_API_KEY) {
+  if (!env.QWEN_API_KEY) {
     return jsonError('Server misconfiguration', 500);
   }
 
@@ -188,15 +191,16 @@ export async function onRequestPost(context) {
 
   (async () => {
     try {
-      // ── 1st call: fast model for tool detection ───────────
-      const firstResp = await mistralFetch(env.MISTRAL_API_KEY, {
-        model: 'ministral-8b-2410',
+      // ── 1st call: tool detection ──────────────────────────
+      const firstResp = await qwenFetch(env.QWEN_API_KEY, {
+        model: QWEN_MODEL,
         messages: [{ role: 'system', content: SYSTEM_PROMPT }, ...messages],
         tools: env.SEARXNG_URL ? TOOLS : [],
         tool_choice: env.SEARXNG_URL ? 'auto' : 'none',
         stream: true,
         max_tokens: MAX_TOKENS_ANSWER,
         temperature: 0.3,
+        enable_thinking: false,
       });
 
       if (!firstResp.ok) {
@@ -268,7 +272,7 @@ export async function onRequestPost(context) {
       const allSearchResults = [];
 
       const assistantMsg = {
-        role: 'tool_calls',
+        role: 'assistant',
         content: assistantContent || null,
         tool_calls: toolCalls.map(tc => ({
           id: tc.id,
@@ -294,6 +298,7 @@ export async function onRequestPost(context) {
         updatedMessages.push({
           role: 'tool',
           tool_call_id: tc.id,
+          name: 'web_search',
           content: context || 'No results found.',
         });
       }
@@ -304,13 +309,14 @@ export async function onRequestPost(context) {
         ));
       }
 
-      // ── 2nd call: best model for final answer ─────────────
-      const finalResp = await mistralFetch(env.MISTRAL_API_KEY, {
-        model: 'mistral-large-2411',
+      // ── 2nd call: final answer ────────────────────────────
+      const finalResp = await qwenFetch(env.QWEN_API_KEY, {
+        model: QWEN_MODEL,
         messages: [{ role: 'system', content: SYSTEM_PROMPT }, ...updatedMessages],
         stream: true,
         max_tokens: MAX_TOKENS_ANSWER,
         temperature: 0.3,
+        enable_thinking: false,
       });
 
       if (!finalResp.ok) {

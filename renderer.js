@@ -1,19 +1,31 @@
 /* ═══════════════════════════════════════════════════════════════
    renderer.js — Atkyn Search
-   Markdown : marked.js  |  Math : KaTeX auto-render  |  Code : highlight.js
+   Markdown + Math : marked.js + marked-katex-extension + KaTeX
+   Code highlight  : highlight.js
    ═══════════════════════════════════════════════════════════════ */
 
-/* ── HTML escape (used only for code blocks) ── */
+/* ── HTML escape (code blocks only) ── */
 function _he(s) {
   return String(s)
     .replace(/&/g, '&amp;').replace(/</g, '&lt;')
     .replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
-/* ── marked.js — custom renderer for code blocks with copy button ── */
+/* ── marked.js setup ─────────────────────────────────────────────
+   marked-katex-extension handles $…$ / $$…$$ / \(…\) / \[…\]
+   directly inside marked — KaTeX renderToString is called inline,
+   so markdown never touches the math tokens.                     ── */
 function _buildMarked() {
-  const renderer = new marked.Renderer();
+  /* KaTeX extension — must be registered before setOptions */
+  marked.use(markedKatex({
+    throwOnError: false,
+    errorColor:   '#888888',
+    trust:        false,
+    nonStandard:  true,   /* allows \[…\] and \(…\) in addition to $…$ */
+  }));
 
+  /* Custom code-block renderer with copy button */
+  const renderer = new marked.Renderer();
   renderer.code = function (code, lang) {
     const language = (lang || '').trim().toLowerCase();
     const label    = language || 'code';
@@ -48,64 +60,6 @@ function _buildMarked() {
 }
 
 _buildMarked();
-
-/* ── KaTeX auto-render config ── */
-const _KATEX_OPTIONS = {
-  delimiters: [
-    { left: '$$',  right: '$$',  display: true  },
-    { left: '\\[', right: '\\]', display: true  },
-    { left: '\\(', right: '\\)', display: false },
-    { left: '$',   right: '$',   display: false },
-  ],
-  throwOnError: false,
-  errorColor:   '#888888',
-  trust:        false,
-};
-
-/* ── Queue: bubbles that arrived before KaTeX loaded ── */
-const _mathQueue = [];
-let   _katexReady = false;
-
-/* Called by index.html onload on auto-render script */
-window._onKatexReady = function () {
-  _katexReady = true;
-  _mathQueue.forEach(el => renderMathInElement(el, _KATEX_OPTIONS));
-  _mathQueue.length = 0;
-};
-
-function _renderMathInEl(el) {
-  if (_katexReady) {
-    renderMathInElement(el, _KATEX_OPTIONS);
-  } else {
-    _mathQueue.push(el);
-  }
-}
-
-/* ── MutationObserver — auto-renders math in every new bot bubble ──
-   Watches #msgWrap; when a new .msg.bot lands, runs KaTeX on its
-   .bubble. Works even if KaTeX loads after the first message.      ── */
-function _initMathObserver() {
-  const host = document.getElementById('msgWrap');
-  if (!host) return;
-
-  new MutationObserver((mutations) => {
-    for (const mut of mutations) {
-      for (const node of mut.addedNodes) {
-        if (!(node instanceof Element)) continue;
-        if (node.classList.contains('msg') && node.classList.contains('bot')) {
-          const bubble = node.querySelector('.bubble');
-          if (bubble) _renderMathInEl(bubble);
-        }
-      }
-    }
-  }).observe(host, { childList: true });
-}
-
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', _initMathObserver);
-} else {
-  _initMathObserver();
-}
 
 /* ── Main pipeline ── */
 function _safePipeline(raw) {
@@ -178,4 +132,3 @@ function universalRender(content, role = 'user', streaming = false) {
 }
 function renderMathBubble(_el) {}
 function renderMarkdown(text)  { return universalRender(text); }
-     

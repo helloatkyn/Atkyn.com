@@ -243,13 +243,24 @@ function _normalizeBracketMath(str) {
   const out = [];
   let i = 0;
   while (i < str.length) {
-    // Already-escaped \[ — pass through unchanged
-    if (str[i] === '\\' && i + 1 < str.length && str[i + 1] === '[') {
-      out.push('\\'); out.push('[');
-      i += 2;
-      continue;
+    // Skip already-escaped \[ \] \( \) — pass through unchanged
+    if (str[i] === '\\' && i + 1 < str.length) {
+      const next = str[i + 1];
+      if (next === '[' || next === ']' || next === '(' || next === ')') {
+        out.push('\\'); out.push(next);
+        i += 2; continue;
+      }
     }
     if (str[i] === '[') {
+      // Skip \left[ — KaTeX bracket sizing, not display math delimiter
+      let k = i - 1;
+      while (k >= 0 && str[k] === ' ') k--;
+      if (k >= 4 &&
+          str[k] === 't' && str[k-1] === 'f' &&
+          str[k-2] === 'e' && str[k-3] === 'l' &&
+          str[k-4] === '\\') {
+        out.push('['); i++; continue;
+      }
       let depth = 1, j = i + 1;
       while (j < str.length && depth > 0) {
         if (str[j] === '[') depth++;

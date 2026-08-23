@@ -11,9 +11,6 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
   <script src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
 
-  <!-- marked.js — text/markdown rendering -->
-  <script src="https://cdn.jsdelivr.net/npm/marked@9.1.6/marked.min.js"></script>
-
   <!-- Lightweight Charts (TradingView) — stock chart -->
   <script src="https://unpkg.com/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js"></script>
 
@@ -131,7 +128,8 @@
     </div>
   </div>
 
-  <!-- App scripts: renderer → core (shared) → search (chat only) -->
+  <!-- App scripts — marked must load before renderer.js -->
+  <script src="https://cdn.jsdelivr.net/npm/marked@9.1.6/marked.min.js"></script>
   <script src="renderer.js"></script>
   <script src="core.js"></script>
   <script src="search.js"></script>

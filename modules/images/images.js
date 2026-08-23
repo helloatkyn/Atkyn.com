@@ -12,6 +12,7 @@
   let _loader       = null;
   let _scrollIo     = null;
   let _lazyIo       = null;
+  let _loading      = false; // guard — double trigger prevent
 
   const PATTERNS = [
     [2, 1, 1],
@@ -80,21 +81,24 @@
   }
 
   function _showLoader() {
-    if (!_loader || !_loader.parentNode) return;
-    _loader.style.display = 'flex';
+    if (_loader) _loader.style.display = 'flex';
   }
 
   function _hideLoader() {
-    if (!_loader) return;
-    _loader.style.display = 'none';
+    if (_loader) _loader.style.display = 'none';
   }
 
   function _renderBatch(count) {
+    if (_loading) return;
+    _loading = true;
+
     const chunk = _allResults.slice(_rendered, _rendered + count);
     _hideLoader();
 
     if (!chunk.length) {
       _sentinel?.remove();
+      _sentinel = null;
+      _loading  = false;
       return;
     }
 
@@ -104,6 +108,7 @@
       if (tile) frag.appendChild(tile);
     });
 
+    // Sentinel ke BAHAR grid mein append karo
     if (_sentinel?.parentNode === _grid) {
       _grid.insertBefore(frag, _sentinel);
     } else {
@@ -112,16 +117,24 @@
 
     _rendered += chunk.length;
 
+    // Naye lazy images observe karo
     _grid.querySelectorAll('.img-lazy:not([data-ob])').forEach(img => {
       img.dataset.ob = '1';
       _lazyIo.observe(img);
     });
+
+    _loading = false;
 
     if (_rendered >= _allResults.length) {
       _sentinel?.remove();
       _sentinel = null;
     } else {
       _showLoader();
+      // Sentinel ko unobserve/re-observe karo — position refresh
+      if (_sentinel && _scrollIo) {
+        _scrollIo.unobserve(_sentinel);
+        _scrollIo.observe(_sentinel);
+      }
     }
   }
 
@@ -132,6 +145,7 @@
     _grid         = null;
     _sentinel     = null;
     _loader       = null;
+    _loading      = false;
 
     if (_scrollIo) { _scrollIo.disconnect(); _scrollIo = null; }
     if (_lazyIo)   { _lazyIo.disconnect();   _lazyIo   = null; }
@@ -146,6 +160,7 @@
 
     pc.innerHTML = '<div class="tab-skeleton grid"><div class="sk-img"></div><div class="sk-img"></div><div class="sk-img"></div><div class="sk-img"></div></div>';
 
+    // Lazy image loader
     _lazyIo = new IntersectionObserver((entries, obs) => {
       entries.forEach(entry => {
         if (!entry.isIntersecting) return;
@@ -154,11 +169,9 @@
         img.onload = () => img.classList.add('img-loaded');
         obs.unobserve(img);
       });
-    }, { rootMargin: '500px' });
+    }, { rootMargin: '600px' });
 
-    _sentinel = document.createElement('div');
-    _sentinel.className = 'img-sentinel';
-
+    // Loader spinner — grid ke BAHAR
     _loader = document.createElement('div');
     _loader.className = 'img-loader';
     _loader.style.display = 'none';
@@ -168,20 +181,29 @@
         <path d="M12 2a10 10 0 0 1 10 10" stroke="#0077B5" stroke-width="2.5" stroke-linecap="round"/>
       </svg>`;
 
-    _scrollIo = new IntersectionObserver((entries) => {
-      if (!entries[0].isIntersecting) return;
-      _showLoader();
-      _renderBatch(NEXT_BATCH);
-    }, { rootMargin: '300px' });
-
+    // Grid — sentinel NAHI hai andar abhi
     _grid = document.createElement('div');
     _grid.className = 'images-grid';
-    _grid.appendChild(_sentinel);
-    _scrollIo.observe(_sentinel);
 
     pc.innerHTML = '';
     pc.appendChild(_grid);
     pc.appendChild(_loader);
+
+    // Scroll sentinel — grid ke BAHAR, loader ke baad
+    _sentinel = document.createElement('div');
+    _sentinel.className = 'img-sentinel';
+    _sentinel.style.height = '1px';
+    pc.appendChild(_sentinel);
+
+    // Scroll observer
+    _scrollIo = new IntersectionObserver((entries) => {
+      if (!entries[0].isIntersecting) return;
+      if (_loading) return;
+      _showLoader();
+      setTimeout(() => _renderBatch(NEXT_BATCH), 50);
+    }, { rootMargin: '400px' });
+
+    _scrollIo.observe(_sentinel);
 
     fetch(`/api/images?q=${encodeURIComponent(q)}`)
       .then(r => r.ok ? r.json() : Promise.reject())

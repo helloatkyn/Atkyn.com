@@ -80,10 +80,7 @@ async function qwenFetch(apiKey, body) {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${apiKey}`,
     },
-    body: JSON.stringify({
-      ...body,
-      enable_thinking: false,   // must be top-level for DashScope raw fetch
-    }),
+    body: JSON.stringify(body),
   });
 }
 
@@ -149,13 +146,12 @@ function assembleToolCalls(map) {
   }));
 }
 
-// ── Stream reader — returns { hasToolCalls, toolCallMap, assistantContent }
-// Skips reasoning_content chunks (thinking tokens) automatically ────────────
+// ── Stream reader ────────────────────────────────────────────
 async function readStream(reader, safeWrite, forwardText) {
-  const dec        = new TextDecoder();
-  let   leftover   = '';
-  const toolCallMap      = new Map();
-  let   hasToolCalls     = false;
+  const dec          = new TextDecoder();
+  let   leftover     = '';
+  const toolCallMap  = new Map();
+  let   hasToolCalls = false;
   let   assistantContent = '';
 
   while (true) {
@@ -178,7 +174,7 @@ async function readStream(reader, safeWrite, forwardText) {
 
       const delta = choice.delta ?? {};
 
-      // Skip reasoning/thinking tokens — never forward these
+      // Skip thinking/reasoning tokens
       if (delta.reasoning_content != null) continue;
 
       // Tool call delta
@@ -245,8 +241,7 @@ export async function onRequestPost(context) {
       const firstResp = await qwenFetch(env.QWEN_API_KEY, {
         model: QWEN_MODEL,
         messages: [{ role: 'system', content: SYSTEM_PROMPT }, ...messages],
-        tools: env.SEARXNG_URL ? TOOLS : [],
-        tool_choice: env.SEARXNG_URL ? 'auto' : 'none',
+        ...(env.SEARXNG_URL ? { tools: TOOLS, tool_choice: 'auto' } : {}),
         stream: true,
         max_tokens: MAX_TOKENS_ANSWER,
         temperature: 0.3,
@@ -254,7 +249,7 @@ export async function onRequestPost(context) {
 
       if (!firstResp.ok) {
         const errText = await firstResp.text().catch(() => '');
-        await safeWrite(`data: ${JSON.stringify({ error: 'AI response failed: ' + errText })}\n\n`);
+        await safeWrite(`data: ${JSON.stringify({ error: errText })}\n\n`);
         await writer.close();
         return;
       }
@@ -262,10 +257,10 @@ export async function onRequestPost(context) {
       const { hasToolCalls, toolCallMap, assistantContent } = await readStream(
         firstResp.body.getReader(),
         safeWrite,
-        true  // forward text if no tool call
+        true
       );
 
-      // ── Direct answer — already streamed ──────────────────
+      // ── Direct answer ─────────────────────────────────────
       if (!hasToolCalls) {
         await writer.close();
         return;
@@ -323,17 +318,16 @@ export async function onRequestPost(context) {
 
       if (!finalResp.ok) {
         const errText = await finalResp.text().catch(() => '');
-        await safeWrite(`data: ${JSON.stringify({ error: 'AI response failed: ' + errText })}\n\n`);
+        await safeWrite(`data: ${JSON.stringify({ error: errText })}\n\n`);
         await writer.close();
         return;
       }
 
-      // Forward final answer stream directly — reasoning chunks filtered inside readStream
       await readStream(finalResp.body.getReader(), safeWrite, true);
-
       await writer.close();
+
     } catch (e) {
-      await safeWrite(`data: ${JSON.stringify({ error: 'Internal error: ' + e.message })}\n\n`);
+      await safeWrite(`data: ${JSON.stringify({ error: e.message })}\n\n`);
       try { await writer.close(); } catch { /* already closed */ }
     }
   })();
@@ -355,4 +349,4 @@ export async function onRequestOptions() {
       'Access-Control-Allow-Headers': 'Content-Type',
     },
   });
-}
+  }

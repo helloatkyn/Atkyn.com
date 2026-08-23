@@ -12,21 +12,22 @@ export async function onRequestGet(context) {
     });
   }
 
-  // Har offset pe alag region + alag hl taaki fresh results milein
-  const slots = [
-    { gl: 'us', hl: 'en' },
-    { gl: 'gb', hl: 'en' },
-    { gl: 'in', hl: 'en' },
-    { gl: 'ca', hl: 'en' },
-    { gl: 'au', hl: 'en' },
-    { gl: 'de', hl: 'de' },
-    { gl: 'fr', hl: 'fr' },
-    { gl: 'jp', hl: 'ja' },
-    { gl: 'br', hl: 'pt' },
-    { gl: 'mx', hl: 'es' },
+  // Offset ke hisaab se query variation
+  const suffixes = [
+    '',
+    ' photo',
+    ' image',
+    ' wallpaper',
+    ' logo',
+    ' hd',
+    ' 4k',
+    ' background',
+    ' pictures',
+    ' illustration',
   ];
 
-  const slot = slots[offset % slots.length];
+  const suffix = suffixes[offset % suffixes.length] || '';
+  const finalQ = suffix ? `${q}${suffix}` : q;
 
   try {
     const r = await fetch('https://google.serper.dev/images', {
@@ -35,18 +36,18 @@ export async function onRequestGet(context) {
         'X-API-KEY':    env.SERPER_API_KEY,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ q, num: 100, gl: slot.gl, hl: slot.hl }),
+      body: JSON.stringify({ q: finalQ, num: 100, gl: 'us' }),
     });
 
     const data = r.ok ? await r.json() : { images: [] };
 
-    const results = (data.images || []).map(r => ({
-      title:         r.title        || '',
-      url:           r.link         || '',
-      img_src:       r.imageUrl     || '',
-      thumbnail_src: r.thumbnailUrl || r.imageUrl || '',
-      width:         r.imageWidth   || 0,
-      height:        r.imageHeight  || 0,
+    const results = (data.images || []).map(img => ({
+      title:         img.title        || '',
+      url:           img.link         || '',
+      img_src:       img.imageUrl     || '',
+      thumbnail_src: img.thumbnailUrl || img.imageUrl || '',
+      width:         img.imageWidth   || 0,
+      height:        img.imageHeight  || 0,
     }));
 
     return new Response(JSON.stringify({ results }), {
@@ -69,4 +70,4 @@ export async function onRequestOptions() {
       'Access-Control-Allow-Headers': 'Content-Type',
     },
   });
-      }
+}

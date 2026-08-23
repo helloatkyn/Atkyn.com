@@ -1,8 +1,8 @@
 /* modules/images.js — Images tab */
 (function () {
 
-  const FIRST_RENDER = 20;  // pehle sirf 20 render karo
-  const BATCH        = 20;  // scroll pe 20 20
+  const FIRST_BATCH = 20;
+  const NEXT_BATCH  = 20;
 
   let _allResults   = [];
   let _rendered     = 0;
@@ -31,12 +31,12 @@
 
   /* ── Build one tile ── */
   function _buildTile(img, span) {
-    if (!img.img_src && !img.thumbnail_src) return null;
+    const src   = img.img_src       || img.thumbnail_src || '';
+    const thumb = img.thumbnail_src || img.img_src       || '';
+    if (!src) return null;
 
-    const src   = img.img_src       || img.thumbnail_src;
-    const thumb = img.thumbnail_src || img.img_src;
-    const w     = img.width  || 0;
-    const h     = img.height || 0;
+    const w = img.width  || 0;
+    const h = img.height || 0;
 
     const a = document.createElement('a');
     a.className = 'img-tile';
@@ -45,14 +45,21 @@
     a.target = '_blank';
     a.rel    = 'noopener noreferrer';
 
-    const ratio = (w && h) ? ((h / w) * 100).toFixed(2) : (span === 2 ? '56' : '100');
-    const box   = document.createElement('div');
+    /* aspect ratio box — use actual w/h, fallback sensible defaults */
+    let ratio;
+    if (w && h) {
+      ratio = ((h / w) * 100).toFixed(2);
+    } else {
+      ratio = span === 2 ? '60' : '100';
+    }
+
+    const box = document.createElement('div');
     box.className = 'img-tile__box';
     box.style.paddingBottom = ratio + '%';
 
-    const imgEl     = document.createElement('img');
-    imgEl.alt       = img.title || '';
-    imgEl.decoding  = 'async';
+    const imgEl    = document.createElement('img');
+    imgEl.alt      = img.title || '';
+    imgEl.decoding = 'async';
     imgEl.dataset.src   = src;
     imgEl.dataset.thumb = thumb;
     imgEl.classList.add('img-lazy');
@@ -70,10 +77,13 @@
     return a;
   }
 
-  /* ── Render next BATCH from already-fetched _allResults ── */
-  function _renderBatch() {
-    const chunk = _allResults.slice(_rendered, _rendered + BATCH);
-    if (!chunk.length) return;
+  /* ── Render batch from memory ── */
+  function _renderBatch(count) {
+    const chunk = _allResults.slice(_rendered, _rendered + count);
+    if (!chunk.length) {
+      _sentinel?.remove();
+      return;
+    }
 
     const frag = document.createDocumentFragment();
     chunk.forEach(img => {
@@ -81,19 +91,23 @@
       if (tile) frag.appendChild(tile);
     });
 
-    /* sentinel ke pehle insert karo */
-    _grid.insertBefore(frag, _sentinel);
+    if (_sentinel && _sentinel.parentNode === _grid) {
+      _grid.insertBefore(frag, _sentinel);
+    } else {
+      _grid.appendChild(frag);
+    }
+
     _rendered += chunk.length;
 
-    /* naye lazy images observe karo */
+    /* observe new lazy images */
     _grid.querySelectorAll('.img-lazy:not([data-ob])').forEach(img => {
       img.dataset.ob = '1';
       _lazyIo.observe(img);
     });
 
-    /* agar sab render ho gaye toh sentinel hatao */
     if (_rendered >= _allResults.length) {
-      _sentinel.remove();
+      _sentinel?.remove();
+      _sentinel = null;
     }
   }
 
@@ -102,9 +116,11 @@
     _allResults   = [];
     _rendered     = 0;
     _patternQueue = [];
+    _grid         = null;
+    _sentinel     = null;
 
     const q  = sessionStorage.getItem('atkyn_last_query') || '';
-    const pc = window._atkynPageContent;
+    const pc = document.getElementById('pageContent');
 
     if (!q) {
       pc.innerHTML = '<div class="tab-empty"><p>Search something to see images</p></div>';
@@ -113,7 +129,7 @@
 
     pc.innerHTML = '<div class="tab-skeleton grid"><div class="sk-img"></div><div class="sk-img"></div><div class="sk-img"></div><div class="sk-img"></div></div>';
 
-    /* Lazy image loader */
+    /* Lazy image IntersectionObserver */
     _lazyIo = new IntersectionObserver((entries, obs) => {
       entries.forEach(entry => {
         if (!entry.isIntersecting) return;
@@ -124,15 +140,16 @@
       });
     }, { rootMargin: '400px' });
 
-    /* Scroll sentinel — render next batch from memory */
+    /* Scroll sentinel */
     _sentinel = document.createElement('div');
     _sentinel.className = 'img-sentinel';
 
     _scrollIo = new IntersectionObserver((entries) => {
       if (!entries[0].isIntersecting) return;
-      _renderBatch();
+      _renderBatch(NEXT_BATCH);
     }, { rootMargin: '300px' });
 
+    /* Grid */
     _grid = document.createElement('div');
     _grid.className = 'images-grid';
     _grid.appendChild(_sentinel);
@@ -140,20 +157,21 @@
 
     pc.innerHTML = '';
     pc.appendChild(_grid);
-    window._atkynAnimateIn?.();
 
-    /* Ek hi API call — 100 results */
+    /* Single API call */
     fetch(`/api/images?q=${encodeURIComponent(q)}`)
-      .then(r => r.ok ? r.json() : Promise.reject())
+      .then(r => r.ok ? r.json() : Promise.reject('API error'))
       .then(data => {
         _allResults = data.results || [];
         if (!_allResults.length) throw new Error('empty');
-        _rendered = 0;
-        _renderBatch(); // pehle FIRST_RENDER
+        _renderBatch(FIRST_BATCH);
       })
       .catch(() => {
         pc.innerHTML = '<div class="tab-empty"><p>Could not load images</p></div>';
       });
   };
 
+  window._atkynInit_images();
+
 }());
+          

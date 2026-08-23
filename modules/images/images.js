@@ -44,7 +44,6 @@
     a.target = '_blank';
     a.rel    = 'noopener noreferrer';
 
-    /* wrapper — natural height, no forced aspect ratio box */
     const wrap = document.createElement('div');
     wrap.className = 'img-tile__wrap';
 
@@ -55,17 +54,23 @@
     imgEl.dataset.thumb = thumb;
     imgEl.classList.add('img-lazy');
 
-    /* set explicit width/height so browser reserves space */
     if (w && h) {
       imgEl.width  = w;
       imgEl.height = h;
     }
 
     imgEl.onerror = function () {
-      if (this.src !== thumb && thumb !== src) {
+      const tile = this.closest('.img-tile');
+      if (this.src !== thumb && thumb && thumb !== src) {
         this.src = thumb;
-      } else {
-        this.closest('.img-tile')?.remove();
+      } else if (tile) {
+        tile.style.transition = 'none';
+        tile.style.margin     = '0';
+        tile.style.padding    = '0';
+        tile.style.height     = '0';
+        tile.style.overflow   = 'hidden';
+        tile.style.gridColumn = 'unset';
+        requestAnimationFrame(() => tile.remove());
       }
     };
 
@@ -99,7 +104,6 @@
       if (tile) frag.appendChild(tile);
     });
 
-    /* insert before sentinel */
     if (_sentinel?.parentNode === _grid) {
       _grid.insertBefore(frag, _sentinel);
     } else {
@@ -108,7 +112,6 @@
 
     _rendered += chunk.length;
 
-    /* observe new lazy images */
     _grid.querySelectorAll('.img-lazy:not([data-ob])').forEach(img => {
       img.dataset.ob = '1';
       _lazyIo.observe(img);
@@ -130,6 +133,9 @@
     _sentinel     = null;
     _loader       = null;
 
+    if (_scrollIo) { _scrollIo.disconnect(); _scrollIo = null; }
+    if (_lazyIo)   { _lazyIo.disconnect();   _lazyIo   = null; }
+
     const q  = sessionStorage.getItem('atkyn_last_query') || '';
     const pc = document.getElementById('pageContent');
 
@@ -140,7 +146,6 @@
 
     pc.innerHTML = '<div class="tab-skeleton grid"><div class="sk-img"></div><div class="sk-img"></div><div class="sk-img"></div><div class="sk-img"></div></div>';
 
-    /* Lazy image loader */
     _lazyIo = new IntersectionObserver((entries, obs) => {
       entries.forEach(entry => {
         if (!entry.isIntersecting) return;
@@ -151,11 +156,9 @@
       });
     }, { rootMargin: '500px' });
 
-    /* Scroll sentinel */
     _sentinel = document.createElement('div');
     _sentinel.className = 'img-sentinel';
 
-    /* Loading spinner */
     _loader = document.createElement('div');
     _loader.className = 'img-loader';
     _loader.style.display = 'none';

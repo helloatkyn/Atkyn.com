@@ -1,16 +1,17 @@
 /* modules/images.js — Images tab */
 (function () {
 
-  const BATCH = 24;
+  const MAX_CALLS = 3;
 
-  let _seen       = new Set();
-  let _offset     = 0;
-  let _grid       = null;
-  let _sentinel   = null;
-  let _scrollIo   = null;
-  let _lazyIo     = null;
-  let _loading    = false;
-  let _exhausted  = false;
+  let _seen         = new Set();
+  let _offset       = 0;
+  let _grid         = null;
+  let _sentinel     = null;
+  let _scrollIo     = null;
+  let _lazyIo       = null;
+  let _loading      = false;
+  let _exhausted    = false;
+  let _patternQueue = [];
 
   const PATTERNS = [
     [2, 1, 1],
@@ -19,8 +20,6 @@
     [2, 1, 1, 2],
     [1, 1, 2, 1, 1],
   ];
-
-  let _patternQueue = [];
 
   function _nextSpan() {
     if (!_patternQueue.length) {
@@ -48,28 +47,21 @@
     const imgEl    = document.createElement('img');
     imgEl.alt      = img.title || '';
     imgEl.decoding = 'async';
+    // width/height bilkul nahi — browser natural size use karega
     imgEl.dataset.src   = src;
     imgEl.dataset.thumb = thumb;
     imgEl.classList.add('img-lazy');
 
-    if (img.width && img.height) {
-      imgEl.width  = img.width;
-      imgEl.height = img.height;
-    }
-
     imgEl.onerror = function () {
-      const tile = this.closest('.img-tile');
-      if (this.src !== thumb && thumb && thumb !== src) {
+      // Thumbnail try karo
+      if (this.dataset.triedThumb !== '1' && thumb && thumb !== this.src) {
+        this.dataset.triedThumb = '1';
         this.src = thumb;
-      } else if (tile) {
-        tile.style.transition = 'none';
-        tile.style.margin     = '0';
-        tile.style.padding    = '0';
-        tile.style.height     = '0';
-        tile.style.overflow   = 'hidden';
-        tile.style.gridColumn = 'unset';
-        requestAnimationFrame(() => tile.remove());
+        return;
       }
+      // Dono fail — tile completely remove, koi placeholder nahi
+      const tile = this.closest('.img-tile');
+      if (tile) tile.remove();
     };
 
     wrap.appendChild(imgEl);
@@ -78,7 +70,6 @@
   }
 
   function _appendTiles(results) {
-    // Dedupe
     const fresh = results.filter(r => {
       const key = r.img_src;
       if (!key || _seen.has(key)) return false;
@@ -86,7 +77,7 @@
       return true;
     });
 
-    if (!fresh.length) return;
+    if (!fresh.length) return 0;
 
     const frag = document.createDocumentFragment();
     fresh.forEach(img => {
@@ -104,43 +95,44 @@
       img.dataset.ob = '1';
       _lazyIo.observe(img);
     });
+
+    return fresh.length;
+  }
+
+  function _done() {
+    _exhausted = true;
+    _sentinel?.remove();
+    _sentinel = null;
+    _scrollIo?.disconnect();
   }
 
   function _fetchNext(q) {
     if (_loading || _exhausted) return;
+    if (_offset >= MAX_CALLS) { _done(); return; }
     _loading = true;
 
     fetch(`/api/images?q=${encodeURIComponent(q)}&offset=${_offset}`)
       .then(r => r.ok ? r.json() : Promise.reject())
       .then(data => {
-        const results = data.results || [];
         _offset++;
+        const results = data.results || [];
 
-        if (!results.length) {
-          _exhausted = true;
-          _sentinel?.remove();
-          _sentinel = null;
-          _scrollIo?.disconnect();
-          _loading = false;
-          return;
-        }
+        if (!results.length) { _done(); _loading = false; return; }
 
         _appendTiles(results);
         _loading = false;
 
-        // Re-observe sentinel
+        if (_offset >= MAX_CALLS) {
+          _done();
+          return;
+        }
+
         if (_sentinel && _scrollIo) {
           _scrollIo.unobserve(_sentinel);
           _scrollIo.observe(_sentinel);
         }
       })
-      .catch(() => {
-        _exhausted = true;
-        _loading   = false;
-        _sentinel?.remove();
-        _sentinel = null;
-        _scrollIo?.disconnect();
-      });
+      .catch(() => { _done(); _loading = false; });
   }
 
   window._atkynInit_images = function () {
@@ -165,15 +157,25 @@
 
     pc.innerHTML = '<div class="tab-skeleton grid"><div class="sk-img"></div><div class="sk-img"></div><div class="sk-img"></div><div class="sk-img"></div></div>';
 
+    // Thumbnail fast load — src seedha set, lazy nahi
     _lazyIo = new IntersectionObserver((entries, obs) => {
       entries.forEach(entry => {
         if (!entry.isIntersecting) return;
         const img = entry.target;
-        img.src = img.dataset.src;
-        img.onload = () => img.classList.add('img-loaded');
+        // Pehle thumbnail dikhao, phir full swap
+        img.src = img.dataset.thumb || img.dataset.src;
+        img.onload = () => {
+          img.classList.add('img-loaded');
+          // Full src alag hai toh background mein load karo
+          if (img.dataset.src !== img.src) {
+            const full = new Image();
+            full.onload = () => { img.src = img.dataset.src; };
+            full.src = img.dataset.src;
+          }
+        };
         obs.unobserve(img);
       });
-    }, { rootMargin: '600px' });
+    }, { rootMargin: '800px' });
 
     _sentinel = document.createElement('div');
     _sentinel.className = 'img-sentinel';
@@ -188,11 +190,11 @@
     _scrollIo = new IntersectionObserver((entries) => {
       if (!entries[0].isIntersecting) return;
       _fetchNext(q);
-    }, { rootMargin: '400px' });
+    }, { rootMargin: '600px' });
 
     _scrollIo.observe(_sentinel);
 
-    // Pehli batch turant load
+    // Pehli call turant
     _fetchNext(q);
   };
 

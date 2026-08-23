@@ -215,9 +215,68 @@ _buildMarked();
    Normalise whitespace, then parse through marked.
    Falls back to an escaped <pre> block on any exception.
    ══════════════════════════════════════════════════════════════ */
+// Math tokens that signal LaTeX content inside plain [ ] brackets
+const _MATH_TOKENS = [
+  '\\frac', '\\int', '\\sum', '\\sqrt', '\\lim', '\\prod',
+  '\\cdot', '\\cdots', '\\times', '\\infty', '\\alpha', '\\beta',
+  '\\gamma', '\\delta', '\\theta', '\\lambda', '\\mu', '\\pi',
+  '\\sigma', '\\omega', '\\partial', '\\nabla', '\\log', '\\ln',
+  '\\sin', '\\cos', '\\tan', '\\vec', '\\hat', '\\bar',
+  '\\left', '\\right', '\\begin', '\\end', '\\text',
+];
+
+function _hasMathToken(str) {
+  for (let t = 0; t < _MATH_TOKENS.length; t++) {
+    if (str.indexOf(_MATH_TOKENS[t]) !== -1) return true;
+  }
+  // ^ and _ are strong math signals (superscript / subscript)
+  for (let i = 0; i < str.length; i++) {
+    if (str[i] === '^' || str[i] === '_') return true;
+  }
+  return false;
+}
+
+// Convert plain [ math ] → \[ math \] so user-typed LaTeX renders.
+// Skips already-escaped \[ to avoid double-wrapping.
+// Depth-tracks nested brackets so [a[b]c] is handled correctly.
+function _normalizeBracketMath(str) {
+  const out = [];
+  let i = 0;
+  while (i < str.length) {
+    // Already-escaped \[ — pass through unchanged
+    if (str[i] === '\\' && i + 1 < str.length && str[i + 1] === '[') {
+      out.push('\\'); out.push('[');
+      i += 2;
+      continue;
+    }
+    if (str[i] === '[') {
+      let depth = 1, j = i + 1;
+      while (j < str.length && depth > 0) {
+        if (str[j] === '[') depth++;
+        else if (str[j] === ']') depth--;
+        j++;
+      }
+      if (depth === 0) {
+        const inner = str.slice(i + 1, j - 1);
+        if (_hasMathToken(inner)) {
+          out.push('\\['); out.push(inner); out.push('\\]');
+        } else {
+          out.push('['); out.push(inner); out.push(']');
+        }
+        i = j;
+      } else {
+        out.push(str[i]); i++;
+      }
+    } else {
+      out.push(str[i]); i++;
+    }
+  }
+  return out.join('');
+}
+
 function _safePipeline(raw) {
   if (!raw) return '';
-  const text = _normalizeNewlines(raw);
+  const text = _normalizeNewlines(_normalizeBracketMath(raw));
   if (!text) return '';
   try {
     return marked.parse(text);

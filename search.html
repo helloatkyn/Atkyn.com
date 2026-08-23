@@ -7,19 +7,17 @@
   <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
   <meta name="theme-color" content="#1c1c1e" media="(prefers-color-scheme: dark)">
 
-  <!-- KaTeX — math rendering -->
+  <!-- KaTeX — required by marked-katex-extension -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.22/dist/katex.min.css">
-  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.22/dist/katex.min.js"></script>
-  <!-- auto-render: onload fires after KaTeX is ready, signals renderer.js queue to flush -->
-  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.22/dist/contrib/auto-render.min.js"
-          onload="window._onKatexReady && window._onKatexReady()"></script>
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.22/dist/katex.min.js"></script>
 
   <!-- highlight.js — syntax highlighting -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlight.js@11.10.0/styles/github-dark.min.css">
   <script src="https://cdn.jsdelivr.net/npm/highlight.js@11.10.0/highlight.min.js"></script>
 
-  <!-- marked.js — markdown renderer -->
+  <!-- marked.js + marked-katex-extension (must load after KaTeX) -->
   <script src="https://cdn.jsdelivr.net/npm/marked@13.0.0/marked.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked-katex-extension@5.0.1/lib/index.umd.js"></script>
 
   <!-- Lightweight Charts (TradingView) — stock chart -->
   <script src="https://unpkg.com/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js"></script>
@@ -144,5 +142,4 @@
   <script src="search.js"></script>
 
 </body>
-  </html>
-  
+</html>

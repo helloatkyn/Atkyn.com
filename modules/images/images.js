@@ -9,7 +9,6 @@
   let _patternQueue = [];
   let _grid         = null;
   let _sentinel     = null;
-  let _loader       = null;
   let _scrollIo     = null;
   let _lazyIo       = null;
   let _loading      = false;
@@ -80,23 +79,13 @@
     return a;
   }
 
-  function _showLoader() {
-    if (_loader) _loader.style.display = 'flex';
-  }
-
-  function _hideLoader() {
-    if (_loader) _loader.style.display = 'none';
-  }
-
   function _renderBatch(count) {
     if (_loading) return;
     _loading = true;
 
     const chunk = _allResults.slice(_rendered, _rendered + count);
-    _hideLoader();
 
     if (!chunk.length) {
-      _hideLoader();
       _sentinel?.remove();
       _sentinel = null;
       _scrollIo?.disconnect();
@@ -126,12 +115,10 @@
     _loading = false;
 
     if (_rendered >= _allResults.length) {
-      _hideLoader();
       _sentinel?.remove();
       _sentinel = null;
       _scrollIo?.disconnect();
     } else {
-      _showLoader();
       if (_sentinel && _scrollIo) {
         _scrollIo.unobserve(_sentinel);
         _scrollIo.observe(_sentinel);
@@ -145,7 +132,6 @@
     _patternQueue = [];
     _grid         = null;
     _sentinel     = null;
-    _loader       = null;
     _loading      = false;
 
     if (_scrollIo) { _scrollIo.disconnect(); _scrollIo = null; }
@@ -171,15 +157,6 @@
       });
     }, { rootMargin: '600px' });
 
-    _loader = document.createElement('div');
-    _loader.className = 'img-loader';
-    _loader.style.display = 'none';
-    _loader.innerHTML = `
-      <svg viewBox="0 0 24 24" fill="none">
-        <circle cx="12" cy="12" r="10" stroke="#ddd" stroke-width="2.5"/>
-        <path d="M12 2a10 10 0 0 1 10 10" stroke="#0077B5" stroke-width="2.5" stroke-linecap="round"/>
-      </svg>`;
-
     _sentinel = document.createElement('div');
     _sentinel.className = 'img-sentinel';
 
@@ -189,13 +166,11 @@
 
     pc.innerHTML = '';
     pc.appendChild(_grid);
-    pc.appendChild(_loader);
 
     _scrollIo = new IntersectionObserver((entries) => {
       if (!entries[0].isIntersecting) return;
       if (_loading) return;
       if (_rendered >= _allResults.length) {
-        _hideLoader();
         _sentinel?.remove();
         _sentinel = null;
         _scrollIo?.disconnect();

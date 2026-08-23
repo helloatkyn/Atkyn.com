@@ -12,7 +12,6 @@ export async function onRequestGet(context) {
     });
   }
 
-  // Offset ke hisaab se query variation
   const suffixes = [
     '',
     ' photo',
@@ -46,8 +45,6 @@ export async function onRequestGet(context) {
       url:           img.link         || '',
       img_src:       img.imageUrl     || '',
       thumbnail_src: img.thumbnailUrl || img.imageUrl || '',
-      width:         img.imageWidth   || 0,
-      height:        img.imageHeight  || 0,
     }));
 
     return new Response(JSON.stringify({ results }), {

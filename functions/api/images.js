@@ -12,20 +12,23 @@ export async function onRequestGet(context) {
   }
 
   try {
-    // 5 pages parallel — ~35-50 per page = ~175-250 results
-    const pages = [1, 2, 3, 4, 5];
-    const fetches = pages.map(pageno =>
+    // 8 pages parallel — Google Images ~20/page + Bing Images ~35/page = ~200+ results
+    const fetches = [1,2,3,4,5,6,7,8].map(pageno =>
       fetch(
-        `${env.SEARXNG_URL}/search?q=${encodeURIComponent(`"${q}"`)}&format=json&categories=images&engines=google+images,bing+images&language=en&safesearch=0&pageno=${pageno}`,
-        { headers: { 'Accept': 'application/json' }, signal: AbortSignal.timeout(8000) }
-      ).then(r => r.ok ? r.json() : { results: [] })
-       .catch(() => ({ results: [] }))
+        `${env.SEARXNG_URL}/search?q=${encodeURIComponent(q)}&format=json&categories=images&engines=google%20images,bing%20images&language=en&safesearch=0&pageno=${pageno}`,
+        {
+          headers: { 'Accept': 'application/json' },
+          signal: AbortSignal.timeout(10000),
+        }
+      )
+      .then(r => r.ok ? r.json() : { results: [] })
+      .catch(() => ({ results: [] }))
     );
 
-    const pages_data = await Promise.all(fetches);
+    const pages = await Promise.all(fetches);
 
     const seen   = new Set();
-    const merged = pages_data
+    const merged = pages
       .flatMap(d => d.results || [])
       .filter(r => {
         const key = r.img_src || r.url;

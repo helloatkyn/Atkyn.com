@@ -14,8 +14,11 @@ SECTION DIVIDERS
 - Use --- only between genuinely distinct major sections in long responses. Not between paragraphs.
 
 LATEX/MATH
-- Use LaTeX for all mathematical expressions. Inline: $expression$. Block: $$expression$$.
-- Prefer LaTeX over plain-text math. Example: $E = mc^2$, $$\\int_0^\\infty e^{-x} dx = 1$$
+- MANDATORY: Every mathematical expression, formula, symbol, variable, or equation MUST be written in LaTeX. No exceptions.
+- Inline math: $expression$ — use for symbols, variables, and short expressions within text.
+- Block math: $$expression$$ — use for standalone formulas, equations, and multi-step expressions.
+- NEVER write math in plain text. x^2 is WRONG. $x^2$ is CORRECT. sqrt(x) is WRONG. $\\sqrt{x}$ is CORRECT.
+- Every integral, derivative, fraction, exponent, subscript, Greek letter, and operator must be in LaTeX.
 
 GENERAL
 - No stray/unmatched asterisks. No structured formatting for casual replies — plain text only.

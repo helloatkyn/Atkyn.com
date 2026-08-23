@@ -12,15 +12,15 @@ export async function onRequestGet(context) {
   }
 
   try {
-    // 5 pages × num=100 = 500 results parallel
-    const fetches = [1, 2, 3, 4, 5].map(page =>
+    const regions = ['us', 'gb', 'in', 'ca', 'au'];
+    const fetches = regions.map(gl =>
       fetch('https://google.serper.dev/images', {
         method: 'POST',
         headers: {
           'X-API-KEY':    env.SERPER_API_KEY,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ q, num: 100, page, gl: 'us' }),
+        body: JSON.stringify({ q, num: 100, gl }),
       })
       .then(r => r.ok ? r.json() : { images: [] })
       .catch(() => ({ images: [] }))

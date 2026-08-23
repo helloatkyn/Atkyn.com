@@ -44,37 +44,46 @@ function _buildMarked() {
     );
   };
 
-  marked.setOptions({
-    renderer,
-    breaks: true,
-    gfm:    true,
-  });
+  marked.setOptions({ renderer, breaks: true, gfm: true });
 }
 
 _buildMarked();
 
 /* ── KaTeX auto-render config ── */
-const _KATEX_DELIMITERS = [
-  { left: '$$',  right: '$$',  display: true  },
-  { left: '\\[', right: '\\]', display: true  },
-  { left: '\\(', right: '\\)', display: false },
-  { left: '$',   right: '$',   display: false },
-];
+const _KATEX_OPTIONS = {
+  delimiters: [
+    { left: '$$',  right: '$$',  display: true  },
+    { left: '\\[', right: '\\]', display: true  },
+    { left: '\\(', right: '\\)', display: false },
+    { left: '$',   right: '$',   display: false },
+  ],
+  throwOnError: false,
+  errorColor:   '#888888',
+  trust:        false,
+};
+
+/* ── Queue: bubbles that arrived before KaTeX loaded ── */
+const _mathQueue = [];
+let   _katexReady = false;
+
+/* Called by index.html onload on auto-render script */
+window._onKatexReady = function () {
+  _katexReady = true;
+  _mathQueue.forEach(el => renderMathInElement(el, _KATEX_OPTIONS));
+  _mathQueue.length = 0;
+};
 
 function _renderMathInEl(el) {
-  if (typeof renderMathInElement === 'undefined') return;
-  renderMathInElement(el, {
-    delimiters:   _KATEX_DELIMITERS,
-    throwOnError: false,
-    errorColor:   '#888888',
-    trust:        false,
-  });
+  if (_katexReady) {
+    renderMathInElement(el, _KATEX_OPTIONS);
+  } else {
+    _mathQueue.push(el);
+  }
 }
 
 /* ── MutationObserver — auto-renders math in every new bot bubble ──
-   Watches #msgWrap for added nodes; whenever a .bubble inside a .bot
-   message lands in the DOM, KaTeX auto-render runs on it automatically.
-   search.js needs zero changes.                                       ── */
+   Watches #msgWrap; when a new .msg.bot lands, runs KaTeX on its
+   .bubble. Works even if KaTeX loads after the first message.      ── */
 function _initMathObserver() {
   const host = document.getElementById('msgWrap');
   if (!host) return;
@@ -169,3 +178,4 @@ function universalRender(content, role = 'user', streaming = false) {
 }
 function renderMathBubble(_el) {}
 function renderMarkdown(text)  { return universalRender(text); }
+     

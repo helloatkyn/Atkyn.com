@@ -96,9 +96,11 @@
     _hideLoader();
 
     if (!chunk.length) {
+      _hideLoader();
       _sentinel?.remove();
       _sentinel = null;
-      _loading  = false;
+      _scrollIo?.disconnect();
+      _loading = false;
       return;
     }
 
@@ -124,8 +126,10 @@
     _loading = false;
 
     if (_rendered >= _allResults.length) {
+      _hideLoader();
       _sentinel?.remove();
       _sentinel = null;
+      _scrollIo?.disconnect();
     } else {
       _showLoader();
       if (_sentinel && _scrollIo) {
@@ -190,6 +194,13 @@
     _scrollIo = new IntersectionObserver((entries) => {
       if (!entries[0].isIntersecting) return;
       if (_loading) return;
+      if (_rendered >= _allResults.length) {
+        _hideLoader();
+        _sentinel?.remove();
+        _sentinel = null;
+        _scrollIo?.disconnect();
+        return;
+      }
       _renderBatch(NEXT_BATCH);
     }, { rootMargin: '400px' });
 

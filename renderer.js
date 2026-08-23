@@ -48,49 +48,34 @@ function _normalizeNewlines(str) {
   return out.join('');
 }
 
-function _buildMarked() {
-  marked.use(markedKatex({ throwOnError: false, errorColor: '#888888', trust: false }));
-
-  marked.use({
-    extensions: [
-      {
-        name:  'mathBracketBlock',
-        level: 'block',
-        start(src) { return src.indexOf('\\['); },
-        tokenizer(src) {
-          if (!src.startsWith('\\[')) return;
-          const close = src.indexOf('\\]', 2);
-          if (close === -1) return;
-          return { type: 'mathBracketBlock', raw: src.slice(0, close + 2), text: src.slice(2, close).trim() };
-        },
-        renderer(token) {
-          try {
-            return '<div class="math-block">' + katex.renderToString(token.text, { throwOnError: false, displayMode: true }) + '</div>\n';
-          } catch (_) {
-            return '<div class="math-block math-error">' + _he(token.text) + '</div>\n';
-          }
-        },
-      },
-      {
-        name:  'mathParenInline',
-        level: 'inline',
-        start(src) { return src.indexOf('\\('); },
-        tokenizer(src) {
-          if (!src.startsWith('\\(')) return;
-          const close = src.indexOf('\\)', 2);
-          if (close === -1) return;
-          return { type: 'mathParenInline', raw: src.slice(0, close + 2), text: src.slice(2, close).trim() };
-        },
-        renderer(token) {
-          try {
-            return katex.renderToString(token.text, { throwOnError: false, displayMode: false });
-          } catch (_) {
-            return '<span class="math-error">' + _he(token.text) + '</span>';
-          }
-        },
-      },
-    ],
+/* ── Pre-process: convert \[...\] and \(...\) to $$ and $ ──
+   marked-katex-extension natively handles $$...$$ and $...$
+   but \[...\] block extension misses cases where \[ is mid-paragraph.
+   Safest fix: convert to $$ delimiters before parsing. ── */
+function _convertLatexDelimiters(str) {
+  // \[...\]  →  $$...$$  (block)
+  // Use non-greedy match; handle multiline
+  str = str.replace(/\\\[([\s\S]*?)\\\]/g, function(_, inner) {
+    return '\n$$' + inner + '$$\n';
   });
+  // \(...\)  →  $...$   (inline)
+  str = str.replace(/\\\(([\s\S]*?)\\\)/g, function(_, inner) {
+    return '$' + inner + '$';
+  });
+  return str;
+}
+
+function _buildMarked() {
+  // marked-katex-extension handles: $...$ and $$...$$
+  marked.use(markedKatex({
+    throwOnError: false,
+    errorColor: '#888888',
+    trust: false,
+    delimiters: [
+      { left: '$$', right: '$$', display: true  },
+      { left: '$',  right: '$',  display: false },
+    ],
+  }));
 
   const renderer = new marked.Renderer();
   renderer.code = function (code, lang) {
@@ -126,7 +111,7 @@ _buildMarked();
 
 function _safePipeline(raw) {
   if (!raw) return '';
-  const text = _normalizeNewlines(raw);
+  const text = _normalizeNewlines(_convertLatexDelimiters(raw));
   if (!text) return '';
   try { return marked.parse(text); }
   catch (_) { return '<pre class="render-fallback">' + _he(raw) + '</pre>'; }

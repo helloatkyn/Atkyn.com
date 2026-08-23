@@ -1,8 +1,9 @@
 export async function onRequestGet(context) {
   const { request, env } = context;
 
-  const url = new URL(request.url);
-  const q   = url.searchParams.get('q')?.trim();
+  const url    = new URL(request.url);
+  const q      = url.searchParams.get('q')?.trim();
+  const offset = parseInt(url.searchParams.get('offset') || '0', 10);
 
   if (!q) {
     return new Response(JSON.stringify({ error: 'Empty query' }), {
@@ -18,19 +19,19 @@ export async function onRequestGet(context) {
         'X-API-KEY':    env.SERPER_API_KEY,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ q, num: 30 }),
+      body: JSON.stringify({ q, num: 100, start: offset }),
     });
 
     if (!serperResp.ok) throw new Error('Serper error');
 
     const data    = await serperResp.json();
-    const results = (data.images || []).slice(0, 30).map(r => ({
-      title:         r.title       || '',
-      url:           r.link        || '',
-      img_src:       r.imageUrl    || '',
-      thumbnail_src: r.thumbnailUrl|| '',
-      width:         r.imageWidth  || 0,
-      height:        r.imageHeight || 0,
+    const results = (data.images || []).map(r => ({
+      title:         r.title        || '',
+      url:           r.link         || '',
+      img_src:       r.imageUrl     || '',
+      thumbnail_src: r.thumbnailUrl || '',
+      width:         r.imageWidth   || 0,
+      height:        r.imageHeight  || 0,
     }));
 
     return new Response(JSON.stringify({ results }), {

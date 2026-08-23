@@ -1,66 +1,117 @@
 /* ═══════════════════════════════════════════════════════════════
    renderer.js — Atkyn Search
-   Markdown + Math : marked.js + marked-katex-extension + KaTeX
-   Code highlight  : highlight.js
+   Markdown : marked.js  |  Math : KaTeX (direct)  |  Code : highlight.js
 
-   FIX: LaTeX \[...\] and \(...\) pre-processed to $$...$$ and $...$
-        BEFORE marked.parse() runs — otherwise marked tokenizer
-        breaks multi-line math blocks into paragraphs first.
+   marked-katex-extension removed — it loses to marked's paragraph
+   tokenizer on multiline $$..$$ blocks. All four math delimiters
+   handled via marked's own extension API (block before inline):
+     Block  : $$..$$  and  \[..\]
+     Inline : $..$   and  \(..\)
    ═══════════════════════════════════════════════════════════════ */
 
-/* ── HTML escape (code blocks only) ── */
+/* ── HTML escape ── */
 function _he(s) {
   return String(s)
     .replace(/&/g, '&amp;').replace(/</g, '&lt;')
     .replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
-/* ── LaTeX delimiter pre-processor ──────────────────────────────
-   Converts \[...\] → $$...$$ and \(...\) → $...$
-   MUST run on raw text BEFORE marked.parse() is called.
-   This is necessary because marked.js tokenizes paragraph breaks
-   first, splitting multi-line \[...\] blocks before the KaTeX
-   extension ever sees them.
-   ────────────────────────────────────────────────────────────── */
-function _normalizeMathDelimiters(text) {
-  if (!text) return text;
-
-  /* Step 1: \[...\]  →  $$...$$ (display/block math)
-     Use[\s\S] to match across newlines, non-greedy */
-  text = text.replace(/\\\[([\s\S]*?)\\\]/g, function (_, inner) {
-    return '$$' + inner + '$$';
-  });
-
-  /* Step 2: \(...\)  →  $...$ (inline math)
-     Exclude newlines to avoid accidentally swallowing paragraphs */
-  text = text.replace(/\\\(([^]*?)\\\)/g, function (_, inner) {
-    /* If inner contains a newline it was probably \[ intended as display */
-    if (/\n/.test(inner)) return '$$' + inner + '$$';
-    return '$' + inner + '$';
-  });
-
-  return text;
+/* ── KaTeX render helper ── */
+function _katexRender(tex, display) {
+  try {
+    return katex.renderToString(tex, {
+      throwOnError: false,
+      errorColor:   '#888888',
+      displayMode:  display,
+      trust:        false,
+    });
+  } catch (_) {
+    return `<span class="katex-error">${_he(tex)}</span>`;
+  }
 }
 
-/* ── marked.js setup ─────────────────────────────────────────────
-   marked-katex-extension handles $…$ / $$…$$ inline via marked.
-   We pre-normalize \[…\] / \(…\) above so they arrive as $$/$$.  ── */
+/* ── marked setup ── */
 function _buildMarked() {
-  /* KaTeX extension — must be registered before setOptions */
-  marked.use(markedKatex({
-    throwOnError: false,
-    errorColor:   '#888888',
-    trust:        false,
-    nonStandard:  false,   /* We handle \[..\] ourselves via pre-processor */
-  }));
 
-  /* Custom code-block renderer with copy button */
+  /* ── BLOCK: $$..$$ ── */
+  const extDollarBlock = {
+    name:  'mathDollarBlock',
+    level: 'block',
+    start(src) { return src.indexOf('$$'); },
+    tokenizer(src) {
+      if (!src.startsWith('$$')) return;
+      const close = src.indexOf('$$', 2);
+      if (close === -1) return;
+      const raw  = src.slice(0, close + 2);
+      const text = src.slice(2, close).trim();
+      return { type: 'mathDollarBlock', raw, text };
+    },
+    renderer(t) { return '<div class="math-block">' + _katexRender(t.text, true) + '</div>\n'; },
+  };
+
+  /* ── BLOCK: \[..\] ── */
+  const extBracketBlock = {
+    name:  'mathBracketBlock',
+    level: 'block',
+    start(src) { return src.indexOf('\\['); },
+    tokenizer(src) {
+      if (!src.startsWith('\\[')) return;
+      const close = src.indexOf('\\]');
+      if (close === -1) return;
+      const raw  = src.slice(0, close + 2);
+      const text = src.slice(2, close).trim();
+      return { type: 'mathBracketBlock', raw, text };
+    },
+    renderer(t) { return '<div class="math-block">' + _katexRender(t.text, true) + '</div>\n'; },
+  };
+
+  /* ── INLINE: $..$  (not $$) ── */
+  const extDollarInline = {
+    name:  'mathDollarInline',
+    level: 'inline',
+    start(src) {
+      let i = src.indexOf('$');
+      while (i !== -1) {
+        if (src[i + 1] !== '$') return i;
+        i = src.indexOf('$', i + 2);
+      }
+    },
+    tokenizer(src) {
+      if (src[0] !== '$' || src[1] === '$') return;
+      const close = src.indexOf('$', 1);
+      if (close === -1) return;
+      const raw  = src.slice(0, close + 1);
+      const text = src.slice(1, close).trim();
+      return { type: 'mathDollarInline', raw, text };
+    },
+    renderer(t) { return _katexRender(t.text, false); },
+  };
+
+  /* ── INLINE: \(..\) ── */
+  const extParenInline = {
+    name:  'mathParenInline',
+    level: 'inline',
+    start(src) { return src.indexOf('\\('); },
+    tokenizer(src) {
+      if (!src.startsWith('\\(')) return;
+      const close = src.indexOf('\\)');
+      if (close === -1) return;
+      const raw  = src.slice(0, close + 2);
+      const text = src.slice(2, close).trim();
+      return { type: 'mathParenInline', raw, text };
+    },
+    renderer(t) { return _katexRender(t.text, false); },
+  };
+
+  /* ── register: block first, then inline ── */
+  marked.use({ extensions: [extDollarBlock, extBracketBlock, extDollarInline, extParenInline] });
+
+  /* ── code block renderer with copy button ── */
   const renderer = new marked.Renderer();
   renderer.code = function (code, lang) {
     const language = (lang || '').trim().toLowerCase();
     const label    = language || 'code';
     const id       = 'cb' + Math.random().toString(36).slice(2, 8);
-
     let hi = _he(code);
     if (typeof hljs !== 'undefined') {
       const valid  = language && hljs.getLanguage(language);
@@ -69,7 +120,6 @@ function _buildMarked() {
         : hljs.highlightAuto(code);
       hi = result.value;
     }
-
     return (
       `<div class="code-block" id="${id}">` +
         `<div class="code-block-header">` +
@@ -91,14 +141,11 @@ function _buildMarked() {
 
 _buildMarked();
 
-/* ── Main pipeline ── */
+/* ── pipeline ── */
 function _safePipeline(raw) {
   if (!raw || !raw.trim()) return '';
   try {
-    /* CRITICAL: normalize math delimiters BEFORE marked sees the text */
-    const normalized = _normalizeMathDelimiters(raw);
-
-    const text = normalized
+    const text = raw
       .replace(/\n{3,}/g, '\n\n')
       .replace(/^\n+/, '')
       .replace(/\n+$/, '');
@@ -108,7 +155,7 @@ function _safePipeline(raw) {
   }
 }
 
-/* ── Memoization hash ── */
+/* ── hash ── */
 function _cheapHash(str) {
   let h = 0;
   for (let i = 0; i < str.length; i++) h = Math.imul(31, h) + str.charCodeAt(i) | 0;
@@ -118,13 +165,9 @@ function _cheapHash(str) {
 /* ── UniversalMessageRenderer ── */
 class UniversalMessageRenderer {
   constructor() {
-    this.rawContent      = '';
-    this.renderedContent = '';
-    this._hash           = null;
-    this._buf            = '';
-    this._streaming      = false;
+    this.rawContent = ''; this.renderedContent = '';
+    this._hash = null; this._buf = ''; this._streaming = false;
   }
-
   render(content) {
     this.rawContent = content;
     const h = _cheapHash(content);
@@ -132,7 +175,6 @@ class UniversalMessageRenderer {
     this._hash = h;
     return (this.renderedContent = _safePipeline(content));
   }
-
   startStream()    { this._buf = ''; this._streaming = true; this.rawContent = ''; this.renderedContent = ''; }
   pushChunk(chunk) { if (!this._streaming) this.startStream(); this.rawContent = (this._buf += chunk); return (this.renderedContent = _safePipeline(this._buf)); }
   finishStream()   { this._streaming = false; return (this.renderedContent = _safePipeline(this._buf)); }
@@ -151,13 +193,13 @@ function createStreamingRenderer(onUpdate, debounceMs = 40) {
     if (typeof onUpdate === 'function') onUpdate(final ? r.finishStream() : r.getHTML(), { final });
   };
   return {
-    push:        chunk => { if (_done) return; r.pushChunk(chunk); clearTimeout(_t); _t = setTimeout(() => flush(false), debounceMs); },
-    finish:      ()    => { if (_done) return; _done = true; flush(true); },
-    getRenderer: ()    => r,
+    push:    chunk => { if (_done) return; r.pushChunk(chunk); clearTimeout(_t); _t = setTimeout(() => flush(false), debounceMs); },
+    finish:  ()    => { if (_done) return; _done = true; flush(true); },
+    getRenderer: () => r,
   };
 }
 
-/* ── Public aliases ── */
+/* ── public aliases ── */
 function universalRender(content, role = 'user', streaming = false) {
   const r = new UniversalMessageRenderer();
   if (streaming) { r.startStream(); r.pushChunk(content); return r.getHTML(); }

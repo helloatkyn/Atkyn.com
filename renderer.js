@@ -1,6 +1,6 @@
 /* ═══════════════════════════════════════════════════════════════
    renderer.js — Atkyn Search
-   Markdown : markdown-it  |  Math : markdown-it-texmath + KaTeX  |  Code : highlight.js
+   Markdown : markdown-it  |  Math : texmath + KaTeX  |  Code : highlight.js
    ═══════════════════════════════════════════════════════════════ */
 
 /* ── HTML escape ── */
@@ -10,7 +10,7 @@ function _he(s) {
     .replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
-/* ── markdown-it instance with texmath + highlight.js (built once) ── */
+/* ── markdown-it instance (built once) ── */
 function _buildMd() {
   const md = window.markdownit({
     html:    false,
@@ -26,8 +26,8 @@ function _buildMd() {
     },
   }).use(texmath, {
     engine:       katex,
-    delimiters:   ['dollars', 'brackets'],   // $..$ + $$.$$ + \(..\) + \[..\]
-    katexOptions: { throwOnError: false, errorColor: '#888888', trust: false },
+    delimiters:   ['dollars', 'brackets'],  // $..$ + $$..$$ + \(..\) + \[..\]
+    katexOptions: { throwOnError: false, errorColor: '#c0392b', trust: false },
   });
 
   /* Custom fence renderer: header + copy button */

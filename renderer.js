@@ -20,10 +20,18 @@ function _katexRender(tex, display) {
   }
 }
 
-/* ── Math extractor — protects $…$ / $$…$$ / \(…\) / \[…\] from markdown-it ── */
+/* ── Math extractor — protects $…$ / $$…$$ / \(…\) / \[…\] from markdown-it ──
+   FIX: Use Unicode Private Use Area chars instead of \x00 null bytes,
+   because markdown-it strips/corrupts null bytes internally.             ── */
+const _PH_OPEN  = '\uE000';  // U+E000 — Private Use Area, safe through markdown-it
+const _PH_CLOSE = '\uE001';  // U+E001
+
 function _extractMath(text) {
   const math = [];
-  const ph = (inner, display) => { math.push({ inner: inner.trim(), display }); return `\x00M${math.length - 1}\x00`; };
+  const ph = (inner, display) => {
+    math.push({ inner: inner.trim(), display });
+    return `${_PH_OPEN}M${math.length - 1}${_PH_CLOSE}`;
+  };
   text = text.replace(/\\\[([\s\S]*?)(?:\\\]|$)/g,  (_, i) => ph(i, true));
   text = text.replace(/\$\$([\s\S]*?)(?:\$\$|$)/g,  (_, i) => ph(i, true));
   text = text.replace(/\\\(([\s\S]*?)(?:\\\)|$)/g,  (_, i) => ph(i, false));
@@ -32,7 +40,8 @@ function _extractMath(text) {
 }
 
 function _restoreMath(html, math) {
-  return html.replace(/\x00M(\d+)\x00/g, (_, i) => {
+  // FIX: regex now uses \uE000 / \uE001 instead of \x00
+  return html.replace(/\uE000M(\d+)\uE001/g, (_, i) => {
     const { inner, display } = math[+i] || {};
     if (!inner) return '';
     const rendered = _katexRender(inner, display);

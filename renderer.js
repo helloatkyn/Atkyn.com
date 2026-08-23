@@ -2,67 +2,132 @@
    renderer.js — Atkyn Search
    Markdown + Math : marked.js + marked-katex-extension + KaTeX
    Code highlight  : highlight.js
+   Zero regex — all string operations use char loops or indexOf.
    ═══════════════════════════════════════════════════════════════ */
 
-/* ── HTML escape (used in code block renderer only) ── */
+/* ══════════════════════════════════════════════════════════════
+   _he(s)
+   HTML-escape for inserting untrusted text into HTML attributes
+   and text nodes. Used only in the code-block renderer.
+   No regex — single char-loop, 5 substitutions.
+   ══════════════════════════════════════════════════════════════ */
 function _he(s) {
-  return String(s)
-    .replace(/&/g, '&amp;').replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  const src = String(s);
+  const out = [];
+  for (let i = 0; i < src.length; i++) {
+    const c = src[i];
+    if      (c === '&')  out.push('&amp;');
+    else if (c === '<')  out.push('&lt;');
+    else if (c === '>')  out.push('&gt;');
+    else if (c === '"')  out.push('&quot;');
+    else if (c === "'")  out.push('&#39;');
+    else                 out.push(c);
+  }
+  return out.join('');
 }
 
-/* ── Fast non-cryptographic hash (djb2 variant, lower collision rate) ── */
+/* ══════════════════════════════════════════════════════════════
+   _cheapHash(str)
+   djb2-variant non-cryptographic hash. Lower collision rate than
+   the previous Math.imul(31,h) approach. Unsigned 32-bit output.
+   ══════════════════════════════════════════════════════════════ */
 function _cheapHash(str) {
   let h = 5381;
   for (let i = 0; i < str.length; i++) {
     h = ((h << 5) + h) ^ str.charCodeAt(i);
-    h = h >>> 0; // keep unsigned 32-bit
+    h = h >>> 0;
   }
   return h;
 }
 
 /* ══════════════════════════════════════════════════════════════
+   _normalizeNewlines(str)
+   Three operations, zero regex:
+     1. Strip leading '\n' characters.
+     2. Strip trailing '\n' characters.
+     3. Collapse interior runs of 3+ '\n' to exactly 2 '\n'.
+
+   Why exactly 2 and not 1?
+   marked treats a single '\n' as a line-break inside a paragraph
+   and two '\n' as a paragraph boundary. Collapsing to 1 would
+   merge adjacent paragraphs. Collapsing to 2 preserves paragraph
+   structure without creating extra blank space.
+
+   Math fences (\[…\] and $$…$$) may span multiple lines. We must
+   not destroy the internal newlines — they are fine as-is because
+   the tokenizer searches the full remaining src string, not line-
+   by-line. Runs of 3+ blank lines inside a fence are still reduced
+   to 2, which is harmless: KaTeX ignores blank lines.
+   ══════════════════════════════════════════════════════════════ */
+function _normalizeNewlines(str) {
+  // 1. find first non-'\n' position
+  let start = 0;
+  while (start < str.length && str[start] === '\n') start++;
+
+  // 2. find last non-'\n' position
+  let end = str.length - 1;
+  while (end >= start && str[end] === '\n') end--;
+
+  // entirely newlines (or empty)
+  if (start > end) return '';
+
+  // 3. walk start..end, emit chars; collapse consecutive '\n' runs to max 2
+  const out = [];
+  let i = start;
+  while (i <= end) {
+    if (str[i] !== '\n') {
+      out.push(str[i]);
+      i++;
+    } else {
+      let run = 0;
+      while (i <= end && str[i] === '\n') { run++; i++; }
+      out.push('\n');
+      if (run > 1) out.push('\n');
+    }
+  }
+  return out.join('');
+}
+
+/* ══════════════════════════════════════════════════════════════
    _buildMarked()
-   Sets up marked.js once with:
-     • marked-katex-extension  →  $…$  and  $$…$$
-     • custom block extension  →  \[…\]  (display, multiline-safe)
-     • custom inline extension →  \(…\)
-     • code block renderer with copy button
+   One-time setup for marked.js:
+     • marked-katex-extension  →  $…$  $$…$$
+     • mathBracketBlock        →  \[…\]  (display, multiline-safe)
+     • mathParenInline         →  \(…\)
+     • code block renderer     →  syntax highlight + copy button
    ══════════════════════════════════════════════════════════════ */
 function _buildMarked() {
 
-  /* 1. marked-katex-extension handles $…$ and $$…$$ */
+  /* 1. marked-katex-extension — $…$ and $$…$$ */
   marked.use(markedKatex({
     throwOnError: false,
     errorColor:   '#888888',
     trust:        false,
   }));
 
-  /* 2. \[…\] block and \(…\) inline extensions.
+  /* 2. \[…\] block + \(…\) inline
         Registered AFTER markedKatex → higher priority in the chain.
 
-        KEY FIX for multiline \[…\]:
-        - `start()` scans for the opening delimiter anywhere in `src`.
-        - `tokenizer()` receives `src` already trimmed to start at `\[`
-          (marked slices from the index returned by `start()`), so
-          `src.startsWith('\\[')` is always safe here.
-        - We search the *entire* remaining src for `\]`, not just the
-          first line, so multiline display math works correctly.
-        - `_safePipeline` no longer collapses blank lines inside a math
-          fence (see the guard there).
+        Multiline \[…\] works because:
+        - start() returns the index of '\\[' anywhere in src.
+        - marked then slices src to begin exactly at that index before
+          calling tokenizer(), so src.startsWith('\\[') is guaranteed.
+        - We call indexOf('\\]', 2) which searches the ENTIRE remaining
+          src, not just the current line — so multiline content between
+          \[ and \] is captured correctly.
   */
   marked.use({
     extensions: [
+
       /* ── \[…\] display block ── */
       {
         name:  'mathBracketBlock',
         level: 'block',
         start(src) { return src.indexOf('\\['); },
         tokenizer(src) {
-          // marked slices src so it starts at the `\[` found by start()
           if (!src.startsWith('\\[')) return;
-          const close = src.indexOf('\\]', 2); // skip past the opening `\[`
-          if (close === -1) return;            // unclosed → leave to fallback
+          const close = src.indexOf('\\]', 2);
+          if (close === -1) return;
           return {
             type: 'mathBracketBlock',
             raw:  src.slice(0, close + 2),
@@ -77,7 +142,7 @@ function _buildMarked() {
               '</div>\n'
             );
           } catch (_) {
-            return `<div class="math-block math-error">${_he(token.text)}</div>\n`;
+            return '<div class="math-block math-error">' + _he(token.text) + '</div>\n';
           }
         },
       },
@@ -101,14 +166,14 @@ function _buildMarked() {
           try {
             return katex.renderToString(token.text, { throwOnError: false, displayMode: false });
           } catch (_) {
-            return `<span class="math-error">${_he(token.text)}</span>`;
+            return '<span class="math-error">' + _he(token.text) + '</span>';
           }
         },
       },
     ],
   });
 
-  /* 3. Code block renderer with syntax highlighting + copy button */
+  /* 3. Code block renderer — syntax highlighting + copy button */
   const renderer = new marked.Renderer();
   renderer.code = function (code, lang) {
     const language = (lang || '').trim().toLowerCase();
@@ -125,18 +190,18 @@ function _buildMarked() {
     }
 
     return (
-      `<div class="code-block" id="${id}">` +
-        `<div class="code-block-header">` +
-          `<span class="code-block-lang">${_he(label)}</span>` +
-          `<button class="code-copy-btn" data-target="${id}">` +
-            `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">` +
-              `<rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>` +
-              `<path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>` +
-            `</svg> Copy` +
-          `</button>` +
-        `</div>` +
-        `<pre><code class="hljs">${highlighted}</code></pre>` +
-      `</div>`
+      '<div class="code-block" id="' + id + '">' +
+        '<div class="code-block-header">' +
+          '<span class="code-block-lang">' + _he(label) + '</span>' +
+          '<button class="code-copy-btn" data-target="' + id + '">' +
+            '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">' +
+              '<rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>' +
+              '<path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>' +
+            '</svg> Copy' +
+          '</button>' +
+        '</div>' +
+        '<pre><code class="hljs">' + highlighted + '</code></pre>' +
+      '</div>'
     );
   };
 
@@ -147,33 +212,29 @@ _buildMarked();
 
 /* ══════════════════════════════════════════════════════════════
    _safePipeline(raw)
-   Normalises whitespace before handing off to marked.parse().
-
-   IMPORTANT: We must NOT collapse blank lines that fall inside a
-   \[…\] or $$…$$ fence — doing so would join lines and break the
-   tokenizer's ability to find the closing delimiter.  The approach
-   here is conservative: only reduce runs of 3+ blank lines down to
-   exactly 2 (which is the standard "paragraph break" for marked),
-   but never reduce to 1 (which would merge content into a paragraph).
+   Normalise whitespace, then parse through marked.
+   Falls back to an escaped <pre> block on any exception.
    ══════════════════════════════════════════════════════════════ */
 function _safePipeline(raw) {
-  if (!raw || !raw.trim()) return '';
+  if (!raw) return '';
+  const text = _normalizeNewlines(raw);
+  if (!text) return '';
   try {
-    const text = raw
-      .replace(/\n{3,}/g, '\n\n') // 3+ blank lines → exactly 2
-      .replace(/^\n+/, '')        // strip leading newlines
-      .replace(/\n+$/, '');       // strip trailing newlines
     return marked.parse(text);
   } catch (_) {
-    return `<pre class="render-fallback">${_he(raw)}</pre>`;
+    return '<pre class="render-fallback">' + _he(raw) + '</pre>';
   }
 }
 
 /* ══════════════════════════════════════════════════════════════
    UniversalMessageRenderer
    Wraps _safePipeline with:
-     • per-instance hash-based render cache (skip re-parse if unchanged)
-     • streaming accumulation (startStream / pushChunk / finishStream)
+     • hash-based render cache  (skip re-parse when content unchanged)
+     • streaming accumulation   (startStream / pushChunk / finishStream)
+
+   Used for BOTH bot and user messages — user input goes through
+   the same marked + KaTeX pipeline so that LaTeX typed by the user
+   ($x^2$, \[…\], \(…\)) renders as formatted math in their bubble.
    ══════════════════════════════════════════════════════════════ */
 class UniversalMessageRenderer {
   constructor() {
@@ -184,7 +245,7 @@ class UniversalMessageRenderer {
     this._streaming      = false;
   }
 
-  /** Render static (non-streaming) content. Returns cached HTML if unchanged. */
+  /** Render static content. Returns cached HTML when content is unchanged. */
   render(content) {
     this.rawContent = content;
     const h = _cheapHash(content);
@@ -194,7 +255,7 @@ class UniversalMessageRenderer {
     return this.renderedContent;
   }
 
-  /** Begin a streaming session. Resets all state. */
+  /** Begin a new streaming session. Resets all accumulated state. */
   startStream() {
     this._buf            = '';
     this._streaming      = true;
@@ -203,12 +264,12 @@ class UniversalMessageRenderer {
     this._hash           = null;
   }
 
-  /** Append a chunk and return the current rendered HTML. */
+  /** Append one chunk and return the current rendered HTML. */
   pushChunk(chunk) {
     if (!this._streaming) this.startStream();
     this._buf       += chunk;
     this.rawContent  = this._buf;
-    // No hash-cache during streaming — content changes every chunk
+    // No hash-cache during streaming: content changes on every chunk.
     this.renderedContent = _safePipeline(this._buf);
     return this.renderedContent;
   }
@@ -226,10 +287,14 @@ class UniversalMessageRenderer {
 
 /* ══════════════════════════════════════════════════════════════
    createStreamingRenderer(onUpdate, debounceMs?)
-   Factory for fire-and-forget streaming renders.
-   onUpdate(html, { final }) is called:
-     • debounced while streaming (avoids excessive DOM updates)
-     • immediately and synchronously on finish()
+   Fire-and-forget factory for streaming renders.
+
+   onUpdate(html, { final }) fires:
+     • debounced (every debounceMs ms) while chunks arrive
+     • once, synchronously, when finish() is called
+
+   finish() cancels any pending debounce timer before the final
+   render so the last frame is never delayed or skipped.
    ══════════════════════════════════════════════════════════════ */
 function createStreamingRenderer(onUpdate, debounceMs = 40) {
   const renderer = new UniversalMessageRenderer();
@@ -251,14 +316,14 @@ function createStreamingRenderer(onUpdate, debounceMs = 40) {
       if (_done) return;
       renderer.pushChunk(chunk);
       clearTimeout(_timer);
-      _timer = setTimeout(() => _flush(false), debounceMs);
+      _timer = setTimeout(function() { _flush(false); }, debounceMs);
     },
 
     finish() {
       if (_done) return;
       _done = true;
-      clearTimeout(_timer); // cancel any pending debounce
-      _flush(true);         // render final state synchronously
+      clearTimeout(_timer);
+      _flush(true);
     },
 
     getRenderer() { return renderer; },
@@ -271,7 +336,8 @@ function createStreamingRenderer(onUpdate, debounceMs = 40) {
 
 /**
  * universalRender(content)
- * Render markdown+math content to HTML. Stateless convenience wrapper.
+ * Stateless convenience wrapper. Creates a one-shot renderer,
+ * parses content through marked + KaTeX, returns HTML string.
  */
 function universalRender(content) {
   return new UniversalMessageRenderer().render(content);
@@ -279,7 +345,7 @@ function universalRender(content) {
 
 /**
  * renderMarkdown(text)
- * Alias kept for call-sites that use the old name.
+ * Legacy alias — kept so existing call-sites need no changes.
  */
 function renderMarkdown(text) {
   return universalRender(text);

@@ -2,6 +2,10 @@
    renderer.js — Atkyn Search
    Markdown + Math : marked.js + marked-katex-extension + KaTeX
    Code highlight  : highlight.js
+
+   FIX: LaTeX \[...\] and \(...\) pre-processed to $$...$$ and $...$
+        BEFORE marked.parse() runs — otherwise marked tokenizer
+        breaks multi-line math blocks into paragraphs first.
    ═══════════════════════════════════════════════════════════════ */
 
 /* ── HTML escape (code blocks only) ── */
@@ -11,17 +15,43 @@ function _he(s) {
     .replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
+/* ── LaTeX delimiter pre-processor ──────────────────────────────
+   Converts \[...\] → $$...$$ and \(...\) → $...$
+   MUST run on raw text BEFORE marked.parse() is called.
+   This is necessary because marked.js tokenizes paragraph breaks
+   first, splitting multi-line \[...\] blocks before the KaTeX
+   extension ever sees them.
+   ────────────────────────────────────────────────────────────── */
+function _normalizeMathDelimiters(text) {
+  if (!text) return text;
+
+  /* Step 1: \[...\]  →  $$...$$ (display/block math)
+     Use[\s\S] to match across newlines, non-greedy */
+  text = text.replace(/\\\[([\s\S]*?)\\\]/g, function (_, inner) {
+    return '$$' + inner + '$$';
+  });
+
+  /* Step 2: \(...\)  →  $...$ (inline math)
+     Exclude newlines to avoid accidentally swallowing paragraphs */
+  text = text.replace(/\\\(([^]*?)\\\)/g, function (_, inner) {
+    /* If inner contains a newline it was probably \[ intended as display */
+    if (/\n/.test(inner)) return '$$' + inner + '$$';
+    return '$' + inner + '$';
+  });
+
+  return text;
+}
+
 /* ── marked.js setup ─────────────────────────────────────────────
-   marked-katex-extension handles $…$ / $$…$$ / \(…\) / \[…\]
-   directly inside marked — KaTeX renderToString is called inline,
-   so markdown never touches the math tokens.                     ── */
+   marked-katex-extension handles $…$ / $$…$$ inline via marked.
+   We pre-normalize \[…\] / \(…\) above so they arrive as $$/$$.  ── */
 function _buildMarked() {
   /* KaTeX extension — must be registered before setOptions */
   marked.use(markedKatex({
     throwOnError: false,
     errorColor:   '#888888',
     trust:        false,
-    nonStandard:  true,   /* allows \[…\] and \(…\) in addition to $…$ */
+    nonStandard:  false,   /* We handle \[..\] ourselves via pre-processor */
   }));
 
   /* Custom code-block renderer with copy button */
@@ -65,7 +95,10 @@ _buildMarked();
 function _safePipeline(raw) {
   if (!raw || !raw.trim()) return '';
   try {
-    const text = raw
+    /* CRITICAL: normalize math delimiters BEFORE marked sees the text */
+    const normalized = _normalizeMathDelimiters(raw);
+
+    const text = normalized
       .replace(/\n{3,}/g, '\n\n')
       .replace(/^\n+/, '')
       .replace(/\n+$/, '');

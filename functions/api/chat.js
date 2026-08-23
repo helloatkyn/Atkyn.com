@@ -10,8 +10,9 @@ const PAGE_TIMEOUT_MS   = 4000;
 const MAX_TOKENS_ANSWER = 500;
 const HISTORY_LIMIT     = 100;
 
-const QWEN_BASE_URL = 'https://dashscope-intl.aliyuncs.com/compatible-mode/v1/chat/completions';
-const QWEN_MODEL    = 'qwen3.7-flash';
+const MISTRAL_BASE_URL = 'https://api.mistral.ai/v1/chat/completions';
+const MODEL_TOOL       = 'ministral-8b-2410';
+const MODEL_ANSWER     = 'mistral-large-2411';
 
 // ── Tool definition ─────────────────────────────────────────
 const TOOLS = [
@@ -73,8 +74,8 @@ function buildSearchContext(results) {
   );
 }
 
-async function qwenFetch(apiKey, body) {
-  return fetch(QWEN_BASE_URL, {
+async function mistralFetch(apiKey, body) {
+  return fetch(MISTRAL_BASE_URL, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -174,9 +175,6 @@ async function readStream(reader, safeWrite, forwardText) {
 
       const delta = choice.delta ?? {};
 
-      // Skip thinking/reasoning tokens
-      if (delta.reasoning_content != null) continue;
-
       // Tool call delta
       if (delta.tool_calls?.length) {
         hasToolCalls = true;
@@ -210,7 +208,7 @@ async function readStream(reader, safeWrite, forwardText) {
 export async function onRequestPost(context) {
   const { request, env } = context;
 
-  if (!env.QWEN_API_KEY) return jsonError('Server misconfiguration', 500);
+  if (!env.MISTRAL_API_KEY) return jsonError('Server misconfiguration', 500);
 
   let query, history;
   try {
@@ -238,8 +236,8 @@ export async function onRequestPost(context) {
   (async () => {
     try {
       // ── 1st call: tool detection ──────────────────────────
-      const firstResp = await qwenFetch(env.QWEN_API_KEY, {
-        model: QWEN_MODEL,
+      const firstResp = await mistralFetch(env.MISTRAL_API_KEY, {
+        model: MODEL_TOOL,
         messages: [{ role: 'system', content: SYSTEM_PROMPT }, ...messages],
         ...(env.SEARXNG_URL ? { tools: TOOLS, tool_choice: 'auto' } : {}),
         stream: true,
@@ -271,7 +269,7 @@ export async function onRequestPost(context) {
       const allSearchResults = [];
 
       const assistantMsg = {
-        role: 'assistant',
+        role: 'tool_calls',
         content: assistantContent || null,
         tool_calls: toolCalls.map(tc => ({
           id: tc.id,
@@ -296,7 +294,6 @@ export async function onRequestPost(context) {
         updatedMessages.push({
           role: 'tool',
           tool_call_id: tc.id,
-          name: 'web_search',
           content: context || 'No results found.',
         });
       }
@@ -308,8 +305,8 @@ export async function onRequestPost(context) {
       }
 
       // ── 2nd call: final answer ────────────────────────────
-      const finalResp = await qwenFetch(env.QWEN_API_KEY, {
-        model: QWEN_MODEL,
+      const finalResp = await mistralFetch(env.MISTRAL_API_KEY, {
+        model: MODEL_ANSWER,
         messages: [{ role: 'system', content: SYSTEM_PROMPT }, ...updatedMessages],
         stream: true,
         max_tokens: MAX_TOKENS_ANSWER,
@@ -349,4 +346,4 @@ export async function onRequestOptions() {
       'Access-Control-Allow-Headers': 'Content-Type',
     },
   });
-  }
+      }

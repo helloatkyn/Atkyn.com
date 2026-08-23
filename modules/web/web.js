@@ -12,47 +12,48 @@ const _esc = s => String(s)
   .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
 const _safeUrl = u => {
-  try { const p = new URL(u); return (p.protocol === 'https:' || p.protocol === 'http:') ? u : '#'; }
-  catch (_) { return '#'; }
+  try {
+    const p = new URL(u);
+    return (p.protocol === 'https:' || p.protocol === 'http:') ? u : '#';
+  } catch (_) { return '#'; }
 };
 
-/* ── Layout types ── */
-// 0 = full width below title
-// 1 = right side inline (contain, no crop)
+/* ── Image layout types
+   0 = full width below title
+   1 = right-side inline (contain, no crop)          ── */
 const _LAYOUTS = [0, 0, 1, 1, 0]; // weighted: full more common
 
-function _pickLayout(index) {
-  return _LAYOUTS[index % _LAYOUTS.length];
-}
+const _pickLayout = i => _LAYOUTS[i % _LAYOUTS.length];
 
-/* ── OG image fetch ── */
+/* ── Fetch OG image from worker ── */
 function _fetchOg(url) {
   return fetch(`/api/og?url=${encodeURIComponent(url)}`, {
     signal: AbortSignal.timeout(6000),
   })
     .then(r => r.ok ? r.json() : null)
-    .then(data => data?.image || null)
+    .then(d => d?.image || null)
     .catch(() => null);
 }
 
-/* ── Inject image into card after OG fetch ── */
+/* ── Inject image into result card ── */
 function _injectOgImage(cardEl, layout, image) {
   if (!image) return;
 
   if (layout === 1) {
-    // Right side inline — wrap snippet + image in a row
+    // Right-side thumbnail — wrap snippet + image in a flex row
     const snippet = cardEl.querySelector('.wc-snippet');
     const row = document.createElement('div');
     row.className = 'wc-inline-row';
 
     const thumbWrap = document.createElement('div');
     thumbWrap.className = 'wc-thumb-inline-wrap';
+
     const img = document.createElement('img');
-    img.className = 'wc-thumb-inline';
-    img.src = image;
-    img.loading = 'lazy';
-    img.decoding = 'async';
-    img.alt = '';
+    img.className  = 'wc-thumb-inline';
+    img.src        = image;
+    img.loading    = 'lazy';
+    img.decoding   = 'async';
+    img.alt        = '';
     img.addEventListener('error', () => thumbWrap.remove(), { once: true });
     thumbWrap.appendChild(img);
 
@@ -63,20 +64,21 @@ function _injectOgImage(cardEl, layout, image) {
     row.appendChild(thumbWrap);
 
   } else {
-    // Full width (layout 0)
+    // Full-width banner below title (layout 0)
     const title = cardEl.querySelector('.wc-title');
-    const wrap = document.createElement('div');
+    const wrap  = document.createElement('div');
     wrap.className = 'wc-thumb-full-wrap';
+
     const img = document.createElement('img');
-    img.className = 'wc-thumb-full';
-    img.src = image;
-    img.loading = 'lazy';
-    img.decoding = 'async';
-    img.alt = '';
+    img.className  = 'wc-thumb-full';
+    img.src        = image;
+    img.loading    = 'lazy';
+    img.decoding   = 'async';
+    img.alt        = '';
     img.addEventListener('error', () => wrap.remove(), { once: true });
     wrap.appendChild(img);
 
-    if (title && title.nextSibling) {
+    if (title?.nextSibling) {
       title.parentNode.insertBefore(wrap, title.nextSibling);
     } else if (title) {
       title.parentNode.appendChild(wrap);
@@ -84,21 +86,24 @@ function _injectOgImage(cardEl, layout, image) {
   }
 }
 
-/* ── Card builder ── */
+/* ── Result card ── */
 function _buildCard(r, index) {
   let host = '', path = '';
   try {
     const u = new URL(r.url);
     host = u.hostname.replace(/^www\./, '');
     path = (host + u.pathname).replace(/\/$/, '').substring(0, 60);
-  } catch (_) { host = r.url; path = r.url; }
+  } catch (_) {
+    host = r.url;
+    path = r.url;
+  }
 
-  const fav  = `https://www.google.com/s2/favicons?sz=64&domain=${encodeURIComponent(host)}`;
-  const fav2 = `https://icons.duckduckgo.com/ip3/${host}.ico`;
+  const fav1    = `https://www.google.com/s2/favicons?sz=64&domain=${encodeURIComponent(host)}`;
+  const fav2    = `https://icons.duckduckgo.com/ip3/${host}.ico`;
   const snippet = r.content || r.snippet || r.description || r.summary || '';
-  const layout = _pickLayout(index);
+  const layout  = _pickLayout(index);
 
-  const a = document.createElement('a');
+  const a  = document.createElement('a');
   a.className = 'wc-card';
   a.href      = _safeUrl(r.url);
   a.target    = '_blank';
@@ -106,7 +111,7 @@ function _buildCard(r, index) {
   a.innerHTML = `
     <div class="wc-meta">
       <div class="wc-fav-wrap">
-        <img class="wc-fav" src="${_esc(fav)}" width="16" height="16" loading="lazy" decoding="async" alt="">
+        <img class="wc-fav" src="${_esc(fav1)}" width="16" height="16" loading="lazy" decoding="async" alt="">
       </div>
       <div class="wc-meta-text">
         <span class="wc-domain">${_esc(host)}</span>
@@ -114,7 +119,9 @@ function _buildCard(r, index) {
       </div>
       <span class="wc-dots" aria-hidden="true">
         <svg viewBox="0 0 4 16" xmlns="http://www.w3.org/2000/svg">
-          <circle cx="2" cy="2" r="1.5"/><circle cx="2" cy="8" r="1.5"/><circle cx="2" cy="14" r="1.5"/>
+          <circle cx="2" cy="2" r="1.5"/>
+          <circle cx="2" cy="8" r="1.5"/>
+          <circle cx="2" cy="14" r="1.5"/>
         </svg>
       </span>
     </div>
@@ -122,9 +129,11 @@ function _buildCard(r, index) {
     ${snippet ? `<div class="wc-snippet">${_esc(snippet)}</div>` : ''}`;
 
   a.querySelector('.wc-fav').addEventListener('error', function () {
-    this.src !== fav2 ? (this.src = fav2) : (this.closest('.wc-fav-wrap').style.display = 'none');
+    if (this.src !== fav2) { this.src = fav2; }
+    else { this.closest('.wc-fav-wrap').style.display = 'none'; }
   }, { once: true, passive: true });
 
+  // Use pre-fetched image if search API returned one, otherwise fetch OG
   if (r.image) {
     _injectOgImage(a, layout, r.image);
   } else {
@@ -134,13 +143,14 @@ function _buildCard(r, index) {
   return a;
 }
 
-/* ── Infobox — Knowledge Panel ── */
+/* ── Knowledge Panel (infobox) ── */
 function _buildInfobox(box) {
   if (!box?.title) return null;
 
   const sourceUrl = box.urls?.[0]?.url || '';
-  let sourceHost = '';
+  let sourceHost  = '';
   try { sourceHost = new URL(sourceUrl).hostname.replace(/^www\./, ''); } catch (_) {}
+
   const sourceFav = sourceHost
     ? `https://www.google.com/s2/favicons?sz=64&domain=${encodeURIComponent(sourceHost)}`
     : '';
@@ -154,14 +164,20 @@ function _buildInfobox(box) {
       </div>
       ${box.image ? `
         <div class="wc-kg-image-box">
-          <img class="wc-kg-image" src="${_esc(box.image)}" loading="lazy" decoding="async" alt="${_esc(box.title)}"
+          <img class="wc-kg-image"
+               src="${_esc(box.image)}"
+               loading="lazy"
+               decoding="async"
+               alt="${_esc(box.title)}"
                onerror="this.closest('.wc-kg-image-box').remove()">
         </div>` : ''}
     </div>
     ${box.content ? `<div class="wc-kg-desc">${_esc(box.content)}</div>` : ''}
     ${sourceUrl ? `
       <a class="wc-kg-source" href="${_safeUrl(sourceUrl)}" target="_blank" rel="noopener noreferrer">
-        ${sourceFav ? `<span class="wc-kg-source-fav" style="background-image:url('${_esc(sourceFav)}')"></span>` : ''}
+        ${sourceFav
+          ? `<span class="wc-kg-source-fav" style="background-image:url('${_esc(sourceFav)}')"></span>`
+          : ''}
         <span class="wc-kg-source-text">${_esc(sourceHost)}</span>
       </a>` : ''}
     ${box.urls?.length > 1 ? `
@@ -169,7 +185,9 @@ function _buildInfobox(box) {
         ${box.urls.slice(1).map(u => `
           <a class="wc-sitelink" href="${_safeUrl(u.url)}" target="_blank" rel="noopener noreferrer">
             <span class="wc-sitelink-title">${_esc(u.title)}</span>
-            <svg class="wc-sitelink-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <svg class="wc-sitelink-arrow" viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" stroke-width="2.5"
+                 stroke-linecap="round" stroke-linejoin="round">
               <polyline points="9 18 15 12 9 6"/>
             </svg>
           </a>`).join('')}
@@ -178,11 +196,11 @@ function _buildInfobox(box) {
   return el;
 }
 
-/* ── Related searches ── */
-function _buildRelated(q, suggestions) {
+/* ── "People also search for" section ── */
+function _buildRelated(suggestions) {
   if (!suggestions?.length) return null;
 
-  const el = document.createElement('div');
+  const el   = document.createElement('div');
   el.className = 'wc-related';
   el.innerHTML = '<div class="wc-related-title">People also search for</div>';
 
@@ -193,12 +211,16 @@ function _buildRelated(q, suggestions) {
     const btn = document.createElement('button');
     btn.className = 'wc-related-item';
     btn.innerHTML = `
-      <svg class="wc-related-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
-        <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+      <svg class="wc-related-icon" viewBox="0 0 24 24" fill="none"
+           stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="11" cy="11" r="8"/>
+        <line x1="21" y1="21" x2="16.65" y2="16.65"/>
       </svg>
       <span>${_esc(query)}</span>
-      <svg class="wc-related-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
-        <line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/>
+      <svg class="wc-related-arrow" viewBox="0 0 24 24" fill="none"
+           stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="7" y1="17" x2="17" y2="7"/>
+        <polyline points="7 7 17 7 17 17"/>
       </svg>`;
     btn.addEventListener('click', () => _triggerSearch(query), { passive: true });
     list.appendChild(btn);
@@ -208,18 +230,17 @@ function _buildRelated(q, suggestions) {
   return el;
 }
 
-/* ── Fetch DDG suggestions ── */
+/* ── DDG autocomplete suggestions ── */
 async function _fetchSuggestions(q) {
   try {
     const resp = await fetch(`/api/suggest?q=${encodeURIComponent(q)}`, {
       signal: AbortSignal.timeout(4000),
     });
-    if (!resp.ok) return [];
-    return await resp.json();
+    return resp.ok ? resp.json() : [];
   } catch (_) { return []; }
 }
 
-/* ── Trigger new search ── */
+/* ── Trigger a new search (used by related chips) ── */
 function _triggerSearch(query) {
   const cb   = document.getElementById('cbInput');
   const pill = document.getElementById('pill');
@@ -230,7 +251,7 @@ function _triggerSearch(query) {
   _fetch(query);
 }
 
-/* ── Render ── */
+/* ── Render results into page ── */
 function _render(q, data) {
   const pc   = window._atkynPageContent;
   const frag = document.createDocumentFragment();
@@ -238,6 +259,7 @@ function _render(q, data) {
   const infobox = _buildInfobox(data.infobox);
   if (infobox) frag.appendChild(infobox);
 
+  // Hide Wikipedia results when an infobox is already shown
   const results = data.infobox
     ? data.results.filter(r => !r.url.includes('wikipedia.org'))
     : data.results;
@@ -252,17 +274,19 @@ function _render(q, data) {
   window._atkynAnimateIn();
 
   _fetchSuggestions(q).then(suggestions => {
-    const related = _buildRelated(q, suggestions);
+    const related = _buildRelated(suggestions);
     if (related) pc.appendChild(related);
   });
 }
 
-/* ── Fetch ── */
+/* ── Fetch search results ── */
 async function _fetch(q) {
   const pc = window._atkynPageContent;
   pc.innerHTML =
-    '<div class="tab-skeleton"><div class="sk-line"></div><div class="sk-line sk-short"></div>' +
-    '<div class="sk-line"></div><div class="sk-line sk-short"></div></div>';
+    '<div class="tab-skeleton">' +
+    '<div class="sk-line"></div><div class="sk-line sk-short"></div>' +
+    '<div class="sk-line"></div><div class="sk-line sk-short"></div>' +
+    '</div>';
 
   try {
     const resp = await fetch(`/api/search?q=${encodeURIComponent(q)}`, {
@@ -291,7 +315,7 @@ async function _fetch(q) {
   }
 }
 
-/* ── Sync chatbar ── */
+/* ── Sync chatbar input with current query ── */
 function _syncChatbar(q) {
   const cb   = document.getElementById('cbInput');
   const pill = document.getElementById('pill');
@@ -322,4 +346,4 @@ window._atkynInit_web = _init;
 _init();
 
 }());
-   
+     

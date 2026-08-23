@@ -20,7 +20,7 @@ body {
   overscroll-behavior: none;
   background: var(--color-bg);
   color: var(--color-text);
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family: Georgia, 'Times New Roman', serif;
   display: flex;
   flex-direction: column;
 }

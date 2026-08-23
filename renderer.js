@@ -26,7 +26,7 @@ function _buildMd() {
     },
   }).use(texmath, {
     engine:       katex,
-    delimiters:   'dollars',
+    delimiters:   ['dollars', 'brackets'],   // $..$ + $$.$$ + \(..\) + \[..\]
     katexOptions: { throwOnError: false, errorColor: '#888888', trust: false },
   });
 

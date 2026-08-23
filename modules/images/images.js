@@ -42,13 +42,25 @@
 
     const wrap = document.createElement('div');
     wrap.className = 'img-tile__wrap';
+    // CSS override inline — grey box aur bounce dono gone
+    wrap.style.background = 'transparent';
 
-    const imgEl       = document.createElement('img');
-    imgEl.alt         = img.title || '';
-    imgEl.decoding    = 'async';
-    imgEl.dataset.src = src;
+    const imgEl         = document.createElement('img');
+    imgEl.alt           = img.title || '';
+    imgEl.decoding      = 'async';
+    imgEl.dataset.src   = src;
     imgEl.dataset.thumb = thumb;
     imgEl.classList.add('img-lazy');
+    // Inline styles — CSS se override
+    imgEl.style.opacity    = '0';
+    imgEl.style.transition = 'opacity 0.18s ease';
+    imgEl.style.display    = 'block';
+    imgEl.style.width      = '100%';
+    imgEl.style.height     = 'auto';
+
+    imgEl.onload = function () {
+      this.style.opacity = '1';
+    };
 
     imgEl.onerror = function () {
       if (this.dataset.triedThumb !== '1' && thumb && thumb !== this.src) {
@@ -147,14 +159,20 @@
     _lazyIo = new IntersectionObserver((entries, obs) => {
       entries.forEach(entry => {
         if (!entry.isIntersecting) return;
-        const img = entry.target;
-        img.src = img.dataset.thumb || img.dataset.src;
-        if (img.dataset.src && img.dataset.src !== img.src) {
+        const el = entry.target;
+        // Thumbnail pehle — fast feel
+        el.src = el.dataset.thumb || el.dataset.src;
+        // Full image background swap
+        if (el.dataset.src && el.dataset.src !== el.src) {
           const full = new Image();
-          full.onload = () => { if (img.isConnected) img.src = img.dataset.src; };
-          full.src = img.dataset.src;
+          full.onload = () => {
+            if (el.isConnected) {
+              el.src = el.dataset.src;
+            }
+          };
+          full.src = el.dataset.src;
         }
-        obs.unobserve(img);
+        obs.unobserve(el);
       });
     }, { rootMargin: '800px' });
 

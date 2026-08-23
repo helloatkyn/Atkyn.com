@@ -1,77 +1,33 @@
 /* ═══════════════════════════════════════════════════════════════
    renderer.js — Atkyn Search
-   Markdown : markdown-it  |  Math : KaTeX  |  Code : highlight.js
+   Markdown : marked.js  |  Math : KaTeX auto-render  |  Code : highlight.js
    ═══════════════════════════════════════════════════════════════ */
 
-/* ── HTML escape ── */
+/* ── HTML escape (used only for code blocks) ── */
 function _he(s) {
   return String(s)
     .replace(/&/g, '&amp;').replace(/</g, '&lt;')
     .replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
-/* ── KaTeX ── */
-function _katexRender(tex, display) {
-  if (typeof katex === 'undefined') return `<span class="math-fallback">${_he(tex)}</span>`;
-  try {
-    return katex.renderToString(tex, { displayMode: display, throwOnError: false, errorColor: '#888888', trust: false });
-  } catch (_) {
-    return `<span class="math-fallback">${_he(tex)}</span>`;
-  }
-}
+/* ── marked.js — custom renderer for code blocks with copy button ── */
+function _buildMarked() {
+  const renderer = new marked.Renderer();
 
-/* ── Math extractor — protects $…$ / $$…$$ / \(…\) / \[…\] from markdown-it ──
-   FIX: Use Unicode Private Use Area chars instead of \x00 null bytes,
-   because markdown-it strips/corrupts null bytes internally.             ── */
-const _PH_OPEN  = '\uE000';  // U+E000 — Private Use Area, safe through markdown-it
-const _PH_CLOSE = '\uE001';  // U+E001
+  renderer.code = function (code, lang) {
+    const language = (lang || '').trim().toLowerCase();
+    const label    = language || 'code';
+    const id       = 'cb' + Math.random().toString(36).slice(2, 8);
 
-function _extractMath(text) {
-  const math = [];
-  const ph = (inner, display) => {
-    math.push({ inner: inner.trim(), display });
-    return `${_PH_OPEN}M${math.length - 1}${_PH_CLOSE}`;
-  };
-  text = text.replace(/\\\[([\s\S]*?)(?:\\\]|$)/g,  (_, i) => ph(i, true));
-  text = text.replace(/\$\$([\s\S]*?)(?:\$\$|$)/g,  (_, i) => ph(i, true));
-  text = text.replace(/\\\(([\s\S]*?)(?:\\\)|$)/g,  (_, i) => ph(i, false));
-  text = text.replace(/\$([^\$\n]{1,500}?)\$/g,      (_, i) => ph(i, false));
-  return { text, math };
-}
-
-function _restoreMath(html, math) {
-  // FIX: regex now uses \uE000 / \uE001 instead of \x00
-  return html.replace(/\uE000M(\d+)\uE001/g, (_, i) => {
-    const { inner, display } = math[+i] || {};
-    if (!inner) return '';
-    const rendered = _katexRender(inner, display);
-    return display ? `<div class="math-display-block">${rendered}</div>` : rendered;
-  });
-}
-
-/* ── markdown-it instance (built once) ── */
-function _buildMd() {
-  const md = window.markdownit({
-    html:    false,
-    breaks:  true,
-    linkify: true,
-    highlight(code, lang) {
-      if (typeof hljs === 'undefined') return _he(code);
-      const valid = lang && hljs.getLanguage(lang);
+    let hi = _he(code);
+    if (typeof hljs !== 'undefined') {
+      const valid  = language && hljs.getLanguage(language);
       const result = valid
-        ? hljs.highlight(code, { language: lang, ignoreIllegals: true })
+        ? hljs.highlight(code, { language, ignoreIllegals: true })
         : hljs.highlightAuto(code);
-      return result.value;
-    },
-  });
+      hi = result.value;
+    }
 
-  /* Custom fence renderer: add header + copy button */
-  md.renderer.rules.fence = (tokens, idx) => {
-    const token  = tokens[idx];
-    const lang   = (token.info || '').trim().toLowerCase();
-    const label  = lang || 'code';
-    const id     = 'cb' + Math.random().toString(36).slice(2, 8);
-    const hi     = md.options.highlight(token.content, lang);
     return (
       `<div class="code-block" id="${id}">` +
         `<div class="code-block-header">` +
@@ -87,21 +43,70 @@ function _buildMd() {
       `</div>`
     );
   };
-  return md;
+
+  marked.setOptions({
+    renderer,
+    breaks: true,
+    gfm:    true,
+  });
 }
 
-let _md = null;
-function _getMd() { return (_md = _md || _buildMd()); }
+_buildMarked();
+
+/* ── KaTeX auto-render config ── */
+const _KATEX_DELIMITERS = [
+  { left: '$$',  right: '$$',  display: true  },
+  { left: '\\[', right: '\\]', display: true  },
+  { left: '\\(', right: '\\)', display: false },
+  { left: '$',   right: '$',   display: false },
+];
+
+function _renderMathInEl(el) {
+  if (typeof renderMathInElement === 'undefined') return;
+  renderMathInElement(el, {
+    delimiters:   _KATEX_DELIMITERS,
+    throwOnError: false,
+    errorColor:   '#888888',
+    trust:        false,
+  });
+}
+
+/* ── MutationObserver — auto-renders math in every new bot bubble ──
+   Watches #msgWrap for added nodes; whenever a .bubble inside a .bot
+   message lands in the DOM, KaTeX auto-render runs on it automatically.
+   search.js needs zero changes.                                       ── */
+function _initMathObserver() {
+  const host = document.getElementById('msgWrap');
+  if (!host) return;
+
+  new MutationObserver((mutations) => {
+    for (const mut of mutations) {
+      for (const node of mut.addedNodes) {
+        if (!(node instanceof Element)) continue;
+        if (node.classList.contains('msg') && node.classList.contains('bot')) {
+          const bubble = node.querySelector('.bubble');
+          if (bubble) _renderMathInEl(bubble);
+        }
+      }
+    }
+  }).observe(host, { childList: true });
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', _initMathObserver);
+} else {
+  _initMathObserver();
+}
 
 /* ── Main pipeline ── */
 function _safePipeline(raw) {
   if (!raw || !raw.trim()) return '';
   try {
-    let text = raw.replace(/\n{3,}/g, '\n\n').replace(/^\n+/, '').replace(/\n+$/, '');
-    const { text: mathText, math } = _extractMath(text);
-    let html = _getMd().render(mathText);
-    html = _restoreMath(html, math);
-    return html;
+    const text = raw
+      .replace(/\n{3,}/g, '\n\n')
+      .replace(/^\n+/, '')
+      .replace(/\n+$/, '');
+    return marked.parse(text);
   } catch (_) {
     return `<pre class="render-fallback">${_he(raw)}</pre>`;
   }
@@ -116,7 +121,14 @@ function _cheapHash(str) {
 
 /* ── UniversalMessageRenderer ── */
 class UniversalMessageRenderer {
-  constructor() { this.rawContent = ''; this.renderedContent = ''; this._hash = null; this._buf = ''; this._streaming = false; }
+  constructor() {
+    this.rawContent      = '';
+    this.renderedContent = '';
+    this._hash           = null;
+    this._buf            = '';
+    this._streaming      = false;
+  }
+
   render(content) {
     this.rawContent = content;
     const h = _cheapHash(content);
@@ -124,6 +136,7 @@ class UniversalMessageRenderer {
     this._hash = h;
     return (this.renderedContent = _safePipeline(content));
   }
+
   startStream()    { this._buf = ''; this._streaming = true; this.rawContent = ''; this.renderedContent = ''; }
   pushChunk(chunk) { if (!this._streaming) this.startStream(); this.rawContent = (this._buf += chunk); return (this.renderedContent = _safePipeline(this._buf)); }
   finishStream()   { this._streaming = false; return (this.renderedContent = _safePipeline(this._buf)); }
@@ -136,7 +149,11 @@ function createStreamingRenderer(onUpdate, debounceMs = 40) {
   const r = new UniversalMessageRenderer();
   r.startStream();
   let _t = null, _done = false;
-  const flush = (final = false) => { clearTimeout(_t); _t = null; if (typeof onUpdate === 'function') onUpdate(final ? r.finishStream() : r.getHTML(), { final }); };
+  const flush = (final = false) => {
+    clearTimeout(_t);
+    _t = null;
+    if (typeof onUpdate === 'function') onUpdate(final ? r.finishStream() : r.getHTML(), { final });
+  };
   return {
     push:        chunk => { if (_done) return; r.pushChunk(chunk); clearTimeout(_t); _t = setTimeout(() => flush(false), debounceMs); },
     finish:      ()    => { if (_done) return; _done = true; flush(true); },
@@ -151,4 +168,4 @@ function universalRender(content, role = 'user', streaming = false) {
   return r.render(content);
 }
 function renderMathBubble(_el) {}
-function renderMarkdown(text) { return universalRender(text); }
+function renderMarkdown(text)  { return universalRender(text); }

@@ -9,12 +9,12 @@ export async function onRequestGet(context) {
   if (!q) {
     return new Response(JSON.stringify({ error: 'Empty query' }), {
       status: 400,
-      headers: { 'Content-Type': 'application/json' },
+      headers: corsHeaders({ 'Content-Type': 'application/json' }),
     });
   }
 
   try {
-    // Single Serper call — num:100 is max per call
+    /* ── Serper images — max 100 per call ─────────────────────── */
     const r = await fetch('https://google.serper.dev/images', {
       method: 'POST',
       headers: {
@@ -33,31 +33,41 @@ export async function onRequestGet(context) {
       thumbnail_src: img.thumbnailUrl || img.imageUrl || '',
       width:         img.imageWidth   || 0,
       height:        img.imageHeight  || 0,
+      source:        'serper',
     }));
 
-    // Related searches — Serper returns these as `relatedSearches`
+    /* ── Related searches ─────────────────────────────────────── */
     const suggestions = (data.relatedSearches || []).map(s => ({
       query: s.query || s,
     }));
 
-    return new Response(JSON.stringify({ results, suggestions }), {
-      headers: { 'Content-Type': 'application/json' },
+    /* ── Top web results for source cards ────────────────────── */
+    const sourceResults = (data.organic || []).slice(0, 6).map(r => ({
+      title: r.title || '',
+      url:   r.link  || '',
+    }));
+
+    return new Response(JSON.stringify({ results, suggestions, sourceResults }), {
+      headers: corsHeaders({ 'Content-Type': 'application/json' }),
     });
 
   } catch (err) {
     return new Response(JSON.stringify({ error: String(err) }), {
       status: 500,
-      headers: { 'Content-Type': 'application/json' },
+      headers: corsHeaders({ 'Content-Type': 'application/json' }),
     });
   }
 }
 
 export async function onRequestOptions() {
-  return new Response(null, {
-    headers: {
-      'Access-Control-Allow-Origin':  '*',
-      'Access-Control-Allow-Methods': 'GET, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type',
-    },
-  });
+  return new Response(null, { headers: corsHeaders() });
+}
+
+function corsHeaders(extra = {}) {
+  return {
+    'Access-Control-Allow-Origin':  '*',
+    'Access-Control-Allow-Methods': 'GET, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type',
+    ...extra,
+  };
 }

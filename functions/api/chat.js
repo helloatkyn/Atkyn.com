@@ -3,13 +3,12 @@ import { SYSTEM_PROMPT } from './systemPrompt.js';
 const CEREBRAS_URL =
   'https://api.cerebras.ai/v1/chat/completions';
 
-const MODEL = 'gemma-4-31b';
+const MODEL = 'gpt-oss-120b';
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Allow-Headers':
-    'Content-Type, Authorization',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
 };
 
 const WEB_SEARCH_TOOL = [
@@ -17,17 +16,15 @@ const WEB_SEARCH_TOOL = [
     type: 'function',
     function: {
       name: 'web_search',
-
       description:
         'Search the web when the user needs current, recent, ' +
         'real-time, external, or specialized information. ' +
-        'Do not use it for ordinary reasoning, mathematics, ' +
-        'creative writing, or coding questions that can be answered ' +
-        'without external information.',
+        'Do not use this tool for ordinary reasoning, mathematics, ' +
+        'creative writing, or coding questions that do not require ' +
+        'external information.',
 
       parameters: {
         type: 'object',
-
         properties: {
           query: {
             type: 'string',
@@ -35,27 +32,43 @@ const WEB_SEARCH_TOOL = [
               'The concise search query to use on the web.',
           },
         },
-
         required: ['query'],
-
         additionalProperties: false,
       },
     },
   },
 ];
 
+function jsonResponse(data, status = 200) {
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: {
+      'Content-Type': 'application/json',
+      ...CORS_HEADERS,
+    },
+  });
+}
+
 function sse(data) {
   return `data: ${JSON.stringify(data)}\n\n`;
 }
 
-function errorSSE(message) {
-  return sse({
-    error: String(message || 'Unknown error'),
-  });
-}
-
 function normalizeUrl(url) {
   return String(url || '').replace(/\/+$/, '');
+}
+
+function parseArgs(raw) {
+  try {
+    return JSON.parse(raw || '{}');
+  } catch {
+    return {};
+  }
+}
+
+function stripThinking(text) {
+  return String(text || '')
+    .replace(/<think>[\s\S]*?<\/think>/gi, '')
+    .trimStart();
 }
 
 async function fetchPageText(url) {
@@ -69,7 +82,6 @@ async function fetchPageText(url) {
         Accept:
           'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
       },
-
       signal: AbortSignal.timeout(4000),
     });
 
@@ -113,13 +125,12 @@ async function executeSearXNG(searchQuery, searxngUrl) {
     headers: {
       Accept: 'application/json',
     },
-
     signal: AbortSignal.timeout(8000),
   });
 
   if (!resp.ok) {
     throw new Error(
-      `SearXNG returned HTTP ${resp.status}`
+      `SearXNG HTTP ${resp.status}`
     );
   }
 
@@ -129,7 +140,7 @@ async function executeSearXNG(searchQuery, searxngUrl) {
     ? data.results.slice(0, 6)
     : [];
 
-  return Promise.all(
+  return await Promise.all(
     results.map(async (r, i) => {
       let snippet = r.content || '';
 
@@ -151,129 +162,18 @@ async function executeSearXNG(searchQuery, searxngUrl) {
   );
 }
 
-function parseArguments(raw) {
-  try {
-    return JSON.parse(raw || '{}');
-  } catch {
-    return {};
-  }
-}
-
-function stripThinking(text) {
-  return String(text || '')
-    .replace(
-      /<think>[\s\S]*?<\/think>/gi,
-      ''
+async function writeError(writer, encoder, message) {
+  await writer.write(
+    encoder.encode(
+      sse({
+        error: String(message),
+      })
     )
-    .trimStart();
-}
+  );
 
-/*
- * SSE parser.
- *
- * Network chunks are NOT guaranteed to equal SSE messages,
- * so we keep an internal buffer.
- */
-async function consumeSSE(
-  response,
-  onData
-) {
-  const reader =
-    response.body.getReader();
-
-  const decoder =
-    new TextDecoder('utf-8');
-
-  let buffer = '';
-
-  while (true) {
-    const { done, value } =
-      await reader.read();
-
-    if (done) break;
-
-    buffer += decoder.decode(
-      value,
-      { stream: true }
-    );
-
-    const events =
-      buffer.split(/\r?\n\r?\n/);
-
-    buffer =
-      events.pop() || '';
-
-    for (const event of events) {
-      const lines =
-        event.split(/\r?\n/);
-
-      for (const line of lines) {
-        if (!line.startsWith('data:')) {
-          continue;
-        }
-
-        const payload =
-          line.slice(5).trim();
-
-        if (!payload) continue;
-
-        if (payload === '[DONE]') {
-          await onData({
-            done: true,
-          });
-
-          continue;
-        }
-
-        try {
-          const parsed =
-            JSON.parse(payload);
-
-          await onData({
-            data: parsed,
-            done: false,
-          });
-        } catch {
-          // Ignore malformed SSE payloads.
-        }
-      }
-    }
-  }
-
-  /*
-   * Flush decoder.
-   */
-  buffer += decoder.decode();
-
-  if (buffer.trim()) {
-    const events =
-      buffer.split(/\r?\n\r?\n/);
-
-    for (const event of events) {
-      const lines =
-        event.split(/\r?\n/);
-
-      for (const line of lines) {
-        if (!line.startsWith('data:')) {
-          continue;
-        }
-
-        const payload =
-          line.slice(5).trim();
-
-        if (!payload || payload === '[DONE]') {
-          continue;
-        }
-
-        try {
-          await onData({
-            data: JSON.parse(payload),
-            done: false,
-          });
-        } catch {}
-      }
-    }
-  }
+  await writer.write(
+    encoder.encode('data: [DONE]\n\n')
+  );
 }
 
 export async function onRequestPost(context) {
@@ -284,20 +184,9 @@ export async function onRequestPost(context) {
   try {
     body = await request.json();
   } catch {
-    return new Response(
-      JSON.stringify({
-        error: 'Invalid request body',
-      }),
-      {
-        status: 400,
-
-        headers: {
-          'Content-Type':
-            'application/json',
-
-          ...CORS_HEADERS,
-        },
-      }
+    return jsonResponse(
+      { error: 'Invalid request body' },
+      400
     );
   }
 
@@ -312,58 +201,29 @@ export async function onRequestPost(context) {
       : [];
 
   if (!query) {
-    return new Response(
-      JSON.stringify({
-        error: 'Empty query',
-      }),
-      {
-        status: 400,
-
-        headers: {
-          'Content-Type':
-            'application/json',
-
-          ...CORS_HEADERS,
-        },
-      }
+    return jsonResponse(
+      { error: 'Empty query' },
+      400
     );
   }
 
   if (!env?.CEREBRAS_API_KEY) {
-    return new Response(
-      JSON.stringify({
-        error:
-          'CEREBRAS_API_KEY is missing.',
-      }),
+    return jsonResponse(
       {
-        status: 500,
-
-        headers: {
-          'Content-Type':
-            'application/json',
-
-          ...CORS_HEADERS,
-        },
-      }
+        error:
+          'CEREBRAS_API_KEY is not configured.',
+      },
+      500
     );
   }
 
   if (!env?.SEARXNG_URL) {
-    return new Response(
-      JSON.stringify({
-        error:
-          'SEARXNG_URL is missing.',
-      }),
+    return jsonResponse(
       {
-        status: 500,
-
-        headers: {
-          'Content-Type':
-            'application/json',
-
-          ...CORS_HEADERS,
-        },
-      }
+        error:
+          'SEARXNG_URL is not configured.',
+      },
+      500
     );
   }
 
@@ -392,76 +252,62 @@ export async function onRequestPost(context) {
   const encoder =
     new TextEncoder();
 
-  /*
-   * Run asynchronously so the Response can
-   * immediately become an SSE stream.
-   */
   (async () => {
     try {
       /*
-       * =====================================================
+       * ======================================================
        * CALL #1
-       *
-       * Gemma decides whether to use web_search.
-       * =====================================================
+       * ======================================================
        */
 
       const call1 =
-        await fetch(
-          CEREBRAS_URL,
-          {
-            method: 'POST',
+        await fetch(CEREBRAS_URL, {
+          method: 'POST',
 
-            headers: {
-              'Content-Type':
-                'application/json',
+          headers: {
+            'Content-Type':
+              'application/json',
 
-              Authorization:
-                `Bearer ${env.CEREBRAS_API_KEY}`,
-            },
+            Authorization:
+              `Bearer ${env.CEREBRAS_API_KEY}`,
+          },
 
-            body: JSON.stringify({
-              model: MODEL,
+          body: JSON.stringify({
+            model: MODEL,
 
-              messages,
+            messages,
 
-              tools:
-                WEB_SEARCH_TOOL,
+            tools: WEB_SEARCH_TOOL,
 
-              tool_choice: 'auto',
+            tool_choice: 'auto',
 
-              parallel_tool_calls: true,
+            parallel_tool_calls: true,
 
-              stream: false,
+            stream: false,
 
-              max_completion_tokens: 2048,
+            max_completion_tokens: 2048,
 
-              temperature: 0.6,
-            }),
-          }
-        );
+            temperature: 0.6,
+          }),
+        });
 
       if (!call1.ok) {
-        const text =
+        const errorText =
           await call1.text();
 
-        await writer.write(
-          encoder.encode(
-            errorSSE(
-              `Cerebras Call #1 failed ` +
-              `(${call1.status}): ${text}`
-            )
-          )
+        console.error(
+          'CEREBRAS CALL #1:',
+          call1.status,
+          errorText
         );
 
-        await writer.write(
-          encoder.encode(
-            'data: [DONE]\n\n'
-          )
+        await writeError(
+          writer,
+          encoder,
+          `Cerebras Call #1 failed (${call1.status}): ${errorText}`
         );
 
         await writer.close();
-
         return;
       }
 
@@ -472,38 +318,25 @@ export async function onRequestPost(context) {
         call1Data?.choices?.[0]?.message;
 
       if (!assistant) {
-        await writer.write(
-          encoder.encode(
-            errorSSE(
-              'Cerebras returned no assistant message.'
-            )
-          )
-        );
-
-        await writer.write(
-          encoder.encode(
-            'data: [DONE]\n\n'
-          )
+        await writeError(
+          writer,
+          encoder,
+          'Cerebras returned no assistant message.'
         );
 
         await writer.close();
-
         return;
       }
 
       const toolCalls =
-        Array.isArray(
-          assistant.tool_calls
-        )
+        Array.isArray(assistant.tool_calls)
           ? assistant.tool_calls
           : [];
 
       /*
-       * =====================================================
+       * ======================================================
        * DIRECT ANSWER
-       *
-       * No tool was requested.
-       * =====================================================
+       * ======================================================
        */
 
       if (toolCalls.length === 0) {
@@ -512,14 +345,8 @@ export async function onRequestPost(context) {
             assistant.content || ''
           );
 
-        /*
-         * Emit it in small chunks so the frontend
-         * receives a normal streaming-like response.
-         */
         const chunks =
-          answer.match(
-            /[\s\S]{1,64}/g
-          ) || [''];
+          answer.match(/[\s\S]{1,64}/g) || [''];
 
         for (const chunk of chunks) {
           await writer.write(
@@ -530,7 +357,6 @@ export async function onRequestPost(context) {
                     delta: {
                       content: chunk,
                     },
-
                     finish_reason: null,
                   },
                 ],
@@ -546,18 +372,16 @@ export async function onRequestPost(context) {
         );
 
         await writer.close();
-
         return;
       }
 
       /*
-       * =====================================================
-       * EXECUTE TOOLS
-       * =====================================================
+       * ======================================================
+       * EXECUTE ALL TOOL CALLS
+       * ======================================================
        */
 
       const toolMessages = [];
-
       const frontendResults = [];
 
       for (const toolCall of toolCalls) {
@@ -568,7 +392,7 @@ export async function onRequestPost(context) {
           toolCall?.id || '';
 
         const args =
-          parseArguments(
+          parseArgs(
             toolCall?.function?.arguments
           );
 
@@ -578,12 +402,8 @@ export async function onRequestPost(context) {
         ) {
           toolMessages.push({
             role: 'tool',
-
-            tool_call_id:
-              toolCallId,
-
-            content:
-              'Unknown tool.',
+            tool_call_id: toolCallId,
+            content: 'Unknown tool.',
           });
 
           continue;
@@ -597,10 +417,7 @@ export async function onRequestPost(context) {
         if (!searchQuery) {
           toolMessages.push({
             role: 'tool',
-
-            tool_call_id:
-              toolCallId,
-
+            tool_call_id: toolCallId,
             content:
               'No search query was provided.',
           });
@@ -618,7 +435,7 @@ export async function onRequestPost(context) {
             );
         } catch (err) {
           console.error(
-            'SearXNG error:',
+            'SEARXNG ERROR:',
             err
           );
         }
@@ -627,11 +444,11 @@ export async function onRequestPost(context) {
           ...results
         );
 
-        let resultText =
+        let toolContent =
           'No results found.';
 
-        if (results.length) {
-          resultText =
+        if (results.length > 0) {
+          toolContent =
             results
               .map(
                 (r, i) =>
@@ -642,21 +459,24 @@ export async function onRequestPost(context) {
               .join('\n\n');
         }
 
+        /*
+         * IMPORTANT:
+         * Every tool_call gets exactly one
+         * corresponding tool message.
+         */
+
         toolMessages.push({
           role: 'tool',
-
-          tool_call_id:
-            toolCallId,
-
-          content:
-            resultText,
+          tool_call_id: toolCallId,
+          content: toolContent,
         });
       }
 
       /*
-       * Send raw search results to frontend.
+       * Send search results to frontend.
        */
-      if (frontendResults.length) {
+
+      if (frontendResults.length > 0) {
         await writer.write(
           encoder.encode(
             `event: results\n` +
@@ -668,168 +488,228 @@ export async function onRequestPost(context) {
       }
 
       /*
-       * =====================================================
+       * ======================================================
        * CALL #2
+       * ======================================================
        *
-       * Send:
-       *   original messages
-       *   assistant tool call
-       *   tool results
+       * EXACT ORDER:
        *
-       * Then stream final answer.
-       * =====================================================
+       * original messages
+       * assistant tool-call message
+       * tool result messages
        */
 
+      const call2Messages = [
+        ...messages,
+
+        {
+          role: 'assistant',
+
+          /*
+           * Keep content exactly as returned.
+           * null is valid when assistant only emitted
+           * tool calls.
+           */
+          content:
+            assistant.content ?? null,
+
+          tool_calls:
+            toolCalls,
+        },
+
+        ...toolMessages,
+      ];
+
       const call2 =
-        await fetch(
-          CEREBRAS_URL,
-          {
-            method: 'POST',
+        await fetch(CEREBRAS_URL, {
+          method: 'POST',
 
-            headers: {
-              'Content-Type':
-                'application/json',
+          headers: {
+            'Content-Type':
+              'application/json',
 
-              Authorization:
-                `Bearer ${env.CEREBRAS_API_KEY}`,
-            },
+            Authorization:
+              `Bearer ${env.CEREBRAS_API_KEY}`,
+          },
 
-            body: JSON.stringify({
-              model: MODEL,
+          body: JSON.stringify({
+            model: MODEL,
 
-              messages: [
-                ...messages,
+            messages:
+              call2Messages,
 
-                {
-                  role: 'assistant',
+            stream: true,
 
-                  content:
-                    assistant.content ??
-                    null,
+            max_completion_tokens: 2048,
 
-                  tool_calls:
-                    toolCalls,
-                },
-
-                ...toolMessages,
-              ],
-
-              stream: true,
-
-              max_completion_tokens:
-                2048,
-
-              temperature: 0.6,
-            }),
-          }
-        );
+            temperature: 0.6,
+          }),
+        });
 
       if (!call2.ok) {
-        const text =
+        const errorText =
           await call2.text();
 
-        await writer.write(
-          encoder.encode(
-            errorSSE(
-              `Cerebras Call #2 failed ` +
-              `(${call2.status}): ${text}`
-            )
-          )
+        console.error(
+          'CEREBRAS CALL #2:',
+          call2.status,
+          errorText
         );
 
-        await writer.write(
-          encoder.encode(
-            'data: [DONE]\n\n'
-          )
+        await writeError(
+          writer,
+          encoder,
+          `Cerebras Call #2 failed (${call2.status}): ${errorText}`
         );
 
         await writer.close();
-
         return;
       }
 
       /*
-       * =====================================================
-       * STREAM FINAL ANSWER
-       * =====================================================
+       * ======================================================
+       * STREAM CALL #2
+       * ======================================================
        */
+
+      const reader =
+        call2.body.getReader();
+
+      const decoder =
+        new TextDecoder('utf-8');
+
+      let buffer = '';
 
       let sentDone = false;
 
-      await consumeSSE(
-        call2,
-        async ({ data, done }) => {
-          if (done) {
-            if (!sentDone) {
-              sentDone = true;
+      while (true) {
+        const {
+          done,
+          value,
+        } = await reader.read();
 
-              await writer.write(
-                encoder.encode(
-                  'data: [DONE]\n\n'
-                )
-              );
+        if (done) break;
+
+        buffer += decoder.decode(
+          value,
+          { stream: true }
+        );
+
+        /*
+         * SSE events are separated by
+         * a blank line.
+         */
+
+        const events =
+          buffer.split(/\r?\n\r?\n/);
+
+        buffer =
+          events.pop() || '';
+
+        for (const event of events) {
+          const lines =
+            event.split(/\r?\n/);
+
+          for (const line of lines) {
+            if (!line.startsWith('data:')) {
+              continue;
             }
 
-            return;
-          }
+            const payload =
+              line.slice(5).trim();
 
-          const choice =
-            data?.choices?.[0];
+            if (!payload) continue;
 
-          const delta =
-            choice?.delta;
+            if (
+              payload === '[DONE]'
+            ) {
+              if (!sentDone) {
+                sentDone = true;
 
-          const content =
-            delta?.content;
+                await writer.write(
+                  encoder.encode(
+                    'data: [DONE]\n\n'
+                  )
+                );
+              }
 
-          /*
-           * Forward metadata / finish events.
-           */
-          if (
-            typeof content !==
-            'string'
-          ) {
+              continue;
+            }
+
+            let parsed;
+
+            try {
+              parsed =
+                JSON.parse(payload);
+            } catch {
+              continue;
+            }
+
+            const choice =
+              parsed?.choices?.[0];
+
+            const delta =
+              choice?.delta;
+
+            const content =
+              delta?.content;
+
+            /*
+             * Forward non-text metadata.
+             */
+
+            if (
+              typeof content !==
+              'string'
+            ) {
+              await writer.write(
+                encoder.encode(
+                  sse(parsed)
+                )
+              );
+
+              continue;
+            }
+
+            const clean =
+              stripThinking(
+                content
+              );
+
+            if (!clean) {
+              continue;
+            }
+
+            const output = {
+              ...parsed,
+
+              choices: [
+                {
+                  ...choice,
+
+                  delta: {
+                    ...delta,
+
+                    content: clean,
+                  },
+                },
+              ],
+            };
+
             await writer.write(
               encoder.encode(
-                sse(data)
+                sse(output)
               )
             );
-
-            return;
           }
-
-          const clean =
-            stripThinking(
-              content
-            );
-
-          if (!clean) {
-            return;
-          }
-
-          const output = {
-            ...data,
-
-            choices: [
-              {
-                ...choice,
-
-                delta: {
-                  ...delta,
-
-                  content: clean,
-                },
-              },
-            ],
-          };
-
-          await writer.write(
-            encoder.encode(
-              sse(output)
-            )
-          );
         }
-      );
+      }
+
+      /*
+       * Flush any remaining decoder bytes.
+       */
+
+      buffer += decoder.decode();
 
       if (!sentDone) {
         await writer.write(
@@ -842,24 +722,16 @@ export async function onRequestPost(context) {
       await writer.close();
     } catch (err) {
       console.error(
-        'Cerebras handler error:',
+        'HANDLER ERROR:',
         err
       );
 
       try {
-        await writer.write(
-          encoder.encode(
-            errorSSE(
-              err?.stack ||
-              String(err)
-            )
-          )
-        );
-
-        await writer.write(
-          encoder.encode(
-            'data: [DONE]\n\n'
-          )
+        await writeError(
+          writer,
+          encoder,
+          err?.stack ||
+            String(err)
         );
 
         await writer.close();
@@ -897,4 +769,4 @@ export async function onRequestOptions() {
         '86400',
     },
   });
-}
+                       }

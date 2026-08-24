@@ -226,11 +226,82 @@ export async function onRequestPost(context) {
         return;
       }
 
+      // Stream Call #2, stripping <think>...</think> blocks on the fly
       const reader = call2Resp.body.getReader();
+      const dec = new TextDecoder();
+      let thinkBuffer = '';
+      let insideThink = false;
+
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
-        await writer.write(value);
+
+        const raw = dec.decode(value, { stream: true });
+        const lines = raw.split('\n');
+
+        for (const line of lines) {
+          if (!line.startsWith('data:')) {
+            await writer.write(enc.encode(line + '\n'));
+            continue;
+          }
+
+          const payload = line.slice(5).trim();
+          if (payload === '[DONE]') {
+            await writer.write(enc.encode(`data: [DONE]\n\n`));
+            continue;
+          }
+
+          let parsed;
+          try { parsed = JSON.parse(payload); } catch { continue; }
+
+          const delta = parsed?.choices?.[0]?.delta;
+          let chunk = delta?.content ?? '';
+          if (!chunk) {
+            await writer.write(enc.encode(`data: ${JSON.stringify(parsed)}\n\n`));
+            continue;
+          }
+
+          // Buffer-based <think> stripping
+          thinkBuffer += chunk;
+
+          if (insideThink) {
+            const closeIdx = thinkBuffer.indexOf('</think>');
+            if (closeIdx !== -1) {
+              thinkBuffer = thinkBuffer.slice(closeIdx + 8);
+              insideThink = false;
+            } else {
+              thinkBuffer = '';
+              continue;
+            }
+          }
+
+          // Check for opening tag
+          while (true) {
+            const openIdx = thinkBuffer.indexOf('<think>');
+            if (openIdx === -1) break;
+            const before = thinkBuffer.slice(0, openIdx);
+            if (before) {
+              const out = { ...parsed, choices: [{ ...parsed.choices[0], delta: { ...delta, content: before } }] };
+              await writer.write(enc.encode(`data: ${JSON.stringify(out)}\n\n`));
+            }
+            thinkBuffer = thinkBuffer.slice(openIdx + 7);
+            insideThink = true;
+            const closeIdx = thinkBuffer.indexOf('</think>');
+            if (closeIdx !== -1) {
+              thinkBuffer = thinkBuffer.slice(closeIdx + 8);
+              insideThink = false;
+            } else {
+              thinkBuffer = '';
+              break;
+            }
+          }
+
+          if (!insideThink && thinkBuffer) {
+            const out = { ...parsed, choices: [{ ...parsed.choices[0], delta: { ...delta, content: thinkBuffer } }] };
+            await writer.write(enc.encode(`data: ${JSON.stringify(out)}\n\n`));
+            thinkBuffer = '';
+          }
+        }
       }
 
       await writer.close();
@@ -259,4 +330,4 @@ export async function onRequestOptions() {
       'Access-Control-Allow-Headers': 'Content-Type',
     },
   });
-        }
+}

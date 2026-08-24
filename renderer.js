@@ -51,59 +51,280 @@ function _normalizeNewlines(str) {
   return out.join('');
 }
 
-/* ── Normalize all LaTeX delimiter variants before parsing ──
-   Handles every format LLMs emit — don't rely on AI to use
-   one consistent style.
+/* ── Generate collision-resistant placeholder ── */
+function _makePlaceholder(type, index) {
+  const random = Math.random().toString(36).slice(2, 10);
+  return '\uE000ATKYN_' + type + '_' + random + '_' + index + '\uE001';
+}
 
-   \[...\]       →  block $$...$$   (LaTeX display math)
-   \(...\)       →  inline $...$    (LaTeX inline math)
-   $$ ... $$     →  block (delimiters on their own lines)
+/* ── Stack-based scanner for complete LaTeX environments ── */
+function _findCompleteEnvironments(str) {
+  const envs = [];
+  const stack = [];
+  const startPositions = [];
 
-   marked-katex-extension requires block $$ delimiters to be
-   on their own line — normalize inline-style $$ blocks here
-   so the parser always sees the correct format.
-── */
-function _normalizeLatex(str) {
-  // \[...\] → block $$
-  str = str.replace(/\\\[([\s\S]*?)\\\]/g, function(_, inner) {
-    return '\n$$\n' + inner.trim() + '\n$$\n';
+  let pos = 0;
+  while (pos < str.length) {
+    const beginIdx = str.indexOf('\\begin{', pos);
+    const endIdx = str.indexOf('\\end{', pos);
+
+    if (beginIdx === -1 && endIdx === -1) break;
+
+    if (endIdx !== -1 && (beginIdx === -1 || endIdx < beginIdx)) {
+      // Found \end before any \begin
+      const match = str.substring(endIdx + 6).match(/^([^}]*)\}/);
+      if (match) {
+        const envName = match[1];
+        if (stack.length > 0 && stack[stack.length - 1] === envName) {
+          // Complete an environment
+          const startPos = startPositions.pop();
+          stack.pop();
+          const endPos = endIdx + 6 + envName.length + 1;
+          envs.push({
+            content: str.substring(startPos, endPos),
+            start: startPos,
+            end: endPos,
+            envName: envName
+          });
+          pos = endPos;
+          continue;
+        }
+      }
+      pos = endIdx + 1;
+      continue;
+    }
+
+    if (beginIdx !== -1 && (endIdx === -1 || beginIdx < endIdx)) {
+      const match = str.substring(beginIdx + 7).match(/^([^}]*)\}/);
+      if (match) {
+        const envName = match[1];
+        stack.push(envName);
+        startPositions.push(beginIdx);
+        pos = beginIdx + 7 + envName.length + 1;
+      } else {
+        pos = beginIdx + 1;
+      }
+      continue;
+    }
+
+    pos++;
+  }
+
+  return envs;
+}
+
+/* ── Protect and wrap complete LaTeX environments ── */
+function _protectLatexEnvironments(str) {
+  const environments = [];
+  let protectedStr = str;
+
+  const envs = _findCompleteEnvironments(protectedStr);
+  // Sort by start descending to replace without offset issues
+  envs.sort((a, b) => b.start - a.start);
+
+  for (let i = 0; i < envs.length; i++) {
+    const env = envs[i];
+    const placeholder = _makePlaceholder('ENV', environments.length);
+    const wrapped = '$$\n' + env.content.trim() + '\n$$';
+    environments.push({ placeholder, content: wrapped });
+    protectedStr = protectedStr.substring(0, env.start) +
+                   placeholder +
+                   protectedStr.substring(env.end);
+  }
+
+  return { str: protectedStr, environments };
+}
+
+/* ── Protect explicit math delimiters ── */
+function _protectExplicitMath(str) {
+  const mathBlocks = [];
+  let protectedStr = str;
+
+  // Protect $$...$$ display math
+  protectedStr = protectedStr.replace(/\$\$([\s\S]*?)\$\$/g, function(match) {
+    const placeholder = _makePlaceholder('MATH_DISPLAY', mathBlocks.length);
+    mathBlocks.push({ placeholder, content: match });
+    return placeholder;
   });
 
-  // \(...\) → inline $
-  str = str.replace(/\\\(([\s\S]*?)\\\)/g, function(_, inner) {
-    return '$' + inner + '$';
+  // Protect \[...\] display math
+  protectedStr = protectedStr.replace(/\\\[([\s\S]*?)\\\]/g, function(match) {
+    const placeholder = _makePlaceholder('MATH_BRACKET', mathBlocks.length);
+    mathBlocks.push({ placeholder, content: match });
+    return placeholder;
   });
 
-  // $$ ... $$ on a single line → block with delimiters on own lines
-  // Multiline $$ blocks (already correct format) are left untouched
-  str = str.replace(/\$\$([\s\S]*?)\$\$/g, function(_, inner) {
-    const trimmed = inner.trim();
-    if (trimmed.includes('\n')) return '$$\n' + trimmed + '\n$$';
-    return '\n$$\n' + trimmed + '\n$$\n';
+  // Protect $...$ inline math (but not currency)
+  protectedStr = protectedStr.replace(/\$([^$\n]+?)\$/g, function(match, inner) {
+    if (/^\s*[\d,]+\s*$/.test(inner)) return match;
+    if (/^\s*[\d,]+\s*\.\s*[\d]+\s*$/.test(inner)) return match;
+    const placeholder = _makePlaceholder('MATH_INLINE', mathBlocks.length);
+    mathBlocks.push({ placeholder, content: match });
+    return placeholder;
   });
 
-  return str;
+  // Protect \(...\) inline math
+  protectedStr = protectedStr.replace(/\\\(([\s\S]*?)\\\)/g, function(match) {
+    const placeholder = _makePlaceholder('MATH_PAREN', mathBlocks.length);
+    mathBlocks.push({ placeholder, content: match });
+    return placeholder;
+  });
+
+  return { str: protectedStr, mathBlocks };
+}
+
+/* ── Detect bare LaTeX expressions ── */
+function _detectBareLatex(str) {
+  const lines = str.split('\n');
+  const result = [];
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+
+    // Skip lines with placeholders
+    if (/\uE000ATKYN_/.test(line)) {
+      result.push(line);
+      continue;
+    }
+
+    if (!line || line.trim() === '') {
+      result.push(line);
+      continue;
+    }
+
+    const trimmed = line.trim();
+
+    // Must contain LaTeX commands
+    const hasLatexCommand = /\\[a-zA-Z]+/.test(trimmed);
+    if (!hasLatexCommand) {
+      result.push(line);
+      continue;
+    }
+
+    // Must have mathematical structure
+    const hasMathStructure = /[\^_]/.test(trimmed) ||
+                            /\\frac\s*\{[^}]*\}\s*\{[^}]*\}/.test(trimmed) ||
+                            /\\sqrt\s*\{[^}]*\}/.test(trimmed) ||
+                            /[a-zA-Z]\s*[=+*/^-]\s*[a-zA-Z0-9]/.test(trimmed) ||
+                            /[=+*/^-]\s*[a-zA-Z0-9]/.test(trimmed) ||
+                            /[a-zA-Z0-9]\s*[=+*/^-]/.test(trimmed);
+
+    if (!hasMathStructure) {
+      result.push(line);
+      continue;
+    }
+
+    // Check for common math commands
+    const mathCommands = ['\\int', '\\sum', '\\prod', '\\lim', '\\sin', '\\cos',
+                         '\\tan', '\\log', '\\ln', '\\alpha', '\\beta', '\\gamma',
+                         '\\theta', '\\pi', '\\infty', '\\pm', '\\leq', '\\geq',
+                         '\\neq', '\\cdot', '\\partial', '\\nabla'];
+
+    let hasMathCommand = false;
+    for (let j = 0; j < mathCommands.length; j++) {
+      if (trimmed.includes(mathCommands[j])) {
+        hasMathCommand = true;
+        break;
+      }
+    }
+
+    if (!hasMathCommand && !/\\begin|\\end/.test(trimmed)) {
+      if (!/\\frac|\\sqrt/.test(trimmed) && !/[\^_]\s*\{/.test(trimmed)) {
+        result.push(line);
+        continue;
+      }
+    }
+
+    // Check it's not prose with a single LaTeX symbol
+    const wordCount = trimmed.split(/\s+/).length;
+    const latexCount = (trimmed.match(/\\[a-zA-Z]+/g) || []).length;
+
+    if (wordCount > 10 && latexCount <= 2) {
+      result.push(line);
+      continue;
+    }
+
+    if (wordCount <= 3 && latexCount === 1 && !/[\^_=]/.test(trimmed)) {
+      result.push(line);
+      continue;
+    }
+
+    // Wrap as display math
+    result.push('$$\n' + trimmed + '\n$$');
+  }
+
+  return result.join('\n');
+}
+
+/* ── Safe LaTeX normalization with code block protection ── */
+function _normalizeLatex(raw) {
+  if (!raw) return raw;
+
+  // Step 1: Protect fenced code blocks
+  let protectedStr = raw;
+  const fencedCode = [];
+
+  protectedStr = protectedStr.replace(/(```[\s\S]*?```)/g, function(match) {
+    const placeholder = _makePlaceholder('FENCED_CODE', fencedCode.length);
+    fencedCode.push({ placeholder, content: match });
+    return placeholder;
+  });
+
+  // Step 2: Protect inline code
+  const inlineCode = [];
+  protectedStr = protectedStr.replace(/`([^`]+)`/g, function(match) {
+    const placeholder = _makePlaceholder('INLINE_CODE', inlineCode.length);
+    inlineCode.push({ placeholder, content: match });
+    return placeholder;
+  });
+
+  // Step 3: Protect explicit math
+  const mathResult = _protectExplicitMath(protectedStr);
+  protectedStr = mathResult.str;
+  const explicitMath = mathResult.mathBlocks;
+
+  // Step 4: Protect complete LaTeX environments
+  const envResult = _protectLatexEnvironments(protectedStr);
+  protectedStr = envResult.str;
+  const environments = envResult.environments;
+
+  // Step 5: Detect bare LaTeX
+  protectedStr = _detectBareLatex(protectedStr);
+
+  // Step 6: Restore in reverse order
+  // Restore environments (already wrapped with $$)
+  for (let i = environments.length - 1; i >= 0; i--) {
+    protectedStr = protectedStr.replace(environments[i].placeholder, environments[i].content);
+  }
+
+  // Restore explicit math
+  for (let i = explicitMath.length - 1; i >= 0; i--) {
+    protectedStr = protectedStr.replace(explicitMath[i].placeholder, explicitMath[i].content);
+  }
+
+  // Restore inline code
+  for (let i = inlineCode.length - 1; i >= 0; i--) {
+    protectedStr = protectedStr.replace(inlineCode[i].placeholder, inlineCode[i].content);
+  }
+
+  // Restore fenced code
+  for (let i = fencedCode.length - 1; i >= 0; i--) {
+    protectedStr = protectedStr.replace(fencedCode[i].placeholder, fencedCode[i].content);
+  }
+
+  return protectedStr;
 }
 
 /* ── Configure marked once at module load ── */
 function _buildMarked() {
-  /* KaTeX extension — nonStandard:true allows $...$ without
-     surrounding spaces, which LLMs commonly emit */
   marked.use(markedKatex({
     throwOnError: false,
     errorColor: '#888888',
     trust: false,
     output: 'html',
-    nonStandard: true,
-    delimiters: [
-      { left: '$$', right: '$$', display: true  },
-      { left: '$',  right: '$',  display: false },
-    ],
+    nonStandard: true
   }));
 
-  /* marked v13: use marked.use({ renderer }) — NOT marked.setOptions({ renderer })
-     setOptions passes the full token object as first arg in v13, breaking
-     renderer.code which expects (code, lang, escaped). */
   marked.use({
     breaks: true,
     gfm: true,

@@ -1,21 +1,26 @@
 /* modules/images/images.css */
 
+/* Masonry 2-col layout — no span, no white gaps */
 .images-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  display: flex;
   gap: 5px;
   padding: 8px 8px 0;
+  align-items: flex-start;   /* columns start at top, don't stretch */
 }
 
-.img-tile--wide {
-  grid-column: span 2;
+.img-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
 }
 
+/* Each tile — transparent, no placeholder box */
 .img-tile {
   display: block;
   border-radius: 10px;
   overflow: hidden;
-  /* No background — grey box gone */
   background: transparent;
   -webkit-tap-highlight-color: transparent;
   transition: opacity 0.12s ease, transform 0.12s ease;
@@ -26,47 +31,41 @@
   transform: scale(0.97);
 }
 
-.img-tile__wrap {
-  width: 100%;
-  display: block;
-  /* No background — transparent until image loads */
-  background: transparent;
-  /* min-height zero — no reserved grey space */
-  min-height: 0;
-}
-
-/* Natural size — no crop, no grey box */
-.img-tile__wrap img {
+/* Image itself — natural size, no reserved height */
+.img-tile img {
   display: block;
   width: 100%;
   height: auto;
   border-radius: 10px;
   opacity: 0;
-  transition: opacity 0.22s ease;
-  /* Prevent layout shift flash */
+  transition: opacity 0.2s ease;
   will-change: opacity;
 }
 
-/* Scroll sentinel */
-.img-sentinel {
-  grid-column: span 2;
-  height: 1px;
-}
-
-/* Skeleton shimmer — only while first batch loads */
+/* ── Skeleton shimmer ─────────────────────────────────────────── */
 .tab-skeleton.grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  display: flex;
   gap: 5px;
   padding: 8px 8px 0;
 }
 
+.sk-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
 .sk-img {
   border-radius: 10px;
-  aspect-ratio: 4 / 3;
+  aspect-ratio: 3 / 4;
   background: linear-gradient(90deg, #e8e8e8 25%, #f4f4f4 50%, #e8e8e8 75%);
   background-size: 200% 100%;
   animation: sk-shimmer 1.2s ease-in-out infinite;
+}
+
+.sk-img--sm {
+  aspect-ratio: 4 / 3;
 }
 
 @keyframes sk-shimmer {
@@ -74,9 +73,9 @@
   100% { background-position: -200% 0; }
 }
 
+/* Sentinel removed — single fetch, no scroll pagination */
+
 @media (prefers-color-scheme: dark) {
-  .img-tile        { background: transparent; }
-  .img-tile__wrap  { background: transparent; }
   .sk-img {
     background: linear-gradient(90deg, #2c2c2e 25%, #3a3a3c 50%, #2c2c2e 75%);
     background-size: 200% 100%;

@@ -2,9 +2,6 @@
    base.css — Reset · Body · Scroll host
 ════════════════════════════════════════════════════════════════ */
 
-/* Bodoni-style editorial serif */
-@import url('https://fonts.googleapis.com/css2?family=Bodoni+Moda:opsz,wght@6..96,400;6..96,500;6..96,600;6..96,700&display=swap');
-
 *, *::before, *::after {
   box-sizing: border-box;
   margin: 0;
@@ -25,7 +22,7 @@ body {
   overscroll-behavior: none;
   background: var(--color-bg);
   color: var(--color-text);
-  font-family: 'Bodoni Moda', Georgia, 'Times New Roman', serif;
+  font-family: "Segoe UI Variable", "Segoe UI", Arial, sans-serif;
   display: flex;
   flex-direction: column;
 }

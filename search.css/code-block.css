@@ -60,10 +60,19 @@
   overflow-y: hidden;
   background: transparent;
   -webkit-overflow-scrolling: touch;
-  scrollbar-width: none;          /* Firefox — bar hidden */
-  -ms-overflow-style: none;       /* IE/Edge — bar hidden */
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
-.code-block pre::-webkit-scrollbar { display: none; } /* Chrome/Safari — bar hidden */
+
+/* ── Scrollbar — sab kuch hidden ── */
+.code-block pre::-webkit-scrollbar         { display: none; width: 0; height: 0; }
+.code-block pre::-webkit-scrollbar-track   { display: none; }
+.code-block pre::-webkit-scrollbar-thumb   { display: none; }
+.code-block pre::-webkit-scrollbar-corner  { display: none; }
+.code-block      ::-webkit-scrollbar        { display: none; width: 0; height: 0; }
+.code-block      ::-webkit-scrollbar-track  { display: none; }
+.code-block      ::-webkit-scrollbar-thumb  { display: none; }
+.code-block      ::-webkit-scrollbar-corner { display: none; }
 
 /* ── Code ── */
 .code-block pre code,

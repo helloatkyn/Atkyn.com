@@ -75,7 +75,7 @@ const WEB_SEARCH_TOOL = [
 ];
 
 const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions';
-const MODEL = 'qwen/qwen3-8b';
+const MODEL = 'deepseek/deepseek-v4-flash'; // ✅ $0.04/M input, $0.13/M output — 3x cheaper than qwen3-8b
 
 export async function onRequestPost(context) {
   const { request, env } = context;
@@ -254,4 +254,4 @@ export async function onRequestOptions() {
       'Access-Control-Allow-Headers': 'Content-Type',
     },
   });
-    }
+}

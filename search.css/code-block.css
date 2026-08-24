@@ -5,9 +5,9 @@
 /* ── Container ── */
 .code-block {
   margin: 12px 0 16px;
-  border-radius: 18px;          /* zyada round */
+  border-radius: 18px;
   overflow: hidden;
-  background: #f6f8fa;
+  background: #fafafa;
   border: none;
   box-shadow: none;
   width: 100%;
@@ -59,6 +59,9 @@
   background: transparent;
 }
 
+/* ── Line numbers — REMOVED ── */
+.code-line-num { display: none; }
+
 /* ── Lines table ── */
 .code-block .code-lines {
   display: table;
@@ -67,32 +70,10 @@
 }
 .code-line { display: table-row; }
 
-/* ── Line numbers ── */
-.code-line-num {
-  display: table-cell;
-  padding: 0 12px 0 18px;      /* left 18px safe */
-  text-align: right;
-  font-family: 'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace;
-  font-size: 12.5px;
-  line-height: 1.7;
-  color: #c0c2c7;
-  user-select: none;
-  white-space: nowrap;
-  min-width: 36px;
-  border-right: 1px solid rgba(0,0,0,0.07);
-  vertical-align: top;
-}
-@media (prefers-color-scheme: dark) {
-  .code-line-num {
-    color: #495162;
-    border-right-color: rgba(255,255,255,0.06);
-  }
-}
-
 /* ── Code content ── */
 .code-line-content {
   display: table-cell;
-  padding: 0 20px 0 16px;      /* left 16 + right 20 — dono safe */
+  padding: 0 48px 0 20px;   /* left 20px, right 48px (copy btn ke liye) */
   font-family: 'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace;
   font-size: 13px;
   line-height: 1.7;
@@ -112,7 +93,7 @@
 /* ── Fallback pre > code ── */
 .code-block pre code {
   display: block;
-  padding: 16px 20px 16px 18px;   /* safe dono taraf */
+  padding: 16px 48px 16px 20px;
   background: none;
   font-family: 'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace;
   font-size: 13px;
@@ -128,7 +109,7 @@
 }
 
 /* ════════════════════════════════════════════════════════════════
-   SYNTAX TOKENS — Light: VS Code Light+ | Dark: VS Code Dark+
+   SYNTAX TOKENS
 ════════════════════════════════════════════════════════════════ */
 
 .tk-kw   { color: #0000ff; font-weight: 500; }

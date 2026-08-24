@@ -77,6 +77,11 @@ const WEB_SEARCH_TOOL = [
 const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions';
 const MODEL = 'qwen/qwen3-14b:free'; // ✅ Free on OpenRouter, 131K context, tool use support
 
+// Strip <think>...</think> blocks that Qwen3 emits in thinking mode
+function stripThinking(text) {
+  return (text || '').replace(/<think>[\s\S]*?<\/think>/gi, '').trimStart();
+}
+
 export async function onRequestPost(context) {
   const { request, env } = context;
 
@@ -142,7 +147,7 @@ export async function onRequestPost(context) {
 
       // NO SEARCH: model answered directly — stream it out
       if (!toolCalls || toolCalls.length === 0) {
-        const directAnswer = assistantMessage?.content ?? '';
+        const directAnswer = stripThinking(assistantMessage?.content ?? '');
         const chunks = directAnswer.match(/.{1,64}/gs) || [''];
         for (const chunk of chunks) {
           const ssePayload = {
@@ -254,4 +259,4 @@ export async function onRequestOptions() {
       'Access-Control-Allow-Headers': 'Content-Type',
     },
   });
-}
+        }

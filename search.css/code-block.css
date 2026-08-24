@@ -31,18 +31,18 @@
 /* ── Floating copy button ── */
 .code-copy-btn {
   position: absolute;
-  top: 10px;
-  right: 10px;
+  top: 8px;
+  right: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
   border: none;
-  background: rgba(0, 0, 0, 0.06);
+  background: none;
   cursor: pointer;
   color: #57606a;
-  padding: 6px;
-  border-radius: 6px;
-  font-size: 0;          /* hide "Copy" text */
+  padding: 4px;
+  border-radius: 4px;
+  font-size: 0;
   -webkit-tap-highlight-color: transparent;
   opacity: 0;
   transition: opacity 0.15s ease;
@@ -50,53 +50,36 @@
 }
 .code-block:hover .code-copy-btn,
 .code-block:focus-within .code-copy-btn { opacity: 1; }
-/* On touch devices always show it */
 @media (hover: none) {
   .code-copy-btn { opacity: 1; }
 }
 .code-copy-btn svg {
-  width: 15px;
-  height: 15px;
+  width: 18px;
+  height: 18px;
   flex-shrink: 0;
   stroke-width: 1.75;
 }
-.code-copy-btn:active { opacity: 0.45 !important; }
-.code-copy-btn.copied {
-  color: var(--color-copied);
-  background: rgba(0, 0, 0, 0.06);
-}
+.code-copy-btn:active { opacity: 0.4 !important; }
+.code-copy-btn.copied { color: var(--color-copied); }
 
 @media (prefers-color-scheme: dark) {
-  .code-copy-btn {
-    background: rgba(255, 255, 255, 0.08);
-    color: var(--color-text-code-muted);
-  }
+  .code-copy-btn        { color: var(--color-text-code-muted); }
   .code-copy-btn.copied { color: var(--color-copied); }
 }
 
-/* ── Pre / scroll container ── */
+/* ── Pre / scroll container — no horizontal scroll ── */
 .code-block pre {
   margin: 0;
   padding: 0;
-  overflow-x: auto;
+  overflow-x: hidden;
   overflow-y: hidden;
-  -webkit-overflow-scrolling: touch;
   background: transparent;
-  scrollbar-width: thin;
-  scrollbar-color: rgba(0,0,0,0.15) transparent;
-}
-.code-block pre::-webkit-scrollbar        { height: 3px; }
-.code-block pre::-webkit-scrollbar-track  { background: transparent; }
-.code-block pre::-webkit-scrollbar-thumb  { background: rgba(0,0,0,0.15); border-radius: 99px; }
-@media (prefers-color-scheme: dark) {
-  .code-block pre                           { scrollbar-color: rgba(255,255,255,0.12) transparent; }
-  .code-block pre::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); }
 }
 
 /* ── Lines table ── */
 .code-block .code-lines {
   display: table;
-  min-width: 100%;
+  width: 100%;
   padding: 14px 0;
 }
 .code-line { display: table-row; }
@@ -123,15 +106,16 @@
   }
 }
 
-/* ── Code content cell ── */
+/* ── Code content cell — wrap instead of scroll ── */
 .code-line-content {
   display: table-cell;
-  padding: 0 40px 0 14px; /* right padding so code doesn't go under copy btn */
+  padding: 0 36px 0 14px;
   font-family: 'Söhne Mono', ui-monospace, 'SFMono-Regular', 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace;
   font-size: 13px;
   line-height: 1.6;
   font-weight: 400;
-  white-space: pre;
+  white-space: pre-wrap;
+  word-break: break-all;
   color: #1f2328;
   width: 100%;
   tab-size: 2;
@@ -149,14 +133,15 @@
 /* ── Fallback pre > code ── */
 .code-block pre code {
   display: block;
-  padding: 14px 40px 14px 16px;
+  padding: 14px 36px 14px 16px;
   background: none;
   font-family: 'Söhne Mono', ui-monospace, 'SFMono-Regular', 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace;
   font-size: 13px;
   line-height: 1.6;
   font-weight: 400;
   color: #1f2328;
-  white-space: pre;
+  white-space: pre-wrap;
+  word-break: break-all;
   tab-size: 2;
   -moz-tab-size: 2;
   -webkit-font-smoothing: antialiased;
@@ -166,14 +151,14 @@
 }
 
 /* ── Syntax token colours (VS Code Light+) ── */
-.tk-kw   { color: #0000ff; font-weight: 500; }  /* keywords */
-.tk-fn   { color: #795e26; }                     /* functions */
-.tk-str  { color: #a31515; }                     /* strings */
-.tk-num  { color: #098658; }                     /* numbers */
-.tk-cmt  { color: #6a9955; font-style: italic; } /* comments */
-.tk-cls  { color: #267f99; }                     /* classes */
-.tk-prop { color: #001080; }                     /* properties */
-.tk-bool { color: #0000ff; font-weight: 500; }   /* booleans */
+.tk-kw   { color: #0000ff; font-weight: 500; }
+.tk-fn   { color: #795e26; }
+.tk-str  { color: #a31515; }
+.tk-num  { color: #098658; }
+.tk-cmt  { color: #6a9955; font-style: italic; }
+.tk-cls  { color: #267f99; }
+.tk-prop { color: #001080; }
+.tk-bool { color: #0000ff; font-weight: 500; }
 
 @media (prefers-color-scheme: dark) {
   .tk-kw   { color: var(--color-tk-kw-dark);   font-weight: 500; }

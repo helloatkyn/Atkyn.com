@@ -4,6 +4,7 @@
    Code highlight  : highlight.js
    ═══════════════════════════════════════════════════════════════ */
 
+/* ── HTML entity escape ── */
 function _he(s) {
   const src = String(s);
   const out = [];
@@ -19,6 +20,7 @@ function _he(s) {
   return out.join('');
 }
 
+/* ── Cheap string hash for render caching ── */
 function _cheapHash(str) {
   let h = 5381;
   for (let i = 0; i < str.length; i++) {
@@ -28,6 +30,7 @@ function _cheapHash(str) {
   return h;
 }
 
+/* ── Collapse excessive blank lines, strip leading/trailing newlines ── */
 function _normalizeNewlines(str) {
   let start = 0;
   while (start < str.length && str[start] === '\n') start++;
@@ -48,38 +51,59 @@ function _normalizeNewlines(str) {
   return out.join('');
 }
 
-/* ── Pre-process: normalize all LaTeX delimiters to $$ and $ ──
-   \[...\]  →  $$...$$  (block display)
-   \(...\)  →  $...$    (inline)
-   marked-katex-extension natively handles $$ and $ delimiters. ── */
-function _convertLatexDelimiters(str) {
+/* ── Normalize all LaTeX delimiter variants before parsing ──
+   Handles every format LLMs emit — don't rely on AI to use
+   one consistent style.
+
+   \[...\]       →  block $$...$$   (LaTeX display math)
+   \(...\)       →  inline $...$    (LaTeX inline math)
+   $$ ... $$     →  block (delimiters on their own lines)
+
+   marked-katex-extension requires block $$ delimiters to be
+   on their own line — normalize inline-style $$ blocks here
+   so the parser always sees the correct format.
+── */
+function _normalizeLatex(str) {
+  // \[...\] → block $$
   str = str.replace(/\\\[([\s\S]*?)\\\]/g, function(_, inner) {
-    return '\n$$' + inner + '$$\n';
+    return '\n$$\n' + inner.trim() + '\n$$\n';
   });
+
+  // \(...\) → inline $
   str = str.replace(/\\\(([\s\S]*?)\\\)/g, function(_, inner) {
     return '$' + inner + '$';
   });
+
+  // $$ ... $$ on a single line → block with delimiters on own lines
+  // Multiline $$ blocks (already correct format) are left untouched
+  str = str.replace(/\$\$([\s\S]*?)\$\$/g, function(_, inner) {
+    const trimmed = inner.trim();
+    if (trimmed.includes('\n')) return '$$\n' + trimmed + '\n$$';
+    return '\n$$\n' + trimmed + '\n$$\n';
+  });
+
   return str;
 }
 
+/* ── Configure marked once at module load ── */
 function _buildMarked() {
-  /* ── KaTeX extension ── */
+  /* KaTeX extension — nonStandard:true allows $...$ without
+     surrounding spaces, which LLMs commonly emit */
   marked.use(markedKatex({
     throwOnError: false,
     errorColor: '#888888',
     trust: false,
     output: 'html',
+    nonStandard: true,
     delimiters: [
       { left: '$$', right: '$$', display: true  },
       { left: '$',  right: '$',  display: false },
     ],
   }));
 
-  /* ── marked v13: use marked.use({ breaks, gfm, renderer }) ──
-     DO NOT use marked.setOptions({ renderer }) — in v13 that
-     passes the full token object as the first arg, causing
-     renderer.code to receive [object Object] instead of the
-     code string.  marked.use() passes (code, lang, escaped). ── */
+  /* marked v13: use marked.use({ renderer }) — NOT marked.setOptions({ renderer })
+     setOptions passes the full token object as first arg in v13, breaking
+     renderer.code which expects (code, lang, escaped). */
   marked.use({
     breaks: true,
     gfm: true,
@@ -124,19 +148,26 @@ function _buildMarked() {
 
 _buildMarked();
 
+/* ── Core render pipeline ── */
 function _safePipeline(raw) {
   if (!raw) return '';
-  const text = _normalizeNewlines(_convertLatexDelimiters(raw));
+  const text = _normalizeNewlines(_normalizeLatex(raw));
   if (!text) return '';
   try { return marked.parse(text); }
   catch (_) { return '<pre class="render-fallback">' + _he(raw) + '</pre>'; }
 }
 
+/* ── UniversalMessageRenderer ──
+   Supports both one-shot rendering and streaming with debounce. ── */
 class UniversalMessageRenderer {
   constructor() {
-    this.rawContent = ''; this.renderedContent = '';
-    this._hash = null; this._buf = ''; this._streaming = false;
+    this.rawContent      = '';
+    this.renderedContent = '';
+    this._hash           = null;
+    this._buf            = '';
+    this._streaming      = false;
   }
+
   render(content) {
     this.rawContent = content;
     const h = _cheapHash(content);
@@ -144,32 +175,46 @@ class UniversalMessageRenderer {
     this._hash = h;
     return (this.renderedContent = _safePipeline(content));
   }
+
   startStream() {
-    this._buf = ''; this._streaming = true;
-    this.rawContent = ''; this.renderedContent = ''; this._hash = null;
+    this._buf            = '';
+    this._streaming      = true;
+    this.rawContent      = '';
+    this.renderedContent = '';
+    this._hash           = null;
   }
+
   pushChunk(chunk) {
     if (!this._streaming) this.startStream();
     this.rawContent = (this._buf += chunk);
     return (this.renderedContent = _safePipeline(this._buf));
   }
+
   finishStream() {
     this._streaming = false;
     return (this.renderedContent = _safePipeline(this._buf));
   }
+
   getHTML() { return this.renderedContent; }
   getRaw()  { return this.rawContent; }
 }
 
+/* ── createStreamingRenderer ──
+   Factory for streaming use — debounces DOM updates to debounceMs. ── */
 function createStreamingRenderer(onUpdate, debounceMs = 40) {
   const renderer = new UniversalMessageRenderer();
   renderer.startStream();
-  let _timer = null, _done = false;
+  let _timer = null;
+  let _done  = false;
+
   function _flush(final) {
-    clearTimeout(_timer); _timer = null;
-    if (typeof onUpdate === 'function')
+    clearTimeout(_timer);
+    _timer = null;
+    if (typeof onUpdate === 'function') {
       onUpdate(final ? renderer.finishStream() : renderer.getHTML(), { final });
+    }
   }
+
   return {
     push(chunk) {
       if (_done) return;
@@ -187,5 +232,6 @@ function createStreamingRenderer(onUpdate, debounceMs = 40) {
   };
 }
 
+/* ── Public helpers ── */
 function universalRender(content) { return new UniversalMessageRenderer().render(content); }
 function renderMarkdown(text)     { return universalRender(text); }

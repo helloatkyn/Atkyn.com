@@ -50,11 +50,9 @@ function _normalizeNewlines(str) {
 
 /* ── Pre-process: \[...\] → $$...$$ (own lines), \(...\) → $...$ ── */
 function _convertLatexDelimiters(str) {
-  // \[...\]  →  block math, delimiters apni alag lines pe
   str = str.replace(/\\\[([\s\S]*?)\\\]/g, function (_, inner) {
     return '\n$$\n' + inner.trim() + '\n$$\n';
   });
-  // \(...\)  →  inline math
   str = str.replace(/\\\(([\s\S]*?)\\\)/g, function (_, inner) {
     return '$' + inner.trim() + '$';
   });
@@ -80,10 +78,6 @@ function _renderMath(text, displayMode) {
   }
 }
 
-/* ── Custom KaTeX extension (marked-katex-extension se zyada robust) ──
-   - block:  $$...$$  (kahin bhi block-start pe, newlines optional)
-   - inline: $$...$$  (paragraph ke andar display math)
-   - inline: $...$    (single-line inline math)                     ── */
 function _katexExtensions() {
   var blockKatex = {
     name: 'blockKatex',
@@ -94,9 +88,7 @@ function _katexExtensions() {
     },
     tokenizer: function (src) {
       var m = src.match(/^\$\$([\s\S]+?)\$\$/);
-      if (m) {
-        return { type: 'blockKatex', raw: m[0], text: m[1].trim() };
-      }
+      if (m) return { type: 'blockKatex', raw: m[0], text: m[1].trim() };
     },
     renderer: function (token) {
       return '<div class="math-display">' + _renderMath(token.text, true) + '</div>\n';
@@ -112,9 +104,7 @@ function _katexExtensions() {
     },
     tokenizer: function (src) {
       var m = src.match(/^\$\$([\s\S]+?)\$\$/);
-      if (m) {
-        return { type: 'inlineDisplayKatex', raw: m[0], text: m[1].trim() };
-      }
+      if (m) return { type: 'inlineDisplayKatex', raw: m[0], text: m[1].trim() };
     },
     renderer: function (token) {
       return '<div class="math-display">' + _renderMath(token.text, true) + '</div>';
@@ -129,11 +119,8 @@ function _katexExtensions() {
       return i >= 0 ? i : undefined;
     },
     tokenizer: function (src) {
-      // $...$ — content mein newline ya bare $ nahi; \$ escape allowed
       var m = src.match(/^\$(?!\$)((?:[^$\n\\]|\\.)+?)\$(?!\$)/);
-      if (m) {
-        return { type: 'inlineKatex', raw: m[0], text: m[1].trim() };
-      }
+      if (m) return { type: 'inlineKatex', raw: m[0], text: m[1].trim() };
     },
     renderer: function (token) {
       return _renderMath(token.text, false);
@@ -144,8 +131,6 @@ function _katexExtensions() {
 }
 
 function _buildMarked() {
-  // Math: prefer custom extension (agar katex global hai),
-  // warna fallback marked-katex-extension
   if (typeof katex !== 'undefined') {
     marked.use(_katexExtensions());
   } else if (typeof markedKatex === 'function') {
@@ -154,7 +139,6 @@ function _buildMarked() {
 
   const renderer = new marked.Renderer();
 
-  // marked v13+ token-object signature + purani (code, lang) dono support
   renderer.code = function (codeOrToken, lang) {
     let code, language;
     if (codeOrToken && typeof codeOrToken === 'object') {
@@ -165,8 +149,7 @@ function _buildMarked() {
       language = (lang || '').trim().toLowerCase();
     }
 
-    const label = language || 'code';
-    const id    = 'cb' + Math.random().toString(36).slice(2, 8);
+    const id = 'cb' + Math.random().toString(36).slice(2, 8);
     let highlighted = _he(code);
 
     if (typeof hljs !== 'undefined') {
@@ -179,15 +162,12 @@ function _buildMarked() {
 
     return (
       '<div class="code-block" id="' + id + '">' +
-        '<div class="code-block-header">' +
-          '<span class="code-block-lang">' + _he(label) + '</span>' +
-          '<button class="code-copy-btn" data-target="' + id + '">' +
-            '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">' +
-              '<rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>' +
-              '<path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>' +
-            '</svg> Copy' +
-          '</button>' +
-        '</div>' +
+        '<button class="code-copy-btn" data-target="' + id + '" aria-label="Copy">' +
+          '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">' +
+            '<rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>' +
+            '<path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>' +
+          '</svg>' +
+        '</button>' +
         '<pre><code class="hljs">' + highlighted + '</code></pre>' +
       '</div>'
     );
@@ -263,3 +243,4 @@ function createStreamingRenderer(onUpdate, debounceMs = 40) {
 
 function universalRender(content) { return new UniversalMessageRenderer().render(content); }
 function renderMarkdown(text)     { return universalRender(text); }
+       

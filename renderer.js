@@ -1,6 +1,6 @@
 /* ═══════════════════════════════════════════════════════════════
    renderer.js — Atkyn Search
-   Markdown + Math : marked.js + marked-katex-extension + KaTeX
+   Markdown + Math : marked.js + KaTeX (custom robust extension)
    Code highlight  : highlight.js
    ═══════════════════════════════════════════════════════════════ */
 
@@ -48,46 +48,135 @@ function _normalizeNewlines(str) {
   return out.join('');
 }
 
-/* ── Pre-process: convert \[...\] and \(...\) to $$ and $ ──
-   marked-katex-extension natively handles $$...$$ and $...$
-   but \[...\] block extension misses cases where \[ is mid-paragraph.
-   Safest fix: convert to $$ delimiters before parsing. ── */
+/* ── Pre-process: \[...\] → $$...$$ (own lines), \(...\) → $...$ ── */
 function _convertLatexDelimiters(str) {
-  // \[...\]  →  $$...$$  (block)
-  // Use non-greedy match; handle multiline
-  str = str.replace(/\\\[([\s\S]*?)\\\]/g, function(_, inner) {
-    return '\n$$' + inner + '$$\n';
+  // \[...\]  →  block math, delimiters apni alag lines pe
+  str = str.replace(/\\\[([\s\S]*?)\\\]/g, function (_, inner) {
+    return '\n$$\n' + inner.trim() + '\n$$\n';
   });
-  // \(...\)  →  $...$   (inline)
-  str = str.replace(/\\\(([\s\S]*?)\\\)/g, function(_, inner) {
-    return '$' + inner + '$';
+  // \(...\)  →  inline math
+  str = str.replace(/\\\(([\s\S]*?)\\\)/g, function (_, inner) {
+    return '$' + inner.trim() + '$';
   });
   return str;
 }
 
+/* ── KaTeX options ── */
+var KATEX_OPTS = {
+  throwOnError: false,
+  errorColor: '#888888',
+  trust: false,
+  strict: false
+};
+
+function _renderMath(text, displayMode) {
+  try {
+    return katex.renderToString(
+      text,
+      Object.assign({}, KATEX_OPTS, { displayMode: displayMode })
+    );
+  } catch (e) {
+    return '<span style="color:#888888;">' + _he(text) + '</span>';
+  }
+}
+
+/* ── Custom KaTeX extension (marked-katex-extension se zyada robust) ──
+   - block:  $$...$$  (kahin bhi block-start pe, newlines optional)
+   - inline: $$...$$  (paragraph ke andar display math)
+   - inline: $...$    (single-line inline math)                     ── */
+function _katexExtensions() {
+  var blockKatex = {
+    name: 'blockKatex',
+    level: 'block',
+    start: function (src) {
+      var i = src.indexOf('$$');
+      return i >= 0 ? i : undefined;
+    },
+    tokenizer: function (src) {
+      var m = src.match(/^\$\$([\s\S]+?)\$\$/);
+      if (m) {
+        return { type: 'blockKatex', raw: m[0], text: m[1].trim() };
+      }
+    },
+    renderer: function (token) {
+      return '<div class="math-display">' + _renderMath(token.text, true) + '</div>\n';
+    }
+  };
+
+  var inlineDisplayKatex = {
+    name: 'inlineDisplayKatex',
+    level: 'inline',
+    start: function (src) {
+      var i = src.indexOf('$$');
+      return i >= 0 ? i : undefined;
+    },
+    tokenizer: function (src) {
+      var m = src.match(/^\$\$([\s\S]+?)\$\$/);
+      if (m) {
+        return { type: 'inlineDisplayKatex', raw: m[0], text: m[1].trim() };
+      }
+    },
+    renderer: function (token) {
+      return '<div class="math-display">' + _renderMath(token.text, true) + '</div>';
+    }
+  };
+
+  var inlineKatex = {
+    name: 'inlineKatex',
+    level: 'inline',
+    start: function (src) {
+      var i = src.indexOf('$');
+      return i >= 0 ? i : undefined;
+    },
+    tokenizer: function (src) {
+      // $...$ — content mein newline ya bare $ nahi; \$ escape allowed
+      var m = src.match(/^\$(?!\$)((?:[^$\n\\]|\\.)+?)\$(?!\$)/);
+      if (m) {
+        return { type: 'inlineKatex', raw: m[0], text: m[1].trim() };
+      }
+    },
+    renderer: function (token) {
+      return _renderMath(token.text, false);
+    }
+  };
+
+  return { extensions: [blockKatex, inlineDisplayKatex, inlineKatex] };
+}
+
 function _buildMarked() {
-  // marked-katex-extension handles: $...$ and $$...$$
-  marked.use(markedKatex({
-    throwOnError: false,
-    errorColor: '#888888',
-    trust: false,
-    delimiters: [
-      { left: '$$', right: '$$', display: true  },
-      { left: '$',  right: '$',  display: false },
-    ],
-  }));
+  // Math: prefer custom extension (agar katex global hai),
+  // warna fallback marked-katex-extension
+  if (typeof katex !== 'undefined') {
+    marked.use(_katexExtensions());
+  } else if (typeof markedKatex === 'function') {
+    marked.use(markedKatex(KATEX_OPTS));
+  }
 
   const renderer = new marked.Renderer();
-  renderer.code = function (code, lang) {
-    const language = (lang || '').trim().toLowerCase();
-    const label    = language || 'code';
-    const id       = 'cb' + Math.random().toString(36).slice(2, 8);
+
+  // marked v13+ token-object signature + purani (code, lang) dono support
+  renderer.code = function (codeOrToken, lang) {
+    let code, language;
+    if (codeOrToken && typeof codeOrToken === 'object') {
+      code     = codeOrToken.text != null ? codeOrToken.text : (codeOrToken.code || '');
+      language = (codeOrToken.lang || '').trim().toLowerCase();
+    } else {
+      code     = codeOrToken;
+      language = (lang || '').trim().toLowerCase();
+    }
+
+    const label = language || 'code';
+    const id    = 'cb' + Math.random().toString(36).slice(2, 8);
     let highlighted = _he(code);
+
     if (typeof hljs !== 'undefined') {
       const valid  = language && hljs.getLanguage(language);
-      const result = valid ? hljs.highlight(code, { language, ignoreIllegals: true }) : hljs.highlightAuto(code);
-      highlighted  = result.value;
+      const result = valid
+        ? hljs.highlight(code, { language, ignoreIllegals: true })
+        : hljs.highlightAuto(code);
+      highlighted = result.value;
     }
+
     return (
       '<div class="code-block" id="' + id + '">' +
         '<div class="code-block-header">' +
@@ -104,7 +193,7 @@ function _buildMarked() {
     );
   };
 
-  marked.setOptions({ renderer, breaks: true, gfm: true });
+  marked.use({ renderer: renderer, breaks: true, gfm: true });
 }
 
 _buildMarked();
@@ -160,7 +249,7 @@ function createStreamingRenderer(onUpdate, debounceMs = 40) {
       if (_done) return;
       renderer.pushChunk(chunk);
       clearTimeout(_timer);
-      _timer = setTimeout(function() { _flush(false); }, debounceMs);
+      _timer = setTimeout(function () { _flush(false); }, debounceMs);
     },
     finish() {
       if (_done) return;

@@ -49,7 +49,24 @@ async function executeSearXNG(searchQuery, searxngUrl) {
   return enriched;
 }
 
-const WEB_SEARCH_TOOL = [
+async function executeStockData(symbol, finnhubApiKey) {
+  const base = 'https://finnhub.io/api/v1';
+  const token = `token=${finnhubApiKey}`;
+
+  const [quoteResp, profileResp, metricResp] = await Promise.all([
+    fetch(`${base}/quote?symbol=${symbol}&${token}`),
+    fetch(`${base}/stock/profile2?symbol=${symbol}&${token}`),
+    fetch(`${base}/stock/metric?symbol=${symbol}&metric=all&${token}`),
+  ]);
+
+  const quote   = await quoteResp.json();
+  const profile = await profileResp.json();
+  const metric  = await metricResp.json();
+
+  return { quote, profile, metric: metric.metric };
+}
+
+const TOOLS = [
   {
     type: 'function',
     function: {
@@ -69,6 +86,23 @@ const WEB_SEARCH_TOOL = [
           },
         },
         required: ['query'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'stock_data',
+      description: 'Fetch real-time stock price, market cap, and valuation metrics for a given ticker symbol.',
+      parameters: {
+        type: 'object',
+        properties: {
+          symbol: {
+            type: 'string',
+            description: 'Stock ticker symbol, e.g. AAPL, TSLA, GOOGL',
+          },
+        },
+        required: ['symbol'],
       },
     },
   },
@@ -100,7 +134,7 @@ export async function onRequestPost(context) {
     { role: 'user', content: query },
   ];
 
-  // Call #1: Native tool calling — model decides whether to search or answer directly
+  // Call #1: Tool routing — model decides web_search, stock_data, or direct answer
   const call1Resp = await fetch('https://api.mistral.ai/v1/chat/completions', {
     method: 'POST',
     headers: {
@@ -110,7 +144,7 @@ export async function onRequestPost(context) {
     body: JSON.stringify({
       model: 'ministral-14b-2512',
       messages: baseMessages,
-      tools: WEB_SEARCH_TOOL,
+      tools: TOOLS,
       tool_choice: 'auto',
       stream: false,
       max_tokens: 2048,
@@ -135,10 +169,9 @@ export async function onRequestPost(context) {
       const assistantMessage = call1Data.choices?.[0]?.message;
       const toolCalls = assistantMessage?.tool_calls;
 
-      // NO SEARCH: model answered directly — stream it out
+      // NO TOOL: model answered directly — stream it out
       if (!toolCalls || toolCalls.length === 0) {
         const directAnswer = assistantMessage?.content ?? '';
-        // Re-stream as SSE data chunks to match frontend protocol
         const chunks = directAnswer.match(/.{1,64}/gs) || [''];
         for (const chunk of chunks) {
           const ssePayload = {
@@ -151,20 +184,21 @@ export async function onRequestPost(context) {
         return;
       }
 
-      // SEARCH: execute tool, then Call #2 for final streamed answer
-      const toolCall   = toolCalls[0];
-      const toolCallId = toolCall.id;
+      // TOOL CALL: execute the right tool
+      const toolCall     = toolCalls[0];
+      const toolCallId   = toolCall.id;
       const functionName = toolCall.function?.name;
 
-      let searchResults = [];
+      let functionArgs = {};
+      try {
+        functionArgs = JSON.parse(toolCall.function?.arguments || '{}');
+      } catch (_) {}
+
+      let searchResults    = [];
+      let stockData        = null;
       let toolResultContent = 'No results found.';
 
       if (functionName === 'web_search') {
-        let functionArgs = {};
-        try {
-          functionArgs = JSON.parse(toolCall.function?.arguments || '{}');
-        } catch (_) {}
-
         if (functionArgs.query) {
           try {
             searchResults = await executeSearXNG(functionArgs.query, env.SEARXNG_URL);
@@ -175,11 +209,21 @@ export async function onRequestPost(context) {
             }
           } catch (_) {}
         }
+      } else if (functionName === 'stock_data') {
+        if (functionArgs.symbol) {
+          try {
+            stockData = await executeStockData(functionArgs.symbol, env.FINNHUB_API_KEY);
+            toolResultContent = JSON.stringify(stockData);
+          } catch (_) {}
+        }
       }
 
-      // Emit search results to frontend before answer stream
+      // Emit search results or stock data to frontend before answer stream
       if (searchResults.length > 0) {
         await writer.write(enc.encode(`event: results\ndata: ${JSON.stringify(searchResults)}\n\n`));
+      }
+      if (stockData) {
+        await writer.write(enc.encode(`event: stock\ndata: ${JSON.stringify(stockData)}\n\n`));
       }
 
       // Call #2: Final streamed answer with tool result

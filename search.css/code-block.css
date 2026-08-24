@@ -1,8 +1,7 @@
 /* ════════════════════════════════════════════════════════════════
-   code-block.css — Fenced code block
+   code-block.css
 ════════════════════════════════════════════════════════════════ */
 
-/* ── Container ── */
 .code-block {
   margin: 12px 0 16px;
   border-radius: 18px;
@@ -12,6 +11,7 @@
   box-shadow: none;
   width: 100%;
   position: relative;
+  box-sizing: border-box;
 }
 @media (prefers-color-scheme: dark) {
   .code-block { background: #1e1e1e; }
@@ -19,8 +19,9 @@
 
 .code-block-header { display: none; }
 .code-block-lang   { display: none; }
+.code-line-num     { display: none; }
 
-/* ── Floating copy button ── */
+/* ── Copy button ── */
 .code-copy-btn {
   position: absolute;
   top: 10px;
@@ -43,7 +44,7 @@
 .code-block:hover .code-copy-btn,
 .code-block:focus-within .code-copy-btn { opacity: 1; }
 @media (hover: none) { .code-copy-btn { opacity: 1; } }
-.code-copy-btn svg { width: 18px; height: 18px; flex-shrink: 0; stroke-width: 1.75; }
+.code-copy-btn svg { width: 18px; height: 18px; stroke-width: 1.75; }
 .code-copy-btn:active { opacity: 0.4 !important; }
 .code-copy-btn.copied { color: #3fb950; }
 @media (prefers-color-scheme: dark) {
@@ -51,66 +52,41 @@
   .code-copy-btn.copied { color: #3fb950; }
 }
 
-/* ── Pre ── */
+/* ── Pre — scrollable, clean ── */
 .code-block pre {
   margin: 0;
-  padding: 0;
-  overflow: hidden;
+  padding: 16px 20px;          /* sab taraf equal breathing room */
+  overflow-x: auto;
+  overflow-y: hidden;
   background: transparent;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;       /* scrollbar hide */
 }
+.code-block pre::-webkit-scrollbar { display: none; }
 
-/* ── Line numbers — REMOVED ── */
-.code-line-num { display: none; }
-
-/* ── Lines table ── */
-.code-block .code-lines {
-  display: table;
-  width: 100%;
-  padding: 16px 0;
-}
-.code-line { display: table-row; }
-
-/* ── Code content ── */
+/* ── Code ── */
+.code-block pre code,
+.code-block .code-lines,
 .code-line-content {
-  display: table-cell;
-  padding: 0 48px 0 20px;   /* left 20px, right 48px (copy btn ke liye) */
   font-family: 'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace;
   font-size: 13px;
   line-height: 1.7;
   font-weight: 400;
-  white-space: pre-wrap;
-  word-break: break-word;
+  white-space: pre;            /* indent preserve, no wrap */
   color: #1f2328;
-  width: 100%;
+  background: none;
+  display: block;
+  padding: 0;
   tab-size: 2;
-  vertical-align: top;
   -webkit-font-smoothing: antialiased;
 }
 @media (prefers-color-scheme: dark) {
+  .code-block pre code,
+  .code-block .code-lines,
   .code-line-content { color: #d4d4d4; }
 }
 
-/* ── Fallback pre > code ── */
-.code-block pre code {
-  display: block;
-  padding: 16px 48px 16px 20px;
-  background: none;
-  font-family: 'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace;
-  font-size: 13px;
-  line-height: 1.7;
-  color: #1f2328;
-  white-space: pre-wrap;
-  word-break: break-word;
-  tab-size: 2;
-  -webkit-font-smoothing: antialiased;
-}
-@media (prefers-color-scheme: dark) {
-  .code-block pre code { color: #d4d4d4; }
-}
-
-/* ════════════════════════════════════════════════════════════════
-   SYNTAX TOKENS
-════════════════════════════════════════════════════════════════ */
+/* ════ SYNTAX TOKENS ════ */
 
 .tk-kw   { color: #0000ff; font-weight: 500; }
 .tk-fn   { color: #795e26; }
@@ -136,7 +112,6 @@
   .tk-op   { color: #d4d4d4; }
 }
 
-/* ── hljs sync ── */
 .code-block .hljs {
   background: transparent;
   padding: 0;

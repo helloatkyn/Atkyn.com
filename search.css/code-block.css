@@ -4,7 +4,7 @@
 
 .code-block {
   margin: 12px 0 16px;
-  border-radius: 18px;
+  border-radius: 22px;         /* aur round */
   overflow: hidden;
   background: #fafafa;
   border: none;
@@ -21,7 +21,7 @@
 .code-block-lang   { display: none; }
 .code-line-num     { display: none; }
 
-/* ── Copy button ── */
+/* ── Copy button — thoda bada ── */
 .code-copy-btn {
   position: absolute;
   top: 10px;
@@ -33,8 +33,8 @@
   background: none;
   cursor: pointer;
   color: #57606a;
-  padding: 4px;
-  border-radius: 4px;
+  padding: 6px;                /* 4 → 6 */
+  border-radius: 6px;
   font-size: 0;
   -webkit-tap-highlight-color: transparent;
   opacity: 0;
@@ -44,7 +44,7 @@
 .code-block:hover .code-copy-btn,
 .code-block:focus-within .code-copy-btn { opacity: 1; }
 @media (hover: none) { .code-copy-btn { opacity: 1; } }
-.code-copy-btn svg { width: 18px; height: 18px; stroke-width: 1.75; }
+.code-copy-btn svg { width: 20px; height: 20px; stroke-width: 1.75; } /* 18 → 20 */
 .code-copy-btn:active { opacity: 0.4 !important; }
 .code-copy-btn.copied { color: #3fb950; }
 @media (prefers-color-scheme: dark) {
@@ -52,15 +52,15 @@
   .code-copy-btn.copied { color: #3fb950; }
 }
 
-/* ── Pre — scrollable, clean ── */
+/* ── Pre ── */
 .code-block pre {
   margin: 0;
-  padding: 16px 20px;          /* sab taraf equal breathing room */
+  padding: 16px 20px;
   overflow-x: auto;
   overflow-y: hidden;
   background: transparent;
   -webkit-overflow-scrolling: touch;
-  scrollbar-width: none;       /* scrollbar hide */
+  scrollbar-width: none;
 }
 .code-block pre::-webkit-scrollbar { display: none; }
 
@@ -72,7 +72,7 @@
   font-size: 13px;
   line-height: 1.7;
   font-weight: 400;
-  white-space: pre;            /* indent preserve, no wrap */
+  white-space: pre;
   color: #1f2328;
   background: none;
   display: block;
@@ -88,25 +88,27 @@
 
 /* ════ SYNTAX TOKENS ════ */
 
-.tk-kw   { color: #0000ff; font-weight: 500; }
-.tk-fn   { color: #795e26; }
+/* Light */
+.tk-kw   { color: #0070c1; font-weight: 500; }  /* blue */
+.tk-fn   { color: #3a7c3a; }                     /* green */
 .tk-str  { color: #a31515; }
-.tk-num  { color: #098658; }
-.tk-cmt  { color: #6a9955; font-style: italic; }
+.tk-num  { color: #098658; }                     /* green */
+.tk-cmt  { color: #5a8a3a; font-style: italic; } /* olive green */
 .tk-cls  { color: #267f99; }
-.tk-prop { color: #001080; }
-.tk-bool { color: #0000ff; font-weight: 500; }
+.tk-prop { color: #3a7c3a; }                     /* green */
+.tk-bool { color: #0070c1; font-weight: 500; }
 .tk-var  { color: #001080; }
 .tk-op   { color: #000000; }
 
+/* Dark — green heavy */
 @media (prefers-color-scheme: dark) {
   .tk-kw   { color: #569cd6; font-weight: 400; }
-  .tk-fn   { color: #dcdcaa; }
+  .tk-fn   { color: #b5cea8; }                   /* light green */
   .tk-str  { color: #ce9178; }
-  .tk-num  { color: #b5cea8; }
-  .tk-cmt  { color: #6a9955; font-style: italic; }
-  .tk-cls  { color: #4ec9b0; }
-  .tk-prop { color: #9cdcfe; }
+  .tk-num  { color: #b5cea8; }                   /* light green */
+  .tk-cmt  { color: #6a9955; font-style: italic; } /* olive green */
+  .tk-cls  { color: #4ec9b0; }                   /* teal green */
+  .tk-prop { color: #b5cea8; }                   /* light green */
   .tk-bool { color: #569cd6; font-weight: 400; }
   .tk-var  { color: #9cdcfe; }
   .tk-op   { color: #d4d4d4; }
@@ -118,4 +120,4 @@
   font-family: 'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace;
   font-size: 13px;
   line-height: 1.7;
-}
+   }

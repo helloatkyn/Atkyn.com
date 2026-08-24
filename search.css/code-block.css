@@ -1,7 +1,6 @@
 /* ════════════════════════════════════════════════════════════════
    code-block.css — Fenced code block
-   Container · Header · Language badge · Copy button ·
-   Line numbers · Code content · Fallback · Syntax tokens
+   Container · Floating copy button · Line numbers · Code content
 ════════════════════════════════════════════════════════════════ */
 
 /* ── Container ── */
@@ -13,6 +12,7 @@
   border: none;
   box-shadow: none;
   width: 100%;
+  position: relative;
 }
 @media (prefers-color-scheme: dark) {
   .code-block {
@@ -22,76 +22,55 @@
   }
 }
 
-/* ── Header bar ── */
-.code-block-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 10px 14px 10px 14px;
-  background: #f2f3f5;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
-  user-select: none;
-  min-height: 44px;
-}
-@media (prefers-color-scheme: dark) {
-  .code-block-header {
-    background: transparent;
-    border-bottom-color: var(--color-press-dark);
-  }
-}
+/* ── Header bar — REMOVED ── */
+.code-block-header { display: none; }
 
-/* ── Language badge ── */
-.code-block-lang {
-  font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  font-size: 12px;
-  font-weight: 500;
-  letter-spacing: 0;
-  text-transform: none;
-  color: #57606a;
-  background: rgba(0, 0, 0, 0.06);
-  padding: 3px 9px;
-  height: 26px;
-  line-height: 20px;
-  border-radius: 6px;
-  display: inline-flex;
-  align-items: center;
-}
-@media (prefers-color-scheme: dark) {
-  .code-block-lang {
-    color: var(--color-text-code-muted);
-    background: var(--color-code-lang-bg-dark);
-  }
-}
+/* ── Language badge — REMOVED ── */
+.code-block-lang { display: none; }
 
-/* ── Copy button ── */
+/* ── Floating copy button ── */
 .code-copy-btn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
   display: flex;
   align-items: center;
-  gap: 5px;
+  justify-content: center;
   border: none;
-  background: transparent;
+  background: rgba(0, 0, 0, 0.06);
   cursor: pointer;
   color: #57606a;
-  padding: 4px 2px;
-  border-radius: 4px;
-  font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  font-size: 12px;
-  font-weight: 400;
-  letter-spacing: 0;
+  padding: 6px;
+  border-radius: 6px;
+  font-size: 0;          /* hide "Copy" text */
   -webkit-tap-highlight-color: transparent;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+  z-index: 2;
+}
+.code-block:hover .code-copy-btn,
+.code-block:focus-within .code-copy-btn { opacity: 1; }
+/* On touch devices always show it */
+@media (hover: none) {
+  .code-copy-btn { opacity: 1; }
 }
 .code-copy-btn svg {
-  width: 14px;
-  height: 14px;
+  width: 15px;
+  height: 15px;
   flex-shrink: 0;
   stroke-width: 1.75;
 }
-.code-copy-btn:active { opacity: 0.45; }
-.code-copy-btn.copied { color: var(--color-copied); }
+.code-copy-btn:active { opacity: 0.45 !important; }
+.code-copy-btn.copied {
+  color: var(--color-copied);
+  background: rgba(0, 0, 0, 0.06);
+}
 
 @media (prefers-color-scheme: dark) {
-  .code-copy-btn        { color: var(--color-text-code-muted); }
-  .code-copy-btn:active { opacity: 0.45; }
+  .code-copy-btn {
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--color-text-code-muted);
+  }
   .code-copy-btn.copied { color: var(--color-copied); }
 }
 
@@ -140,7 +119,7 @@
 /* ── Code content cell ── */
 .code-line-content {
   display: table-cell;
-  padding: 0 16px 0 14px;
+  padding: 0 40px 0 14px; /* right padding so code doesn't go under copy btn */
   font-family: 'Söhne Mono', ui-monospace, 'SFMono-Regular', 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace;
   font-size: 13px;
   line-height: 1.6;
@@ -163,7 +142,7 @@
 /* ── Fallback pre > code ── */
 .code-block pre code {
   display: block;
-  padding: 14px 16px;
+  padding: 14px 40px 14px 16px;
   background: none;
   font-family: 'Söhne Mono', ui-monospace, 'SFMono-Regular', 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace;
   font-size: 13px;

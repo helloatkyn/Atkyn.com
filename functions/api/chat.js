@@ -1,23 +1,56 @@
 import { SYSTEM_PROMPT } from './systemPrompt.js';
 
-const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions';
+const CEREBRAS_URL =
+  'https://api.cerebras.ai/v1/chat/completions';
 
-// VERIFIED CURRENT OPENROUTER MODEL
-const MODEL = 'z-ai/glm-5.2:free';
+const MODEL = 'gemma-4-31b';
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+  'Access-Control-Allow-Headers':
+    'Content-Type, Authorization',
 };
 
-function jsonResponse(data, status = 200) {
-  return new Response(JSON.stringify(data), {
-    status,
-    headers: {
-      'Content-Type': 'application/json',
-      ...CORS_HEADERS,
+const WEB_SEARCH_TOOL = [
+  {
+    type: 'function',
+    function: {
+      name: 'web_search',
+
+      description:
+        'Search the web when the user needs current, recent, ' +
+        'real-time, external, or specialized information. ' +
+        'Do not use it for ordinary reasoning, mathematics, ' +
+        'creative writing, or coding questions that can be answered ' +
+        'without external information.',
+
+      parameters: {
+        type: 'object',
+
+        properties: {
+          query: {
+            type: 'string',
+            description:
+              'The concise search query to use on the web.',
+          },
+        },
+
+        required: ['query'],
+
+        additionalProperties: false,
+      },
     },
+  },
+];
+
+function sse(data) {
+  return `data: ${JSON.stringify(data)}\n\n`;
+}
+
+function errorSSE(message) {
+  return sse({
+    error: String(message || 'Unknown error'),
   });
 }
 
@@ -33,9 +66,10 @@ async function fetchPageText(url) {
       headers: {
         'User-Agent':
           'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/139 Safari/537.36',
-        'Accept':
+        Accept:
           'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
       },
+
       signal: AbortSignal.timeout(4000),
     });
 
@@ -43,7 +77,7 @@ async function fetchPageText(url) {
 
     const html = await resp.text();
 
-    const clean = html
+    return html
       .replace(/<script[\s\S]*?<\/script>/gi, ' ')
       .replace(/<style[\s\S]*?<\/style>/gi, ' ')
       .replace(/<noscript[\s\S]*?<\/noscript>/gi, ' ')
@@ -54,219 +88,191 @@ async function fetchPageText(url) {
       .replace(/&lt;/gi, '<')
       .replace(/&gt;/gi, '>')
       .replace(/\s+/g, ' ')
-      .trim();
-
-    return clean.slice(0, 5000);
+      .trim()
+      .slice(0, 5000);
   } catch {
     return '';
   }
 }
 
 async function executeSearXNG(searchQuery, searxngUrl) {
-  if (!searchQuery || !searxngUrl) return [];
+  if (!searchQuery || !searxngUrl) {
+    return [];
+  }
 
-  const baseUrl = normalizeUrl(searxngUrl);
+  const base = normalizeUrl(searxngUrl);
 
-  const searchUrl =
-    `${baseUrl}/search` +
+  const url =
+    `${base}/search` +
     `?q=${encodeURIComponent(searchQuery)}` +
     `&format=json` +
     `&categories=general` +
     `&language=en`;
 
-  const searxResp = await fetch(searchUrl, {
+  const resp = await fetch(url, {
     headers: {
       Accept: 'application/json',
     },
+
     signal: AbortSignal.timeout(8000),
   });
 
-  if (!searxResp.ok) return [];
+  if (!resp.ok) {
+    throw new Error(
+      `SearXNG returned HTTP ${resp.status}`
+    );
+  }
 
-  const data = await searxResp.json();
+  const data = await resp.json();
 
-  const raw = Array.isArray(data.results)
+  const results = Array.isArray(data.results)
     ? data.results.slice(0, 6)
     : [];
 
-  const enriched = await Promise.all(
-    raw.map(async (r, i) => {
-      let content = r.content || '';
+  return Promise.all(
+    results.map(async (r, i) => {
+      let snippet = r.content || '';
 
-      // Fetch actual page content for first 5 results.
       if (i < 5 && r.url) {
-        const pageText = await fetchPageText(r.url);
+        const pageText =
+          await fetchPageText(r.url);
 
         if (pageText) {
-          content = pageText;
+          snippet = pageText;
         }
       }
 
       return {
         title: r.title || '',
         url: r.url || '',
-        snippet: content || '',
+        snippet,
       };
     })
   );
-
-  return enriched;
 }
 
-const WEB_SEARCH_TOOL = [
-  {
-    type: 'function',
-    function: {
-      name: 'web_search',
-
-      description:
-        'Search the web for current, recent, external, real-time, ' +
-        'specialized, or otherwise externally verifiable information. ' +
-        'Use this when the user needs information that may have changed ' +
-        'or cannot be reliably answered from existing knowledge. ' +
-        'Do not use it for ordinary reasoning, mathematics, coding, ' +
-        'creative writing, or general explanations that do not require ' +
-        'external information.',
-
-      parameters: {
-        type: 'object',
-
-        properties: {
-          query: {
-            type: 'string',
-            description:
-              'A concise web search query containing the information needed.',
-          },
-        },
-
-        required: ['query'],
-
-        additionalProperties: false,
-      },
-    },
-  },
-];
-
-function stripThinking(text) {
-  if (!text) return '';
-
-  return String(text)
-    .replace(/<think>[\s\S]*?<\/think>/gi, '')
-    .trimStart();
-}
-
-/*
- * Removes <think>...</think> safely even when the tags
- * arrive across different streaming chunks.
- */
-class ThinkingFilter {
-  constructor() {
-    this.buffer = '';
-    this.insideThink = false;
-  }
-
-  push(text) {
-    if (!text) return '';
-
-    this.buffer += text;
-
-    let output = '';
-
-    while (true) {
-      if (this.insideThink) {
-        const closeIndex = this.buffer.indexOf('</think>');
-
-        if (closeIndex === -1) {
-          /*
-           * Keep a small suffix because </think> itself
-           * can be split across network chunks.
-           */
-          const keep = Math.min(this.buffer.length, 8);
-
-          this.buffer = this.buffer.slice(
-            Math.max(0, this.buffer.length - keep)
-          );
-
-          return output;
-        }
-
-        this.buffer = this.buffer.slice(closeIndex + 8);
-        this.insideThink = false;
-        continue;
-      }
-
-      const openIndex = this.buffer.indexOf('<think>');
-
-      if (openIndex === -1) {
-        /*
-         * Don't immediately emit the final 6 characters because
-         * "<think>" can be split between streaming chunks.
-         */
-        const keep = Math.min(this.buffer.length, 6);
-
-        if (this.buffer.length > keep) {
-          output += this.buffer.slice(0, -keep);
-          this.buffer = this.buffer.slice(-keep);
-        }
-
-        return output;
-      }
-
-      output += this.buffer.slice(0, openIndex);
-
-      this.buffer = this.buffer.slice(openIndex + 7);
-      this.insideThink = true;
-    }
-  }
-
-  flush() {
-    if (this.insideThink) {
-      this.buffer = '';
-      return '';
-    }
-
-    const out = this.buffer;
-    this.buffer = '';
-
-    return out;
-  }
-}
-
-function makeSSE(type, data) {
-  if (type === 'data') {
-    return `data: ${JSON.stringify(data)}\n\n`;
-  }
-
-  return `event: ${type}\ndata: ${JSON.stringify(data)}\n\n`;
-}
-
-async function writeError(writer, enc, message) {
-  try {
-    await writer.write(
-      enc.encode(
-        makeSSE('data', {
-          error: String(message || 'Unknown error'),
-        })
-      )
-    );
-
-    await writer.write(enc.encode('data: [DONE]\n\n'));
-  } catch {
-    // Ignore stream-write errors.
-  }
-}
-
-function extractToolCalls(message) {
-  return Array.isArray(message?.tool_calls)
-    ? message.tool_calls
-    : [];
-}
-
-function safeParseArguments(raw) {
+function parseArguments(raw) {
   try {
     return JSON.parse(raw || '{}');
   } catch {
     return {};
+  }
+}
+
+function stripThinking(text) {
+  return String(text || '')
+    .replace(
+      /<think>[\s\S]*?<\/think>/gi,
+      ''
+    )
+    .trimStart();
+}
+
+/*
+ * SSE parser.
+ *
+ * Network chunks are NOT guaranteed to equal SSE messages,
+ * so we keep an internal buffer.
+ */
+async function consumeSSE(
+  response,
+  onData
+) {
+  const reader =
+    response.body.getReader();
+
+  const decoder =
+    new TextDecoder('utf-8');
+
+  let buffer = '';
+
+  while (true) {
+    const { done, value } =
+      await reader.read();
+
+    if (done) break;
+
+    buffer += decoder.decode(
+      value,
+      { stream: true }
+    );
+
+    const events =
+      buffer.split(/\r?\n\r?\n/);
+
+    buffer =
+      events.pop() || '';
+
+    for (const event of events) {
+      const lines =
+        event.split(/\r?\n/);
+
+      for (const line of lines) {
+        if (!line.startsWith('data:')) {
+          continue;
+        }
+
+        const payload =
+          line.slice(5).trim();
+
+        if (!payload) continue;
+
+        if (payload === '[DONE]') {
+          await onData({
+            done: true,
+          });
+
+          continue;
+        }
+
+        try {
+          const parsed =
+            JSON.parse(payload);
+
+          await onData({
+            data: parsed,
+            done: false,
+          });
+        } catch {
+          // Ignore malformed SSE payloads.
+        }
+      }
+    }
+  }
+
+  /*
+   * Flush decoder.
+   */
+  buffer += decoder.decode();
+
+  if (buffer.trim()) {
+    const events =
+      buffer.split(/\r?\n\r?\n/);
+
+    for (const event of events) {
+      const lines =
+        event.split(/\r?\n/);
+
+      for (const line of lines) {
+        if (!line.startsWith('data:')) {
+          continue;
+        }
+
+        const payload =
+          line.slice(5).trim();
+
+        if (!payload || payload === '[DONE]') {
+          continue;
+        }
+
+        try {
+          await onData({
+            data: JSON.parse(payload),
+            done: false,
+          });
+        } catch {}
+      }
+    }
   }
 }
 
@@ -278,11 +284,20 @@ export async function onRequestPost(context) {
   try {
     body = await request.json();
   } catch {
-    return jsonResponse(
-      {
+    return new Response(
+      JSON.stringify({
         error: 'Invalid request body',
-      },
-      400
+      }),
+      {
+        status: 400,
+
+        headers: {
+          'Content-Type':
+            'application/json',
+
+          ...CORS_HEADERS,
+        },
+      }
     );
   }
 
@@ -291,38 +306,68 @@ export async function onRequestPost(context) {
       ? body.query.trim()
       : '';
 
-  const history = Array.isArray(body?.history)
-    ? body.history
-    : [];
+  const history =
+    Array.isArray(body?.history)
+      ? body.history
+      : [];
 
   if (!query) {
-    return jsonResponse(
-      {
+    return new Response(
+      JSON.stringify({
         error: 'Empty query',
-      },
-      400
+      }),
+      {
+        status: 400,
+
+        headers: {
+          'Content-Type':
+            'application/json',
+
+          ...CORS_HEADERS,
+        },
+      }
     );
   }
 
-  if (!env?.OPENROUTER_API_KEY) {
-    return jsonResponse(
+  if (!env?.CEREBRAS_API_KEY) {
+    return new Response(
+      JSON.stringify({
+        error:
+          'CEREBRAS_API_KEY is missing.',
+      }),
       {
-        error: 'OPENROUTER_API_KEY is not configured.',
-      },
-      500
+        status: 500,
+
+        headers: {
+          'Content-Type':
+            'application/json',
+
+          ...CORS_HEADERS,
+        },
+      }
     );
   }
 
   if (!env?.SEARXNG_URL) {
-    return jsonResponse(
+    return new Response(
+      JSON.stringify({
+        error:
+          'SEARXNG_URL is missing.',
+      }),
       {
-        error: 'SEARXNG_URL is not configured.',
-      },
-      500
+        status: 500,
+
+        headers: {
+          'Content-Type':
+            'application/json',
+
+          ...CORS_HEADERS,
+        },
+      }
     );
   }
 
-  const baseMessages = [
+  const messages = [
     {
       role: 'system',
       content: SYSTEM_PROMPT,
@@ -336,115 +381,156 @@ export async function onRequestPost(context) {
     },
   ];
 
-  const authHeader = {
-    Authorization: `Bearer ${env.OPENROUTER_API_KEY}`,
-  };
+  const {
+    readable,
+    writable,
+  } = new TransformStream();
+
+  const writer =
+    writable.getWriter();
+
+  const encoder =
+    new TextEncoder();
 
   /*
-   * Create SSE stream immediately.
-   */
-  const { readable, writable } = new TransformStream();
-
-  const writer = writable.getWriter();
-  const enc = new TextEncoder();
-
-  /*
-   * Run the whole OpenRouter flow in background.
+   * Run asynchronously so the Response can
+   * immediately become an SSE stream.
    */
   (async () => {
     try {
       /*
-       * =========================================================
+       * =====================================================
        * CALL #1
-       * Model decides:
-       *   - answer directly
-       *   - OR call web_search
-       * =========================================================
+       *
+       * Gemma decides whether to use web_search.
+       * =====================================================
        */
 
-      const call1Resp = await fetch(OPENROUTER_URL, {
-        method: 'POST',
+      const call1 =
+        await fetch(
+          CEREBRAS_URL,
+          {
+            method: 'POST',
 
-        headers: {
-          'Content-Type': 'application/json',
-          ...authHeader,
-        },
+            headers: {
+              'Content-Type':
+                'application/json',
 
-        body: JSON.stringify({
-          model: MODEL,
+              Authorization:
+                `Bearer ${env.CEREBRAS_API_KEY}`,
+            },
 
-          messages: baseMessages,
+            body: JSON.stringify({
+              model: MODEL,
 
-          tools: WEB_SEARCH_TOOL,
+              messages,
 
-          tool_choice: 'auto',
+              tools:
+                WEB_SEARCH_TOOL,
 
-          stream: false,
+              tool_choice: 'auto',
 
-          max_tokens: 2048,
+              parallel_tool_calls: true,
 
-          temperature: 0.6,
-        }),
-      });
+              stream: false,
 
-      if (!call1Resp.ok) {
-        const errText = await call1Resp.text();
+              max_completion_tokens: 2048,
 
-        await writeError(
-          writer,
-          enc,
-          `OpenRouter Call #1 failed (${call1Resp.status}): ${errText}`
+              temperature: 0.6,
+            }),
+          }
+        );
+
+      if (!call1.ok) {
+        const text =
+          await call1.text();
+
+        await writer.write(
+          encoder.encode(
+            errorSSE(
+              `Cerebras Call #1 failed ` +
+              `(${call1.status}): ${text}`
+            )
+          )
+        );
+
+        await writer.write(
+          encoder.encode(
+            'data: [DONE]\n\n'
+          )
         );
 
         await writer.close();
+
         return;
       }
 
-      const call1Data = await call1Resp.json();
+      const call1Data =
+        await call1.json();
 
-      const assistantMessage =
+      const assistant =
         call1Data?.choices?.[0]?.message;
 
-      if (!assistantMessage) {
-        await writeError(
-          writer,
-          enc,
-          'OpenRouter returned no assistant message.'
+      if (!assistant) {
+        await writer.write(
+          encoder.encode(
+            errorSSE(
+              'Cerebras returned no assistant message.'
+            )
+          )
+        );
+
+        await writer.write(
+          encoder.encode(
+            'data: [DONE]\n\n'
+          )
         );
 
         await writer.close();
+
         return;
       }
 
-      const toolCalls = extractToolCalls(assistantMessage);
+      const toolCalls =
+        Array.isArray(
+          assistant.tool_calls
+        )
+          ? assistant.tool_calls
+          : [];
 
       /*
-       * =========================================================
-       * NO TOOL CALL
-       * =========================================================
+       * =====================================================
+       * DIRECT ANSWER
+       *
+       * No tool was requested.
+       * =====================================================
        */
 
       if (toolCalls.length === 0) {
-        const directAnswer = stripThinking(
-          assistantMessage.content || ''
-        );
+        const answer =
+          stripThinking(
+            assistant.content || ''
+          );
 
         /*
-         * Send answer as SSE chunks so frontend can consume
-         * it using the same streaming parser.
+         * Emit it in small chunks so the frontend
+         * receives a normal streaming-like response.
          */
         const chunks =
-          directAnswer.match(/[\s\S]{1,64}/g) || [''];
+          answer.match(
+            /[\s\S]{1,64}/g
+          ) || [''];
 
         for (const chunk of chunks) {
           await writer.write(
-            enc.encode(
-              makeSSE('data', {
+            encoder.encode(
+              sse({
                 choices: [
                   {
                     delta: {
                       content: chunk,
                     },
+
                     finish_reason: null,
                   },
                 ],
@@ -454,22 +540,25 @@ export async function onRequestPost(context) {
         }
 
         await writer.write(
-          enc.encode('data: [DONE]\n\n')
+          encoder.encode(
+            'data: [DONE]\n\n'
+          )
         );
 
         await writer.close();
+
         return;
       }
 
       /*
-       * =========================================================
-       * TOOL CALL
-       * =========================================================
+       * =====================================================
+       * EXECUTE TOOLS
+       * =====================================================
        */
 
       const toolMessages = [];
 
-      let allSearchResults = [];
+      const frontendResults = [];
 
       for (const toolCall of toolCalls) {
         const functionName =
@@ -478,372 +567,306 @@ export async function onRequestPost(context) {
         const toolCallId =
           toolCall?.id || '';
 
-        const functionArgs =
-          safeParseArguments(
+        const args =
+          parseArguments(
             toolCall?.function?.arguments
           );
 
-        /*
-         * Unknown tool
-         */
-        if (functionName !== 'web_search') {
+        if (
+          functionName !==
+          'web_search'
+        ) {
           toolMessages.push({
             role: 'tool',
-            name: functionName || 'unknown',
-            tool_call_id: toolCallId,
-            content: 'Unknown tool.',
+
+            tool_call_id:
+              toolCallId,
+
+            content:
+              'Unknown tool.',
           });
 
           continue;
         }
 
         const searchQuery =
-          typeof functionArgs?.query === 'string'
-            ? functionArgs.query.trim()
+          typeof args.query === 'string'
+            ? args.query.trim()
             : '';
 
         if (!searchQuery) {
           toolMessages.push({
             role: 'tool',
-            name: 'web_search',
-            tool_call_id: toolCallId,
-            content: 'No search query was provided.',
+
+            tool_call_id:
+              toolCallId,
+
+            content:
+              'No search query was provided.',
           });
 
           continue;
         }
 
-        let searchResults = [];
+        let results = [];
 
         try {
-          searchResults = await executeSearXNG(
-            searchQuery,
-            env.SEARXNG_URL
-          );
+          results =
+            await executeSearXNG(
+              searchQuery,
+              env.SEARXNG_URL
+            );
         } catch (err) {
-          searchResults = [];
-
           console.error(
             'SearXNG error:',
             err
           );
         }
 
-        allSearchResults.push(...searchResults);
+        frontendResults.push(
+          ...results
+        );
 
-        let toolResultContent =
+        let resultText =
           'No results found.';
 
-        if (searchResults.length > 0) {
-          toolResultContent = searchResults
-            .map(
-              (r, i) =>
-                `[${i + 1}] ${r.title}\n` +
-                `URL: ${r.url}\n` +
-                `${r.snippet}`
-            )
-            .join('\n\n');
+        if (results.length) {
+          resultText =
+            results
+              .map(
+                (r, i) =>
+                  `[${i + 1}] ${r.title}\n` +
+                  `URL: ${r.url}\n` +
+                  `${r.snippet}`
+              )
+              .join('\n\n');
         }
 
         toolMessages.push({
           role: 'tool',
-          name: 'web_search',
-          tool_call_id: toolCallId,
-          content: toolResultContent,
+
+          tool_call_id:
+            toolCallId,
+
+          content:
+            resultText,
         });
       }
 
       /*
-       * Send search results to frontend.
+       * Send raw search results to frontend.
        */
-      if (allSearchResults.length > 0) {
+      if (frontendResults.length) {
         await writer.write(
-          enc.encode(
-            makeSSE(
-              'results',
-              allSearchResults
-            )
+          encoder.encode(
+            `event: results\n` +
+            `data: ${JSON.stringify(
+              frontendResults
+            )}\n\n`
           )
         );
       }
 
       /*
-       * =========================================================
+       * =====================================================
        * CALL #2
-       * Model receives:
        *
-       * original conversation
-       * assistant tool call
-       * actual web results
+       * Send:
+       *   original messages
+       *   assistant tool call
+       *   tool results
        *
-       * and produces final answer.
-       * =========================================================
+       * Then stream final answer.
+       * =====================================================
        */
 
-      const call2Resp = await fetch(
-        OPENROUTER_URL,
-        {
-          method: 'POST',
+      const call2 =
+        await fetch(
+          CEREBRAS_URL,
+          {
+            method: 'POST',
 
-          headers: {
-            'Content-Type': 'application/json',
-            ...authHeader,
-          },
+            headers: {
+              'Content-Type':
+                'application/json',
 
-          body: JSON.stringify({
-            model: MODEL,
+              Authorization:
+                `Bearer ${env.CEREBRAS_API_KEY}`,
+            },
 
-            messages: [
-              ...baseMessages,
+            body: JSON.stringify({
+              model: MODEL,
 
-              {
-                role: 'assistant',
-                content:
-                  assistantMessage.content ?? null,
-                tool_calls: toolCalls,
-              },
+              messages: [
+                ...messages,
 
-              ...toolMessages,
-            ],
+                {
+                  role: 'assistant',
 
-            stream: true,
+                  content:
+                    assistant.content ??
+                    null,
 
-            max_tokens: 2048,
+                  tool_calls:
+                    toolCalls,
+                },
 
-            temperature: 0.6,
-          }),
-        }
-      );
+                ...toolMessages,
+              ],
 
-      if (!call2Resp.ok) {
-        const errText = await call2Resp.text();
+              stream: true,
 
-        await writeError(
-          writer,
-          enc,
-          `OpenRouter Call #2 failed (${call2Resp.status}): ${errText}`
+              max_completion_tokens:
+                2048,
+
+              temperature: 0.6,
+            }),
+          }
+        );
+
+      if (!call2.ok) {
+        const text =
+          await call2.text();
+
+        await writer.write(
+          encoder.encode(
+            errorSSE(
+              `Cerebras Call #2 failed ` +
+              `(${call2.status}): ${text}`
+            )
+          )
+        );
+
+        await writer.write(
+          encoder.encode(
+            'data: [DONE]\n\n'
+          )
         );
 
         await writer.close();
+
         return;
       }
 
       /*
-       * =========================================================
-       * ROBUST SSE READER
-       *
-       * IMPORTANT:
-       * A network chunk is NOT necessarily an SSE event.
-       * Therefore we keep a persistent buffer.
-       * =========================================================
+       * =====================================================
+       * STREAM FINAL ANSWER
+       * =====================================================
        */
 
-      const reader =
-        call2Resp.body.getReader();
+      let sentDone = false;
 
-      const dec =
-        new TextDecoder('utf-8');
+      await consumeSSE(
+        call2,
+        async ({ data, done }) => {
+          if (done) {
+            if (!sentDone) {
+              sentDone = true;
 
-      let sseBuffer = '';
-
-      const thinkingFilter =
-        new ThinkingFilter();
-
-      while (true) {
-        const { done, value } =
-          await reader.read();
-
-        if (done) break;
-
-        sseBuffer += dec.decode(
-          value,
-          {
-            stream: true,
-          }
-        );
-
-        /*
-         * SSE events are separated by blank lines.
-         */
-        const events =
-          sseBuffer.split(/\r?\n\r?\n/);
-
-        /*
-         * Keep incomplete event for next network chunk.
-         */
-        sseBuffer =
-          events.pop() || '';
-
-        for (const event of events) {
-          const lines =
-            event.split(/\r?\n/);
-
-          for (const line of lines) {
-            if (!line.startsWith('data:')) {
-              continue;
-            }
-
-            const payload =
-              line.slice(5).trim();
-
-            if (!payload) {
-              continue;
-            }
-
-            if (payload === '[DONE]') {
               await writer.write(
-                enc.encode(
+                encoder.encode(
                   'data: [DONE]\n\n'
                 )
               );
-
-              continue;
             }
 
-            let parsed;
+            return;
+          }
 
-            try {
-              parsed =
-                JSON.parse(payload);
-            } catch {
-              /*
-               * Don't kill the stream if a provider sends
-               * malformed/non-JSON SSE data.
-               */
-              continue;
-            }
+          const choice =
+            data?.choices?.[0];
 
-            const choice =
-              parsed?.choices?.[0];
+          const delta =
+            choice?.delta;
 
-            const delta =
-              choice?.delta;
+          const content =
+            delta?.content;
 
-            const content =
-              delta?.content || '';
-
-            /*
-             * Nothing textual in this delta.
-             * Forward finish/tool metadata normally.
-             */
-            if (!content) {
-              await writer.write(
-                enc.encode(
-                  makeSSE(
-                    'data',
-                    parsed
-                  )
-                )
-              );
-
-              continue;
-            }
-
-            /*
-             * Strip Qwen/GLM style thinking blocks safely.
-             */
-            const visibleText =
-              thinkingFilter.push(content);
-
-            if (!visibleText) {
-              continue;
-            }
-
-            const output = {
-              ...parsed,
-
-              choices: [
-                {
-                  ...choice,
-
-                  delta: {
-                    ...delta,
-
-                    content:
-                      visibleText,
-                  },
-                },
-              ],
-            };
-
+          /*
+           * Forward metadata / finish events.
+           */
+          if (
+            typeof content !==
+            'string'
+          ) {
             await writer.write(
-              enc.encode(
-                makeSSE(
-                  'data',
-                  output
-                )
+              encoder.encode(
+                sse(data)
               )
             );
+
+            return;
           }
-        }
-      }
 
-      /*
-       * Flush remaining decoder bytes.
-       */
-      sseBuffer += dec.decode();
+          const clean =
+            stripThinking(
+              content
+            );
 
-      /*
-       * Flush remaining visible text from thinking filter.
-       */
-      const finalText =
-        thinkingFilter.flush();
+          if (!clean) {
+            return;
+          }
 
-      if (finalText) {
-        await writer.write(
-          enc.encode(
-            makeSSE(
-              'data',
+          const output = {
+            ...data,
+
+            choices: [
               {
-                choices: [
-                  {
-                    delta: {
-                      content: finalText,
-                    },
-                    finish_reason: null,
-                  },
-                ],
-              }
+                ...choice,
+
+                delta: {
+                  ...delta,
+
+                  content: clean,
+                },
+              },
+            ],
+          };
+
+          await writer.write(
+            encoder.encode(
+              sse(output)
             )
+          );
+        }
+      );
+
+      if (!sentDone) {
+        await writer.write(
+          encoder.encode(
+            'data: [DONE]\n\n'
           )
         );
       }
 
-      /*
-       * Ensure frontend always receives DONE.
-       */
-      await writer.write(
-        enc.encode(
-          'data: [DONE]\n\n'
-        )
-      );
-
       await writer.close();
     } catch (err) {
       console.error(
-        'Request handler error:',
+        'Cerebras handler error:',
         err
       );
 
-      await writeError(
-        writer,
-        enc,
-        err?.stack || String(err)
-      );
-
       try {
+        await writer.write(
+          encoder.encode(
+            errorSSE(
+              err?.stack ||
+              String(err)
+            )
+          )
+        );
+
+        await writer.write(
+          encoder.encode(
+            'data: [DONE]\n\n'
+          )
+        );
+
         await writer.close();
-      } catch {
-        // Already closed.
-      }
+      } catch {}
     }
   })();
 
-  /*
-   * IMPORTANT:
-   * CORS headers must also be present on the actual POST
-   * response, not only OPTIONS.
-   */
   return new Response(
     readable,
     {
@@ -853,9 +876,6 @@ export async function onRequestPost(context) {
 
         'Cache-Control':
           'no-cache, no-transform',
-
-        'Connection':
-          'keep-alive',
 
         'X-Accel-Buffering':
           'no',
@@ -867,17 +887,14 @@ export async function onRequestPost(context) {
 }
 
 export async function onRequestOptions() {
-  return new Response(
-    null,
-    {
-      status: 204,
+  return new Response(null, {
+    status: 204,
 
-      headers: {
-        ...CORS_HEADERS,
+    headers: {
+      ...CORS_HEADERS,
 
-        'Access-Control-Max-Age':
-          '86400',
-      },
-    }
-  );
-                }
+      'Access-Control-Max-Age':
+        '86400',
+    },
+  });
+}

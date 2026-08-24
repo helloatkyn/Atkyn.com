@@ -53,35 +53,50 @@ async function executeStockData(symbol, finnhubApiKey) {
   const base  = 'https://finnhub.io/api/v1';
   const token = `token=${finnhubApiKey}`;
 
-  const [quoteResp, profileResp] = await Promise.all([
+  const [quoteResp, profileResp, metricResp] = await Promise.all([
     fetch(`${base}/quote?symbol=${symbol}&${token}`),
     fetch(`${base}/stock/profile2?symbol=${symbol}&${token}`),
+    fetch(`${base}/stock/metric?symbol=${symbol}&metric=all&${token}`),
   ]);
 
   const q = await quoteResp.json();
   const p = await profileResp.json();
+  const m = (await metricResp.json())?.metric || {};
 
   const marketCapM = p.marketCapitalization || 0;
   let marketCapStr = '';
-  if (marketCapM >= 1_000_000)      marketCapStr = `$${(marketCapM / 1_000_000).toFixed(2)}T`;
-  else if (marketCapM >= 1_000)     marketCapStr = `$${(marketCapM / 1_000).toFixed(2)}B`;
-  else if (marketCapM > 0)          marketCapStr = `$${marketCapM.toFixed(2)}M`;
+  if (marketCapM >= 1_000_000)  marketCapStr = `$${(marketCapM / 1_000_000).toFixed(2)}T`;
+  else if (marketCapM >= 1_000) marketCapStr = `$${(marketCapM / 1_000).toFixed(2)}B`;
+  else if (marketCapM > 0)      marketCapStr = `$${marketCapM.toFixed(2)}M`;
 
   return {
-    ticker:       symbol,
-    name:         p.name     || symbol,
-    exchange:     p.exchange || '',
-    logo:         p.logo     || '',
-    currency:     p.currency || 'USD',
-    marketCap:    marketCapStr,
-    price:        q.c  ?? 0,
-    change:       q.d  ?? 0,
-    changePct:    q.dp ?? 0,
-    open:         q.o  ?? 0,
-    high:         q.h  ?? 0,
-    low:          q.l  ?? 0,
-    prevClose:    q.pc ?? 0,
-    series:       [],
+    ticker:        symbol,
+    name:          p.name       || symbol,
+    exchange:      p.exchange   || '',
+    logo:          p.logo       || '',
+    currency:      p.currency   || 'USD',
+    industry:      p.finnhubIndustry || '',
+    website:       p.weburl     || '',
+    country:       p.country    || '',
+    marketCap:     marketCapStr,
+    sharesOut:     p.shareOutstanding || 0,
+    ipo:           p.ipo        || '',
+    price:         q.c  ?? 0,
+    change:        q.d  ?? 0,
+    changePct:     q.dp ?? 0,
+    open:          q.o  ?? 0,
+    high:          q.h  ?? 0,
+    low:           q.l  ?? 0,
+    prevClose:     q.pc ?? 0,
+    pe:            m['peNormalizedAnnual']   ?? m['peTTM']        ?? null,
+    eps:           m['epsNormalizedAnnual']  ?? m['epsTTM']       ?? null,
+    week52High:    m['52WeekHigh']           ?? null,
+    week52Low:     m['52WeekLow']            ?? null,
+    beta:          m['beta']                 ?? null,
+    dividendYield: m['dividendYieldIndicatedAnnual'] ?? null,
+    roe:           m['roeTTM']               ?? null,
+    revenue:       m['revenuePerShareTTM']   ?? null,
+    series:        [],
   };
 }
 
@@ -313,4 +328,4 @@ export async function onRequestOptions() {
       'Access-Control-Allow-Headers': 'Content-Type',
     },
   });
-    }
+                                                               }

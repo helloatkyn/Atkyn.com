@@ -48,17 +48,18 @@ function _normalizeNewlines(str) {
   return out.join('');
 }
 
-/* ── Pre-process: convert \[...\] and \(...\) to $$ and $ ──
-   marked-katex-extension natively handles $$...$$ and $...$
-   but \[...\] block extension misses cases where \[ is mid-paragraph.
-   Safest fix: convert to $$ delimiters before parsing. ── */
+/* ── Pre-process: normalize all LaTeX delimiters to $$ and $ ──
+   Handles: \[...\]  →  $$...$$  (block display)
+            \(...\)  →  $...$    (inline)
+   Also strips stray $$ that appear on their own line (model
+   sometimes emits an opening $$ then content then closing $$
+   with extra blank lines — keep them but collapse whitespace). ── */
 function _convertLatexDelimiters(str) {
-  // \[...\]  →  $$...$$  (block)
-  // Use non-greedy match; handle multiline
+  // \[...\]  →  $$...$$
   str = str.replace(/\\\[([\s\S]*?)\\\]/g, function(_, inner) {
     return '\n$$' + inner + '$$\n';
   });
-  // \(...\)  →  $...$   (inline)
+  // \(...\)  →  $...$
   str = str.replace(/\\\(([\s\S]*?)\\\)/g, function(_, inner) {
     return '$' + inner + '$';
   });
@@ -71,6 +72,7 @@ function _buildMarked() {
     throwOnError: false,
     errorColor: '#888888',
     trust: false,
+    output: 'html',
     delimiters: [
       { left: '$$', right: '$$', display: true  },
       { left: '$',  right: '$',  display: false },
@@ -78,16 +80,34 @@ function _buildMarked() {
   }));
 
   const renderer = new marked.Renderer();
-  renderer.code = function (code, lang) {
-    const language = (lang || '').trim().toLowerCase();
+
+  /* ── Code block renderer ──────────────────────────────────────
+     marked v4  → code(code: string, lang: string, escaped: bool)
+     marked v5+ → code(token: { text, lang, escaped })
+     We support both by checking whether the first arg is an object.
+  ────────────────────────────────────────────────────────────── */
+  renderer.code = function (tokenOrCode, langArg) {
+    const isObj  = tokenOrCode !== null && typeof tokenOrCode === 'object';
+    const code   = isObj ? (tokenOrCode.text || '') : String(tokenOrCode || '');
+    const lang   = isObj ? (tokenOrCode.lang  || '') : String(langArg    || '');
+
+    const language = lang.trim().toLowerCase();
     const label    = language || 'code';
     const id       = 'cb' + Math.random().toString(36).slice(2, 8);
+
     let highlighted = _he(code);
     if (typeof hljs !== 'undefined') {
-      const valid  = language && hljs.getLanguage(language);
-      const result = valid ? hljs.highlight(code, { language, ignoreIllegals: true }) : hljs.highlightAuto(code);
-      highlighted  = result.value;
+      try {
+        const valid  = language && hljs.getLanguage(language);
+        const result = valid
+          ? hljs.highlight(code, { language, ignoreIllegals: true })
+          : hljs.highlightAuto(code);
+        highlighted = result.value;
+      } catch (_) {
+        highlighted = _he(code);
+      }
     }
+
     return (
       '<div class="code-block" id="' + id + '">' +
         '<div class="code-block-header">' +

@@ -71,16 +71,16 @@ async function executeStockData(symbol, finnhubApiKey) {
 
   return {
     ticker:        symbol,
-    name:          p.name       || symbol,
-    exchange:      p.exchange   || '',
-    logo:          p.logo       || '',
-    currency:      p.currency   || 'USD',
+    name:          p.name            || symbol,
+    exchange:      p.exchange        || '',
+    logo:          p.logo            || '',
+    currency:      p.currency        || 'USD',
     industry:      p.finnhubIndustry || '',
-    website:       p.weburl     || '',
-    country:       p.country    || '',
+    website:       p.weburl          || '',
+    country:       p.country         || '',
     marketCap:     marketCapStr,
-    sharesOut:     p.shareOutstanding || 0,
-    ipo:           p.ipo        || '',
+    sharesOut:     p.shareOutstanding        || 0,
+    ipo:           p.ipo                     || '',
     price:         q.c  ?? 0,
     change:        q.d  ?? 0,
     changePct:     q.dp ?? 0,
@@ -88,14 +88,14 @@ async function executeStockData(symbol, finnhubApiKey) {
     high:          q.h  ?? 0,
     low:           q.l  ?? 0,
     prevClose:     q.pc ?? 0,
-    pe:            m['peNormalizedAnnual']   ?? m['peTTM']        ?? null,
-    eps:           m['epsNormalizedAnnual']  ?? m['epsTTM']       ?? null,
-    week52High:    m['52WeekHigh']           ?? null,
-    week52Low:     m['52WeekLow']            ?? null,
-    beta:          m['beta']                 ?? null,
+    pe:            m['peNormalizedAnnual']            ?? m['peTTM']  ?? null,
+    eps:           m['epsNormalizedAnnual']           ?? m['epsTTM'] ?? null,
+    week52High:    m['52WeekHigh']                   ?? null,
+    week52Low:     m['52WeekLow']                    ?? null,
+    beta:          m['beta']                         ?? null,
     dividendYield: m['dividendYieldIndicatedAnnual'] ?? null,
-    roe:           m['roeTTM']               ?? null,
-    revenue:       m['revenuePerShareTTM']   ?? null,
+    roe:           m['roeTTM']                       ?? null,
+    revenue:       m['revenuePerShareTTM']           ?? null,
     series:        [],
   };
 }
@@ -248,7 +248,9 @@ export async function onRequestPost(context) {
           try {
             stockData = await executeStockData(functionArgs.symbol, env.FINNHUB_API_KEY);
             toolResultContent = JSON.stringify(stockData);
-          } catch (_) {}
+          } catch (e) {
+            toolResultContent = `Stock data fetch failed: ${String(e)}`;
+          }
         }
       }
 
@@ -328,4 +330,4 @@ export async function onRequestOptions() {
       'Access-Control-Allow-Headers': 'Content-Type',
     },
   });
-                                                               }
+          }

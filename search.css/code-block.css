@@ -4,7 +4,7 @@
 
 .code-block {
   margin: 12px 0 16px;
-  border-radius: 22px;         /* aur round */
+  border-radius: 22px;
   overflow: hidden;
   background: #fafafa;
   border: none;
@@ -21,7 +21,7 @@
 .code-block-lang   { display: none; }
 .code-line-num     { display: none; }
 
-/* ── Copy button — thoda bada ── */
+/* ── Copy button ── */
 .code-copy-btn {
   position: absolute;
   top: 10px;
@@ -33,7 +33,7 @@
   background: none;
   cursor: pointer;
   color: #57606a;
-  padding: 6px;                /* 4 → 6 */
+  padding: 6px;
   border-radius: 6px;
   font-size: 0;
   -webkit-tap-highlight-color: transparent;
@@ -44,7 +44,7 @@
 .code-block:hover .code-copy-btn,
 .code-block:focus-within .code-copy-btn { opacity: 1; }
 @media (hover: none) { .code-copy-btn { opacity: 1; } }
-.code-copy-btn svg { width: 20px; height: 20px; stroke-width: 1.75; } /* 18 → 20 */
+.code-copy-btn svg { width: 20px; height: 20px; stroke-width: 1.75; }
 .code-copy-btn:active { opacity: 0.4 !important; }
 .code-copy-btn.copied { color: #3fb950; }
 @media (prefers-color-scheme: dark) {
@@ -89,35 +89,36 @@
 /* ════ SYNTAX TOKENS ════ */
 
 /* Light */
-.tk-kw   { color: #0070c1; font-weight: 500; }  /* blue */
-.tk-fn   { color: #3a7c3a; }                     /* green */
+.tk-kw   { color: #1a7f1a; font-weight: 500; }
+.tk-fn   { color: #2e7d2e; }
 .tk-str  { color: #a31515; }
-.tk-num  { color: #098658; }                     /* green */
-.tk-cmt  { color: #5a8a3a; font-style: italic; } /* olive green */
-.tk-cls  { color: #267f99; }
-.tk-prop { color: #3a7c3a; }                     /* green */
+.tk-num  { color: #2e7d2e; }
+.tk-cmt  { color: #6a9955; font-style: italic; }
+.tk-cls  { color: #1a7f1a; }
+.tk-prop { color: #2e7d2e; }
 .tk-bool { color: #0070c1; font-weight: 500; }
 .tk-var  { color: #001080; }
 .tk-op   { color: #000000; }
 
-/* Dark — green heavy */
+/* Dark */
 @media (prefers-color-scheme: dark) {
-  .tk-kw   { color: #569cd6; font-weight: 400; }
-  .tk-fn   { color: #b5cea8; }                   /* light green */
+  .tk-kw   { color: #4ec9b0; font-weight: 400; }
+  .tk-fn   { color: #b5cea8; }
   .tk-str  { color: #ce9178; }
-  .tk-num  { color: #b5cea8; }                   /* light green */
-  .tk-cmt  { color: #6a9955; font-style: italic; } /* olive green */
-  .tk-cls  { color: #4ec9b0; }                   /* teal green */
-  .tk-prop { color: #b5cea8; }                   /* light green */
+  .tk-num  { color: #b5cea8; }
+  .tk-cmt  { color: #6a9955; font-style: italic; }
+  .tk-cls  { color: #4ec9b0; }
+  .tk-prop { color: #b5cea8; }
   .tk-bool { color: #569cd6; font-weight: 400; }
   .tk-var  { color: #9cdcfe; }
   .tk-op   { color: #d4d4d4; }
 }
 
+/* ── hljs sync ── */
 .code-block .hljs {
   background: transparent;
   padding: 0;
   font-family: 'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace;
   font-size: 13px;
   line-height: 1.7;
-   }
+}

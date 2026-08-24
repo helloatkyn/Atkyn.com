@@ -8,7 +8,7 @@
   margin: 12px 0 16px;
   border-radius: 16px;
   overflow: hidden;
-  background: #fafafa;
+  background: #fafafa; /* atom-one-light bg */
   border: none;
   box-shadow: none;
   width: 100%;
@@ -16,7 +16,7 @@
 }
 @media (prefers-color-scheme: dark) {
   .code-block {
-    background: var(--color-bg-code-dark);
+    background: #282c34; /* atom-one-dark bg */
     border: none;
     box-shadow: none;
   }
@@ -89,7 +89,7 @@
   display: table-cell;
   padding: 0 10px 0 16px;
   text-align: right;
-  font-family: 'Söhne Mono', ui-monospace, 'SFMono-Regular', 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace;
+  font-family: 'JetBrains Mono', ui-monospace, 'SFMono-Regular', 'SF Mono', Menlo, Consolas, monospace;
   font-size: 13px;
   line-height: 1.6;
   color: #c0c2c7;
@@ -110,7 +110,7 @@
 .code-line-content {
   display: table-cell;
   padding: 0 36px 0 14px;
-  font-family: 'Söhne Mono', ui-monospace, 'SFMono-Regular', 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace;
+  font-family: 'JetBrains Mono', ui-monospace, 'SFMono-Regular', 'SF Mono', Menlo, Consolas, monospace;
   font-size: 13px;
   line-height: 1.6;
   font-weight: 400;
@@ -135,7 +135,7 @@
   display: block;
   padding: 14px 36px 14px 16px;
   background: none;
-  font-family: 'Söhne Mono', ui-monospace, 'SFMono-Regular', 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace;
+  font-family: 'JetBrains Mono', ui-monospace, 'SFMono-Regular', 'SF Mono', Menlo, Consolas, monospace;
   font-size: 13px;
   line-height: 1.6;
   font-weight: 400;
@@ -170,3 +170,13 @@
   .tk-prop { color: var(--color-tk-prop-dark); }
   .tk-bool { color: var(--color-tk-bool-dark); font-weight: 500; }
 }
+
+/* ── hljs background sync with code-block container ── */
+.code-block .hljs {
+  background: transparent;
+  padding: 0;
+  font-family: 'JetBrains Mono', ui-monospace, 'SFMono-Regular', 'SF Mono', Menlo, Consolas, monospace;
+  font-size: 13px;
+  line-height: 1.6;
+   }
+   

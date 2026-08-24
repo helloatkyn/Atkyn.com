@@ -75,7 +75,7 @@ const WEB_SEARCH_TOOL = [
 ];
 
 const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions';
-const MODEL = 'deepseek/deepseek-v4-flash'; // ✅ $0.04/M input, $0.13/M output — 3x cheaper than qwen3-8b
+const MODEL = 'qwen/qwen3-14b:free'; // ✅ Free on OpenRouter, 131K context, tool use support
 
 export async function onRequestPost(context) {
   const { request, env } = context;

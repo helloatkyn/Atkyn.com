@@ -1,6 +1,6 @@
 /* ════════════════════════════════════════════════════════════════
    code-block.css — Fenced code block
-   VS Code Dark+ (dark) · VS Code Light+ (light)
+   Georgia serif · VS Code Dark+ tokens · No horizontal scroll
 ════════════════════════════════════════════════════════════════ */
 
 /* ── Container ── */
@@ -16,9 +16,7 @@
 }
 @media (prefers-color-scheme: dark) {
   .code-block {
-    background: #1e1e1e; /* VS Code Dark+ exact bg */
-    border: none;
-    box-shadow: none;
+    background: #1e1e1e;
   }
 }
 
@@ -57,23 +55,12 @@
   .code-copy-btn.copied { color: #3fb950; }
 }
 
-/* ── Pre / scroll container ── */
+/* ── Pre — NO horizontal scroll ── */
 .code-block pre {
   margin: 0;
   padding: 0;
-  overflow-x: auto;
-  overflow-y: hidden;
-  -webkit-overflow-scrolling: touch;
+  overflow: hidden;           /* scroll bilkul nahi */
   background: transparent;
-  scrollbar-width: thin;
-  scrollbar-color: rgba(0,0,0,0.15) transparent;
-}
-.code-block pre::-webkit-scrollbar        { height: 3px; }
-.code-block pre::-webkit-scrollbar-track  { background: transparent; }
-.code-block pre::-webkit-scrollbar-thumb  { background: rgba(0,0,0,0.15); border-radius: 99px; }
-@media (prefers-color-scheme: dark) {
-  .code-block pre                           { scrollbar-color: rgba(255,255,255,0.12) transparent; }
-  .code-block pre::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); }
 }
 
 /* ── Lines table ── */
@@ -87,58 +74,58 @@
 /* ── Line numbers ── */
 .code-line-num {
   display: table-cell;
-  padding: 0 10px 0 16px;
+  padding: 0 12px 0 16px;
   text-align: right;
-  font-family: 'JetBrains Mono', ui-monospace, 'Cascadia Code', Menlo, Consolas, monospace;
+  font-family: Georgia, 'Times New Roman', serif;
   font-size: 13px;
-  line-height: 1.6;
+  line-height: 1.7;
   color: #c0c2c7;
   user-select: none;
   white-space: nowrap;
-  min-width: 32px;
-  border-right: 1px solid rgba(0,0,0,0.06);
+  min-width: 36px;
+  border-right: 1px solid rgba(0,0,0,0.07);
   vertical-align: top;
 }
 @media (prefers-color-scheme: dark) {
   .code-line-num {
-    color: #495162;           /* VS Code dark line num */
+    color: #495162;
     border-right-color: rgba(255,255,255,0.06);
   }
 }
 
-/* ── Code content cell ── */
+/* ── Code content — wraps, proper left padding ── */
 .code-line-content {
   display: table-cell;
-  padding: 0 40px 0 14px;   /* right padding prevents copy-btn overlap */
-  font-family: 'JetBrains Mono', ui-monospace, 'Cascadia Code', Menlo, Consolas, monospace;
-  font-size: 13px;
-  line-height: 1.6;
+  padding: 0 16px 0 16px;     /* left 16px — left chipakna gone */
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 13.5px;
+  line-height: 1.7;
   font-weight: 400;
-  white-space: pre;
+  white-space: pre-wrap;      /* wrap — horizontal scroll gone */
+  word-break: break-word;
   color: #1f2328;
   width: 100%;
   tab-size: 2;
-  -moz-tab-size: 2;
   vertical-align: top;
   -webkit-font-smoothing: antialiased;
 }
 @media (prefers-color-scheme: dark) {
   .code-line-content {
-    color: #d4d4d4;           /* VS Code Dark+ default text */
-    -webkit-font-smoothing: antialiased;
+    color: #d4d4d4;
   }
 }
 
 /* ── Fallback pre > code ── */
 .code-block pre code {
   display: block;
-  padding: 14px 40px 14px 16px;
+  padding: 14px 16px;
   background: none;
-  font-family: 'JetBrains Mono', ui-monospace, 'Cascadia Code', Menlo, Consolas, monospace;
-  font-size: 13px;
-  line-height: 1.6;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 13.5px;
+  line-height: 1.7;
   color: #1f2328;
-  white-space: pre;
+  white-space: pre-wrap;
+  word-break: break-word;
   tab-size: 2;
   -webkit-font-smoothing: antialiased;
 }
@@ -147,43 +134,42 @@
 }
 
 /* ════════════════════════════════════════════════════════════════
-   SYNTAX TOKENS — Light: VS Code Light+  |  Dark: VS Code Dark+
-   Dark+ is exactly what ChatGPT & Claude use
+   SYNTAX TOKENS
+   Light : VS Code Light+
+   Dark  : VS Code Dark+ — green heavy, professional
 ════════════════════════════════════════════════════════════════ */
 
-/* — Light (VS Code Light+) — */
-.tk-kw   { color: #0000ff; font-weight: 500; }   /* keywords: blue */
-.tk-fn   { color: #795e26; }                       /* functions: brown-gold */
-.tk-str  { color: #a31515; }                       /* strings: dark red */
-.tk-num  { color: #098658; }                       /* numbers: green */
-.tk-cmt  { color: #6a9955; font-style: italic; }  /* comments: olive-green */
-.tk-cls  { color: #267f99; }                       /* classes: teal */
-.tk-prop { color: #001080; }                       /* properties: navy */
-.tk-bool { color: #0000ff; font-weight: 500; }    /* booleans: blue */
-.tk-var  { color: #001080; }                       /* variables: navy */
-.tk-op   { color: #000000; }                       /* operators */
-.tk-punc { color: #000000; }                       /* punctuation */
+/* — Light — */
+.tk-kw   { color: #0000ff; font-weight: 500; }
+.tk-fn   { color: #795e26; }
+.tk-str  { color: #a31515; }
+.tk-num  { color: #098658; }
+.tk-cmt  { color: #6a9955; font-style: italic; }
+.tk-cls  { color: #267f99; }
+.tk-prop { color: #001080; }
+.tk-bool { color: #0000ff; font-weight: 500; }
+.tk-var  { color: #001080; }
+.tk-op   { color: #000000; }
 
-/* — Dark (VS Code Dark+) — */
+/* — Dark (green heavy) — */
 @media (prefers-color-scheme: dark) {
-  .tk-kw   { color: #569cd6; font-weight: 400; }  /* keywords: blue */
-  .tk-fn   { color: #dcdcaa; }                     /* functions: yellow-green ✓ */
-  .tk-str  { color: #ce9178; }                     /* strings: orange */
-  .tk-num  { color: #b5cea8; }                     /* numbers: light-green */
-  .tk-cmt  { color: #6a9955; font-style: italic; } /* comments: olive-green ✓ */
-  .tk-cls  { color: #4ec9b0; }                     /* classes: teal */
-  .tk-prop { color: #9cdcfe; }                     /* properties: light-blue */
-  .tk-bool { color: #569cd6; font-weight: 400; }  /* booleans: blue */
-  .tk-var  { color: #9cdcfe; }                     /* variables: light-blue */
-  .tk-op   { color: #d4d4d4; }                     /* operators */
-  .tk-punc { color: #d4d4d4; }                     /* punctuation */
+  .tk-kw   { color: #4ec9b0; font-weight: 400; }  /* teal-green */
+  .tk-fn   { color: #b5cea8; }                     /* light green */
+  .tk-str  { color: #ce9178; }                     /* orange */
+  .tk-num  { color: #b5cea8; }                     /* light green */
+  .tk-cmt  { color: #6a9955; font-style: italic; } /* olive green */
+  .tk-cls  { color: #4ec9b0; }                     /* teal-green */
+  .tk-prop { color: #9cdcfe; }                     /* light blue */
+  .tk-bool { color: #4ec9b0; font-weight: 400; }  /* teal-green */
+  .tk-var  { color: #9cdcfe; }                     /* light blue */
+  .tk-op   { color: #d4d4d4; }
 }
 
-/* ── hljs background sync ── */
+/* ── hljs sync ── */
 .code-block .hljs {
   background: transparent;
   padding: 0;
-  font-family: 'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace;
-  font-size: 13px;
-  line-height: 1.6;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 13.5px;
+  line-height: 1.7;
 }

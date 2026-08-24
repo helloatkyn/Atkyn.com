@@ -1,6 +1,6 @@
 /* ═══════════════════════════════════════════════════════════════
    renderer.js — Atkyn Search
-   Markdown + Math : marked.js + marked-katex-extension + KaTeX
+   Markdown + Math : marked.js@13 + marked-katex-extension + KaTeX
    Code highlight  : highlight.js
    ═══════════════════════════════════════════════════════════════ */
 
@@ -49,17 +49,13 @@ function _normalizeNewlines(str) {
 }
 
 /* ── Pre-process: normalize all LaTeX delimiters to $$ and $ ──
-   Handles: \[...\]  →  $$...$$  (block display)
-            \(...\)  →  $...$    (inline)
-   Also strips stray $$ that appear on their own line (model
-   sometimes emits an opening $$ then content then closing $$
-   with extra blank lines — keep them but collapse whitespace). ── */
+   \[...\]  →  $$...$$  (block display)
+   \(...\)  →  $...$    (inline)
+   marked-katex-extension natively handles $$ and $ delimiters. ── */
 function _convertLatexDelimiters(str) {
-  // \[...\]  →  $$...$$
   str = str.replace(/\\\[([\s\S]*?)\\\]/g, function(_, inner) {
     return '\n$$' + inner + '$$\n';
   });
-  // \(...\)  →  $...$
   str = str.replace(/\\\(([\s\S]*?)\\\)/g, function(_, inner) {
     return '$' + inner + '$';
   });
@@ -67,7 +63,7 @@ function _convertLatexDelimiters(str) {
 }
 
 function _buildMarked() {
-  // marked-katex-extension handles: $...$ and $$...$$
+  /* ── KaTeX extension ── */
   marked.use(markedKatex({
     throwOnError: false,
     errorColor: '#888888',
@@ -79,52 +75,51 @@ function _buildMarked() {
     ],
   }));
 
-  const renderer = new marked.Renderer();
+  /* ── marked v13: use marked.use({ breaks, gfm, renderer }) ──
+     DO NOT use marked.setOptions({ renderer }) — in v13 that
+     passes the full token object as the first arg, causing
+     renderer.code to receive [object Object] instead of the
+     code string.  marked.use() passes (code, lang, escaped). ── */
+  marked.use({
+    breaks: true,
+    gfm: true,
+    renderer: {
+      code(code, lang) {
+        const language  = (lang  || '').trim().toLowerCase();
+        const codeStr   = String(code || '');
+        const label     = language || 'code';
+        const id        = 'cb' + Math.random().toString(36).slice(2, 8);
 
-  /* ── Code block renderer ──────────────────────────────────────
-     marked v4  → code(code: string, lang: string, escaped: bool)
-     marked v5+ → code(token: { text, lang, escaped })
-     We support both by checking whether the first arg is an object.
-  ────────────────────────────────────────────────────────────── */
-  renderer.code = function (tokenOrCode, langArg) {
-    const isObj  = tokenOrCode !== null && typeof tokenOrCode === 'object';
-    const code   = isObj ? (tokenOrCode.text || '') : String(tokenOrCode || '');
-    const lang   = isObj ? (tokenOrCode.lang  || '') : String(langArg    || '');
+        let highlighted = _he(codeStr);
+        if (typeof hljs !== 'undefined') {
+          try {
+            const valid  = language && hljs.getLanguage(language);
+            const result = valid
+              ? hljs.highlight(codeStr, { language, ignoreIllegals: true })
+              : hljs.highlightAuto(codeStr);
+            highlighted = result.value;
+          } catch (_) {
+            highlighted = _he(codeStr);
+          }
+        }
 
-    const language = lang.trim().toLowerCase();
-    const label    = language || 'code';
-    const id       = 'cb' + Math.random().toString(36).slice(2, 8);
-
-    let highlighted = _he(code);
-    if (typeof hljs !== 'undefined') {
-      try {
-        const valid  = language && hljs.getLanguage(language);
-        const result = valid
-          ? hljs.highlight(code, { language, ignoreIllegals: true })
-          : hljs.highlightAuto(code);
-        highlighted = result.value;
-      } catch (_) {
-        highlighted = _he(code);
+        return (
+          '<div class="code-block" id="' + id + '">' +
+            '<div class="code-block-header">' +
+              '<span class="code-block-lang">' + _he(label) + '</span>' +
+              '<button class="code-copy-btn" data-target="' + id + '">' +
+                '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">' +
+                  '<rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>' +
+                  '<path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>' +
+                '</svg> Copy' +
+              '</button>' +
+            '</div>' +
+            '<pre><code class="hljs">' + highlighted + '</code></pre>' +
+          '</div>'
+        );
       }
     }
-
-    return (
-      '<div class="code-block" id="' + id + '">' +
-        '<div class="code-block-header">' +
-          '<span class="code-block-lang">' + _he(label) + '</span>' +
-          '<button class="code-copy-btn" data-target="' + id + '">' +
-            '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">' +
-              '<rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>' +
-              '<path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>' +
-            '</svg> Copy' +
-          '</button>' +
-        '</div>' +
-        '<pre><code class="hljs">' + highlighted + '</code></pre>' +
-      '</div>'
-    );
-  };
-
-  marked.setOptions({ renderer, breaks: true, gfm: true });
+  });
 }
 
 _buildMarked();

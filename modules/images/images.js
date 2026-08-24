@@ -56,12 +56,40 @@
     return a;
   }
 
-  // Favicon URL helper
-  function _favicon(url) {
-    try {
-      const host = new URL(url).hostname;
-      return `https://www.google.com/s2/favicons?sz=32&domain=${host}`;
-    } catch { return ''; }
+  // Favicon — tries 3 services in order, falls back to letter avatar
+  function _faviconEl(url) {
+    let host = '';
+    try { host = new URL(url).hostname.replace('www.', ''); } catch { /* skip */ }
+
+    const img = document.createElement('img');
+    img.width  = 16;
+    img.height = 16;
+    img.alt    = '';
+    img.style.cssText = 'border-radius:3px;flex-shrink:0;';
+
+    const services = [
+      `https://icons.duckduckgo.com/ip3/${host}.ico`,
+      `https://www.google.com/s2/favicons?sz=32&domain=${host}`,
+      `https://favicon.im/${host}`,
+    ];
+    let idx = 0;
+
+    function tryNext() {
+      if (idx >= services.length) {
+        // Letter avatar fallback — canvas-free, inline SVG data URI
+        const letter = (host[0] || '?').toUpperCase();
+        const colors = ['#007AFF','#34C759','#FF9500','#FF3B30','#AF52DE','#5856D6'];
+        const bg = colors[letter.charCodeAt(0) % colors.length];
+        img.src = `data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16'><rect width='16' height='16' rx='3' fill='${encodeURIComponent(bg)}'/><text x='8' y='12' font-family='system-ui' font-size='10' font-weight='600' fill='white' text-anchor='middle'>${letter}</text></svg>`;
+        img.onerror = null;
+        return;
+      }
+      img.src = services[idx++];
+    }
+
+    img.onerror = tryNext;
+    tryNext();
+    return img;
   }
 
   // Suggestion card — fills white gap in shorter column
@@ -118,12 +146,7 @@
       row.target    = '_blank';
       row.rel       = 'noopener noreferrer';
 
-      const fav = document.createElement('img');
-      fav.src     = _favicon(r.url);
-      fav.width   = 16;
-      fav.height  = 16;
-      fav.alt     = '';
-      fav.style.cssText = 'border-radius:3px;flex-shrink:0;';
+      const fav = _faviconEl(r.url);
 
       const info = document.createElement('div');
       info.style.cssText = 'min-width:0;';
@@ -304,3 +327,4 @@
 
   window._atkynInit_images();
 }());
+                      

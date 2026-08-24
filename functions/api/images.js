@@ -13,49 +13,34 @@ export async function onRequestGet(context) {
     });
   }
 
-  // 3 suffix variants — parallel fetch, ~300 unique results max
-  const suffixes = ['', ' photo', ' hd wallpaper'];
-  const queries  = suffixes.map(s => (s ? `${q}${s}` : q));
-
-  const headers = {
-    'X-API-KEY':    env.SERPER_API_KEY,
-    'Content-Type': 'application/json',
-  };
-
   try {
-    // All 3 fire simultaneously — fastest wins, rest follow
-    const fetches = queries.map(finalQ =>
-      fetch('https://google.serper.dev/images', {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({ q: finalQ, num: 100, gl: 'us' }),
-      }).then(r => r.ok ? r.json() : { images: [] })
-        .catch(() => ({ images: [] }))
-    );
+    // Single Serper call — num:100 is max per call
+    const r = await fetch('https://google.serper.dev/images', {
+      method: 'POST',
+      headers: {
+        'X-API-KEY':    env.SERPER_API_KEY,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ q, num: 100, gl: 'us' }),
+    });
 
-    const responses = await Promise.all(fetches);
+    const data = r.ok ? await r.json() : {};
 
-    // Merge + dedupe by imageUrl
-    const seen   = new Set();
-    const merged = [];
+    const results = (data.images || []).map(img => ({
+      title:         img.title        || '',
+      url:           img.link         || '',
+      img_src:       img.imageUrl     || '',
+      thumbnail_src: img.thumbnailUrl || img.imageUrl || '',
+      width:         img.imageWidth   || 0,
+      height:        img.imageHeight  || 0,
+    }));
 
-    for (const data of responses) {
-      for (const img of (data.images || [])) {
-        const key = img.imageUrl;
-        if (!key || seen.has(key)) continue;
-        seen.add(key);
-        merged.push({
-          title:         img.title        || '',
-          url:           img.link         || '',
-          img_src:       img.imageUrl     || '',
-          thumbnail_src: img.thumbnailUrl || img.imageUrl || '',
-          width:         img.imageWidth   || 0,
-          height:        img.imageHeight  || 0,
-        });
-      }
-    }
+    // Related searches — Serper returns these as `relatedSearches`
+    const suggestions = (data.relatedSearches || []).map(s => ({
+      query: s.query || s,
+    }));
 
-    return new Response(JSON.stringify({ results: merged }), {
+    return new Response(JSON.stringify({ results, suggestions }), {
       headers: { 'Content-Type': 'application/json' },
     });
 

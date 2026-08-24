@@ -74,6 +74,9 @@ const WEB_SEARCH_TOOL = [
   },
 ];
 
+const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions';
+const MODEL = 'qwen/qwen3-8b';
+
 export async function onRequestPost(context) {
   const { request, env } = context;
 
@@ -100,15 +103,17 @@ export async function onRequestPost(context) {
     { role: 'user', content: query },
   ];
 
+  const authHeader = { 'Authorization': `Bearer ${env.OPENROUTER_API_KEY}` };
+
   // Call #1: Native tool calling — model decides whether to search or answer directly
-  const call1Resp = await fetch('https://api.mistral.ai/v1/chat/completions', {
+  const call1Resp = await fetch(OPENROUTER_URL, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${env.MISTRAL_API_KEY}`,
+      ...authHeader,
     },
     body: JSON.stringify({
-      model: 'open-mistral-nemo',
+      model: MODEL,
       messages: baseMessages,
       tools: WEB_SEARCH_TOOL,
       tool_choice: 'auto',
@@ -151,8 +156,8 @@ export async function onRequestPost(context) {
       }
 
       // SEARCH: execute tool, then Call #2 for final streamed answer
-      const toolCall    = toolCalls[0];
-      const toolCallId  = toolCall.id;
+      const toolCall   = toolCalls[0];
+      const toolCallId = toolCall.id;
       const functionName = toolCall.function?.name;
 
       let searchResults = [];
@@ -182,14 +187,14 @@ export async function onRequestPost(context) {
       }
 
       // Call #2: Final streamed answer with tool result
-      const call2Resp = await fetch('https://api.mistral.ai/v1/chat/completions', {
+      const call2Resp = await fetch(OPENROUTER_URL, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${env.MISTRAL_API_KEY}`,
+          ...authHeader,
         },
         body: JSON.stringify({
-          model: 'open-mistral-nemo',
+          model: MODEL,
           messages: [
             ...baseMessages,
             {
@@ -249,4 +254,4 @@ export async function onRequestOptions() {
       'Access-Control-Allow-Headers': 'Content-Type',
     },
   });
-}
+    }

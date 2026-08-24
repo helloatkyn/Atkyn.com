@@ -270,58 +270,66 @@
       .catch(() => { _loading = false; });
   }
 
-  // ── Fetch #2 — Wikipedia Commons (on scroll, once, inline) ───
-  // Free API — no key, no extra Cloudflare function needed.
-  // Hits commons.wikimedia.org directly from the browser.
+  // ── Fetch #2 — Wikipedia Commons (on scroll, 4 parallel pages) ─
+  // gsrlimit=50 per call, offsets 0/50/100/150 → up to ~200 results.
+  // All 4 fired in parallel with Promise.all — free API, no key.
   function _fetchWiki() {
-    const params = new URLSearchParams({
+    const LIMIT   = 50;
+    const PAGES   = 4;
+    const BASE    = {
       action:       'query',
       format:       'json',
       origin:       '*',
       generator:    'search',
-      gsrnamespace: '6',       // File namespace only
+      gsrnamespace: '6',
       gsrsearch:    _q,
-      gsrlimit:     '100',
+      gsrlimit:     String(LIMIT),
       prop:         'imageinfo|info',
       iiprop:       'url|dimensions|mime',
       iiurlwidth:   '800',
       redirects:    '1',
+    };
+
+    const calls = Array.from({ length: PAGES }, (_, i) => {
+      const p = new URLSearchParams({ ...BASE, gsroffset: String(i * LIMIT) });
+      return fetch(`https://commons.wikimedia.org/w/api.php?${p}`)
+        .then(r => r.ok ? r.json() : {})
+        .catch(() => ({}));
     });
 
-    fetch(`https://commons.wikimedia.org/w/api.php?${params}`)
-      .then(r => r.ok ? r.json() : Promise.reject())
-      .then(data => {
-        const pages = Object.values(data?.query?.pages || {});
+    Promise.all(calls).then(responses => {
+      const allPages = responses.flatMap(data =>
+        Object.values(data?.query?.pages || {})
+      );
 
-        const results = pages
-          .filter(p => {
-            const ii   = p.imageinfo?.[0];
-            if (!ii) return false;
-            const mime = ii.mime || '';
-            return mime.startsWith('image/jpeg') ||
-                   mime.startsWith('image/png')  ||
-                   mime.startsWith('image/webp') ||
-                   mime.startsWith('image/gif');
-          })
-          .map(p => {
-            const ii       = p.imageinfo[0];
-            const thumbUrl = ii.thumburl  || ii.url || '';
-            const fullUrl  = ii.url       || thumbUrl;
-            return {
-              title:         (p.title || '').replace(/^File:/, ''),
-              url:           p.fullurl || ii.descriptionurl || fullUrl,
-              img_src:       fullUrl,
-              thumbnail_src: thumbUrl,
-              width:         ii.thumbwidth  || ii.width  || 0,
-              height:        ii.thumbheight || ii.height || 0,
-              source:        'wikipedia',
-            };
-          })
-          .filter(img => img.width >= 100 && img.height >= 100);
+      const results = allPages
+        .filter(p => {
+          const ii   = p.imageinfo?.[0];
+          if (!ii) return false;
+          const mime = ii.mime || '';
+          return mime.startsWith('image/jpeg') ||
+                 mime.startsWith('image/png')  ||
+                 mime.startsWith('image/webp') ||
+                 mime.startsWith('image/gif');
+        })
+        .map(p => {
+          const ii       = p.imageinfo[0];
+          const thumbUrl = ii.thumburl || ii.url || '';
+          const fullUrl  = ii.url      || thumbUrl;
+          return {
+            title:         (p.title || '').replace(/^File:/, ''),
+            url:           p.fullurl || ii.descriptionurl || fullUrl,
+            img_src:       fullUrl,
+            thumbnail_src: thumbUrl,
+            width:         ii.thumbwidth  || ii.width  || 0,
+            height:        ii.thumbheight || ii.height || 0,
+            source:        'wikipedia',
+          };
+        })
+        .filter(img => img.width >= 100 && img.height >= 100);
 
-        if (results.length) _appendResults(results);
-      })
-      .catch(() => { /* silent — Serper results already showing */ });
+      if (results.length) _appendResults(results);
+    });
   }
 
   // ── Lazy image loader ─────────────────────────────────────────
@@ -407,4 +415,4 @@
 
   window._atkynInit_images();
 }());
-    
+         

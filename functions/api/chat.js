@@ -108,7 +108,7 @@ export async function onRequestPost(context) {
       'Authorization': `Bearer ${env.MISTRAL_API_KEY}`,
     },
     body: JSON.stringify({
-      model: 'ministral-14b-2512',
+      model: 'open-mistral-nemo',
       messages: baseMessages,
       tools: WEB_SEARCH_TOOL,
       tool_choice: 'auto',
@@ -138,7 +138,6 @@ export async function onRequestPost(context) {
       // NO SEARCH: model answered directly — stream it out
       if (!toolCalls || toolCalls.length === 0) {
         const directAnswer = assistantMessage?.content ?? '';
-        // Re-stream as SSE data chunks to match frontend protocol
         const chunks = directAnswer.match(/.{1,64}/gs) || [''];
         for (const chunk of chunks) {
           const ssePayload = {
@@ -152,8 +151,8 @@ export async function onRequestPost(context) {
       }
 
       // SEARCH: execute tool, then Call #2 for final streamed answer
-      const toolCall   = toolCalls[0];
-      const toolCallId = toolCall.id;
+      const toolCall    = toolCalls[0];
+      const toolCallId  = toolCall.id;
       const functionName = toolCall.function?.name;
 
       let searchResults = [];
@@ -190,7 +189,7 @@ export async function onRequestPost(context) {
           'Authorization': `Bearer ${env.MISTRAL_API_KEY}`,
         },
         body: JSON.stringify({
-          model: 'ministral-14b-2512',
+          model: 'open-mistral-nemo',
           messages: [
             ...baseMessages,
             {

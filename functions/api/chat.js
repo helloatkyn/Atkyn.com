@@ -108,7 +108,7 @@ export async function onRequestPost(context) {
       'Authorization': `Bearer ${env.MISTRAL_API_KEY}`,
     },
     body: JSON.stringify({
-      model: 'open-mistral-nemo',
+      model: 'ministral-8b-latest',
       messages: baseMessages,
       tools: WEB_SEARCH_TOOL,
       tool_choice: 'auto',
@@ -189,7 +189,7 @@ export async function onRequestPost(context) {
           'Authorization': `Bearer ${env.MISTRAL_API_KEY}`,
         },
         body: JSON.stringify({
-          model: 'open-mistral-nemo',
+          model: 'ministral-8b-latest',
           messages: [
             ...baseMessages,
             {
@@ -249,4 +249,4 @@ export async function onRequestOptions() {
       'Access-Control-Allow-Headers': 'Content-Type',
     },
   });
-}
+      }

@@ -1,34 +1,30 @@
 /* ════════════════════════════════════════════════════════════════
    code-block.css — Fenced code block
-   Georgia serif · VS Code Dark+ tokens · No horizontal scroll
 ════════════════════════════════════════════════════════════════ */
 
 /* ── Container ── */
 .code-block {
   margin: 12px 0 16px;
-  border-radius: 12px;
+  border-radius: 18px;          /* zyada round */
   overflow: hidden;
-  background: #fafafa;
+  background: #f6f8fa;
   border: none;
   box-shadow: none;
   width: 100%;
   position: relative;
 }
 @media (prefers-color-scheme: dark) {
-  .code-block {
-    background: #1e1e1e;
-  }
+  .code-block { background: #1e1e1e; }
 }
 
-/* ── Header/Lang — hidden ── */
 .code-block-header { display: none; }
 .code-block-lang   { display: none; }
 
 /* ── Floating copy button ── */
 .code-copy-btn {
   position: absolute;
-  top: 8px;
-  right: 8px;
+  top: 10px;
+  right: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -55,11 +51,11 @@
   .code-copy-btn.copied { color: #3fb950; }
 }
 
-/* ── Pre — NO horizontal scroll ── */
+/* ── Pre ── */
 .code-block pre {
   margin: 0;
   padding: 0;
-  overflow: hidden;           /* scroll bilkul nahi */
+  overflow: hidden;
   background: transparent;
 }
 
@@ -67,17 +63,17 @@
 .code-block .code-lines {
   display: table;
   width: 100%;
-  padding: 14px 0;
+  padding: 16px 0;
 }
 .code-line { display: table-row; }
 
 /* ── Line numbers ── */
 .code-line-num {
   display: table-cell;
-  padding: 0 12px 0 16px;
+  padding: 0 12px 0 18px;      /* left 18px safe */
   text-align: right;
-  font-family: Georgia, 'Times New Roman', serif;
-  font-size: 13px;
+  font-family: 'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace;
+  font-size: 12.5px;
   line-height: 1.7;
   color: #c0c2c7;
   user-select: none;
@@ -93,15 +89,15 @@
   }
 }
 
-/* ── Code content — wraps, proper left padding ── */
+/* ── Code content ── */
 .code-line-content {
   display: table-cell;
-  padding: 0 16px 0 16px;     /* left 16px — left chipakna gone */
-  font-family: Georgia, 'Times New Roman', serif;
-  font-size: 13.5px;
+  padding: 0 20px 0 16px;      /* left 16 + right 20 — dono safe */
+  font-family: 'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace;
+  font-size: 13px;
   line-height: 1.7;
   font-weight: 400;
-  white-space: pre-wrap;      /* wrap — horizontal scroll gone */
+  white-space: pre-wrap;
   word-break: break-word;
   color: #1f2328;
   width: 100%;
@@ -110,18 +106,16 @@
   -webkit-font-smoothing: antialiased;
 }
 @media (prefers-color-scheme: dark) {
-  .code-line-content {
-    color: #d4d4d4;
-  }
+  .code-line-content { color: #d4d4d4; }
 }
 
 /* ── Fallback pre > code ── */
 .code-block pre code {
   display: block;
-  padding: 14px 16px;
+  padding: 16px 20px 16px 18px;   /* safe dono taraf */
   background: none;
-  font-family: Georgia, 'Times New Roman', serif;
-  font-size: 13.5px;
+  font-family: 'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace;
+  font-size: 13px;
   line-height: 1.7;
   color: #1f2328;
   white-space: pre-wrap;
@@ -134,12 +128,9 @@
 }
 
 /* ════════════════════════════════════════════════════════════════
-   SYNTAX TOKENS
-   Light : VS Code Light+
-   Dark  : VS Code Dark+ — green heavy, professional
+   SYNTAX TOKENS — Light: VS Code Light+ | Dark: VS Code Dark+
 ════════════════════════════════════════════════════════════════ */
 
-/* — Light — */
 .tk-kw   { color: #0000ff; font-weight: 500; }
 .tk-fn   { color: #795e26; }
 .tk-str  { color: #a31515; }
@@ -151,17 +142,16 @@
 .tk-var  { color: #001080; }
 .tk-op   { color: #000000; }
 
-/* — Dark (green heavy) — */
 @media (prefers-color-scheme: dark) {
-  .tk-kw   { color: #4ec9b0; font-weight: 400; }  /* teal-green */
-  .tk-fn   { color: #b5cea8; }                     /* light green */
-  .tk-str  { color: #ce9178; }                     /* orange */
-  .tk-num  { color: #b5cea8; }                     /* light green */
-  .tk-cmt  { color: #6a9955; font-style: italic; } /* olive green */
-  .tk-cls  { color: #4ec9b0; }                     /* teal-green */
-  .tk-prop { color: #9cdcfe; }                     /* light blue */
-  .tk-bool { color: #4ec9b0; font-weight: 400; }  /* teal-green */
-  .tk-var  { color: #9cdcfe; }                     /* light blue */
+  .tk-kw   { color: #569cd6; font-weight: 400; }
+  .tk-fn   { color: #dcdcaa; }
+  .tk-str  { color: #ce9178; }
+  .tk-num  { color: #b5cea8; }
+  .tk-cmt  { color: #6a9955; font-style: italic; }
+  .tk-cls  { color: #4ec9b0; }
+  .tk-prop { color: #9cdcfe; }
+  .tk-bool { color: #569cd6; font-weight: 400; }
+  .tk-var  { color: #9cdcfe; }
   .tk-op   { color: #d4d4d4; }
 }
 
@@ -169,7 +159,7 @@
 .code-block .hljs {
   background: transparent;
   padding: 0;
-  font-family: Georgia, 'Times New Roman', serif;
-  font-size: 13.5px;
+  font-family: 'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace;
+  font-size: 13px;
   line-height: 1.7;
 }

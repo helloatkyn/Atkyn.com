@@ -50,20 +50,32 @@ async function executeSearXNG(searchQuery, searxngUrl) {
 }
 
 async function executeStockData(symbol, finnhubApiKey) {
-  const base = 'https://finnhub.io/api/v1';
+  const base  = 'https://finnhub.io/api/v1';
   const token = `token=${finnhubApiKey}`;
 
-  const [quoteResp, profileResp, metricResp] = await Promise.all([
+  const [quoteResp, profileResp] = await Promise.all([
     fetch(`${base}/quote?symbol=${symbol}&${token}`),
     fetch(`${base}/stock/profile2?symbol=${symbol}&${token}`),
-    fetch(`${base}/stock/metric?symbol=${symbol}&metric=all&${token}`),
   ]);
 
-  const quote   = await quoteResp.json();
-  const profile = await profileResp.json();
-  const metric  = await metricResp.json();
+  const q = await quoteResp.json();
+  const p = await profileResp.json();
 
-  return { quote, profile, metric: metric.metric };
+  return {
+    ticker:    symbol,
+    name:      p.name     || symbol,
+    exchange:  p.exchange || '',
+    logo:      p.logo     || '',
+    currency:  p.currency || 'USD',
+    price:     q.c  ?? 0,
+    change:    q.d  ?? 0,
+    changePct: q.dp ?? 0,
+    open:      q.o  ?? 0,
+    high:      q.h  ?? 0,
+    low:       q.l  ?? 0,
+    prevClose: q.pc ?? 0,
+    series:    [],
+  };
 }
 
 const TOOLS = [
@@ -165,9 +177,9 @@ export async function onRequestPost(context) {
         return;
       }
 
-      const call1Data = await call1Resp.json();
+      const call1Data        = await call1Resp.json();
       const assistantMessage = call1Data.choices?.[0]?.message;
-      const toolCalls = assistantMessage?.tool_calls;
+      const toolCalls        = assistantMessage?.tool_calls;
 
       // NO TOOL: model answered directly — stream it out
       if (!toolCalls || toolCalls.length === 0) {
@@ -194,8 +206,8 @@ export async function onRequestPost(context) {
         functionArgs = JSON.parse(toolCall.function?.arguments || '{}');
       } catch (_) {}
 
-      let searchResults    = [];
-      let stockData        = null;
+      let searchResults     = [];
+      let stockData         = null;
       let toolResultContent = 'No results found.';
 
       if (functionName === 'web_search') {
@@ -218,7 +230,7 @@ export async function onRequestPost(context) {
         }
       }
 
-      // Emit search results or stock data to frontend before answer stream
+      // Emit to frontend before answer stream
       if (searchResults.length > 0) {
         await writer.write(enc.encode(`event: results\ndata: ${JSON.stringify(searchResults)}\n\n`));
       }
@@ -294,4 +306,4 @@ export async function onRequestOptions() {
       'Access-Control-Allow-Headers': 'Content-Type',
     },
   });
-}
+      }

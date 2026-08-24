@@ -1,4 +1,9 @@
-/* functions/api/images.js — Cloudflare Pages Function */
+/* functions/api/images.js — Cloudflare Pages Function
+   Two parallel Serper calls:
+   1. /images  → up to 100 image results
+   2. /search  → relatedSearches + organic (for suggestion + source cards)
+   Both fired with Promise.all — no extra latency.
+*/
 
 export async function onRequestGet(context) {
   const { request, env } = context;
@@ -13,22 +18,31 @@ export async function onRequestGet(context) {
     });
   }
 
+  const headers = {
+    'X-API-KEY':    env.SERPER_API_KEY,
+    'Content-Type': 'application/json',
+  };
+
   try {
-    /* ── Serper images — max 100 per call ──────────────────────── */
-    const r = await fetch('https://google.serper.dev/images', {
-      method: 'POST',
-      headers: {
-        'X-API-KEY':    env.SERPER_API_KEY,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ q, num: 100, gl: 'us' }),
-    });
+    /* ── Two parallel Serper calls ─────────────────────────────── */
+    const [imgRes, searchRes] = await Promise.all([
+      fetch('https://google.serper.dev/images', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ q, num: 100, gl: 'us' }),
+      }),
+      fetch('https://google.serper.dev/search', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ q, num: 10, gl: 'us' }),
+      }),
+    ]);
 
-    const data = r.ok ? await r.json() : {};
+    const imgData    = imgRes.ok    ? await imgRes.json()    : {};
+    const searchData = searchRes.ok ? await searchRes.json() : {};
 
-    const images = data.images || [];
-
-    const results = images.map(img => ({
+    /* ── Image results ─────────────────────────────────────────── */
+    const results = (imgData.images || []).map(img => ({
       title:         img.title        || '',
       url:           img.link         || '',
       img_src:       img.imageUrl     || '',
@@ -37,27 +51,16 @@ export async function onRequestGet(context) {
       height:        img.imageHeight  || 0,
     }));
 
-    /* ── Related searches ───────────────────────────────────────── */
-    const suggestions = (data.relatedSearches || []).map(s => ({
+    /* ── Related searches (from /search) ───────────────────────── */
+    const suggestions = (searchData.relatedSearches || []).map(s => ({
       query: s.query || s,
     }));
 
-    /* ── Source cards — unique domains from image results ──────────
-       Serper /images has no organic field.
-       Extract unique source domains from image link URLs instead.
-    ─────────────────────────────────────────────────────────────── */
-    const seenHosts = new Set();
-    const sourceResults = [];
-    for (const img of images) {
-      if (!img.link) continue;
-      try {
-        const host = new URL(img.link).hostname.replace(/^www\./, '');
-        if (seenHosts.has(host)) continue;
-        seenHosts.add(host);
-        sourceResults.push({ title: img.source || host, url: img.link });
-        if (sourceResults.length >= 4) break;
-      } catch { /* skip bad URLs */ }
-    }
+    /* ── Top sources (from /search organic) ────────────────────── */
+    const sourceResults = (searchData.organic || []).slice(0, 4).map(r => ({
+      title: r.title || '',
+      url:   r.link  || '',
+    }));
 
     return new Response(JSON.stringify({ results, suggestions, sourceResults }), {
       headers: corsHeaders({ 'Content-Type': 'application/json' }),

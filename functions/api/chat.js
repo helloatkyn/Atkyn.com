@@ -61,20 +61,27 @@ async function executeStockData(symbol, finnhubApiKey) {
   const q = await quoteResp.json();
   const p = await profileResp.json();
 
+  const marketCapM = p.marketCapitalization || 0;
+  let marketCapStr = '';
+  if (marketCapM >= 1_000_000)      marketCapStr = `$${(marketCapM / 1_000_000).toFixed(2)}T`;
+  else if (marketCapM >= 1_000)     marketCapStr = `$${(marketCapM / 1_000).toFixed(2)}B`;
+  else if (marketCapM > 0)          marketCapStr = `$${marketCapM.toFixed(2)}M`;
+
   return {
-    ticker:    symbol,
-    name:      p.name     || symbol,
-    exchange:  p.exchange || '',
-    logo:      p.logo     || '',
-    currency:  p.currency || 'USD',
-    price:     q.c  ?? 0,
-    change:    q.d  ?? 0,
-    changePct: q.dp ?? 0,
-    open:      q.o  ?? 0,
-    high:      q.h  ?? 0,
-    low:       q.l  ?? 0,
-    prevClose: q.pc ?? 0,
-    series:    [],
+    ticker:       symbol,
+    name:         p.name     || symbol,
+    exchange:     p.exchange || '',
+    logo:         p.logo     || '',
+    currency:     p.currency || 'USD',
+    marketCap:    marketCapStr,
+    price:        q.c  ?? 0,
+    change:       q.d  ?? 0,
+    changePct:    q.dp ?? 0,
+    open:         q.o  ?? 0,
+    high:         q.h  ?? 0,
+    low:          q.l  ?? 0,
+    prevClose:    q.pc ?? 0,
+    series:       [],
   };
 }
 
@@ -146,7 +153,7 @@ export async function onRequestPost(context) {
     { role: 'user', content: query },
   ];
 
-  // Call #1: Tool routing — model decides web_search, stock_data, or direct answer
+  // Call #1: mistral-large for reliable tool routing
   const call1Resp = await fetch('https://api.mistral.ai/v1/chat/completions', {
     method: 'POST',
     headers: {
@@ -154,7 +161,7 @@ export async function onRequestPost(context) {
       'Authorization': `Bearer ${env.MISTRAL_API_KEY}`,
     },
     body: JSON.stringify({
-      model: 'ministral-14b-2512',
+      model: 'mistral-large-latest',
       messages: baseMessages,
       tools: TOOLS,
       tool_choice: 'auto',
@@ -238,7 +245,7 @@ export async function onRequestPost(context) {
         await writer.write(enc.encode(`event: stock\ndata: ${JSON.stringify(stockData)}\n\n`));
       }
 
-      // Call #2: Final streamed answer with tool result
+      // Call #2: ministral-14b for final streamed answer
       const call2Resp = await fetch('https://api.mistral.ai/v1/chat/completions', {
         method: 'POST',
         headers: {
@@ -306,4 +313,4 @@ export async function onRequestOptions() {
       'Access-Control-Allow-Headers': 'Content-Type',
     },
   });
-      }
+    }

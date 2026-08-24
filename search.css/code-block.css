@@ -67,13 +67,23 @@
   .code-copy-btn.copied { color: var(--color-copied); }
 }
 
-/* ── Pre / scroll container — no horizontal scroll ── */
+/* ── Pre / scroll container ── */
 .code-block pre {
   margin: 0;
   padding: 0;
-  overflow-x: hidden;
+  overflow-x: auto;
   overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
   background: transparent;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0,0,0,0.15) transparent;
+}
+.code-block pre::-webkit-scrollbar        { height: 3px; }
+.code-block pre::-webkit-scrollbar-track  { background: transparent; }
+.code-block pre::-webkit-scrollbar-thumb  { background: rgba(0,0,0,0.15); border-radius: 99px; }
+@media (prefers-color-scheme: dark) {
+  .code-block pre                           { scrollbar-color: rgba(255,255,255,0.12) transparent; }
+  .code-block pre::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); }
 }
 
 /* ── Lines table ── */
@@ -114,8 +124,7 @@
   font-size: 13px;
   line-height: 1.6;
   font-weight: 400;
-  white-space: pre-wrap;
-  word-break: break-all;
+  white-space: pre;
   color: #1f2328;
   width: 100%;
   tab-size: 2;
@@ -140,8 +149,7 @@
   line-height: 1.6;
   font-weight: 400;
   color: #1f2328;
-  white-space: pre-wrap;
-  word-break: break-all;
+  white-space: pre;
   tab-size: 2;
   -moz-tab-size: 2;
   -webkit-font-smoothing: antialiased;
@@ -179,4 +187,3 @@
   font-size: 13px;
   line-height: 1.6;
    }
-   

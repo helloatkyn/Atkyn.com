@@ -15,7 +15,8 @@
   display: block;
   border-radius: 10px;
   overflow: hidden;
-  background: #f2f2f2;
+  /* No background — grey box gone */
+  background: transparent;
   -webkit-tap-highlight-color: transparent;
   transition: opacity 0.12s ease, transform 0.12s ease;
 }
@@ -28,21 +29,22 @@
 .img-tile__wrap {
   width: 100%;
   display: block;
-  background: #f2f2f2;
+  /* No background — transparent until image loads */
+  background: transparent;
+  /* min-height zero — no reserved grey space */
+  min-height: 0;
 }
 
 /* Natural size — no crop, no grey box */
 .img-tile__wrap img {
   display: block;
   width: 100%;
-  height: auto;        /* natural height — no crop, no grey */
+  height: auto;
   border-radius: 10px;
   opacity: 0;
   transition: opacity 0.22s ease;
-}
-
-.img-tile__wrap img.img-loaded {
-  opacity: 1;
+  /* Prevent layout shift flash */
+  will-change: opacity;
 }
 
 /* Scroll sentinel */
@@ -51,26 +53,33 @@
   height: 1px;
 }
 
-/* Loading spinner — below grid */
-.img-loader {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  padding: 20px 0 28px;
+/* Skeleton shimmer — only while first batch loads */
+.tab-skeleton.grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 5px;
+  padding: 8px 8px 0;
 }
 
-.img-loader svg {
-  width: 28px;
-  height: 28px;
-  animation: img-spin 0.9s linear infinite;
+.sk-img {
+  border-radius: 10px;
+  aspect-ratio: 4 / 3;
+  background: linear-gradient(90deg, #e8e8e8 25%, #f4f4f4 50%, #e8e8e8 75%);
+  background-size: 200% 100%;
+  animation: sk-shimmer 1.2s ease-in-out infinite;
 }
 
-@keyframes img-spin {
-  to { transform: rotate(360deg); }
+@keyframes sk-shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
 }
 
 @media (prefers-color-scheme: dark) {
-  .img-tile        { background: #3a3a3c; }
-  .img-tile__wrap  { background: #3a3a3c; }
-  .img-loader svg circle { stroke: #555; }
+  .img-tile        { background: transparent; }
+  .img-tile__wrap  { background: transparent; }
+  .sk-img {
+    background: linear-gradient(90deg, #2c2c2e 25%, #3a3a3c 50%, #2c2c2e 75%);
+    background-size: 200% 100%;
+    animation: sk-shimmer 1.2s ease-in-out infinite;
+  }
 }

@@ -42,34 +42,41 @@
 
     const wrap = document.createElement('div');
     wrap.className = 'img-tile__wrap';
-    // CSS override inline — grey box aur bounce dono gone
-    wrap.style.background = 'transparent';
+    // Fully transparent — no grey box, no reserved space
+    wrap.style.cssText = 'background:transparent;min-height:0;';
 
-    const imgEl         = document.createElement('img');
-    imgEl.alt           = img.title || '';
-    imgEl.decoding      = 'async';
+    const imgEl       = document.createElement('img');
+    imgEl.alt         = img.title || '';
+    imgEl.decoding    = 'async';
+    // Prevent browser from reserving height before src is set
+    imgEl.setAttribute('loading', 'lazy');
     imgEl.dataset.src   = src;
     imgEl.dataset.thumb = thumb;
     imgEl.classList.add('img-lazy');
-    // Inline styles — CSS se override
-    imgEl.style.opacity    = '0';
-    imgEl.style.transition = 'opacity 0.18s ease';
-    imgEl.style.display    = 'block';
-    imgEl.style.width      = '100%';
-    imgEl.style.height     = 'auto';
+    // Start invisible — CSS transition fades in on load
+    imgEl.style.cssText = 'opacity:0;transition:opacity 0.22s ease;display:block;width:100%;height:auto;border-radius:10px;will-change:opacity;';
 
     imgEl.onload = function () {
-      this.style.opacity = '1';
+      // Micro-delay so the browser has painted the pixels first
+      requestAnimationFrame(() => {
+        this.style.opacity = '1';
+      });
     };
 
     imgEl.onerror = function () {
+      // Try thumbnail fallback once
       if (this.dataset.triedThumb !== '1' && thumb && thumb !== this.src) {
         this.dataset.triedThumb = '1';
         this.src = thumb;
         return;
       }
+      // Both failed — remove tile silently, no layout ghost
       const tile = this.closest('.img-tile');
-      if (tile) tile.remove();
+      if (tile) {
+        tile.style.display = 'none';
+        // Remove from DOM after transition completes so grid reflows cleanly
+        setTimeout(() => tile.remove(), 250);
+      }
     };
 
     wrap.appendChild(imgEl);
@@ -98,6 +105,7 @@
       _grid.appendChild(frag);
     }
 
+    // Observe new lazy images
     _grid.querySelectorAll('.img-lazy:not([data-ob])').forEach(img => {
       img.dataset.ob = '1';
       _lazyIo.observe(img);
@@ -154,27 +162,50 @@
       return;
     }
 
-    pc.innerHTML = '<div class="tab-skeleton grid"><div class="sk-img"></div><div class="sk-img"></div><div class="sk-img"></div><div class="sk-img"></div></div>';
+    // Shimmer skeleton — 4 cards, correct aspect ratio, no grey boxes
+    pc.innerHTML = `
+      <div class="tab-skeleton grid">
+        <div class="sk-img" style="grid-column:span 2"></div>
+        <div class="sk-img"></div>
+        <div class="sk-img"></div>
+      </div>`;
 
+    // Lazy load observer — thumbnail first, then full image swap
     _lazyIo = new IntersectionObserver((entries, obs) => {
       entries.forEach(entry => {
         if (!entry.isIntersecting) return;
         const el = entry.target;
-        // Thumbnail pehle — fast feel
-        el.src = el.dataset.thumb || el.dataset.src;
-        // Full image background swap
-        if (el.dataset.src && el.dataset.src !== el.src) {
+        obs.unobserve(el);
+
+        // Step 1 — load thumbnail immediately (fast perceived load)
+        const thumbSrc = el.dataset.thumb || el.dataset.src;
+        const fullSrc  = el.dataset.src;
+
+        if (thumbSrc) {
+          el.src = thumbSrc;
+        }
+
+        // Step 2 — silently preload full res, swap when ready
+        if (fullSrc && fullSrc !== thumbSrc) {
           const full = new Image();
+          full.decoding = 'async';
           full.onload = () => {
             if (el.isConnected) {
-              el.src = el.dataset.src;
+              // Swap without opacity flicker — briefly drop opacity, swap, raise
+              el.style.opacity = '0';
+              requestAnimationFrame(() => {
+                el.src = fullSrc;
+                // onload handler above will raise opacity
+              });
             }
           };
-          full.src = el.dataset.src;
+          full.src = fullSrc;
         }
-        obs.unobserve(el);
       });
-    }, { rootMargin: '800px' });
+    }, {
+      // Large rootMargin — start loading well before visible
+      rootMargin: '1000px',
+    });
 
     _sentinel = document.createElement('div');
     _sentinel.className = 'img-sentinel';
@@ -190,7 +221,7 @@
       if (!entries[0].isIntersecting) return;
       if (_offset < 1) return;
       _fetchNext();
-    }, { rootMargin: '400px' });
+    }, { rootMargin: '600px' });
 
     _scrollIo.observe(_sentinel);
     _fetchNext();
@@ -198,3 +229,4 @@
 
   window._atkynInit_images();
 }());
+  

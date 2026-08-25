@@ -1,8 +1,8 @@
 /* ═══════════════════════════════════════════════════════════════
-   search.js — Atkyn Answer page only
-   Chat rendering · stream handling · API · typing · copy · cards
-   Requires: core.js (loaded before this)
-   ═══════════════════════════════════════════════════════════════ */
+search.js — Atkyn Answer page only
+Chat rendering · stream handling · API · typing · copy · cards
+Requires: core.js (loaded before this)
+═══════════════════════════════════════════════════════════════ */
 
 /* ── DOM refs (chat-specific) ── */
 const msgWrap    = document.getElementById('msgWrap');
@@ -18,12 +18,52 @@ const MAX_HISTORY = 100;
 const _history    = [];
 
 /* ════════════════════════════════
-   HELPERS
-   ════════════════════════════════ */
-
+HELPERS
+════════════════════════════════ */
 function pushHistory(role, content) {
   _history.push({ role, content });
   if (_history.length > MAX_HISTORY) _history.splice(0, _history.length - MAX_HISTORY);
+}
+
+/* Single-RAF animate-in: 16ms vs 33ms double-RAF */
+function _animateIn(el) {
+  el.getBoundingClientRect();
+  requestAnimationFrame(() => {
+    el.style.opacity   = '1';
+    el.style.transform = '';
+  });
+}
+
+/* KaTeX deferred to idle time — non-blocking */
+function _applyKatexIdle(el) {
+  if (typeof renderMathInElement !== 'function') return;
+  const opts = {
+    delimiters: [
+      { left: '$$', right: '$$', display: true  },
+      { left: '$',  right: '$',  display: false },
+      { left: '\\(', right: '\\)', display: false },
+      { left: '\\[', right: '\\]', display: true  },
+    ],
+    throwOnError: false,
+  };
+  if ('requestIdleCallback' in window) {
+    requestIdleCallback(() => renderMathInElement(el, opts), { timeout: 200 });
+  } else {
+    requestAnimationFrame(() => renderMathInElement(el, opts));
+  }
+}
+
+function _applyKatex(el) {
+  if (typeof renderMathInElement !== 'function') return;
+  renderMathInElement(el, {
+    delimiters: [
+      { left: '$$', right: '$$', display: true  },
+      { left: '$',  right: '$',  display: false },
+      { left: '\\(', right: '\\)', display: false },
+      { left: '\\[', right: '\\]', display: true  },
+    ],
+    throwOnError: false,
+  });
 }
 
 function escapeHtml(str) {
@@ -40,9 +80,8 @@ function safeLinkUrl(url) {
 }
 
 /* ════════════════════════════════
-   TYPING INDICATOR
-   ════════════════════════════════ */
-
+TYPING INDICATOR
+════════════════════════════════ */
 function showTyping() {
   removeTyping();
   _typingEl = document.createElement('div');
@@ -52,11 +91,7 @@ function showTyping() {
   _typingEl.style.transform  = 'translateY(6px)';
   _typingEl.style.transition = 'opacity 0.22s ease-out, transform 0.22s ease-out';
   msgWrap.appendChild(_typingEl);
-  requestAnimationFrame(() => {
-    requestAnimationFrame(() => {
-      if (_typingEl) { _typingEl.style.opacity = '1'; _typingEl.style.transform = ''; }
-    });
-  });
+  if (_typingEl) _animateIn(_typingEl);
 }
 
 function removeTyping() {
@@ -64,22 +99,8 @@ function removeTyping() {
 }
 
 /* ════════════════════════════════
-   MESSAGE RENDERING
-   ════════════════════════════════ */
-
-function _applyKatex(el) {
-  if (typeof renderMathInElement !== 'function') return;
-  renderMathInElement(el, {
-    delimiters: [
-      { left: '$$', right: '$$', display: true  },
-      { left: '$',  right: '$',  display: false },
-      { left: '\\(', right: '\\)', display: false },
-      { left: '\\[', right: '\\]', display: true  },
-    ],
-    throwOnError: false,
-  });
-}
-
+MESSAGE RENDERING
+════════════════════════════════ */
 function addMsg(role, text) {
   const d = document.createElement('div');
   d.className = `msg ${role}`;
@@ -89,12 +110,11 @@ function addMsg(role, text) {
   d.style.transform  = 'translateY(6px)';
   d.style.transition = 'opacity 0.22s ease-out, transform 0.22s ease-out';
   msgWrap.appendChild(d);
-  requestAnimationFrame(() => {
-    requestAnimationFrame(() => { d.style.opacity = '1'; d.style.transform = ''; });
-  });
-  // Apply KaTeX to both user and bot messages
+  _animateIn(d);
+
   const bubble = d.querySelector('.bubble');
-  if (bubble) setTimeout(() => _applyKatex(bubble), 50);
+  if (bubble) _applyKatexIdle(bubble);
+
   if (role === 'bot')  appendBotActions(d, text);
   if (role === 'user') { window._lastUserMsgEl = d; scrollToMsg(d); }
 }
@@ -102,7 +122,6 @@ function addMsg(role, text) {
 function appendBotActions(msgEl, fullText) {
   const bar = document.createElement('div');
   bar.className = 'bot-actions';
-
   const actions = [
     { key: 'copy',    label: 'Copy',    svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>' },
     { key: 'retry',   label: 'Retry',   svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>' },
@@ -110,7 +129,6 @@ function appendBotActions(msgEl, fullText) {
     { key: 'dislike', label: 'Dislike', svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M17 14V2"/><path d="M9 18.12 10 14H4.17a2 2 0 0 1-1.92-2.56l2.33-8A2 2 0 0 1 6.5 2H20a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-2.76a2 2 0 0 0-1.79 1.11L12 22a3.13 3.13 0 0 1-3-3.88Z"/></svg>' },
     { key: 'refresh', label: 'Refresh', svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6"/><path d="M2.5 12a10 10 0 0 1 17.8-6.3L21.5 8"/><path d="M2.5 22v-6h6"/><path d="M21.5 12a10 10 0 0 1-17.8 6.3L2.5 16"/></svg>' },
   ];
-
   const btnRefs = {};
   actions.forEach(({ key, label, svg }) => {
     const btn = document.createElement('button');
@@ -119,7 +137,6 @@ function appendBotActions(msgEl, fullText) {
     btnRefs[key] = btn;
     bar.appendChild(btn);
   });
-
   Object.entries(btnRefs).forEach(([key, btn]) => {
     btn.addEventListener('click', () => {
       if (key === 'copy') {
@@ -139,26 +156,22 @@ function appendBotActions(msgEl, fullText) {
       }
     });
   });
-
   msgEl.appendChild(bar);
 }
 
 /* ════════════════════════════════
-   CODE COPY — delegated listener
-   ════════════════════════════════ */
-
+CODE COPY — delegated listener
+════════════════════════════════ */
 document.addEventListener('click', function(e) {
   const btn = e.target.closest('.code-copy-btn');
   if (!btn) return;
   const blockId = btn.getAttribute('data-target');
   const block   = document.getElementById(blockId);
   if (!block) return;
-
   const contentSpans = block.querySelectorAll('.code-line-content');
   let rawCode = '';
   contentSpans.forEach((span, i) => { rawCode += (i > 0 ? '\n' : '') + span.innerText; });
   if (!rawCode) rawCode = block.querySelector('pre')?.innerText || '';
-
   navigator.clipboard.writeText(rawCode).then(() => {
     btn.classList.add('copied');
     btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
@@ -170,9 +183,8 @@ document.addEventListener('click', function(e) {
 });
 
 /* ════════════════════════════════
-   WEB RESULT CARDS
-   ════════════════════════════════ */
-
+WEB RESULT CARDS
+════════════════════════════════ */
 function _buildWebCard(r) {
   let hostname = r.url;
   let pathname = r.url;
@@ -181,21 +193,17 @@ function _buildWebCard(r) {
     hostname = u.hostname.replace(/^www\./, '');
     pathname = u.hostname.replace(/^www\./, '') + u.pathname;
   } catch (_) {}
-
   const href            = safeLinkUrl(r.url);
   const faviconSrc      = `https://www.google.com/s2/favicons?sz=64&domain=${encodeURIComponent(hostname)}`;
   const faviconFallback = `https://icons.duckduckgo.com/ip3/${encodeURIComponent(hostname)}.ico`;
-
   const thumbHtml = r.image
     ? `<img class="web-card-thumb" src="${escapeHtml(r.image)}" width="92" height="92" loading="lazy" decoding="async" alt="" onerror="this.remove()">`
     : '';
-
   const a = document.createElement('a');
   a.className = 'web-card';
   a.href      = href;
   a.target    = '_blank';
   a.rel       = 'noopener noreferrer';
-
   a.innerHTML = `
     <div class="web-card-body">
       <div class="web-card-text">
@@ -219,7 +227,6 @@ function _buildWebCard(r) {
         </svg>
       </span>
     </div>`;
-
   a.querySelector('.web-card-favicon').addEventListener('error', function() {
     if (this.src !== faviconFallback) {
       this.src = faviconFallback;
@@ -227,23 +234,18 @@ function _buildWebCard(r) {
       this.closest('.web-card-favicon-wrap').style.display = 'none';
     }
   }, { once: false, passive: true });
-
   return a;
 }
 
 function _renderWebCards(results) {
   const previewWrap     = document.createElement('div');
   previewWrap.className = 'msg bot';
-
   const previewOuter     = document.createElement('div');
   previewOuter.className = 'web-cards-shadow-wrap';
-
   const previewBubble     = document.createElement('div');
   previewBubble.className = 'bubble web-results-preview';
-
   const previewResults  = results.slice(0, 2);
   const carouselResults = results.slice(2);
-
   previewResults.forEach(r => previewBubble.appendChild(_buildWebCard(r)));
   previewOuter.appendChild(previewBubble);
   previewWrap.appendChild(previewOuter);
@@ -251,38 +253,30 @@ function _renderWebCards(results) {
   previewWrap.style.transform  = 'translateY(6px)';
   previewWrap.style.transition = 'opacity 0.22s ease-out, transform 0.22s ease-out';
   msgWrap.appendChild(previewWrap);
-  requestAnimationFrame(() => {
-    requestAnimationFrame(() => { previewWrap.style.opacity = '1'; previewWrap.style.transform = ''; });
-  });
+  _animateIn(previewWrap);
 
   if (carouselResults.length > 0) {
     const carouselOuter     = document.createElement('div');
     carouselOuter.className = 'web-cards-shadow-wrap';
-
     const carousel     = document.createElement('div');
     carousel.className = 'web-results-carousel-wrap';
     carousel.setAttribute('data-atkyn-carousel', '1');
-
     carouselResults.forEach(r => carousel.appendChild(_buildWebCard(r)));
     carouselOuter.appendChild(carousel);
     carouselOuter.style.display = 'none';
-
     _pendingCarousel = carouselOuter;
   }
 }
 
 function _injectCarousel() {
   if (!_pendingCarousel) return;
-
   const carouselOuter = _pendingCarousel;
   _pendingCarousel    = null;
-
   const carouselWrap     = document.createElement('div');
   carouselWrap.className = 'msg bot';
   carouselOuter.style.display = '';
   carouselWrap.appendChild(carouselOuter);
   msgWrap.appendChild(carouselWrap);
-
   const track = carouselOuter.querySelector('.web-results-carousel-wrap');
   if (track) {
     carouselOuter.setAttribute('data-carousel-mask', '1');
@@ -293,11 +287,9 @@ function _injectCarousel() {
 function _initCarouselMarquee(track) {
   const START_DELAY_MS  = 1800;
   const RESUME_DELAY_MS = 2000;
-  const SPEED_PX_FRAME  = 0.4;
-
+  const SPEED_PX_SEC    = 24;
   const originals = Array.from(track.children);
   if (originals.length === 0) return;
-
   originals.forEach(card => {
     const clone = card.cloneNode(true);
     clone.setAttribute('aria-hidden', 'true');
@@ -305,21 +297,28 @@ function _initCarouselMarquee(track) {
     track.appendChild(clone);
   });
 
-  let halfWidth = 0;
-  requestAnimationFrame(() => { halfWidth = track.scrollWidth / 2; });
+  // GPU layer promotion
+  track.style.willChange = 'transform';
+  track.style.transform  = 'translateZ(0)';
 
+  let halfWidth = 0, offset = 0, lastTime = 0;
   let rafId = 0, running = false, touchActive = false, resumeTimerId = 0;
+  requestAnimationFrame(() => { halfWidth = track.scrollWidth / 2; });
   const startTimerId = setTimeout(startTicking, START_DELAY_MS);
 
-  function tick() {
+  // Time-based tick — smooth on 60/90/120Hz
+  function tick(now) {
     if (!running || touchActive) { rafId = 0; return; }
-    let sl = track.scrollLeft + SPEED_PX_FRAME;
-    if (halfWidth > 0 && sl >= halfWidth) sl -= halfWidth;
-    track.scrollLeft = sl;
+    if (!lastTime) lastTime = now;
+    const dt = (now - lastTime) / 1000;
+    lastTime = now;
+    offset += SPEED_PX_SEC * dt;
+    if (halfWidth > 0 && offset >= halfWidth) offset -= halfWidth;
+    track.style.transform = `translate3d(${-offset}px, 0, 0)`;
     rafId = requestAnimationFrame(tick);
   }
 
-  function startTicking() { if (rafId) return; running = true; rafId = requestAnimationFrame(tick); }
+  function startTicking() { if (rafId) return; running = true; lastTime = 0; rafId = requestAnimationFrame(tick); }
   function stopTicking()  { running = false; if (rafId) { cancelAnimationFrame(rafId); rafId = 0; } }
   function onTouchStart() { touchActive = true; clearTimeout(resumeTimerId); }
   function onTouchEnd()   { touchActive = false; clearTimeout(resumeTimerId); resumeTimerId = setTimeout(startTicking, RESUME_DELAY_MS); }
@@ -332,30 +331,30 @@ function _initCarouselMarquee(track) {
 
   const io = new IntersectionObserver((entries) => {
     if (!entries[0].isIntersecting) {
-      stopTicking(); clearTimeout(resumeTimerId); clearTimeout(startTimerId); io.disconnect();
+      stopTicking();
+      clearTimeout(resumeTimerId);
+      clearTimeout(startTimerId);
+      track.style.willChange = 'auto';
+      io.disconnect();
     }
   }, { threshold: 0 });
   io.observe(track);
 }
 
 /* ════════════════════════════════
-   STOCK CARD
-   ════════════════════════════════ */
-
+STOCK CARD
+════════════════════════════════ */
 function _renderStockCard(data) {
   const isUp      = data.change >= 0;
   const color     = isUp ? '#1a9e4a' : '#d93025';
-  const bgColor   = isUp ? 'rgba(26,158,74,0.08)' : 'rgba(217,48,37,0.08)';
   const arrow     = isUp ? '▲' : '▼';
   const changeStr = `${isUp ? '+' : ''}${data.change.toFixed(2)} (${isUp ? '+' : ''}${data.changePct.toFixed(2)}%)`;
 
   const wrap = document.createElement('div');
   wrap.className = 'msg bot';
-
   const card = document.createElement('div');
   card.className = 'stock-card';
 
-  // ── Header ──
   const header = document.createElement('div');
   header.className = 'stock-header';
   header.innerHTML = `
@@ -367,14 +366,12 @@ function _renderStockCard(data) {
       <div class="stock-ticker-exchange">${escapeHtml(data.ticker)}${data.exchange ? ' · ' + escapeHtml(data.exchange) : ''}</div>
     </div>`;
 
-  // ── Price ──
   const priceRow = document.createElement('div');
   priceRow.className = 'stock-price-row';
   priceRow.innerHTML = `
     <div class="stock-price">${data.currency === 'USD' ? '$' : ''}${data.price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
     <div class="stock-change" style="color:${color}">${arrow} ${changeStr}</div>`;
 
-  // ── Time range tabs ──
   const tabs = document.createElement('div');
   tabs.className = 'stock-tabs';
   const ranges = ['1D','1W','1M','3M','1Y'];
@@ -390,11 +387,9 @@ function _renderStockCard(data) {
     tabs.appendChild(btn);
   });
 
-  // ── Chart container ──
   const chartContainer = document.createElement('div');
   chartContainer.className = 'stock-chart-container';
 
-  // ── Stats row ──
   const stats = document.createElement('div');
   stats.className = 'stock-stats';
   const statsData = [
@@ -417,55 +412,43 @@ function _renderStockCard(data) {
   card.appendChild(stats);
   wrap.appendChild(card);
 
-  wrap.style.opacity   = '0';
-  wrap.style.transform = 'translateY(6px)';
+  wrap.style.opacity    = '0';
+  wrap.style.transform  = 'translateY(6px)';
   wrap.style.transition = 'opacity 0.22s ease-out, transform 0.22s ease-out';
   msgWrap.appendChild(wrap);
+  _animateIn(wrap);
 
   requestAnimationFrame(() => {
-    requestAnimationFrame(() => {
-      wrap.style.opacity = '1';
-      wrap.style.transform = '';
-      // Always fetch real candle data on init (covers weekends/market-closed)
-      _fetchAndUpdateChart(data.ticker, '1D', chartContainer, data);
-      scrollToMsg(wrap);
-    });
+    _fetchAndUpdateChart(data.ticker, '1D', chartContainer, data);
+    scrollToMsg(wrap);
   });
 }
 
 function _resolutionFor(range) {
   switch (range) {
-    case '1D': return { resolution: '5',  days: 1  };
-    case '1W': return { resolution: '15', days: 7  };
-    case '1M': return { resolution: '60', days: 30 };
-    case '3M': return { resolution: 'D',  days: 90 };
-    case '1Y': return { resolution: 'W',  days: 365};
-    default:   return { resolution: '5',  days: 1  };
+    case '1D': return { resolution: '5',  days: 1   };
+    case '1W': return { resolution: '15', days: 7   };
+    case '1M': return { resolution: '60', days: 30  };
+    case '3M': return { resolution: 'D',  days: 90  };
+    case '1Y': return { resolution: 'W',  days: 365 };
+    default:   return { resolution: '5',  days: 1   };
   }
 }
 
 async function _fetchAndUpdateChart(ticker, range, container, data) {
-  // Show loading shimmer
   container.innerHTML = '<div class="stock-chart-loading"></div>';
-
   try {
     const { resolution, days } = _resolutionFor(range);
     const to   = Math.floor(Date.now() / 1000);
-    // 1D: 5-day window covers weekends/holidays; Finnhub trims to last trading session
     const fetchDays = range === '1D' ? 5 : days;
     const from = to - fetchDays * 86400;
-
     const resp = await fetch(`/api/stockcandle?symbol=${encodeURIComponent(ticker)}&resolution=${resolution}&from=${from}&to=${to}`);
     if (!resp.ok) throw new Error('fetch failed');
-
     const candle = await resp.json();
     if (candle.s !== 'ok' || !Array.isArray(candle.t)) throw new Error('no data');
-
     let series = candle.t.map((t, i) => ({
       t, o: candle.o[i], h: candle.h[i], l: candle.l[i], c: candle.c[i],
     }));
-
-    // For 1D: trim to last trading day only
     if (range === '1D' && series.length > 0) {
       const lastTs  = series[series.length - 1].t;
       const lastDay = new Date(lastTs * 1000);
@@ -476,15 +459,12 @@ async function _fetchAndUpdateChart(ticker, range, container, data) {
       });
       if (filtered.length > 0) series = filtered;
     }
-
     const lastPrice  = series[series.length - 1]?.c ?? data.price;
     const firstPrice = series[0]?.c ?? data.prevClose;
     const up = lastPrice >= firstPrice;
-
     container.innerHTML = '';
     _initStockChart(container, series, up, data);
-  } catch {
-    // Fallback: redraw with existing 1D data
+  } catch (_) {
     container.innerHTML = '';
     _initStockChart(container, data.series, data.change >= 0, data);
   }
@@ -496,7 +476,7 @@ function _initStockChart(container, series, isUp, stockMeta) {
     container.innerHTML = '<div class="stock-chart-nodata">Chart unavailable</div>';
     return;
   }
-  // If no candle data, synthesize a 2-point line from prevClose → price
+
   if (!series || series.length === 0) {
     if (stockMeta?.price && stockMeta?.prevClose) {
       const now  = Math.floor(Date.now() / 1000);
@@ -519,16 +499,16 @@ function _initStockChart(container, series, isUp, stockMeta) {
   const botFill   = isUp ? 'rgba(26,158,74,0.00)'          : 'rgba(217,48,37,0.00)';
 
   const chart = LW.createChart(container, {
-    width:  container.clientWidth  || container.offsetWidth  || 320,
+    width:  container.clientWidth || container.offsetWidth || 320,
     height: 180,
     layout: {
-      background:  { type: 'solid', color: 'transparent' },
-      textColor:   isDark ? '#9e9e9e' : '#757575',
-      fontSize:    11,
+      background: { type: 'solid', color: 'transparent' },
+      textColor:  isDark ? '#9e9e9e' : '#757575',
+      fontSize:   11,
     },
     grid: {
-      vertLines:   { color: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)' },
-      horzLines:   { color: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)' },
+      vertLines: { color: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)' },
+      horzLines: { color: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)' },
     },
     crosshair: {
       mode: LW.CrosshairMode.Normal,
@@ -540,41 +520,42 @@ function _initStockChart(container, series, isUp, stockMeta) {
       scaleMargins: { top: 0.12, bottom: 0.08 },
     },
     timeScale: {
-      borderVisible:      false,
-      timeVisible:        true,
-      secondsVisible:     false,
-      fixLeftEdge:        true,
-      fixRightEdge:       true,
+      borderVisible:  false,
+      timeVisible:    true,
+      secondsVisible: false,
+      fixLeftEdge:    true,
+      fixRightEdge:   true,
     },
-    handleScroll:  { mouseWheel: false, pressedMouseMove: false, horzTouchDrag: false },
-    handleScale:   { mouseWheel: false, pinch: false, axisPressedMouseMove: false },
+    handleScroll: { mouseWheel: false, pressedMouseMove: false, horzTouchDrag: false },
+    handleScale:  { mouseWheel: false, pinch: false, axisPressedMouseMove: false },
   });
 
-  // Force passive touch on the chart's canvas so vertical page scroll is never blocked.
-  // LightweightCharts registers its own non-passive touchstart internally; we override
-  // at the container level with a capturing passive listener that lets the browser
-  // compositor handle vertical scroll without waiting for JS.
   container.style.touchAction = 'pan-y';
-  container.style.willChange  = 'transform'; // promote layer → smoother scroll compositing
+  container.style.willChange  = 'transform';
+
+  // Release GPU layer after chart is fully rendered
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      setTimeout(() => { container.style.willChange = 'auto'; }, 100);
+    });
+  });
 
   let _touchStartX = 0, _touchStartY = 0;
   container.addEventListener('touchstart', (e) => {
     _touchStartX = e.touches[0].clientX;
     _touchStartY = e.touches[0].clientY;
   }, { passive: true, capture: true });
-
   container.addEventListener('touchmove', (e) => {
     const deltaX = Math.abs(e.touches[0].clientX - _touchStartX);
     const deltaY = Math.abs(e.touches[0].clientY - _touchStartY);
-    // Predominantly vertical → stop chart from consuming the event
     if (deltaY > deltaX) e.stopImmediatePropagation();
   }, { passive: true, capture: true });
 
   const areaSeries = chart.addAreaSeries({
     lineColor,
-    topColor:       topFill,
-    bottomColor:    botFill,
-    lineWidth:      1.8,
+    topColor:    topFill,
+    bottomColor: botFill,
+    lineWidth:   1.8,
     priceLineVisible: false,
     lastValueVisible: false,
     crosshairMarkerVisible: true,
@@ -587,54 +568,51 @@ function _initStockChart(container, series, isUp, stockMeta) {
   areaSeries.setData(chartData);
   chart.timeScale().fitContent();
 
-  // Resize observer
+  // RAF-debounced resize observer
   if (window.ResizeObserver) {
+    let _chartResizeRaf = 0;
     const ro = new ResizeObserver(entries => {
       const w = entries[0]?.contentRect?.width;
-      if (w) chart.applyOptions({ width: w });
+      if (!w) return;
+      if (_chartResizeRaf) cancelAnimationFrame(_chartResizeRaf);
+      _chartResizeRaf = requestAnimationFrame(() => {
+        _chartResizeRaf = 0;
+        chart.applyOptions({ width: w });
+      });
     });
     ro.observe(container);
     container._stockChartRo = ro;
   }
-
   container._stockChart = chart;
 }
 
 /* ════════════════════════════════
-   SSE STREAM PARSER
-   ════════════════════════════════ */
-
+SSE STREAM PARSER
+════════════════════════════════ */
 async function _parseSseStream(reader, onResults, onDelta, onStock) {
   const decoder = new TextDecoder('utf-8', { fatal: false });
   let sseBuffer = '', fullText = '', eventType = '', done = false;
-
   while (!done) {
     const chunk = await reader.read();
     done = chunk.done;
     sseBuffer += done ? decoder.decode() : decoder.decode(chunk.value, { stream: true });
-
     const lines = sseBuffer.split('\n');
     sseBuffer = done ? '' : lines.pop();
-
     for (const line of lines) {
       if (line.startsWith('event: ')) { eventType = line.slice(7).trim(); continue; }
       if (!line.startsWith('data: '))  { eventType = ''; continue; }
-
       const data = line.slice(6).trim();
       if (data === '[DONE]') { done = true; break; }
-
       if (eventType === 'stock') {
         try { const s = JSON.parse(data); if (s) onStock(s); } catch (_) {}
         eventType = '';
         continue;
       }
-
       if (eventType === 'results') {
         try { const r = JSON.parse(data); if (r.length) onResults(r); } catch (_) {}
         eventType = '';
         continue;
       }
-
       if (eventType === 'searchquery') {
         try {
           const { query: sq } = JSON.parse(data);
@@ -643,7 +621,6 @@ async function _parseSseStream(reader, onResults, onDelta, onStock) {
         eventType = '';
         continue;
       }
-
       try {
         const json  = JSON.parse(data);
         const delta = json.choices?.[0]?.delta?.content || '';
@@ -651,33 +628,25 @@ async function _parseSseStream(reader, onResults, onDelta, onStock) {
       } catch (_) {}
     }
   }
-
   return fullText;
 }
 
 /* ════════════════════════════════
-   SEND / STREAM
-   ════════════════════════════════ */
-
+SEND / STREAM
+════════════════════════════════ */
 async function send() {
   const q = input.value.trim();
   if (!q) return;
   input.value = '';
   pill.classList.remove('has-text');
 
-  /* Save query so modules (web, images, news) can use it on tab switch */
   sessionStorage.setItem('atkyn_last_query', q);
-
-  /* Clear stale module caches so re-init fetches fresh results */
   sessionStorage.removeItem('atkyn_web_results');
   sessionStorage.removeItem('atkyn_images_results');
   sessionStorage.removeItem('atkyn_news_results');
   sessionStorage.removeItem('atkyn_videos_results');
-
-  /* Invalidate tab-query cache — will be fetched on-demand when tab opens */
   if (window.AtkynQuery) window.AtkynQuery.invalidate();
 
-  /* If a non-Answer tab is active, re-run that module instead of chat */
   const activeTab = document.querySelector('.tab.active')?.getAttribute('data-tab');
   if (activeTab && activeTab !== 'ai') {
     const initFn = window[`_atkynInit_${activeTab}`];
@@ -686,7 +655,6 @@ async function send() {
   }
 
   addMsg('user', q);
-
   if (_streamAbort) { _streamAbort.abort(); _streamAbort = null; }
   showTyping();
   pushHistory('user', q);
@@ -718,10 +686,8 @@ async function send() {
           removeTyping();
           _renderWebCards(results);
           requestAnimationFrame(() => {
-            requestAnimationFrame(() => {
-              const last = msgWrap.lastElementChild;
-              if (last) scrollToMsg(last);
-            });
+            const last = msgWrap.lastElementChild;
+            if (last) scrollToMsg(last);
           });
           showTyping();
           webCardShown = true;
@@ -745,31 +711,25 @@ async function send() {
 
     if (fullText) {
       pushHistory('assistant', fullText);
-
       const botEl     = document.createElement('div');
       botEl.className = 'msg bot';
       const bubbleEl     = document.createElement('div');
       bubbleEl.className = 'bubble';
       bubbleEl.innerHTML = renderMarkdown(fullText);
       botEl.appendChild(bubbleEl);
-      setTimeout(() => _applyKatex(bubbleEl), 50);
+      _applyKatexIdle(bubbleEl);
+
       botEl.style.opacity    = '0';
       botEl.style.transform  = 'translateY(6px)';
       botEl.style.transition = 'opacity 0.22s ease-out, transform 0.22s ease-out';
       msgWrap.appendChild(botEl);
       appendBotActions(botEl, fullText);
       _injectCarousel();
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          botEl.style.opacity   = '1';
-          botEl.style.transform = '';
-          scrollToMsg(botEl);
-        });
-      });
+      _animateIn(botEl);
+      requestAnimationFrame(() => { scrollToMsg(botEl); });
     } else {
       _injectCarousel();
     }
-
   } catch (err) {
     if (err.name === 'AbortError') return;
     removeTyping();
@@ -779,21 +739,18 @@ async function send() {
 }
 
 /* ════════════════════════════════
-   INPUT HANDLERS (chat-specific)
-   ════════════════════════════════ */
-
+INPUT HANDLERS (chat-specific)
+════════════════════════════════ */
 input.addEventListener('keydown', e => {
   if (e.key === 'Enter') { e.preventDefault(); send(); }
 });
-
 sendBtn.addEventListener('click', () => {
   if (!sendBtn.classList.contains('cross-mode')) send();
 });
 
 /* ════════════════════════════════
-   CHAT CACHE — sessionStorage
-   ════════════════════════════════ */
-
+CHAT CACHE — sessionStorage
+════════════════════════════════ */
 const CACHE_HTML   = 'atkyn_chat_html';
 const CACHE_SCROLL = 'atkyn_chat_scroll';
 const CACHE_HIST   = 'atkyn_chat_history';
@@ -812,19 +769,14 @@ function _restoreChat() {
   if (!html) return false;
   try {
     msgWrap.innerHTML = html;
-
-    // Re-apply KaTeX to all restored message bubbles
     msgWrap.querySelectorAll('.bubble').forEach(bubble => _applyKatex(bubble));
-
     const savedScroll = parseInt(sessionStorage.getItem(CACHE_SCROLL) || '0', 10);
     const savedHist   = sessionStorage.getItem(CACHE_HIST);
     if (savedHist) {
       const parsed = JSON.parse(savedHist);
       _history.push(...parsed);
     }
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => { scrollHost.scrollTop = savedScroll; });
-    });
+    requestAnimationFrame(() => { scrollHost.scrollTop = savedScroll; });
     const userMsgs = msgWrap.querySelectorAll('.msg.user');
     if (userMsgs.length) window._lastUserMsgEl = userMsgs[userMsgs.length - 1];
     return true;
@@ -833,16 +785,14 @@ function _restoreChat() {
   }
 }
 
-/* Save before tab switch */
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'hidden') _saveChat();
 });
 window.addEventListener('pagehide', _saveChat);
 
 /* ════════════════════════════════
-   URL PARAM AUTO-SEND / RESTORE
-   ════════════════════════════════ */
-
+URL PARAM AUTO-SEND / RESTORE
+════════════════════════════════ */
 const _qParam = new URLSearchParams(location.search).get('q');
 if (_qParam) {
   sessionStorage.removeItem(CACHE_HTML);

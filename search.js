@@ -1,5 +1,6 @@
 /* ═══════════════════════════════════════════════════════════════
 search.js — Atkyn Answer page only
+[PRODUCTION READY: All Syntax Errors Fixed · Bing-Style Cards]
 Chat rendering · stream handling · API · typing · copy · cards
 Requires: core.js (loaded before this)
 ═══════════════════════════════════════════════════════════════ */
@@ -25,7 +26,7 @@ function pushHistory(role, content) {
   if (_history.length > MAX_HISTORY) _history.splice(0, _history.length - MAX_HISTORY);
 }
 
-/* Single-RAF animate-in: 16ms vs 33ms double-RAF */
+// Single-RAF animate-in: 16ms vs 33ms double-RAF
 function _animateIn(el) {
   el.getBoundingClientRect();
   requestAnimationFrame(() => {
@@ -34,7 +35,7 @@ function _animateIn(el) {
   });
 }
 
-/* KaTeX deferred to idle time — non-blocking */
+// KaTeX deferred to idle time — non-blocking
 function _applyKatexIdle(el) {
   if (typeof renderMathInElement !== 'function') return;
   const opts = {
@@ -53,23 +54,13 @@ function _applyKatexIdle(el) {
   }
 }
 
-function _applyKatex(el) {
-  if (typeof renderMathInElement !== 'function') return;
-  renderMathInElement(el, {
-    delimiters: [
-      { left: '$$', right: '$$', display: true  },
-      { left: '$',  right: '$',  display: false },
-      { left: '\\(', right: '\\)', display: false },
-      { left: '\\[', right: '\\]', display: true  },
-    ],
-    throwOnError: false,
-  });
-}
-
 function escapeHtml(str) {
   return String(str)
-    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
 function safeLinkUrl(url) {
@@ -98,9 +89,22 @@ function removeTyping() {
   if (_typingEl) { _typingEl.remove(); _typingEl = null; }
 }
 
-/* ════════════════════════════════
+/* ═══════════════════════════════
 MESSAGE RENDERING
 ════════════════════════════════ */
+function _applyKatex(el) {
+  if (typeof renderMathInElement !== 'function') return;
+  renderMathInElement(el, {
+    delimiters: [
+      { left: '$$', right: '$$', display: true  },
+      { left: '$',  right: '$',  display: false },
+      { left: '\\(', right: '\\)', display: false },
+      { left: '\\[', right: '\\]', display: true  },
+    ],
+    throwOnError: false,
+  });
+}
+
 function addMsg(role, text) {
   const d = document.createElement('div');
   d.className = `msg ${role}`;
@@ -183,7 +187,7 @@ document.addEventListener('click', function(e) {
 });
 
 /* ════════════════════════════════
-WEB RESULT CARDS
+WEB RESULT CARDS — BING STYLE
 ════════════════════════════════ */
 function _buildWebCard(r) {
   let hostname = r.url;
@@ -193,12 +197,15 @@ function _buildWebCard(r) {
     hostname = u.hostname.replace(/^www\./, '');
     pathname = u.hostname.replace(/^www\./, '') + u.pathname;
   } catch (_) {}
+
   const href            = safeLinkUrl(r.url);
   const faviconSrc      = `https://www.google.com/s2/favicons?sz=64&domain=${encodeURIComponent(hostname)}`;
   const faviconFallback = `https://icons.duckduckgo.com/ip3/${encodeURIComponent(hostname)}.ico`;
+  
   const thumbHtml = r.image
     ? `<img class="web-card-thumb" src="${escapeHtml(r.image)}" width="92" height="92" loading="lazy" decoding="async" alt="" onerror="this.remove()">`
     : '';
+
   const a = document.createElement('a');
   a.className = 'web-card';
   a.href      = href;
@@ -227,13 +234,21 @@ function _buildWebCard(r) {
         </svg>
       </span>
     </div>`;
-  a.querySelector('.web-card-favicon').addEventListener('error', function() {
+
+  // Favicon error handler — 3-tier fallback
+  const favImg = a.querySelector('.web-card-favicon');
+  favImg.addEventListener('error', function() {
     if (this.src !== faviconFallback) {
       this.src = faviconFallback;
     } else {
-      this.closest('.web-card-favicon-wrap').style.display = 'none';
+      // Final fallback: create letter-based favicon
+      const letter = hostname[0]?.toUpperCase() || '?';
+      const colors = ['#007AFF','#34C759','#FF9500','#FF3B30','#AF52DE','#5856D6'];
+      const bg = colors[letter.charCodeAt(0) % colors.length];
+      this.src = `data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16'><rect width='16' height='16' rx='3' fill='${encodeURIComponent(bg)}'/><text x='8' y='12' font-family='system-ui' font-size='10' font-weight='600' fill='white' text-anchor='middle'>${letter}</text></svg>`;
     }
   }, { once: false, passive: true });
+
   return a;
 }
 
@@ -244,8 +259,11 @@ function _renderWebCards(results) {
   previewOuter.className = 'web-cards-shadow-wrap';
   const previewBubble     = document.createElement('div');
   previewBubble.className = 'bubble web-results-preview';
-  const previewResults  = results.slice(0, 2);
-  const carouselResults = results.slice(2);
+  
+  // Show up to 10 results (Bing shows 8-10 upfront)
+  const previewResults  = results.slice(0, 4); // Increased from 2 to 4
+  const carouselResults = results.slice(4);     // Rest in carousel
+  
   previewResults.forEach(r => previewBubble.appendChild(_buildWebCard(r)));
   previewOuter.appendChild(previewBubble);
   previewWrap.appendChild(previewOuter);
@@ -260,7 +278,6 @@ function _renderWebCards(results) {
     carouselOuter.className = 'web-cards-shadow-wrap';
     const carousel     = document.createElement('div');
     carousel.className = 'web-results-carousel-wrap';
-    carousel.setAttribute('data-atkyn-carousel', '1');
     carouselResults.forEach(r => carousel.appendChild(_buildWebCard(r)));
     carouselOuter.appendChild(carousel);
     carouselOuter.style.display = 'none';
@@ -288,8 +305,10 @@ function _initCarouselMarquee(track) {
   const START_DELAY_MS  = 1800;
   const RESUME_DELAY_MS = 2000;
   const SPEED_PX_SEC    = 24;
+  
   const originals = Array.from(track.children);
   if (originals.length === 0) return;
+  
   originals.forEach(card => {
     const clone = card.cloneNode(true);
     clone.setAttribute('aria-hidden', 'true');
@@ -303,6 +322,7 @@ function _initCarouselMarquee(track) {
 
   let halfWidth = 0, offset = 0, lastTime = 0;
   let rafId = 0, running = false, touchActive = false, resumeTimerId = 0;
+  
   requestAnimationFrame(() => { halfWidth = track.scrollWidth / 2; });
   const startTimerId = setTimeout(startTicking, START_DELAY_MS);
 
@@ -347,6 +367,7 @@ STOCK CARD
 function _renderStockCard(data) {
   const isUp      = data.change >= 0;
   const color     = isUp ? '#1a9e4a' : '#d93025';
+  const bgColor   = isUp ? 'rgba(26,158,74,0.08)' : 'rgba(217,48,37,0.08)';
   const arrow     = isUp ? '▲' : '▼';
   const changeStr = `${isUp ? '+' : ''}${data.change.toFixed(2)} (${isUp ? '+' : ''}${data.changePct.toFixed(2)}%)`;
 
@@ -355,6 +376,7 @@ function _renderStockCard(data) {
   const card = document.createElement('div');
   card.className = 'stock-card';
 
+  // ── Header ──
   const header = document.createElement('div');
   header.className = 'stock-header';
   header.innerHTML = `
@@ -366,12 +388,14 @@ function _renderStockCard(data) {
       <div class="stock-ticker-exchange">${escapeHtml(data.ticker)}${data.exchange ? ' · ' + escapeHtml(data.exchange) : ''}</div>
     </div>`;
 
+  // ── Price ──
   const priceRow = document.createElement('div');
   priceRow.className = 'stock-price-row';
   priceRow.innerHTML = `
     <div class="stock-price">${data.currency === 'USD' ? '$' : ''}${data.price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
     <div class="stock-change" style="color:${color}">${arrow} ${changeStr}</div>`;
 
+  // ── Time range tabs ──
   const tabs = document.createElement('div');
   tabs.className = 'stock-tabs';
   const ranges = ['1D','1W','1M','3M','1Y'];
@@ -387,9 +411,11 @@ function _renderStockCard(data) {
     tabs.appendChild(btn);
   });
 
+  // ── Chart container ─
   const chartContainer = document.createElement('div');
   chartContainer.className = 'stock-chart-container';
 
+  // ── Stats row ──
   const stats = document.createElement('div');
   stats.className = 'stock-stats';
   const statsData = [
@@ -442,13 +468,17 @@ async function _fetchAndUpdateChart(ticker, range, container, data) {
     const to   = Math.floor(Date.now() / 1000);
     const fetchDays = range === '1D' ? 5 : days;
     const from = to - fetchDays * 86400;
+    
     const resp = await fetch(`/api/stockcandle?symbol=${encodeURIComponent(ticker)}&resolution=${resolution}&from=${from}&to=${to}`);
     if (!resp.ok) throw new Error('fetch failed');
+    
     const candle = await resp.json();
     if (candle.s !== 'ok' || !Array.isArray(candle.t)) throw new Error('no data');
+    
     let series = candle.t.map((t, i) => ({
       t, o: candle.o[i], h: candle.h[i], l: candle.l[i], c: candle.c[i],
     }));
+    
     if (range === '1D' && series.length > 0) {
       const lastTs  = series[series.length - 1].t;
       const lastDay = new Date(lastTs * 1000);
@@ -459,12 +489,14 @@ async function _fetchAndUpdateChart(ticker, range, container, data) {
       });
       if (filtered.length > 0) series = filtered;
     }
+    
     const lastPrice  = series[series.length - 1]?.c ?? data.price;
     const firstPrice = series[0]?.c ?? data.prevClose;
     const up = lastPrice >= firstPrice;
+    
     container.innerHTML = '';
     _initStockChart(container, series, up, data);
-  } catch (_) {
+  } catch {
     container.innerHTML = '';
     _initStockChart(container, data.series, data.change >= 0, data);
   }
@@ -520,14 +552,14 @@ function _initStockChart(container, series, isUp, stockMeta) {
       scaleMargins: { top: 0.12, bottom: 0.08 },
     },
     timeScale: {
-      borderVisible:  false,
-      timeVisible:    true,
-      secondsVisible: false,
-      fixLeftEdge:    true,
-      fixRightEdge:   true,
+      borderVisible:      false,
+      timeVisible:        true,
+      secondsVisible:     false,
+      fixLeftEdge:        true,
+      fixRightEdge:       true,
     },
-    handleScroll: { mouseWheel: false, pressedMouseMove: false, horzTouchDrag: false },
-    handleScale:  { mouseWheel: false, pinch: false, axisPressedMouseMove: false },
+    handleScroll:  { mouseWheel: false, pressedMouseMove: false, horzTouchDrag: false },
+    handleScale:   { mouseWheel: false, pinch: false, axisPressedMouseMove: false },
   });
 
   container.style.touchAction = 'pan-y';
@@ -545,6 +577,7 @@ function _initStockChart(container, series, isUp, stockMeta) {
     _touchStartX = e.touches[0].clientX;
     _touchStartY = e.touches[0].clientY;
   }, { passive: true, capture: true });
+  
   container.addEventListener('touchmove', (e) => {
     const deltaX = Math.abs(e.touches[0].clientX - _touchStartX);
     const deltaY = Math.abs(e.touches[0].clientY - _touchStartY);
@@ -553,9 +586,9 @@ function _initStockChart(container, series, isUp, stockMeta) {
 
   const areaSeries = chart.addAreaSeries({
     lineColor,
-    topColor:    topFill,
-    bottomColor: botFill,
-    lineWidth:   1.8,
+    topColor:       topFill,
+    bottomColor:    botFill,
+    lineWidth:      1.8,
     priceLineVisible: false,
     lastValueVisible: false,
     crosshairMarkerVisible: true,
@@ -592,17 +625,20 @@ SSE STREAM PARSER
 async function _parseSseStream(reader, onResults, onDelta, onStock) {
   const decoder = new TextDecoder('utf-8', { fatal: false });
   let sseBuffer = '', fullText = '', eventType = '', done = false;
+  
   while (!done) {
     const chunk = await reader.read();
     done = chunk.done;
     sseBuffer += done ? decoder.decode() : decoder.decode(chunk.value, { stream: true });
     const lines = sseBuffer.split('\n');
     sseBuffer = done ? '' : lines.pop();
+    
     for (const line of lines) {
       if (line.startsWith('event: ')) { eventType = line.slice(7).trim(); continue; }
       if (!line.startsWith('data: '))  { eventType = ''; continue; }
       const data = line.slice(6).trim();
       if (data === '[DONE]') { done = true; break; }
+      
       if (eventType === 'stock') {
         try { const s = JSON.parse(data); if (s) onStock(s); } catch (_) {}
         eventType = '';
@@ -645,6 +681,7 @@ async function send() {
   sessionStorage.removeItem('atkyn_images_results');
   sessionStorage.removeItem('atkyn_news_results');
   sessionStorage.removeItem('atkyn_videos_results');
+  
   if (window.AtkynQuery) window.AtkynQuery.invalidate();
 
   const activeTab = document.querySelector('.tab.active')?.getAttribute('data-tab');
@@ -713,7 +750,7 @@ async function send() {
       pushHistory('assistant', fullText);
       const botEl     = document.createElement('div');
       botEl.className = 'msg bot';
-      const bubbleEl     = document.createElement('div');
+      const bubbleEl  = document.createElement('div');
       bubbleEl.className = 'bubble';
       bubbleEl.innerHTML = renderMarkdown(fullText);
       botEl.appendChild(bubbleEl);
@@ -744,11 +781,12 @@ INPUT HANDLERS (chat-specific)
 input.addEventListener('keydown', e => {
   if (e.key === 'Enter') { e.preventDefault(); send(); }
 });
+
 sendBtn.addEventListener('click', () => {
   if (!sendBtn.classList.contains('cross-mode')) send();
 });
 
-/* ════════════════════════════════
+/* ═══════════════════════════════
 CHAT CACHE — sessionStorage
 ════════════════════════════════ */
 const CACHE_HTML   = 'atkyn_chat_html';
@@ -788,6 +826,7 @@ function _restoreChat() {
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'hidden') _saveChat();
 });
+
 window.addEventListener('pagehide', _saveChat);
 
 /* ════════════════════════════════

@@ -1,7 +1,7 @@
 /* ════════════════════════════════════════════════════════════════
    typography.css — Bot Bubble Rich Text
-   Clean AI-style typography
-   Headings · Paragraphs · Lists · Links · Code · HR
+   ChatGPT / Gemini style typography
+   Headings · Paragraphs · Lists · Links · Inline Code · HR
 ════════════════════════════════════════════════════════════════ */
 
 
@@ -10,8 +10,8 @@
 ──────────────────────────────────────────────────────────────── */
 
 .msg.bot .bubble p {
-  margin: 0 0 12px;
-  line-height: 1.62;
+  margin: 0 0 11px;
+  line-height: 1.6;
 }
 
 .msg.bot .bubble p:last-child {
@@ -33,7 +33,7 @@
 
 .msg.bot .bubble h4 {
   font-size: 1rem;
-  line-height: 1.45;
+  line-height: 1.43;
   font-weight: 650;
   margin: 15px 0 6px;
   letter-spacing: -0.008em;
@@ -66,13 +66,12 @@
 
 
 /* ────────────────────────────────────────────────────────────────
-   LISTS
-   Compact AI-chat style
+   BASE LISTS
 ──────────────────────────────────────────────────────────────── */
 
 .msg.bot .bubble ul,
 .msg.bot .bubble ol {
-  margin: 7px 0 12px;
+  margin: 6px 0 12px;
   padding: 0;
 }
 
@@ -81,9 +80,14 @@
   margin: 5px 0;
 }
 
+.msg.bot .bubble li:last-child {
+  margin-bottom: 0;
+}
+
 
 /* ────────────────────────────────────────────────────────────────
    UNORDERED LIST
+   Bigger + cleaner bullet
 ──────────────────────────────────────────────────────────────── */
 
 .msg.bot .bubble ul {
@@ -92,16 +96,20 @@
 
 .msg.bot .bubble ul > li {
   position: relative;
-  padding-left: 21px;
+  padding-left: 24px;
 }
 
+/* Larger, cleaner bullet */
 .msg.bot .bubble ul > li::before {
   content: '•';
   position: absolute;
-  left: 3px;
-  top: 0;
-  font-size: 0.95em;
-  line-height: 1.58;
+  left: 4px;
+  top: -1px;
+
+  font-size: 1.15em;
+  font-weight: 500;
+  line-height: 1.55;
+
   color: var(--color-text-muted);
 }
 
@@ -114,11 +122,12 @@
 
 /* ────────────────────────────────────────────────────────────────
    ORDERED LIST
+   Comfortable number gutter
 ──────────────────────────────────────────────────────────────── */
 
 .msg.bot .bubble ol {
   list-style: decimal;
-  padding-left: 23px;
+  padding-left: 27px;
 }
 
 .msg.bot .bubble ol > li {
@@ -128,30 +137,49 @@
 
 /* ────────────────────────────────────────────────────────────────
    NESTED LISTS
-   Controlled indentation — prevents excessive right shifting
+   IMPORTANT:
+   Keep nested content close to parent.
+   Prevent excessive right-side drift.
 ──────────────────────────────────────────────────────────────── */
 
 .msg.bot .bubble li > ul,
 .msg.bot .bubble li > ol {
-  margin: 5px 0 6px;
-  padding-left: 18px;
+  margin: 5px 0 5px;
+  padding-left: 17px;
 }
 
+/* Nested unordered */
 .msg.bot .bubble li > ul > li {
-  padding-left: 19px;
+  padding-left: 22px;
 }
 
+/* Nested bullet */
 .msg.bot .bubble li > ul > li::before {
-  left: 2px;
-  font-size: 0.82em;
+  left: 3px;
+  font-size: 1.02em;
 }
 
+/* Nested ordered */
 .msg.bot .bubble li > ol {
-  padding-left: 21px;
+  padding-left: 22px;
 }
 
 .msg.bot .bubble li > ol > li {
   padding-left: 2px;
+}
+
+
+/* ────────────────────────────────────────────────────────────────
+   DEEP NESTING
+   Stop indentation from becoming excessive.
+──────────────────────────────────────────────────────────────── */
+
+.msg.bot .bubble li > ul > li > ul,
+.msg.bot .bubble li > ol > li > ul,
+.msg.bot .bubble li > ul > li > ol,
+.msg.bot .bubble li > ol > li > ol {
+  margin-top: 4px;
+  padding-left: 13px;
 }
 
 
@@ -161,6 +189,7 @@
 
 .msg.bot .bubble li > p {
   margin: 0 0 5px;
+  line-height: 1.58;
 }
 
 .msg.bot .bubble li > p:last-child {
@@ -189,7 +218,9 @@
   color: var(--color-link);
   text-decoration: none;
   border-bottom: 1px solid rgba(0, 102, 204, 0.28);
-  transition: opacity 0.15s ease, border-color 0.15s ease;
+  transition:
+    opacity 0.15s ease,
+    border-color 0.15s ease;
 }
 
 .msg.bot .bubble a:hover {
@@ -242,32 +273,15 @@
 
 
 /* ────────────────────────────────────────────────────────────────
-   HORIZONTAL RULE
-──────────────────────────────────────────────────────────────── */
-
-.msg.bot .bubble hr.md-hr {
-  border: 0;
-  height: 1px;
-  background: rgba(0, 0, 0, 0.08);
-  margin: 20px 0;
-}
-
-@media (prefers-color-scheme: dark) {
-  .msg.bot .bubble hr.md-hr {
-    background: rgba(255, 255, 255, 0.09);
-  }
-}
-
-
-/* ────────────────────────────────────────────────────────────────
    BLOCKQUOTE
-   Keeps quoted content elegant without excessive indentation
 ──────────────────────────────────────────────────────────────── */
 
 .msg.bot .bubble blockquote {
   margin: 12px 0;
   padding: 2px 0 2px 14px;
+
   border-left: 3px solid var(--color-text-muted);
+
   color: var(--color-text-muted);
 }
 
@@ -280,14 +294,35 @@
 
 
 /* ────────────────────────────────────────────────────────────────
+   HORIZONTAL RULE
+──────────────────────────────────────────────────────────────── */
+
+.msg.bot .bubble hr.md-hr {
+  border: 0;
+  height: 1px;
+
+  background: rgba(0, 0, 0, 0.08);
+
+  margin: 20px 0;
+}
+
+@media (prefers-color-scheme: dark) {
+  .msg.bot .bubble hr.md-hr {
+    background: rgba(255, 255, 255, 0.09);
+  }
+}
+
+
+/* ────────────────────────────────────────────────────────────────
    TABLES
-   Safe typography-only treatment
 ──────────────────────────────────────────────────────────────── */
 
 .msg.bot .bubble table {
   width: 100%;
   border-collapse: collapse;
+
   margin: 14px 0;
+
   font-size: 0.94em;
   line-height: 1.5;
 }
@@ -297,6 +332,7 @@
   padding: 8px 10px;
   text-align: left;
   vertical-align: top;
+
   border-bottom: 1px solid rgba(0, 0, 0, 0.08);
 }
 
@@ -313,19 +349,23 @@
 
 
 /* ────────────────────────────────────────────────────────────────
-   MOBILE REFINEMENT
-   Prevents content from feeling pushed toward the right
+   MOBILE
+   Main goal:
+   - More usable text width
+   - Less right-side drift
+   - Comfortable bullet gutter
 ──────────────────────────────────────────────────────────────── */
 
 @media (max-width: 600px) {
 
   .msg.bot .bubble p {
-    line-height: 1.6;
+    line-height: 1.59;
     margin-bottom: 11px;
   }
 
   .msg.bot .bubble h3 {
     font-size: 1.06rem;
+    line-height: 1.4;
     margin-top: 17px;
     margin-bottom: 6px;
   }
@@ -336,24 +376,70 @@
     margin-bottom: 5px;
   }
 
+  /* Main bullet */
   .msg.bot .bubble ul > li {
-    padding-left: 20px;
+    padding-left: 23px;
   }
 
-  .msg.bot .bubble li > ul,
-  .msg.bot .bubble li > ol {
-    padding-left: 15px;
+  .msg.bot .bubble ul > li::before {
+    left: 3px;
+    font-size: 1.12em;
   }
 
-  .msg.bot .bubble li > ul > li {
-    padding-left: 18px;
-  }
-
+  /* Numbered list */
   .msg.bot .bubble ol {
-    padding-left: 21px;
+    padding-left: 25px;
   }
 
   .msg.bot .bubble ol > li {
     padding-left: 2px;
+  }
+
+  /*
+     Nested list:
+     deliberately kept compact so paragraphs
+     don't get pushed too far toward the right.
+  */
+  .msg.bot .bubble li > ul,
+  .msg.bot .bubble li > ol {
+    padding-left: 12px;
+  }
+
+  .msg.bot .bubble li > ul > li {
+    padding-left: 21px;
+  }
+
+  .msg.bot .bubble li > ul > li::before {
+    left: 2px;
+    font-size: 1.02em;
+  }
+
+  .msg.bot .bubble li > ol {
+    padding-left: 20px;
+  }
+}
+
+
+/* ────────────────────────────────────────────────────────────────
+   VERY SMALL PHONES
+──────────────────────────────────────────────────────────────── */
+
+@media (max-width: 380px) {
+
+  .msg.bot .bubble ul > li {
+    padding-left: 22px;
+  }
+
+  .msg.bot .bubble ol {
+    padding-left: 23px;
+  }
+
+  .msg.bot .bubble li > ul,
+  .msg.bot .bubble li > ol {
+    padding-left: 10px;
+  }
+
+  .msg.bot .bubble li > ul > li {
+    padding-left: 20px;
   }
 }

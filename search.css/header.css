@@ -1,6 +1,5 @@
 /* ════════════════════════════════════════════════════════════════
    header.css — Logo header · Hamburger · Nine-dot button
-   [NATIVE SMOOTH · GPU-ACCELERATED · THEME-TRANSITION READY]
 ════════════════════════════════════════════════════════════════ */
 
 /* ────────────────────────────────────────────────────────────────
@@ -16,36 +15,25 @@
   height: 62px;
   overflow: hidden;
   background: var(--color-bg);
-
-  /* ── GPU LAYER PROMOTION (permanent own layer) ── */
-  will-change: transform, opacity;
-  transform: translateZ(0);
-
-  /* ── LAYOUT ISOLATION (prevents recalc bleed) ── */
-  contain: layout style paint;
-
-  /* ── TRANSFORM-BASED ANIMATION ONLY (no layout props) ── */
   transition:
-    transform 0.28s cubic-bezier(0.4, 0, 1, 1),
-    opacity 0.22s ease-out,
-    background-color 0.3s ease;   /* smooth dark/light switch */
+    height  0.18s cubic-bezier(0.4, 0, 0.2, 1),
+    padding 0.18s cubic-bezier(0.4, 0, 0.2, 1),
+    opacity 0.15s ease;
 }
-
 @media (prefers-color-scheme: dark) {
   .logo-header { background: var(--color-bg-dark); }
 }
-
 .logo-header img {
-  height: 58px;
+  height: 58px; /* 32 → 39 slightly bada */
   width: auto;
   object-fit: contain;
   position: absolute;
-  left: 14px;
+  left: 14px; /* dots ki jagah par */
 }
-
-/* ── COLLAPSED: transform-only (zero layout cost) ── */
 .logo-header.collapsed {
-  transform: translateY(-100%) translateZ(0);
+  height: 0;
+  padding-top: 0;
+  padding-bottom: 0;
   opacity: 0;
   pointer-events: none;
 }
@@ -70,22 +58,18 @@
   height: 40px;
   padding: 8px;
   border-radius: 10px;
-  transition: background 0.15s ease;
+  transition: background 0.15s;
 }
-
 .hamburger-btn span {
   display: block;
   height: 1.5px;
   border-radius: 99px;
   background: var(--color-text);
 }
-
 .hamburger-btn span:nth-child(1) { width: 22px; }
 .hamburger-btn span:nth-child(2) { width: 15px; }
 .hamburger-btn span:nth-child(3) { width: 22px; }
-
 .hamburger-btn:active { background: var(--color-press-light); }
-
 @media (prefers-color-scheme: dark) {
   .hamburger-btn span { background: var(--color-text-dark-alt); }
 }
@@ -94,7 +78,7 @@
    NINE-DOT GRID BUTTON (top-left) — temporarily hidden
 ──────────────────────────────────────────────────────────────── */
 .dots-btn {
-  display: none;
+  display: none; /* temporarily hidden */
   position: absolute;
   left: 14px;
   top: 50%;
@@ -109,38 +93,18 @@
   width: 40px;
   height: 40px;
   border-radius: 12px;
-  transition: background 0.15s ease;
+  transition: background 0.15s;
 }
-
 .dots-btn span {
   display: block;
   width: 4px;
   height: 4px;
   border-radius: 50%;
   background: var(--color-text);
-  transition: background 0.2s ease;
+  transition: background 0.2s;
 }
-
-.dots-btn:active      { background: var(--color-press-light); }
-.dots-btn:active span { background: var(--color-primary); }
-
+.dots-btn:active           { background: var(--color-press-light); }
+.dots-btn:active span      { background: var(--color-primary); }
 @media (prefers-color-scheme: dark) {
   .dots-btn span { background: var(--color-text-dark-alt); }
-}
-
-/* ────────────────────────────────────────────────────────────────
-   TAB BAR (smooth hide/show — transform only)
-──────────────────────────────────────────────────────────────── */
-.tab-bar {
-  will-change: transform;
-  transform: translateZ(0);
-  contain: layout style paint;
-  transition:
-    transform 0.28s cubic-bezier(0.4, 0, 1, 1),
-    background-color 0.3s ease,
-    border-color 0.3s ease;
-}
-
-.tab-bar.hide {
-  transform: translateY(-100%) translateZ(0);
 }

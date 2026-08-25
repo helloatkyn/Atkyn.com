@@ -2,7 +2,8 @@
    renderer.js — Atkyn Search
    Markdown + Math : marked.js + KaTeX
    Code highlight  : highlight.js
-   ═══════════════════════════════════════════════════════════════ */
+   [KATeX-SAFE · PRICE-PROTECTED · STREAMING-OPTIMIZED]
+═══════════════════════════════════════════════════════════════ */
 
 /* ── HTML entity escape ── */
 function _he(s) {
@@ -51,6 +52,48 @@ function _normalizeNewlines(str) {
   return out.join('');
 }
 
+/* ── Price pattern protection (CRITICAL FIX) ── */
+const PRICE_PH_PREFIX = '\x00PRICE_';
+const PRICE_PH_SUFFIX = '\x00';
+
+function _protectAndRestore(raw) {
+  const placeholders = [];
+  
+  // Protect: $100, $1,000, $50.99, $1,000,000.50
+  let text = raw.replace(
+    /\$(\d{1,3}(?:,\d{3})*(?:\.\d{1,2})?|\d+(?:\.\d{1,2})?)/g,
+    (match) => {
+      const idx = placeholders.length;
+      placeholders.push(match);
+      return PRICE_PH_PREFIX + idx + PRICE_PH_SUFFIX;
+    }
+  );
+  
+  const restore = (str) => str.replace(
+    new RegExp(PRICE_PH_PREFIX + '(\\d+)' + PRICE_PH_SUFFIX, 'g'),
+    (_, idx) => placeholders[parseInt(idx, 10)]
+  );
+  
+  return { text, restore };
+}
+
+/* ── Smart math detection (prevents false positives) ── */
+function _looksLikeMath(text) {
+  // Reject plain text with only letters/numbers/spaces
+  if (/^\s*[a-zA-Z0-9\s,.'"]+\s*$/.test(text)) return false;
+  
+  // Accept if contains math indicators
+  const mathPatterns = [
+    /[+\-*/=^_]/,        // operators
+    /\\[a-zA-Z]+/,       // LaTeX commands (\frac, \sqrt, etc.)
+    /[{}]/,              // braces (grouping)
+    /\d+\s*[+\-*/=]/,    // numbers with operators
+    /[+\-*/=]\s*\d+/,    // operators with numbers
+  ];
+  
+  return mathPatterns.some(regex => regex.test(text));
+}
+
 /* ── \[...\] → $$...$$ and \(...\) → $...$ ── */
 function _convertLatexDelimiters(str) {
   str = str.replace(/\\\[([\s\S]*?)\\\]/g, (_, inner) =>
@@ -62,7 +105,7 @@ function _convertLatexDelimiters(str) {
   return str;
 }
 
-/* ── KaTeX ── */
+/* ── KaTeX with smart validation ── */
 const KATEX_OPTS = {
   throwOnError: false,
   errorColor: '#888888',
@@ -71,10 +114,17 @@ const KATEX_OPTS = {
 };
 
 function _renderMath(text, displayMode) {
+  // Smart validation: only render if it looks like math
+  if (!_looksLikeMath(text)) {
+    // Graceful fallback: return original text
+    return displayMode ? '$$' + _he(text) + '$$' : '$' + _he(text) + '$';
+  }
+  
   try {
     return katex.renderToString(text, { ...KATEX_OPTS, displayMode });
   } catch (_) {
-    return '<span style="color:#888888;">' + _he(text) + '</span>';
+    // Graceful fallback: return original text, NOT error span
+    return displayMode ? '$$' + _he(text) + '$$' : '$' + _he(text) + '$';
   }
 }
 
@@ -163,13 +213,27 @@ function _buildMarked() {
 
 _buildMarked();
 
-/* ── Safe render pipeline ── */
-function _safePipeline(raw) {
+/* ── Safe render pipeline with price protection ── */
+function _safePipeline(raw, isStreaming = false) {
   if (!raw) return '';
-  const text = _normalizeNewlines(_convertLatexDelimiters(raw));
+  
+  // Step 1: Protect prices before any processing
+  const { text: protectedText, restore } = _protectAndRestore(raw);
+  
+  // Step 2: Normalize and convert delimiters
+  let text = _normalizeNewlines(_convertLatexDelimiters(protectedText));
   if (!text) return '';
-  try { return marked.parse(text); }
-  catch (_) { return '<pre class="render-fallback">' + _he(raw) + '</pre>'; }
+  
+  // Step 3: Render markdown + math
+  try {
+    let html = marked.parse(text);
+    // Step 4: Restore prices after rendering
+    return restore(html);
+  } catch (_) {
+    // Fallback with price restoration
+    const fallback = '<pre class="render-fallback">' + _he(raw) + '</pre>';
+    return restore(fallback);
+  }
 }
 
 /* ── Universal renderer class ── */
@@ -201,12 +265,12 @@ class UniversalMessageRenderer {
   pushChunk(chunk) {
     if (!this._streaming) this.startStream();
     this.rawContent = (this._buf += chunk);
-    return (this.renderedContent = _safePipeline(this._buf));
+    return (this.renderedContent = _safePipeline(this._buf, true));
   }
 
   finishStream() {
     this._streaming = false;
-    return (this.renderedContent = _safePipeline(this._buf));
+    return (this.renderedContent = _safePipeline(this._buf, false));
   }
 
   getHTML() { return this.renderedContent; }

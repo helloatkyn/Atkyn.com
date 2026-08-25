@@ -17,8 +17,8 @@
   border-collapse: collapse;
   margin: 0;
   font-size: 0.9rem;
-  min-width: 480px;          /* force scroll on narrow screens */
-  width: max-content;        /* shrink nahi hoga */
+  min-width: 480px;
+  width: max-content;
 }
 
 .msg.bot .bubble th {
@@ -46,10 +46,6 @@
 
 .msg.bot .bubble tr:last-child td { border-bottom: none; }
 
-.msg.bot .bubble tr:nth-child(even) td {
-  background: rgba(0, 0, 0, 0.02);
-}
-
 @media (prefers-color-scheme: dark) {
   .msg.bot .bubble th {
     color: var(--color-text-dark-muted);
@@ -58,8 +54,5 @@
   .msg.bot .bubble td {
     color: var(--color-text-dark-dim);
     border-bottom-color: rgba(255, 255, 255, 0.04);
-  }
-  .msg.bot .bubble tr:nth-child(even) td {
-    background: rgba(255, 255, 255, 0.02);
   }
 }

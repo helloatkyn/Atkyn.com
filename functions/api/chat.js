@@ -1,125 +1,186 @@
 import { SYSTEM_PROMPT } from './systemPrompt.js';
 
+// ═══════════════════════════════════════════════════════════
+// 1. STRICT SCHEMA VALIDATION (No Regex, Pure Logic)
+// Big Tech pattern: Validate LLM output BEFORE executing tools
+// ═══════════════════════════════════════════════════════════
+function validateToolArgs(toolName, rawArgs) {
+  if (toolName === 'web_search') {
+    if (!rawArgs.query || typeof rawArgs.query !== 'string') {
+      throw new Error('Missing or invalid "query". Must be a string.');
+    }
+    const cleanQuery = rawArgs.query.trim();
+    if (cleanQuery.length < 2) {
+      throw new Error('Query is too short. Must be at least 2 characters.');
+    }
+    return { query: cleanQuery };
+  }
+
+  if (toolName === 'stock_data') {
+    if (!rawArgs.symbol || typeof rawArgs.symbol !== 'string') {
+      throw new Error('Missing or invalid "symbol". Must be a string.');
+    }
+    const cleanSymbol = rawArgs.symbol.trim().toUpperCase();
+    if (cleanSymbol.length < 1 || cleanSymbol.length > 10) {
+      throw new Error('Invalid stock symbol length. Must be 1-10 characters.');
+    }
+    // Basic alphanumeric check without regex
+    for (let i = 0; i < cleanSymbol.length; i++) {
+      const char = cleanSymbol.charCodeAt(i);
+      const isAlpha = (char >= 65 && char <= 90); // A-Z
+      const isNum = (char >= 48 && char <= 57);   // 0-9
+      if (!isAlpha && !isNum) {
+        throw new Error('Stock symbol must contain only letters and numbers.');
+      }
+    }
+    return { symbol: cleanSymbol };
+  }
+
+  throw new Error(`Unknown tool requested: ${toolName}`);
+}
+
+// ═══════════════════════════════════════════════════════════
+// 2. ROBUST TOOL EXECUTION (Graceful Degradation)
+// ═══════════════════════════════════════════════════════════
 async function fetchPageText(url) {
   try {
     const resp = await fetch(url, {
-      headers: { 'User-Agent': 'Mozilla/5.0' },
-      signal: AbortSignal.timeout(4000),
+      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; AtkynBot/1.0)' },
+      signal: AbortSignal.timeout(3000), // 3s strict timeout
     });
-    if (!resp.ok) return '';
+    if (!resp.ok || !resp.headers.get('content-type')?.includes('text/html')) {
+      return '';
+    }
     const html = await resp.text();
-    const clean = html
+    // Aggressive but safe cleanup
+    return html
       .replace(/<script[\s\S]*?<\/script>/gi, '')
       .replace(/<style[\s\S]*?<\/style>/gi, '')
       .replace(/<[^>]+>/g, ' ')
       .replace(/\s+/g, ' ')
-      .trim();
-    return clean.slice(0, 5000);
+      .trim()
+      .slice(0, 4000); // Limit context window pollution
   } catch {
-    return '';
+    return ''; // Fail silently, fallback to snippet
   }
 }
 
 async function executeSearXNG(searchQuery, searxngUrl) {
-  const searxResp = await fetch(
-    `${searxngUrl}/search?q=${encodeURIComponent(searchQuery)}&format=json&categories=general&language=en`,
-    { headers: { 'Accept': 'application/json' } }
-  );
+  try {
+    const searxResp = await fetch(
+      `${searxngUrl}/search?q=${encodeURIComponent(searchQuery)}&format=json&categories=general&language=en`,
+      { headers: { 'Accept': 'application/json' }, signal: AbortSignal.timeout(5000) }
+    );
 
-  if (!searxResp.ok) return [];
+    if (!searxResp.ok) return [];
+    const data = await searxResp.json();
+    const raw = (data.results || []).slice(0, 5); // Reduced to 5 for speed + quality
 
-  const data = await searxResp.json();
-  const raw = (data.results || []).slice(0, 6);
-
-  const enriched = await Promise.all(
-    raw.map(async (r, i) => {
-      let content = r.content || '';
-      if (i < 5) {
+    // Concurrent fetching with graceful fallback
+    const enriched = await Promise.all(
+      raw.map(async (r) => {
+        let content = r.content || 'No snippet available.';
         const pageText = await fetchPageText(r.url);
-        if (pageText) content = pageText;
-      }
-      return {
-        title:   r.title || '',
-        url:     r.url   || '',
-        snippet: content,
-      };
-    })
-  );
-
-  return enriched;
+        if (pageText && pageText.length > 100) {
+          content = pageText; // Override only if we got substantial text
+        }
+        return {
+          title: r.title || 'Untitled',
+          url: r.url || '#',
+          snippet: content,
+        };
+      })
+    );
+    return enriched.filter(r => r.url !== '#'); // Filter out dead links
+  } catch {
+    return [];
+  }
 }
 
 async function executeStockData(symbol, finnhubApiKey) {
-  const base  = 'https://finnhub.io/api/v1';
+  const base = 'https://finnhub.io/api/v1';
   const token = `token=${finnhubApiKey}`;
 
-  const [quoteResp, profileResp, metricResp] = await Promise.all([
-    fetch(`${base}/quote?symbol=${symbol}&${token}`),
-    fetch(`${base}/stock/profile2?symbol=${symbol}&${token}`),
-    fetch(`${base}/stock/metric?symbol=${symbol}&metric=all&${token}`),
-  ]);
+  try {
+    const [quoteResp, profileResp, metricResp] = await Promise.all([
+      fetch(`${base}/quote?symbol=${symbol}&${token}`, { signal: AbortSignal.timeout(4000) }),
+      fetch(`${base}/stock/profile2?symbol=${symbol}&${token}`, { signal: AbortSignal.timeout(4000) }),
+      fetch(`${base}/stock/metric?symbol=${symbol}&metric=all&${token}`, { signal: AbortSignal.timeout(4000) }),
+    ]);
 
-  const q = await quoteResp.json();
-  const p = await profileResp.json();
-  const m = (await metricResp.json())?.metric || {};
+    if (!quoteResp.ok) throw new Error('Quote API failed');
+    
+    const q = await quoteResp.json();
+    const p = (await profileResp.json()) || {};
+    const m = ((await metricResp.json()) || {}).metric || {};
 
-  const marketCapM = p.marketCapitalization || 0;
-  let marketCapStr = '';
-  if (marketCapM >= 1_000_000)  marketCapStr = `$${(marketCapM / 1_000_000).toFixed(2)}T`;
-  else if (marketCapM >= 1_000) marketCapStr = `$${(marketCapM / 1_000).toFixed(2)}B`;
-  else if (marketCapM > 0)      marketCapStr = `$${marketCapM.toFixed(2)}M`;
+    // Handle Finnhub's weird "null" responses for invalid symbols
+    if (q.c === 0 && q.d === 0 && q.dp === 0) {
+      throw new Error(`Symbol '${symbol}' not found or market is closed with no data.`);
+    }
 
-  return {
-    ticker:        symbol,
-    name:          p.name            || symbol,
-    exchange:      p.exchange        || '',
-    logo:          p.logo            || '',
-    currency:      p.currency        || 'USD',
-    industry:      p.finnhubIndustry || '',
-    website:       p.weburl          || '',
-    country:       p.country         || '',
-    marketCap:     marketCapStr,
-    sharesOut:     p.shareOutstanding        || 0,
-    ipo:           p.ipo                     || '',
-    price:         q.c  ?? 0,
-    change:        q.d  ?? 0,
-    changePct:     q.dp ?? 0,
-    open:          q.o  ?? 0,
-    high:          q.h  ?? 0,
-    low:           q.l  ?? 0,
-    prevClose:     q.pc ?? 0,
-    pe:            m['peNormalizedAnnual']            ?? m['peTTM']  ?? null,
-    eps:           m['epsNormalizedAnnual']           ?? m['epsTTM'] ?? null,
-    week52High:    m['52WeekHigh']                   ?? null,
-    week52Low:     m['52WeekLow']                    ?? null,
-    beta:          m['beta']                         ?? null,
-    dividendYield: m['dividendYieldIndicatedAnnual'] ?? null,
-    roe:           m['roeTTM']                       ?? null,
-    revenue:       m['revenuePerShareTTM']           ?? null,
-    series:        [],
-  };
+    const marketCapM = p.marketCapitalization || 0;
+    let marketCapStr = 'N/A';
+    if (marketCapM >= 1_000_000) marketCapStr = `$${(marketCapM / 1_000_000).toFixed(2)}T`;
+    else if (marketCapM >= 1_000) marketCapStr = `$${(marketCapM / 1_000).toFixed(2)}B`;
+    else if (marketCapM > 0) marketCapStr = `$${marketCapM.toFixed(2)}M`;
+
+    return {
+      ticker: symbol,
+      name: p.name || symbol,
+      exchange: p.exchange || 'Unknown',
+      logo: p.logo || '',
+      currency: p.currency || 'USD',
+      marketCap: marketCapStr,
+      price: q.c ?? 0,
+      change: q.d ?? 0,
+      changePct: q.dp ?? 0,
+      open: q.o ?? 0,
+      high: q.h ?? 0,
+      low: q.l ?? 0,
+      prevClose: q.pc ?? 0,
+      pe: m['peNormalizedAnnual'] ?? m['peTTM'] ?? null,
+      eps: m['epsNormalizedAnnual'] ?? m['epsTTM'] ?? null,
+      series: [],
+    };
+  } catch (err) {
+    // Return structured error FOR THE LLM, not just a crash
+    return { error: true, message: `Failed to fetch data for ${symbol}: ${err.message}` };
+  }
 }
 
+// ═══════════════════════════════════════════════════════════
+// 3. STRUCTURED CONTEXT FORMATTING (The 90% Accuracy Secret)
+// LLMs understand delimited, labeled data much better than raw JSON.
+// ═══════════════════════════════════════════════════════════
+function formatSearchResultsForLLM(results) {
+  if (results.length === 0) return 'No search results found.';
+  return results.map((r, i) => 
+    `--- SOURCE ${i + 1} ---\nTitle: ${r.title}\nURL: ${r.url}\nContent: ${r.snippet}`
+  ).join('\n\n');
+}
+
+function formatStockDataForLLM(data) {
+  if (data.error) return `Error: ${data.message}`;
+  return `Stock: ${data.name} (${data.ticker})\nExchange: ${data.exchange}\nPrice: ${data.currency === 'USD' ? '$' : ''}${data.price}\nChange: ${data.change >= 0 ? '+' : ''}${data.change} (${data.changePct}%)\nMarket Cap: ${data.marketCap}\nOpen: ${data.open} | High: ${data.high} | Low: ${data.low} | Prev Close: ${data.prevClose}`;
+}
+
+// ═══════════════════════════════════════════════════════════
+// 4. TOOL DEFINITIONS (Optimized for Mistral)
+// ═══════════════════════════════════════════════════════════
 const TOOLS = [
   {
     type: 'function',
     function: {
       name: 'web_search',
-      description:
-        'Search the web for current, external, or specialized information. ' +
-        'Call this tool when the user query requires up-to-date facts, recent events, ' +
-        'real-time data, specific URLs, or any information that may not be in the model\'s training data. ' +
-        'Do NOT call this tool when the query can be answered directly from existing knowledge ' +
-        '(e.g. general explanations, reasoning tasks, creative writing, math, or coding questions).',
+      description: 'Search the web for real-time facts, recent events, or specific URLs. Do NOT use for general knowledge, math, or coding.',
       parameters: {
         type: 'object',
         properties: {
-          query: {
-            type: 'string',
-            description: 'The search query to look up on the web.',
-          },
+          query: { type: 'string', description: 'A concise, keyword-focused search query (e.g., "Nvidia Q3 2024 earnings report").' },
         },
         required: ['query'],
+        additionalProperties: false, // Strict mode
       },
     },
   },
@@ -131,138 +192,142 @@ const TOOLS = [
       parameters: {
         type: 'object',
         properties: {
-          symbol: {
-            type: 'string',
-            description: 'Stock ticker symbol, e.g. AAPL, TSLA, GOOGL',
-          },
+          symbol: { type: 'string', description: 'Stock ticker symbol only (e.g., AAPL, TSLA, RELIANCE.NS). Do not include company names.' },
         },
         required: ['symbol'],
+        additionalProperties: false, // Strict mode
       },
     },
   },
 ];
 
+// ═══════════════════════════════════════════════════════════
+// 5. MAIN REQUEST HANDLER
+// ═══════════════════════════════════════════════════════════
 export async function onRequestPost(context) {
   const { request, env } = context;
+  const requestId = crypto.randomUUID(); // Big Tech pattern: Tracing
 
   let query, history;
   try {
     ({ query, history } = await request.json());
   } catch {
-    return new Response(JSON.stringify({ error: 'Invalid request body' }), {
-      status: 400,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    return new Response(JSON.stringify({ error: 'Invalid request body' }), { status: 400, headers: { 'Content-Type': 'application/json' } });
   }
 
   if (!query?.trim()) {
-    return new Response(JSON.stringify({ error: 'Empty query' }), {
-      status: 400,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    return new Response(JSON.stringify({ error: 'Empty query' }), { status: 400, headers: { 'Content-Type': 'application/json' } });
   }
 
   const baseMessages = [
     { role: 'system', content: SYSTEM_PROMPT },
-    ...(Array.isArray(history) ? history.slice(-100) : []),
+    ...(Array.isArray(history) ? history.slice(-10) : []), // Keep context window small (last 10 turns)
     { role: 'user', content: query },
   ];
 
-  // Call #1: mistral-large for reliable tool routing
-  const call1Resp = await fetch('https://api.mistral.ai/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${env.MISTRAL_API_KEY}`,
-    },
-    body: JSON.stringify({
-      model: 'mistral-large-latest',
-      messages: baseMessages,
-      tools: TOOLS,
-      tool_choice: 'auto',
-      stream: false,
-      max_tokens: 2048,
-      temperature: 0.6,
-    }),
-  });
-
   const { readable, writable } = new TransformStream();
   const writer = writable.getWriter();
-  const enc    = new TextEncoder();
+  const enc = new TextEncoder();
 
   (async () => {
     try {
+      console.log(`[${requestId}] Calling Mistral Large for routing...`);
+      
+      const call1Resp = await fetch('https://api.mistral.ai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${env.MISTRAL_API_KEY}`,
+        },
+        body: JSON.stringify({
+          model: 'mistral-large-latest',
+          messages: baseMessages,
+          tools: TOOLS,
+          tool_choice: 'auto',
+          stream: false,
+          max_tokens: 500, // Tool routing doesn't need 2048 tokens
+          temperature: 0.1, // Low temp for deterministic tool calling
+        }),
+      });
+
       if (!call1Resp.ok) {
-        const errText = await call1Resp.text();
-        await writer.write(enc.encode(`data: ${JSON.stringify({ error: errText })}\n\n`));
-        await writer.close();
-        return;
+        throw new Error(`Mistral API Error: ${call1Resp.status} ${await call1Resp.text()}`);
       }
 
-      const call1Data        = await call1Resp.json();
+      const call1Data = await call1Resp.json();
       const assistantMessage = call1Data.choices?.[0]?.message;
-      const toolCalls        = assistantMessage?.tool_calls;
+      const toolCalls = assistantMessage?.tool_calls;
 
-      // NO TOOL: model answered directly — stream it out
+      // SCENARIO A: NO TOOL CALL (Direct Answer)
       if (!toolCalls || toolCalls.length === 0) {
-        const directAnswer = assistantMessage?.content ?? '';
+        console.log(`[${requestId}] No tool call. Streaming direct answer.`);
+        const directAnswer = assistantMessage?.content ?? 'I could not process that request.';
         const chunks = directAnswer.match(/.{1,64}/gs) || [''];
         for (const chunk of chunks) {
-          const ssePayload = {
-            choices: [{ delta: { content: chunk }, finish_reason: null }],
-          };
-          await writer.write(enc.encode(`data: ${JSON.stringify(ssePayload)}\n\n`));
+          await writer.write(enc.encode(`data: ${JSON.stringify({ choices: [{ delta: { content: chunk }, finish_reason: null }] })}\n\n`));
         }
         await writer.write(enc.encode(`data: [DONE]\n\n`));
         await writer.close();
         return;
       }
 
-      // TOOL CALL: execute the right tool
-      const toolCall     = toolCalls[0];
-      const toolCallId   = toolCall.id;
+      // SCENARIO B: TOOL CALL EXECUTION
+      const toolCall = toolCalls[0];
+      const toolCallId = toolCall.id;
       const functionName = toolCall.function?.name;
+      
+      console.log(`[${requestId}] Executing tool: ${functionName}`);
 
       let functionArgs = {};
       try {
         functionArgs = JSON.parse(toolCall.function?.arguments || '{}');
-      } catch (_) {}
+      } catch {
+        throw new Error('LLM returned invalid JSON for tool arguments.');
+      }
 
-      let searchResults     = [];
-      let stockData         = null;
-      let toolResultContent = 'No results found.';
+      // 1. VALIDATE
+      let validatedArgs;
+      try {
+        validatedArgs = validateToolArgs(functionName, functionArgs);
+      } catch (err) {
+        console.error(`[${requestId}] Validation failed:`, err.message);
+        // Feed the error back to the LLM so it can correct itself or inform the user
+        const errorMsg = `Tool execution failed: ${err.message}. Please ask the user for clarification or try a different approach.`;
+        await writer.write(enc.encode(`data: ${JSON.stringify({ choices: [{ delta: { content: errorMsg }, finish_reason: 'stop' }] })}\n\n`));
+        await writer.write(enc.encode(`data: [DONE]\n\n`));
+        await writer.close();
+        return;
+      }
+
+      // 2. EXECUTE
+      let toolResultContent = '';
+      let frontendEvent = null;
+      let frontendData = null;
 
       if (functionName === 'web_search') {
-        if (functionArgs.query) {
-          try {
-            searchResults = await executeSearXNG(functionArgs.query, env.SEARXNG_URL);
-            if (searchResults.length > 0) {
-              toolResultContent = searchResults
-                .map((r, i) => `[${i + 1}] ${r.title}\nURL: ${r.url}\n${r.snippet}`)
-                .join('\n\n');
-            }
-          } catch (_) {}
+        const results = await executeSearXNG(validatedArgs.query, env.SEARXNG_URL);
+        toolResultContent = formatSearchResultsForLLM(results);
+        if (results.length > 0) {
+          frontendEvent = 'results';
+          frontendData = results;
         }
       } else if (functionName === 'stock_data') {
-        if (functionArgs.symbol) {
-          try {
-            stockData = await executeStockData(functionArgs.symbol, env.FINNHUB_API_KEY);
-            toolResultContent = JSON.stringify(stockData);
-          } catch (e) {
-            toolResultContent = `Stock data fetch failed: ${String(e)}`;
-          }
+        const data = await executeStockData(validatedArgs.symbol, env.FINNHUB_API_KEY);
+        toolResultContent = formatStockDataForLLM(data);
+        if (!data.error) {
+          frontendEvent = 'stock';
+          frontendData = data;
         }
       }
 
-      // Emit to frontend before answer stream
-      if (searchResults.length > 0) {
-        await writer.write(enc.encode(`event: results\ndata: ${JSON.stringify(searchResults)}\n\n`));
-      }
-      if (stockData) {
-        await writer.write(enc.encode(`event: stock\ndata: ${JSON.stringify(stockData)}\n\n`));
+      // 3. EMIT TO FRONTEND (UI Cards)
+      if (frontendEvent && frontendData) {
+        await writer.write(enc.encode(`event: ${frontendEvent}\ndata: ${JSON.stringify(frontendData)}\n\n`));
       }
 
-      // Call #2: ministral-14b for final streamed answer
+      // 4. CALL #2: Stream final answer with tool context
+      console.log(`[${requestId}] Calling Ministral for final answer...`);
+      
       const call2Resp = await fetch('https://api.mistral.ai/v1/chat/completions', {
         method: 'POST',
         headers: {
@@ -270,7 +335,7 @@ export async function onRequestPost(context) {
           'Authorization': `Bearer ${env.MISTRAL_API_KEY}`,
         },
         body: JSON.stringify({
-          model: 'ministral-14b-2512',
+          model: 'ministral-14b-2512', // Cost-effective for final generation
           messages: [
             ...baseMessages,
             {
@@ -280,9 +345,8 @@ export async function onRequestPost(context) {
             },
             {
               role: 'tool',
-              name: functionName,
               content: toolResultContent,
-              tool_call_id: toolCallId,
+              tool_call_id: toolCallId, // CRITICAL: Mistral requires this exact match
             },
           ],
           stream: true,
@@ -292,9 +356,7 @@ export async function onRequestPost(context) {
       });
 
       if (!call2Resp.ok) {
-        await writer.write(enc.encode(`data: ${JSON.stringify({ error: await call2Resp.text() })}\n\n`));
-        await writer.close();
-        return;
+        throw new Error(`Final generation API Error: ${call2Resp.status} ${await call2Resp.text()}`);
       }
 
       const reader = call2Resp.body.getReader();
@@ -304,10 +366,14 @@ export async function onRequestPost(context) {
         await writer.write(value);
       }
 
+      console.log(`[${requestId}] Request completed successfully.`);
       await writer.close();
+
     } catch (err) {
+      console.error(`[${requestId}] Fatal Error:`, err);
       try {
-        await writer.write(enc.encode(`data: ${JSON.stringify({ error: String(err) })}\n\n`));
+        await writer.write(enc.encode(`data: ${JSON.stringify({ error: 'An internal error occurred. Please try again.' })}\n\n`));
+        await writer.write(enc.encode(`data: [DONE]\n\n`));
         await writer.close();
       } catch (_) {}
     }
@@ -316,7 +382,8 @@ export async function onRequestPost(context) {
   return new Response(readable, {
     headers: {
       'Content-Type': 'text/event-stream',
-      'Cache-Control': 'no-cache',
+      'Cache-Control': 'no-cache, no-transform',
+      'Connection': 'keep-alive',
       'X-Accel-Buffering': 'no',
     },
   });
@@ -327,7 +394,7 @@ export async function onRequestOptions() {
     headers: {
       'Access-Control-Allow-Origin': '*',
       'Access-Control-Allow-Methods': 'POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
     },
   });
-          }
+}

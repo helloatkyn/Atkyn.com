@@ -46,7 +46,7 @@
   max-width: 100%;
   background: none;
   border: none;
-  padding: 1px 2px;
+  padding: 1px 14px;       /* safe padding dono sides */
   font-size: 1.05rem;
   line-height: 1.75;
   color: var(--color-text);
@@ -94,7 +94,7 @@
 }
 
 /* ────────────────────────────────────────────────────────────────
-   BOT ACTION BAR (copy / like / dislike / read)
+   BOT ACTION BAR
 ──────────────────────────────────────────────────────────────── */
 .bot-actions {
   display: flex;
@@ -135,4 +135,4 @@
   .bot-actions button:active         { background: var(--color-press-dark-md); color: var(--color-text-dark-muted); }
   .bot-actions button.active-like    { color: var(--color-like-dark); }
   .bot-actions button.active-dislike { color: var(--color-primary); }
-                                      }
+}

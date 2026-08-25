@@ -1,5 +1,13 @@
-const CACHE = 'atkyn-v1';
-const STATIC = ['/', '/index.html', '/Atkyn.png', '/icon-192.png', '/icon-512.png'];
+const CACHE = 'atkyn-v2';
+const STATIC = [
+  '/',
+  '/index.html',
+  '/search.html',
+  '/Atkyn.png',
+  '/icon-192.png',
+  '/icon-512.png',
+  '/manifest.json'
+];
 
 self.addEventListener('install', e => {
   e.waitUntil(
@@ -16,11 +24,11 @@ self.addEventListener('activate', e => {
 });
 
 self.addEventListener('fetch', e => {
-  // Cache-first for static assets, network-first for everything else
   const url = new URL(e.request.url);
   const isStatic = e.request.destination === 'image' ||
                    url.pathname.endsWith('.png') ||
                    url.pathname.endsWith('.html') ||
+                   url.pathname.endsWith('.json') ||
                    url.pathname === '/';
 
   if (isStatic) {

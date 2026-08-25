@@ -1,7 +1,8 @@
 /* ════════════════════════════════════════════════════════════════
    typography.css — Bot Bubble Rich Text
-   ChatGPT / Gemini style typography
-   Headings · Paragraphs · Lists · Links · Inline Code · HR
+   Professional AI Chat Typography
+   ChatGPT / Gemini inspired
+   Headings · Paragraphs · Lists · Links · Code · Tables · HR
 ════════════════════════════════════════════════════════════════ */
 
 
@@ -11,7 +12,7 @@
 
 .msg.bot .bubble p {
   margin: 0 0 11px;
-  line-height: 1.6;
+  line-height: 1.62;
 }
 
 .msg.bot .bubble p:last-child {
@@ -33,7 +34,7 @@
 
 .msg.bot .bubble h4 {
   font-size: 1rem;
-  line-height: 1.43;
+  line-height: 1.45;
   font-weight: 650;
   margin: 15px 0 6px;
   letter-spacing: -0.008em;
@@ -65,127 +66,184 @@
 }
 
 
+/* ════════════════════════════════════════════════════════════════
+   LIST SYSTEM
+   Deliberately compact.
+   Prevents nested content from drifting too far right.
+════════════════════════════════════════════════════════════════ */
+
+
 /* ────────────────────────────────────────────────────────────────
-   BASE LISTS
+   GLOBAL LIST RESET
 ──────────────────────────────────────────────────────────────── */
 
 .msg.bot .bubble ul,
 .msg.bot .bubble ol {
-  margin: 6px 0 12px;
-  padding: 0;
-}
-
-.msg.bot .bubble li {
-  line-height: 1.58;
-  margin: 5px 0;
-}
-
-.msg.bot .bubble li:last-child {
-  margin-bottom: 0;
+  margin-top: 7px;
+  margin-bottom: 12px;
 }
 
 
 /* ────────────────────────────────────────────────────────────────
    UNORDERED LIST
-   Bigger + cleaner bullet
 ──────────────────────────────────────────────────────────────── */
 
 .msg.bot .bubble ul {
   list-style: none;
+  padding-left: 0;
+  margin-left: 0;
 }
 
+
+/* Top-level bullet */
 .msg.bot .bubble ul > li {
   position: relative;
-  padding-left: 24px;
+
+  /* Small controlled indentation */
+  padding-left: 20px;
+
+  margin: 6px 0;
+
+  line-height: 1.58;
 }
 
-/* Larger, cleaner bullet */
-.msg.bot .bubble ul > li::before {
-  content: '•';
-  position: absolute;
-  left: 4px;
-  top: -1px;
 
-  font-size: 1.15em;
-  font-weight: 500;
-  line-height: 1.55;
+/* Professional hollow circle */
+.msg.bot .bubble ul > li::before {
+  content: "";
+
+  position: absolute;
+
+  width: 6px;
+  height: 6px;
+
+  left: 2px;
+  top: 0.68em;
+
+  box-sizing: border-box;
+
+  border: 1.6px solid currentColor;
+  border-radius: 50%;
 
   color: var(--color-text-muted);
 }
 
-@media (prefers-color-scheme: dark) {
-  .msg.bot .bubble ul > li::before {
-    color: var(--color-text-dark-muted);
-  }
-}
-
 
 /* ────────────────────────────────────────────────────────────────
-   ORDERED LIST
-   Comfortable number gutter
-──────────────────────────────────────────────────────────────── */
-
-.msg.bot .bubble ol {
-  list-style: decimal;
-  padding-left: 27px;
-}
-
-.msg.bot .bubble ol > li {
-  padding-left: 3px;
-}
-
-
-/* ────────────────────────────────────────────────────────────────
-   NESTED LISTS
+   NESTED UNORDERED LIST
    IMPORTANT:
-   Keep nested content close to parent.
-   Prevent excessive right-side drift.
+   Keep nested text close to parent column.
+   Do NOT compound indentation aggressively.
 ──────────────────────────────────────────────────────────────── */
 
-.msg.bot .bubble li > ul,
-.msg.bot .bubble li > ol {
-  margin: 5px 0 5px;
-  padding-left: 17px;
+.msg.bot .bubble li > ul {
+  list-style: none;
+
+  margin-top: 5px;
+  margin-bottom: 6px;
+
+  margin-left: 0 !important;
+  padding-left: 18px !important;
 }
 
-/* Nested unordered */
-.msg.bot .bubble li > ul > li {
-  padding-left: 22px;
-}
 
 /* Nested bullet */
+.msg.bot .bubble li > ul > li {
+  position: relative;
+
+  margin: 5px 0;
+
+  padding-left: 19px !important;
+
+  line-height: 1.56;
+}
+
+
+/* Nested hollow circle */
 .msg.bot .bubble li > ul > li::before {
-  left: 3px;
-  font-size: 1.02em;
-}
+  content: "";
 
-/* Nested ordered */
-.msg.bot .bubble li > ol {
-  padding-left: 22px;
-}
+  position: absolute;
 
-.msg.bot .bubble li > ol > li {
-  padding-left: 2px;
+  width: 5.5px;
+  height: 5.5px;
+
+  left: 1px;
+  top: 0.68em;
+
+  box-sizing: border-box;
+
+  border: 1.5px solid currentColor;
+  border-radius: 50%;
+
+  color: var(--color-text-muted);
 }
 
 
 /* ────────────────────────────────────────────────────────────────
    DEEP NESTING
-   Stop indentation from becoming excessive.
+   Don't allow every level to move farther right.
 ──────────────────────────────────────────────────────────────── */
 
 .msg.bot .bubble li > ul > li > ul,
-.msg.bot .bubble li > ol > li > ul,
-.msg.bot .bubble li > ul > li > ol,
-.msg.bot .bubble li > ol > li > ol {
-  margin-top: 4px;
-  padding-left: 13px;
+.msg.bot .bubble li > ol > li > ul {
+  margin-left: 0 !important;
+  padding-left: 15px !important;
+}
+
+.msg.bot .bubble li > ul > li > ul > li {
+  padding-left: 18px !important;
 }
 
 
 /* ────────────────────────────────────────────────────────────────
-   LIST PARAGRAPHS
+   DARK MODE — LIST MARKERS
 ──────────────────────────────────────────────────────────────── */
+
+@media (prefers-color-scheme: dark) {
+  .msg.bot .bubble ul > li::before,
+  .msg.bot .bubble li > ul > li::before {
+    color: var(--color-text-dark-muted);
+  }
+}
+
+
+/* ════════════════════════════════════════════════════════════════
+   ORDERED LIST
+════════════════════════════════════════════════════════════════ */
+
+.msg.bot .bubble ol {
+  list-style: decimal;
+
+  margin-left: 0;
+  padding-left: 22px;
+}
+
+.msg.bot .bubble ol > li {
+  padding-left: 2px;
+  margin: 6px 0;
+  line-height: 1.6;
+}
+
+
+/* Nested ordered list */
+.msg.bot .bubble li > ol {
+  margin-top: 5px;
+  margin-bottom: 6px;
+
+  margin-left: 0 !important;
+  padding-left: 20px !important;
+}
+
+.msg.bot .bubble li > ol > li {
+  padding-left: 2px;
+  margin: 5px 0;
+}
+
+
+/* ════════════════════════════════════════════════════════════════
+   LIST + PARAGRAPH INTERACTION
+════════════════════════════════════════════════════════════════ */
 
 .msg.bot .bubble li > p {
   margin: 0 0 5px;
@@ -197,9 +255,9 @@
 }
 
 
-/* ────────────────────────────────────────────────────────────────
+/* ════════════════════════════════════════════════════════════════
    STRONG / EMPHASIS
-──────────────────────────────────────────────────────────────── */
+════════════════════════════════════════════════════════════════ */
 
 .msg.bot .bubble strong {
   font-weight: 680;
@@ -210,14 +268,17 @@
 }
 
 
-/* ────────────────────────────────────────────────────────────────
+/* ════════════════════════════════════════════════════════════════
    LINKS
-──────────────────────────────────────────────────────────────── */
+════════════════════════════════════════════════════════════════ */
 
 .msg.bot .bubble a {
   color: var(--color-link);
+
   text-decoration: none;
+
   border-bottom: 1px solid rgba(0, 102, 204, 0.28);
+
   transition:
     opacity 0.15s ease,
     border-color 0.15s ease;
@@ -239,9 +300,9 @@
 }
 
 
-/* ────────────────────────────────────────────────────────────────
+/* ════════════════════════════════════════════════════════════════
    INLINE CODE
-──────────────────────────────────────────────────────────────── */
+════════════════════════════════════════════════════════════════ */
 
 .msg.bot .bubble code:not(.code-block code) {
   font-family:
@@ -259,6 +320,7 @@
   color: var(--color-text);
 
   padding: 2px 6px;
+
   border-radius: 5px;
 
   white-space: break-spaces;
@@ -272,33 +334,13 @@
 }
 
 
-/* ────────────────────────────────────────────────────────────────
-   BLOCKQUOTE
-──────────────────────────────────────────────────────────────── */
-
-.msg.bot .bubble blockquote {
-  margin: 12px 0;
-  padding: 2px 0 2px 14px;
-
-  border-left: 3px solid var(--color-text-muted);
-
-  color: var(--color-text-muted);
-}
-
-@media (prefers-color-scheme: dark) {
-  .msg.bot .bubble blockquote {
-    color: var(--color-text-dark-muted);
-    border-left-color: var(--color-text-dark-muted);
-  }
-}
-
-
-/* ────────────────────────────────────────────────────────────────
+/* ════════════════════════════════════════════════════════════════
    HORIZONTAL RULE
-──────────────────────────────────────────────────────────────── */
+════════════════════════════════════════════════════════════════ */
 
 .msg.bot .bubble hr.md-hr {
   border: 0;
+
   height: 1px;
 
   background: rgba(0, 0, 0, 0.08);
@@ -313,12 +355,35 @@
 }
 
 
-/* ────────────────────────────────────────────────────────────────
+/* ════════════════════════════════════════════════════════════════
+   BLOCKQUOTE
+════════════════════════════════════════════════════════════════ */
+
+.msg.bot .bubble blockquote {
+  margin: 13px 0;
+
+  padding: 2px 0 2px 13px;
+
+  border-left: 3px solid var(--color-text-muted);
+
+  color: var(--color-text-muted);
+}
+
+@media (prefers-color-scheme: dark) {
+  .msg.bot .bubble blockquote {
+    color: var(--color-text-dark-muted);
+    border-left-color: var(--color-text-dark-muted);
+  }
+}
+
+
+/* ════════════════════════════════════════════════════════════════
    TABLES
-──────────────────────────────────────────────────────────────── */
+════════════════════════════════════════════════════════════════ */
 
 .msg.bot .bubble table {
   width: 100%;
+
   border-collapse: collapse;
 
   margin: 14px 0;
@@ -330,6 +395,7 @@
 .msg.bot .bubble th,
 .msg.bot .bubble td {
   padding: 8px 10px;
+
   text-align: left;
   vertical-align: top;
 
@@ -348,21 +414,20 @@
 }
 
 
-/* ────────────────────────────────────────────────────────────────
+/* ════════════════════════════════════════════════════════════════
    MOBILE
-   Main goal:
-   - More usable text width
-   - Less right-side drift
-   - Comfortable bullet gutter
-──────────────────────────────────────────────────────────────── */
+   Keep answer content visually centered and balanced.
+════════════════════════════════════════════════════════════════ */
 
 @media (max-width: 600px) {
 
   .msg.bot .bubble p {
-    line-height: 1.59;
+    line-height: 1.6;
     margin-bottom: 11px;
   }
 
+
+  /* Headings */
   .msg.bot .bubble h3 {
     font-size: 1.06rem;
     line-height: 1.4;
@@ -376,70 +441,63 @@
     margin-bottom: 5px;
   }
 
-  /* Main bullet */
+
+  /* Top-level unordered */
   .msg.bot .bubble ul > li {
-    padding-left: 23px;
+    padding-left: 20px;
+    margin: 5px 0;
   }
 
+
+  /* Top-level circle */
   .msg.bot .bubble ul > li::before {
-    left: 3px;
-    font-size: 1.12em;
+    width: 6px;
+    height: 6px;
+
+    left: 2px;
+    top: 0.68em;
+
+    border-width: 1.6px;
   }
 
-  /* Numbered list */
+
+  /* Nested — intentionally compact */
+  .msg.bot .bubble li > ul {
+    margin-left: 0 !important;
+    padding-left: 15px !important;
+  }
+
+  .msg.bot .bubble li > ul > li {
+    padding-left: 18px !important;
+    margin: 5px 0;
+  }
+
+
+  /* Nested circle */
+  .msg.bot .bubble li > ul > li::before {
+    width: 5.5px;
+    height: 5.5px;
+
+    left: 1px;
+    top: 0.68em;
+
+    border-width: 1.5px;
+  }
+
+
+  /* Ordered */
   .msg.bot .bubble ol {
-    padding-left: 25px;
+    padding-left: 21px;
   }
 
   .msg.bot .bubble ol > li {
     padding-left: 2px;
   }
 
-  /*
-     Nested list:
-     deliberately kept compact so paragraphs
-     don't get pushed too far toward the right.
-  */
-  .msg.bot .bubble li > ul,
+
+  /* Nested ordered */
   .msg.bot .bubble li > ol {
-    padding-left: 12px;
+    margin-left: 0 !important;
+    padding-left: 19px !important;
   }
-
-  .msg.bot .bubble li > ul > li {
-    padding-left: 21px;
-  }
-
-  .msg.bot .bubble li > ul > li::before {
-    left: 2px;
-    font-size: 1.02em;
-  }
-
-  .msg.bot .bubble li > ol {
-    padding-left: 20px;
-  }
-}
-
-
-/* ────────────────────────────────────────────────────────────────
-   VERY SMALL PHONES
-──────────────────────────────────────────────────────────────── */
-
-@media (max-width: 380px) {
-
-  .msg.bot .bubble ul > li {
-    padding-left: 22px;
-  }
-
-  .msg.bot .bubble ol {
-    padding-left: 23px;
-  }
-
-  .msg.bot .bubble li > ul,
-  .msg.bot .bubble li > ol {
-    padding-left: 10px;
-  }
-
-  .msg.bot .bubble li > ul > li {
-    padding-left: 20px;
-  }
-}
+   }

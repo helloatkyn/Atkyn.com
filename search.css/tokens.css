@@ -21,7 +21,7 @@
 
   /* ── Surfaces (light) ───────────────────────────────────────── */
   --color-bg:             #ffffff;
-  --color-bg-alt:         #fafafa;   /* user bubble — same as code block */
+  --color-bg-alt:         #F0F0F0;   /* user bubble — Gemini-matched grey */
   --color-bg-card:        #F1F3F4;
   --color-bg-card-active: #F8F8F8;
   --color-bg-code:        #fafafa;
@@ -130,6 +130,6 @@
   --color-code-num:       rgba(0, 0, 0, 0.26);
   --color-code-num-dark:  rgba(255, 255, 255, 0.24);
   --color-code-content:   #0d0d0d;
-  --color-inline-code-bg: #fafafa;
+  --color-inline-code-bg: #E8E8E8;   /* inline code inside user bubble — slightly darker than bubble */
 
 }

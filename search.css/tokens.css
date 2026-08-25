@@ -7,31 +7,31 @@
 :root {
 
   /* ── Brand ─────────────────────────────────────────────────── */
-  --color-primary:        #0077B5;   /* search pill border, caret, send btn, typing dots */
-  --color-primary-dark:   #005f8e;   /* pill focus-within */
-  --color-primary-link:   #0066cc;   /* bot bubble links (light) */
+  --color-primary:        #0077B5;
+  --color-primary-dark:   #005f8e;
+  --color-primary-link:   #0066cc;
 
   /* ── Neutral text ───────────────────────────────────────────── */
-  --color-text:           #1a1a1a;   /* body / bubble text (light) */
-  --color-text-strong:    #111111;   /* tab labels, card snippet */
-  --color-text-muted:     #555555;   /* ico-plus, ico-camera (neutral icons) */
-  --color-text-subtle:    #999;      /* bot-action buttons idle */
-  --color-text-faint:     #444;      /* bot-action buttons active */
-  --color-text-placeholder: #b0bec5; /* shimmer gradient base */
+  --color-text:           #1a1a1a;
+  --color-text-strong:    #111111;
+  --color-text-muted:     #555555;
+  --color-text-subtle:    #999;
+  --color-text-faint:     #444;
+  --color-text-placeholder: #b0bec5;
 
   /* ── Surfaces (light) ───────────────────────────────────────── */
   --color-bg:             #ffffff;
-  --color-bg-alt:         #F1F1F1;   /* user bubble, tab bg, inline code bg */
-  --color-bg-card:        #F1F3F4;   /* web-card */
+  --color-bg-alt:         #fafafa;   /* user bubble — same as code block */
+  --color-bg-card:        #F1F3F4;
   --color-bg-card-active: #F8F8F8;
-  --color-bg-code:        #f4f4f4;   /* code-block */
-  --color-bg-thumb:       #E0E0E0;   /* card thumbnail placeholder */
+  --color-bg-code:        #fafafa;
+  --color-bg-thumb:       #E0E0E0;
   --color-bg-favicon:     #ffffff;
 
   /* ── Surfaces (dark) ────────────────────────────────────────── */
   --color-bg-dark:        #1c1c1e;
-  --color-bg-alt-dark:    #2c2c2e;   /* user bubble dark, pill dark, web-card dark */
-  --color-bg-alt2-dark:   #272727;   /* tab bg dark */
+  --color-bg-alt-dark:    #2c2c2e;
+  --color-bg-alt2-dark:   #272727;
   --color-bg-code-dark:   #2f2f2f;
   --color-bg-favicon-dark:#3a3a3c;
   --color-bg-thumb-dark:  #3a3a3c;
@@ -40,17 +40,17 @@
 
   /* ── Dark text ──────────────────────────────────────────────── */
   --color-text-dark:      #f0f0f2;
-  --color-text-dark-alt:  #e5e5e7;   /* search input dark */
-  --color-text-dark-dim:  #d4d4d6;   /* bot bubble dark, card snippet dark */
+  --color-text-dark-alt:  #e5e5e7;
+  --color-text-dark-dim:  #d4d4d6;
   --color-text-dark-muted:#aaa;
-  --color-text-dark-faint:#8e8e93;   /* bot-actions idle dark */
-  --color-text-dark-code: #c9d1d9;   /* inline code dark */
-  --color-text-dark-mono: #ececec;   /* code block content dark */
-  --color-text-code-muted:#9b9bab;   /* lang badge / copy btn dark */
+  --color-text-dark-faint:#8e8e93;
+  --color-text-dark-code: #c9d1d9;
+  --color-text-dark-mono: #ececec;
+  --color-text-code-muted:#9b9bab;
 
   /* ── UI chrome ──────────────────────────────────────────────── */
-  --color-icon-stroke:    #444;      /* pm-icon svg light */
-  --color-icon-dark:      #bbb;      /* pm-icon svg dark */
+  --color-icon-stroke:    #444;
+  --color-icon-dark:      #bbb;
   --color-tab-active-bg:  #111111;
   --color-tab-active-text:#ffffff;
   --color-tab-active-bg-dark:  #f1f1f1;
@@ -86,8 +86,8 @@
   --color-card-domain-dark:#C0C0C2;
   --color-card-url:        #7A7A7A;
   --color-card-url-dark:   #7A7A7C;
-  --color-web-title:       #000080;   /* web card title light (navy) */
-  --color-web-title-dark:  #4BA8D8;   /* web card title dark */
+  --color-web-title:       #000080;
+  --color-web-title-dark:  #4BA8D8;
 
   /* ── Links ──────────────────────────────────────────────────── */
   --color-link:            #0066cc;
@@ -130,6 +130,6 @@
   --color-code-num:       rgba(0, 0, 0, 0.26);
   --color-code-num-dark:  rgba(255, 255, 255, 0.24);
   --color-code-content:   #0d0d0d;
-  --color-inline-code-bg: #F1F1F1;
+  --color-inline-code-bg: #fafafa;
 
 }

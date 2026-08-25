@@ -1,12 +1,13 @@
 /* ═══════════════════════════════════════════════════════════════
    modules/web/web.js — Atkyn Web tab
    SearXNG proxy via /api/search — zero AI calls.
+   [PRODUCTION READY: Parallel OG Fetch · Smart Layout · Fast Cache]
    Requires: core.js globals (_atkynPageContent, _atkynAnimateIn)
    ═══════════════════════════════════════════════════════════════ */
 
 (function () {
 
-/* ── Helpers ── */
+/* ── Helpers ─ */
 const _esc = s => String(s)
   .replace(/&/g, '&amp;').replace(/</g, '&lt;')
   .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -18,21 +19,56 @@ const _safeUrl = u => {
   } catch (_) { return '#'; }
 };
 
-/* ── Image layout types
-   0 = full width below title
-   1 = right-side inline (contain, no crop)          ── */
-const _LAYOUTS = [0, 0, 1, 1, 0]; // weighted: full more common
+/* ── OG Image Cache (avoid duplicate fetches) ─ */
+const _ogCache = new Map();
 
-const _pickLayout = i => _LAYOUTS[i % _LAYOUTS.length];
+/* ── Layout Strategy:
+   0 = Full-width banner below title (rectangular)
+   1 = Right-side square thumbnail (inline with snippet)
+   Pattern: First 2 cards get inline (1), rest get full-width (0)
+*/
+const _getLayout = index => {
+  if (index === 0 || index === 1) return 1; // First two: right-side square
+  return 0; // Rest: full-width banner
+};
 
-/* ── Fetch OG image from worker ── */
-function _fetchOg(url) {
-  return fetch(`/api/og?url=${encodeURIComponent(url)}`, {
-    signal: AbortSignal.timeout(6000),
-  })
-    .then(r => r.ok ? r.json() : null)
-    .then(d => d?.image || null)
-    .catch(() => null);
+/* ── Fetch OG image with caching ─ */
+async function _fetchOg(url) {
+  // Check cache first
+  if (_ogCache.has(url)) return _ogCache.get(url);
+  
+  // Check sessionStorage
+  try {
+    const cached = sessionStorage.getItem(`og_${btoa(url)}`);
+    if (cached) {
+      _ogCache.set(url, cached);
+      return cached;
+    }
+  } catch (_) {}
+
+  // Fetch from worker (3s timeout max)
+  try {
+    const resp = await fetch(`/api/og?url=${encodeURIComponent(url)}`, {
+      signal: AbortSignal.timeout(3000),
+    });
+    const data = resp.ok ? await resp.json() : null;
+    const image = data?.image || null;
+    
+    // Cache it
+    if (image) {
+      _ogCache.set(url, image);
+      try { sessionStorage.setItem(`og_${btoa(url)}`, image); } catch (_) {}
+    }
+    return image;
+  } catch (_) {
+    return null;
+  }
+}
+
+/* ── Parallel OG Fetch for all results ── */
+async function _fetchAllOgImages(results) {
+  const promises = results.map(r => _fetchOg(r.url));
+  return Promise.all(promises);
 }
 
 /* ── Inject image into result card ── */
@@ -40,13 +76,24 @@ function _injectOgImage(cardEl, layout, image) {
   if (!image) return;
 
   if (layout === 1) {
-    // Right-side thumbnail — wrap snippet + image in a flex row
+    // Right-side square thumbnail (inline with snippet)
     const snippet = cardEl.querySelector('.wc-snippet');
+    if (!snippet) return;
+
     const row = document.createElement('div');
     row.className = 'wc-inline-row';
+    row.style.display = 'flex';
+    row.style.gap = '12px';
+    row.style.alignItems = 'flex-start';
 
     const thumbWrap = document.createElement('div');
     thumbWrap.className = 'wc-thumb-inline-wrap';
+    thumbWrap.style.flexShrink = '0';
+    thumbWrap.style.width = '80px';
+    thumbWrap.style.height = '80px';
+    thumbWrap.style.borderRadius = '8px';
+    thumbWrap.style.overflow = 'hidden';
+    thumbWrap.style.backgroundColor = 'var(--color-bg-secondary, #f5f5f5)';
 
     const img = document.createElement('img');
     img.className  = 'wc-thumb-inline';
@@ -54,20 +101,29 @@ function _injectOgImage(cardEl, layout, image) {
     img.loading    = 'lazy';
     img.decoding   = 'async';
     img.alt        = '';
+    img.style.width = '100%';
+    img.style.height = '100%';
+    img.style.objectFit = 'cover';
     img.addEventListener('error', () => thumbWrap.remove(), { once: true });
+    
     thumbWrap.appendChild(img);
-
-    if (snippet) {
-      snippet.parentNode.insertBefore(row, snippet);
-      row.appendChild(snippet);
-    }
+    
+    // Insert row before snippet, then move snippet into row
+    snippet.parentNode.insertBefore(row, snippet);
+    row.appendChild(snippet);
     row.appendChild(thumbWrap);
 
   } else {
     // Full-width banner below title (layout 0)
     const title = cardEl.querySelector('.wc-title');
+    if (!title) return;
+
     const wrap  = document.createElement('div');
     wrap.className = 'wc-thumb-full-wrap';
+    wrap.style.marginTop = '10px';
+    wrap.style.borderRadius = '10px';
+    wrap.style.overflow = 'hidden';
+    wrap.style.backgroundColor = 'var(--color-bg-secondary, #f5f5f5)';
 
     const img = document.createElement('img');
     img.className  = 'wc-thumb-full';
@@ -75,14 +131,13 @@ function _injectOgImage(cardEl, layout, image) {
     img.loading    = 'lazy';
     img.decoding   = 'async';
     img.alt        = '';
+    img.style.width = '100%';
+    img.style.height = 'auto';
+    img.style.display = 'block';
     img.addEventListener('error', () => wrap.remove(), { once: true });
+    
     wrap.appendChild(img);
-
-    if (title?.nextSibling) {
-      title.parentNode.insertBefore(wrap, title.nextSibling);
-    } else if (title) {
-      title.parentNode.appendChild(wrap);
-    }
+    title.parentNode.insertBefore(wrap, title.nextSibling);
   }
 }
 
@@ -101,7 +156,7 @@ function _buildCard(r, index) {
   const fav1    = `https://www.google.com/s2/favicons?sz=64&domain=${encodeURIComponent(host)}`;
   const fav2    = `https://icons.duckduckgo.com/ip3/${host}.ico`;
   const snippet = r.content || r.snippet || r.description || r.summary || '';
-  const layout  = _pickLayout(index);
+  const layout  = _getLayout(index);
 
   const a  = document.createElement('a');
   a.className = 'wc-card';
@@ -133,14 +188,7 @@ function _buildCard(r, index) {
     else { this.closest('.wc-fav-wrap').style.display = 'none'; }
   }, { once: true, passive: true });
 
-  // Use pre-fetched image if search API returned one, otherwise fetch OG
-  if (r.image) {
-    _injectOgImage(a, layout, r.image);
-  } else {
-    _fetchOg(r.url).then(img => _injectOgImage(a, layout, img));
-  }
-
-  return a;
+  return { card: a, url: r.url, layout, index };
 }
 
 /* ── Knowledge Panel (infobox) ── */
@@ -234,7 +282,7 @@ function _buildRelated(suggestions) {
 async function _fetchSuggestions(q) {
   try {
     const resp = await fetch(`/api/suggest?q=${encodeURIComponent(q)}`, {
-      signal: AbortSignal.timeout(4000),
+      signal: AbortSignal.timeout(3000),
     });
     return resp.ok ? resp.json() : [];
   } catch (_) { return []; }
@@ -251,8 +299,8 @@ function _triggerSearch(query) {
   _fetch(query);
 }
 
-/* ── Render results into page ── */
-function _render(q, data) {
+/* ── Render results with progressive image loading ── */
+async function _render(q, data) {
   const pc   = window._atkynPageContent;
   const frag = document.createDocumentFragment();
 
@@ -266,13 +314,28 @@ function _render(q, data) {
 
   const list = document.createElement('div');
   list.className = 'wc-list';
-  results.forEach((r, i) => list.appendChild(_buildCard(r, i)));
+  
+  // Build all cards first (without images)
+  const cardData = results.map((r, i) => _buildCard(r, i));
+  cardData.forEach(({ card }) => list.appendChild(card));
+  
   frag.appendChild(list);
-
   pc.innerHTML = '';
   pc.appendChild(frag);
   window._atkynAnimateIn();
 
+  // Progressive image loading: fetch all OG images in parallel
+  // but inject them as they arrive (don't wait for all)
+  const imagePromises = cardData.map(({ url, layout, index, card }) => 
+    _fetchOg(url).then(image => {
+      if (image) _injectOgImage(card, layout, image);
+    })
+  );
+
+  // Fire and forget - don't block rendering
+  Promise.allSettled(imagePromises);
+
+  // Fetch suggestions in background
   _fetchSuggestions(q).then(suggestions => {
     const related = _buildRelated(suggestions);
     if (related) pc.appendChild(related);
@@ -290,7 +353,7 @@ async function _fetch(q) {
 
   try {
     const resp = await fetch(`/api/search?q=${encodeURIComponent(q)}`, {
-      signal: AbortSignal.timeout(10000),
+      signal: AbortSignal.timeout(8000), // Reduced from 10s
     });
     if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
 
@@ -308,7 +371,7 @@ async function _fetch(q) {
       : { results, infobox: data.infobox || null };
 
     try { sessionStorage.setItem('atkyn_web_results', JSON.stringify({ q, ...payload })); } catch (_) {}
-    _render(q, payload);
+    await _render(q, payload);
 
   } catch (_) {
     pc.innerHTML = '<div class="tab-empty"><p>Could not load results. Try again.</p></div>';
@@ -333,7 +396,10 @@ function _init() {
   if (cached) {
     try {
       const saved = JSON.parse(cached);
-      if (saved.q === q && saved.results?.length) { _render(q, saved); return; }
+      if (saved.q === q && saved.results?.length) { 
+        _render(q, saved); 
+        return; 
+      }
     } catch (_) {}
   }
 
@@ -346,4 +412,3 @@ window._atkynInit_web = _init;
 _init();
 
 }());
-     

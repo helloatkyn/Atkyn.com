@@ -1,136 +1,135 @@
 /* ════════════════════════════════════════════════════════════════
-   typography.css — Bot bubble rich text
-   Headings · Lists · Links · Inline code · Horizontal rule
-════════════════════════════════════════════════════════════════ */
+   tokens.css — Design tokens (CSS custom properties)
+   Single source of truth for all colours in the Atkyn Search PWA.
+   Change a value here → updates everywhere automatically.
+   ════════════════════════════════════════════════════════════════ */
 
-/* ────────────────────────────────────────────────────────────────
-   PARAGRAPHS
-──────────────────────────────────────────────────────────────── */
-.msg.bot .bubble p            { margin: 0 0 10px; }
-.msg.bot .bubble p:last-child { margin-bottom: 0; }
+:root {
 
-/* ────────────────────────────────────────────────────────────────
-   HEADINGS
-──────────────────────────────────────────────────────────────── */
-.msg.bot .bubble h3 {
-  font-size: 1.05rem;
-  font-weight: 700;
-  margin: 16px 0 5px;
-  letter-spacing: -0.01em;
-}
-.msg.bot .bubble h4 {
-  font-size: 0.98rem;
-  font-weight: 650;
-  margin: 12px 0 4px;
-}
-.msg.bot .bubble h5 {
-  font-size: 0.93rem;
-  font-weight: 600;
-  margin: 10px 0 3px;
-  color: var(--color-text-muted);
-}
-@media (prefers-color-scheme: dark) {
-  .msg.bot .bubble h3,
-  .msg.bot .bubble h4 { color: var(--color-text-dark); }
-  .msg.bot .bubble h5 { color: var(--color-text-dark-muted); }
-}
+  /* ── Brand ─────────────────────────────────────────────────── */
+  --color-primary:        #0077B5;
+  --color-primary-dark:   #005f8e;
+  --color-primary-link:   #0066cc;
 
-/* ────────────────────────────────────────────────────────────────
-   LISTS
-──────────────────────────────────────────────────────────────── */
-.msg.bot .bubble ul,
-.msg.bot .bubble ol {
-  padding-left: 0;
-  margin: 2px 0 10px;
-  list-style: none;
-}
-.msg.bot .bubble li { margin-bottom: 6px; }
+  /* ── Neutral text ───────────────────────────────────────────── */
+  --color-text:           #1a1a1a;
+  --color-text-strong:    #111111;
+  --color-text-muted:     #555555;
+  --color-text-subtle:    #999;
+  --color-text-faint:     #444;
+  --color-text-placeholder: #b0bec5;
 
-/* Unordered — o bullet like Gemini */
-.msg.bot .bubble ul > li {
-  padding-left: 24px;
-  position: relative;
-}
-.msg.bot .bubble ul > li::before {
-  content: 'o';
-  position: absolute;
-  left: 6px;
-  font-size: 0.75em;
-  line-height: 1.9;
-  color: var(--color-text-muted);
-}
-@media (prefers-color-scheme: dark) {
-  .msg.bot .bubble ul > li::before {
-    color: var(--color-text-dark-muted);
-  }
-}
+  /* ── Surfaces (light) ───────────────────────────────────────── */
+  --color-bg:             #ffffff;
+  --color-bg-alt:         #f0f0f0;   /* user bubble + inline code — thoda dark */
+  --color-bg-card:        #F1F3F4;
+  --color-bg-card-active: #F8F8F8;
+  --color-bg-code:        #fafafa;
+  --color-bg-thumb:       #E0E0E0;
+  --color-bg-favicon:     #ffffff;
 
-/* Ordered — numbers */
-.msg.bot .bubble ol {
-  list-style: decimal;
-  padding-left: 24px;
-}
-.msg.bot .bubble ol > li { padding-left: 4px; }
+  /* ── Surfaces (dark) ────────────────────────────────────────── */
+  --color-bg-dark:        #1c1c1e;
+  --color-bg-alt-dark:    #2c2c2e;
+  --color-bg-alt2-dark:   #272727;
+  --color-bg-code-dark:   #2f2f2f;
+  --color-bg-favicon-dark:#3a3a3c;
+  --color-bg-thumb-dark:  #3a3a3c;
+  --color-bg-card-active-dark: #28282A;
+  --color-bg-plus-menu-dark: rgba(36, 36, 40, 0.78);
 
-/* Nested */
-.msg.bot .bubble li > ul,
-.msg.bot .bubble li > ol {
-  margin: 4px 0 0;
-  padding-left: 14px;
-}
+  /* ── Dark text ──────────────────────────────────────────────── */
+  --color-text-dark:      #f0f0f2;
+  --color-text-dark-alt:  #e5e5e7;
+  --color-text-dark-dim:  #d4d4d6;
+  --color-text-dark-muted:#aaa;
+  --color-text-dark-faint:#8e8e93;
+  --color-text-dark-code: #c9d1d9;
+  --color-text-dark-mono: #ececec;
+  --color-text-code-muted:#9b9bab;
 
-/* ────────────────────────────────────────────────────────────────
-   INLINE EMPHASIS
-──────────────────────────────────────────────────────────────── */
-.msg.bot .bubble strong { font-weight: 650; }
-.msg.bot .bubble em     { font-style: italic; }
+  /* ── UI chrome ──────────────────────────────────────────────── */
+  --color-icon-stroke:    #444;
+  --color-icon-dark:      #bbb;
+  --color-tab-active-bg:  #111111;
+  --color-tab-active-text:#ffffff;
+  --color-tab-active-bg-dark:  #f1f1f1;
+  --color-tab-active-text-dark:#111111;
 
-/* ────────────────────────────────────────────────────────────────
-   LINKS
-──────────────────────────────────────────────────────────────── */
-.msg.bot .bubble a {
-  color: var(--color-link);
-  text-decoration: none;
-  border-bottom: 1px solid rgba(0, 102, 204, 0.3);
-}
-.msg.bot .bubble a:active { opacity: 0.7; }
-@media (prefers-color-scheme: dark) {
-  .msg.bot .bubble a {
-    color: var(--color-link-dark);
-    border-bottom-color: var(--color-link-border-dark);
-  }
-}
+  /* ── Dividers & borders ─────────────────────────────────────── */
+  --color-border-subtle:       rgba(0, 0, 0, 0.08);
+  --color-border-medium:       rgba(0, 0, 0, 0.12);
+  --color-border-dark-subtle:  rgba(255, 255, 255, 0.07);
+  --color-border-dark-medium:  rgba(255, 255, 255, 0.08);
+  --color-border-dark-strong:  rgba(255, 255, 255, 0.15);
 
-/* ────────────────────────────────────────────────────────────────
-   INLINE CODE
-──────────────────────────────────────────────────────────────── */
-.msg.bot .bubble code:not(.code-block code) {
-  font-family: 'JetBrains Mono', 'SFMono-Regular', 'SF Mono', Menlo, Consolas, monospace;
-  font-size: 0.84em;
-  background: var(--color-bg-alt);
-  color: var(--color-text);
-  padding: 3px 8px;
-  border-radius: 5px;
-  border: none;
-}
-@media (prefers-color-scheme: dark) {
-  .msg.bot .bubble code:not(.code-block code) {
-    background: var(--color-press-dark-md);
-    color: var(--color-text-dark-code);
-    border: none;
-  }
-}
+  /* ── Tap / press states ─────────────────────────────────────── */
+  --color-press-light:    rgba(0, 0, 0, 0.06);
+  --color-press-light-sm: var(--color-press-light-sm);
+  --color-press-light-md: var(--color-press-light-md);
+  --color-press-light-icon: var(--color-press-light-icon);
+  --color-press-dark:     rgba(255, 255, 255, 0.07);
+  --color-press-dark-md:  rgba(255, 255, 255, 0.09);
 
-/* ────────────────────────────────────────────────────────────────
-   HORIZONTAL RULE
-──────────────────────────────────────────────────────────────── */
-.msg.bot .bubble hr.md-hr {
-  border: none;
-  border-top: 1px solid rgba(0, 0, 0, 0.12);
-  margin: 16px 0;
-}
-@media (prefers-color-scheme: dark) {
-  .msg.bot .bubble hr.md-hr {
-    border-top-color: var(--color-border-dark-medium);
-  }
+  /* ── Glassmorphism (plus menu) ──────────────────────────────── */
+  --color-glass-bg:       rgba(255, 255, 255, 0.72);
+  --color-glass-border:   rgba(255, 255, 255, 0.55);
+  --color-glass-border-dark: rgba(255, 255, 255, 0.10);
+  --color-tab-bar-bg:     rgba(255, 255, 255, 0.95);
+  --color-tab-bar-bg-dark:rgba(28, 28, 30, 0.95);
+
+  /* ── Scrollbar / misc ───────────────────────────────────────── */
+  --color-scrollbar-thumb: rgba(128, 128, 128, 0.3);
+  --color-card-meta-muted: #BDBDBD;
+  --color-card-meta-dark:  #555557;
+  --color-card-domain:     #333333;
+  --color-card-domain-dark:#C0C0C2;
+  --color-card-url:        #7A7A7A;
+  --color-card-url-dark:   #7A7A7C;
+  --color-web-title:       #000080;
+  --color-web-title-dark:  #4BA8D8;
+
+  /* ── Links ──────────────────────────────────────────────────── */
+  --color-link:            #0066cc;
+  --color-link-border:     rgba(0, 102, 204, 0.3);
+  --color-link-dark:       #4da6ff;
+  --color-link-border-dark:rgba(77, 166, 255, 0.3);
+
+  /* ── State colours ──────────────────────────────────────────── */
+  --color-like:            #2da44e;
+  --color-like-dark:       #3fb950;
+  --color-dislike:         var(--color-primary);
+  --color-copied:          #19c37d;
+  --color-shimmer-sweep:   var(--color-primary);
+
+  /* ── Syntax highlighting (light) ────────────────────────────── */
+  --color-tk-kw:   #cf222e;
+  --color-tk-fn:   #8250df;
+  --color-tk-str:  #0a3069;
+  --color-tk-num:  #0550ae;
+  --color-tk-cmt:  #6e7781;
+  --color-tk-cls:  #953800;
+  --color-tk-prop: #116329;
+  --color-tk-bool: #cf222e;
+
+  /* ── Syntax highlighting (dark) ─────────────────────────────── */
+  --color-tk-kw-dark:   #ff7b72;
+  --color-tk-fn-dark:   #d2a8ff;
+  --color-tk-str-dark:  #a5d6ff;
+  --color-tk-num-dark:  #79c0ff;
+  --color-tk-cmt-dark:  #8b949e;
+  --color-tk-cls-dark:  #ffa657;
+  --color-tk-prop-dark: #7ee787;
+  --color-tk-bool-dark: #ff7b72;
+
+  /* ── Code block chrome ──────────────────────────────────────── */
+  --color-code-lang:      #6e6e80;
+  --color-code-lang-bg:   rgba(0, 0, 0, 0.07);
+  --color-code-lang-dark: #9b9bab;
+  --color-code-lang-bg-dark: rgba(255, 255, 255, 0.08);
+  --color-code-num:       rgba(0, 0, 0, 0.26);
+  --color-code-num-dark:  rgba(255, 255, 255, 0.24);
+  --color-code-content:   #0d0d0d;
+  --color-inline-code-bg: #f0f0f0;
+
 }

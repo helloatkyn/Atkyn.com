@@ -7,48 +7,59 @@
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
   margin: 10px 0 14px;
+  border-radius: 12px;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
 .table-wrap::-webkit-scrollbar { display: none; }
 
 .msg.bot .bubble table {
-  width: 100%;
   border-collapse: collapse;
   margin: 0;
-  font-size: 0.92rem;
-  min-width: 280px;
+  font-size: 0.9rem;
+  min-width: 480px;          /* force scroll on narrow screens */
+  width: max-content;        /* shrink nahi hoga */
 }
 
 .msg.bot .bubble th {
-  padding: 10px 16px 10px 0;
+  padding: 10px 20px;
   text-align: left;
-  /* font-size inherited from table */
   font-weight: 700;
-  /* text-transform:none and letter-spacing:0 are browser defaults — omitted */
-  color: var(--color-text);
-  border-bottom: 1.5px solid rgba(0, 0, 0, 0.12);
-  white-space: normal;
+  font-size: 0.82rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-muted);
+  border-bottom: 1.5px solid rgba(0, 0, 0, 0.10);
+  white-space: nowrap;
   vertical-align: bottom;
   line-height: 1.35;
 }
-.msg.bot .bubble th:first-child { padding-left: 0; }
-.msg.bot .bubble th:last-child  { padding-right: 0; padding-left: 0; }
 
 .msg.bot .bubble td {
-  padding: 12px 16px 12px 0;
+  padding: 12px 20px;
   text-align: left;
-  border-bottom: none;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
   vertical-align: top;
   line-height: 1.55;
-  /* color inherits #1a1a1a from .bubble — omitted */
+  white-space: nowrap;
 }
-.msg.bot .bubble td:first-child { padding-left: 0; }
-.msg.bot .bubble td:last-child  { padding-right: 0; padding-left: 0; }
+
 .msg.bot .bubble tr:last-child td { border-bottom: none; }
+
+.msg.bot .bubble tr:nth-child(even) td {
+  background: rgba(0, 0, 0, 0.02);
+}
 
 @media (prefers-color-scheme: dark) {
   .msg.bot .bubble th {
-    color: var(--color-text-dark);
+    color: var(--color-text-dark-muted);
     border-bottom-color: var(--color-border-dark-strong);
   }
-  .msg.bot .bubble td { color: var(--color-text-dark-dim); }
+  .msg.bot .bubble td {
+    color: var(--color-text-dark-dim);
+    border-bottom-color: rgba(255, 255, 255, 0.04);
+  }
+  .msg.bot .bubble tr:nth-child(even) td {
+    background: rgba(255, 255, 255, 0.02);
+  }
 }

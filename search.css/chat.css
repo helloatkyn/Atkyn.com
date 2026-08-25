@@ -46,7 +46,7 @@
   max-width: 100%;
   background: none;
   border: none;
-  padding: 1px 14px;       /* safe padding dono sides */
+  padding: 1px 9px;
   font-size: 1.05rem;
   line-height: 1.75;
   color: var(--color-text);

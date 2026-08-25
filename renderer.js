@@ -1,9 +1,10 @@
 /* ═══════════════════════════════════════════════════════════════
    renderer.js — Atkyn Search
-   Markdown + Math : marked.js + KaTeX (custom robust extension)
+   Markdown + Math : marked.js + KaTeX
    Code highlight  : highlight.js
    ═══════════════════════════════════════════════════════════════ */
 
+/* ── HTML entity escape ── */
 function _he(s) {
   const src = String(s);
   const out = [];
@@ -19,6 +20,7 @@ function _he(s) {
   return out.join('');
 }
 
+/* ── Cheap hash for render cache ── */
 function _cheapHash(str) {
   let h = 5381;
   for (let i = 0; i < str.length; i++) {
@@ -28,6 +30,7 @@ function _cheapHash(str) {
   return h;
 }
 
+/* ── Normalize newlines ── */
 function _normalizeNewlines(str) {
   let start = 0;
   while (start < str.length && str[start] === '\n') start++;
@@ -48,19 +51,19 @@ function _normalizeNewlines(str) {
   return out.join('');
 }
 
-/* ── Pre-process: \[...\] → $$...$$ (own lines), \(...\) → $...$ ── */
+/* ── \[...\] → $$...$$ and \(...\) → $...$ ── */
 function _convertLatexDelimiters(str) {
-  str = str.replace(/\\\[([\s\S]*?)\\\]/g, function (_, inner) {
-    return '\n$$\n' + inner.trim() + '\n$$\n';
-  });
-  str = str.replace(/\\\(([\s\S]*?)\\\)/g, function (_, inner) {
-    return '$' + inner.trim() + '$';
-  });
+  str = str.replace(/\\\[([\s\S]*?)\\\]/g, (_, inner) =>
+    '\n$$\n' + inner.trim() + '\n$$\n'
+  );
+  str = str.replace(/\\\(([\s\S]*?)\\\)/g, (_, inner) =>
+    '$' + inner.trim() + '$'
+  );
   return str;
 }
 
-/* ── KaTeX options ── */
-var KATEX_OPTS = {
+/* ── KaTeX ── */
+const KATEX_OPTS = {
   throwOnError: false,
   errorColor: '#888888',
   trust: false,
@@ -69,67 +72,38 @@ var KATEX_OPTS = {
 
 function _renderMath(text, displayMode) {
   try {
-    return katex.renderToString(
-      text,
-      Object.assign({}, KATEX_OPTS, { displayMode: displayMode })
-    );
-  } catch (e) {
+    return katex.renderToString(text, { ...KATEX_OPTS, displayMode });
+  } catch (_) {
     return '<span style="color:#888888;">' + _he(text) + '</span>';
   }
 }
 
 function _katexExtensions() {
-  var blockKatex = {
-    name: 'blockKatex',
-    level: 'block',
-    start: function (src) {
-      var i = src.indexOf('$$');
-      return i >= 0 ? i : undefined;
-    },
-    tokenizer: function (src) {
-      var m = src.match(/^\$\$([\s\S]+?)\$\$/);
+  const blockKatex = {
+    name: 'blockKatex', level: 'block',
+    start: src => { const i = src.indexOf('$$'); return i >= 0 ? i : undefined; },
+    tokenizer(src) {
+      const m = src.match(/^\$\$([\s\S]+?)\$\$/);
       if (m) return { type: 'blockKatex', raw: m[0], text: m[1].trim() };
     },
-    renderer: function (token) {
-      return '<div class="math-display">' + _renderMath(token.text, true) + '</div>\n';
-    }
+    renderer: token =>
+      '<div class="math-display">' + _renderMath(token.text, true) + '</div>\n'
   };
 
-  var inlineDisplayKatex = {
-    name: 'inlineDisplayKatex',
-    level: 'inline',
-    start: function (src) {
-      var i = src.indexOf('$$');
-      return i >= 0 ? i : undefined;
-    },
-    tokenizer: function (src) {
-      var m = src.match(/^\$\$([\s\S]+?)\$\$/);
-      if (m) return { type: 'inlineDisplayKatex', raw: m[0], text: m[1].trim() };
-    },
-    renderer: function (token) {
-      return '<div class="math-display">' + _renderMath(token.text, true) + '</div>';
-    }
-  };
-
-  var inlineKatex = {
-    name: 'inlineKatex',
-    level: 'inline',
-    start: function (src) {
-      var i = src.indexOf('$');
-      return i >= 0 ? i : undefined;
-    },
-    tokenizer: function (src) {
-      var m = src.match(/^\$(?!\$)((?:[^$\n\\]|\\.)+?)\$(?!\$)/);
+  const inlineKatex = {
+    name: 'inlineKatex', level: 'inline',
+    start: src => { const i = src.indexOf('$'); return i >= 0 ? i : undefined; },
+    tokenizer(src) {
+      const m = src.match(/^\$(?!\$)((?:[^$\n\\]|\\.)+?)\$(?!\$)/);
       if (m) return { type: 'inlineKatex', raw: m[0], text: m[1].trim() };
     },
-    renderer: function (token) {
-      return _renderMath(token.text, false);
-    }
+    renderer: token => _renderMath(token.text, false)
   };
 
-  return { extensions: [blockKatex, inlineDisplayKatex, inlineKatex] };
+  return { extensions: [blockKatex, inlineKatex] };
 }
 
+/* ── Build marked ── */
 function _buildMarked() {
   if (typeof katex !== 'undefined') {
     marked.use(_katexExtensions());
@@ -139,10 +113,11 @@ function _buildMarked() {
 
   const renderer = new marked.Renderer();
 
-  renderer.code = function (codeOrToken, lang) {
+  /* Code blocks */
+  renderer.code = function(codeOrToken, lang) {
     let code, language;
     if (codeOrToken && typeof codeOrToken === 'object') {
-      code     = codeOrToken.text != null ? codeOrToken.text : (codeOrToken.code || '');
+      code     = codeOrToken.text ?? codeOrToken.code ?? '';
       language = (codeOrToken.lang || '').trim().toLowerCase();
     } else {
       code     = codeOrToken;
@@ -173,11 +148,22 @@ function _buildMarked() {
     );
   };
 
-  marked.use({ renderer: renderer, breaks: true, gfm: true });
+  /* Tables — wrapped for horizontal scroll */
+  renderer.table = function(header, body) {
+    return (
+      '<div class="table-wrap"><table>' +
+        '<thead>' + header + '</thead>' +
+        '<tbody>' + body + '</tbody>' +
+      '</table></div>'
+    );
+  };
+
+  marked.use({ renderer, breaks: true, gfm: true });
 }
 
 _buildMarked();
 
+/* ── Safe render pipeline ── */
 function _safePipeline(raw) {
   if (!raw) return '';
   const text = _normalizeNewlines(_convertLatexDelimiters(raw));
@@ -186,11 +172,16 @@ function _safePipeline(raw) {
   catch (_) { return '<pre class="render-fallback">' + _he(raw) + '</pre>'; }
 }
 
+/* ── Universal renderer class ── */
 class UniversalMessageRenderer {
   constructor() {
-    this.rawContent = ''; this.renderedContent = '';
-    this._hash = null; this._buf = ''; this._streaming = false;
+    this.rawContent = '';
+    this.renderedContent = '';
+    this._hash = null;
+    this._buf = '';
+    this._streaming = false;
   }
+
   render(content) {
     this.rawContent = content;
     const h = _cheapHash(content);
@@ -198,38 +189,49 @@ class UniversalMessageRenderer {
     this._hash = h;
     return (this.renderedContent = _safePipeline(content));
   }
+
   startStream() {
-    this._buf = ''; this._streaming = true;
-    this.rawContent = ''; this.renderedContent = ''; this._hash = null;
+    this._buf = '';
+    this._streaming = true;
+    this.rawContent = '';
+    this.renderedContent = '';
+    this._hash = null;
   }
+
   pushChunk(chunk) {
     if (!this._streaming) this.startStream();
     this.rawContent = (this._buf += chunk);
     return (this.renderedContent = _safePipeline(this._buf));
   }
+
   finishStream() {
     this._streaming = false;
     return (this.renderedContent = _safePipeline(this._buf));
   }
+
   getHTML() { return this.renderedContent; }
   getRaw()  { return this.rawContent; }
 }
 
+/* ── Streaming renderer factory ── */
 function createStreamingRenderer(onUpdate, debounceMs = 40) {
   const renderer = new UniversalMessageRenderer();
   renderer.startStream();
   let _timer = null, _done = false;
+
   function _flush(final) {
-    clearTimeout(_timer); _timer = null;
+    clearTimeout(_timer);
+    _timer = null;
     if (typeof onUpdate === 'function')
       onUpdate(final ? renderer.finishStream() : renderer.getHTML(), { final });
   }
+
   return {
     push(chunk) {
       if (_done) return;
       renderer.pushChunk(chunk);
       clearTimeout(_timer);
-      _timer = setTimeout(function () { _flush(false); }, debounceMs);
+      _timer = setTimeout(() => _flush(false), debounceMs);
     },
     finish() {
       if (_done) return;
@@ -237,10 +239,10 @@ function createStreamingRenderer(onUpdate, debounceMs = 40) {
       clearTimeout(_timer);
       _flush(true);
     },
-    getRenderer() { return renderer; },
+    getRenderer() { return renderer; }
   };
 }
 
+/* ── Public API ── */
 function universalRender(content) { return new UniversalMessageRenderer().render(content); }
 function renderMarkdown(text)     { return universalRender(text); }
-       

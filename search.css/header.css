@@ -1,6 +1,6 @@
 /* ════════════════════════════════════════════════════════════════
    header.css — Logo header · Hamburger · Nine-dot button
-   [NATIVE SMOOTH · GPU-ACCELERATED · THEME-TRANSITION READY]
+   [POLISHED · NATIVE SMOOTH · GPU-ACCELERATED]
 ════════════════════════════════════════════════════════════════ */
 
 /* ────────────────────────────────────────────────────────────────
@@ -12,42 +12,89 @@
   align-items: center;
   justify-content: center;
   position: relative;
-  padding: 10px 18px 8px;
+
+  padding: 8px 18px;
   height: 62px;
+
   overflow: hidden;
   background: var(--color-bg);
 
-  /* ── GPU LAYER PROMOTION (permanent own layer) ── */
+  /*
+   * Keep the header on its own compositing layer.
+   * Only transform + opacity are animated.
+   */
   will-change: transform, opacity;
-  transform: translateZ(0);
+  transform: translate3d(0, 0, 0);
 
-  /* ── LAYOUT ISOLATION (prevents recalc bleed) ── */
   contain: layout style paint;
 
-  /* ── TRANSFORM-BASED ANIMATION ONLY (no layout props) ── */
+  /*
+   * Deliberately softer than the previous animation.
+   * The header should feel like it is being dismissed,
+   * not physically thrown away.
+   */
   transition:
-    transform 0.28s cubic-bezier(0.4, 0, 1, 1),
-    opacity 0.22s ease-out,
-    background-color 0.3s ease;   /* smooth dark/light switch */
+    transform 0.36s cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 0.24s ease,
+    background-color 0.3s ease;
+
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
 }
 
 @media (prefers-color-scheme: dark) {
-  .logo-header { background: var(--color-bg-dark); }
+  .logo-header {
+    background: var(--color-bg-dark);
+  }
 }
 
+/* ────────────────────────────────────────────────────────────────
+   LOGO
+──────────────────────────────────────────────────────────────── */
 .logo-header img {
-  height: 58px;
+  height: 54px;
   width: auto;
+
   object-fit: contain;
+
   position: absolute;
   left: 14px;
+  top: 50%;
+
+  /*
+   * Center the logo independently from the header.
+   * This prevents the logo from visually drifting while
+   * the header itself transitions.
+   */
+  transform: translate3d(0, -50%, 0);
+
+  will-change: transform, opacity;
+
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+
+  transition:
+    opacity 0.2s ease,
+    transform 0.36s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-/* ── COLLAPSED: transform-only (zero layout cost) ── */
+/* ────────────────────────────────────────────────────────────────
+   COLLAPSED
+   Soft upward dismissal — no bounce, no overshoot.
+──────────────────────────────────────────────────────────────── */
 .logo-header.collapsed {
-  transform: translateY(-100%) translateZ(0);
+  transform: translate3d(0, -100%, 0);
   opacity: 0;
   pointer-events: none;
+}
+
+/*
+ * Fade the logo slightly faster than the header.
+ * This removes the "logo flying away" effect.
+ */
+.logo-header.collapsed img {
+  transform: translate3d(0, -48%, 0);
+  opacity: 0;
 }
 
 /* ────────────────────────────────────────────────────────────────
@@ -57,37 +104,66 @@
   position: absolute;
   right: 14px;
   top: 50%;
-  transform: translateY(-50%);
+
+  transform: translate3d(0, -50%, 0);
+
   border: none;
-  background: none;
+  background: transparent;
+
   cursor: pointer;
+
   display: flex;
   flex-direction: column;
   justify-content: center;
   align-items: flex-end;
+
   gap: 5.5px;
+
   width: 40px;
   height: 40px;
   padding: 8px;
+
   border-radius: 10px;
-  transition: background 0.15s ease;
+
+  transition:
+    background-color 0.16s ease,
+    opacity 0.16s ease;
 }
 
 .hamburger-btn span {
   display: block;
+
   height: 1.5px;
   border-radius: 99px;
+
   background: var(--color-text);
+
+  transition:
+    width 0.16s ease,
+    opacity 0.16s ease;
 }
 
-.hamburger-btn span:nth-child(1) { width: 22px; }
-.hamburger-btn span:nth-child(2) { width: 15px; }
-.hamburger-btn span:nth-child(3) { width: 22px; }
+.hamburger-btn span:nth-child(1) {
+  width: 22px;
+}
 
-.hamburger-btn:active { background: var(--color-press-light); }
+.hamburger-btn span:nth-child(2) {
+  width: 15px;
+}
+
+.hamburger-btn span:nth-child(3) {
+  width: 22px;
+}
+
+.hamburger-btn:active {
+  background: var(--color-press-light);
+  opacity: 0.72;
+}
 
 @media (prefers-color-scheme: dark) {
-  .hamburger-btn span { background: var(--color-text-dark-alt); }
+  .hamburger-btn span {
+    background: var(--color-text-dark-alt);
+  }
 }
 
 /* ────────────────────────────────────────────────────────────────
@@ -95,52 +171,100 @@
 ──────────────────────────────────────────────────────────────── */
 .dots-btn {
   display: none;
+
   position: absolute;
   left: 14px;
   top: 50%;
-  transform: translateY(-50%);
+
+  transform: translate3d(0, -50%, 0);
+
   border: none;
-  background: none;
+  background: transparent;
+
   cursor: pointer;
+
   grid-template-columns: repeat(3, 4px);
   gap: 4px;
+
   align-content: center;
   justify-content: center;
+
   width: 40px;
   height: 40px;
+
   border-radius: 12px;
-  transition: background 0.15s ease;
+
+  transition:
+    background-color 0.16s ease,
+    opacity 0.16s ease;
 }
 
 .dots-btn span {
   display: block;
+
   width: 4px;
   height: 4px;
+
   border-radius: 50%;
+
   background: var(--color-text);
-  transition: background 0.2s ease;
+
+  transition:
+    background-color 0.18s ease,
+    transform 0.18s ease;
 }
 
-.dots-btn:active      { background: var(--color-press-light); }
-.dots-btn:active span { background: var(--color-primary); }
+.dots-btn:active {
+  background: var(--color-press-light);
+  opacity: 0.72;
+}
+
+.dots-btn:active span {
+  background: var(--color-primary);
+}
 
 @media (prefers-color-scheme: dark) {
-  .dots-btn span { background: var(--color-text-dark-alt); }
+  .dots-btn span {
+    background: var(--color-text-dark-alt);
+  }
 }
 
 /* ────────────────────────────────────────────────────────────────
-   TAB BAR (smooth hide/show — transform only)
+   TAB BAR
+   Smooth hide/show — transform only.
 ──────────────────────────────────────────────────────────────── */
 .tab-bar {
   will-change: transform;
-  transform: translateZ(0);
+
+  transform: translate3d(0, 0, 0);
+
   contain: layout style paint;
+
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+
   transition:
-    transform 0.28s cubic-bezier(0.4, 0, 1, 1),
+    transform 0.36s cubic-bezier(0.22, 1, 0.36, 1),
     background-color 0.3s ease,
     border-color 0.3s ease;
 }
 
 .tab-bar.hide {
-  transform: translateY(-100%) translateZ(0);
+  transform: translate3d(0, -100%, 0);
+}
+
+/* ────────────────────────────────────────────────────────────────
+   REDUCED MOTION
+   Respect system accessibility preferences.
+──────────────────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .logo-header,
+  .logo-header img,
+  .tab-bar,
+  .hamburger-btn,
+  .dots-btn,
+  .hamburger-btn span,
+  .dots-btn span {
+    transition: none !important;
+  }
 }

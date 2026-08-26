@@ -1,15 +1,15 @@
 /* ════════════════════════════════════════════════════════════════
    typography.css — Bot Bubble Rich Text
-   Professional AI Chat Typography
-   ChatGPT / Gemini inspired
-   Headings · Paragraphs · Lists · Links · Code · Tables · HR
+   Production AI Chat Typography
+   Headings · Paragraphs · Lists · Links · Code · Tables
+   Blockquotes · HR · Tasks · Mark · KBD · Images · Details
 ════════════════════════════════════════════════════════════════ */
 
 
-/* ────────────────────────────────────────────────────────────────
+/* ════════════════════════════════════════════════════════════════
    PARAGRAPHS
-   UNCHANGED
-──────────────────────────────────────────────────────────────── */
+   EXISTING BEHAVIOR PRESERVED
+════════════════════════════════════════════════════════════════ */
 
 .msg.bot .bubble p {
   margin: 0 0 11px;
@@ -21,10 +21,25 @@
 }
 
 
-/* ────────────────────────────────────────────────────────────────
+/* ════════════════════════════════════════════════════════════════
    HEADINGS
-   UNCHANGED
-──────────────────────────────────────────────────────────────── */
+════════════════════════════════════════════════════════════════ */
+
+.msg.bot .bubble h1 {
+  font-size: 1.22rem;
+  line-height: 1.35;
+  font-weight: 720;
+  margin: 20px 0 8px;
+  letter-spacing: -0.018em;
+}
+
+.msg.bot .bubble h2 {
+  font-size: 1.14rem;
+  line-height: 1.38;
+  font-weight: 710;
+  margin: 19px 0 8px;
+  letter-spacing: -0.015em;
+}
 
 .msg.bot .bubble h3 {
   font-size: 1.08rem;
@@ -50,6 +65,8 @@
   color: var(--color-text-muted);
 }
 
+.msg.bot .bubble h1:first-child,
+.msg.bot .bubble h2:first-child,
 .msg.bot .bubble h3:first-child,
 .msg.bot .bubble h4:first-child,
 .msg.bot .bubble h5:first-child {
@@ -57,6 +74,8 @@
 }
 
 @media (prefers-color-scheme: dark) {
+  .msg.bot .bubble h1,
+  .msg.bot .bubble h2,
   .msg.bot .bubble h3,
   .msg.bot .bubble h4 {
     color: var(--color-text-dark);
@@ -70,14 +89,7 @@
 
 /* ════════════════════════════════════════════════════════════════
    LIST SYSTEM
-   Professional restrained markers
 ════════════════════════════════════════════════════════════════ */
-
-
-/* ────────────────────────────────────────────────────────────────
-   GLOBAL LIST RESET
-   UNCHANGED
-──────────────────────────────────────────────────────────────── */
 
 .msg.bot .bubble ul,
 .msg.bot .bubble ol {
@@ -96,12 +108,6 @@
   margin-left: 0;
 }
 
-
-/* ────────────────────────────────────────────────────────────────
-   TOP-LEVEL BULLET
-   Only marker styling refined.
-──────────────────────────────────────────────────────────────── */
-
 .msg.bot .bubble ul > li {
   position: relative;
   padding-left: 20px;
@@ -110,12 +116,8 @@
 }
 
 
-/*
- * Refined hollow-point marker.
- *
- * Smaller and lighter than a standard bullet.
- * Uses currentColor so it remains theme-aware.
- */
+/* Professional hollow marker */
+
 .msg.bot .bubble ul > li::before {
   content: "";
 
@@ -133,13 +135,12 @@
   border-radius: 50%;
 
   color: var(--color-text-muted);
-
   opacity: 0.82;
 }
 
 
 /* ────────────────────────────────────────────────────────────────
-   NESTED UNORDERED LIST
+   NESTED UNORDERED
 ──────────────────────────────────────────────────────────────── */
 
 .msg.bot .bubble li > ul {
@@ -152,7 +153,6 @@
   padding-left: 18px !important;
 }
 
-
 .msg.bot .bubble li > ul > li {
   position: relative;
 
@@ -163,11 +163,6 @@
   line-height: 1.56;
 }
 
-
-/*
- * Nested marker:
- * slightly smaller + quieter than parent marker.
- */
 .msg.bot .bubble li > ul > li::before {
   content: "";
 
@@ -185,14 +180,12 @@
   border-radius: 50%;
 
   color: var(--color-text-muted);
-
   opacity: 0.68;
 }
 
 
 /* ────────────────────────────────────────────────────────────────
    DEEP NESTING
-   Layout unchanged.
 ──────────────────────────────────────────────────────────────── */
 
 .msg.bot .bubble li > ul > li > ul,
@@ -206,27 +199,8 @@
 }
 
 
-/* ────────────────────────────────────────────────────────────────
-   DARK MODE — LIST MARKERS
-──────────────────────────────────────────────────────────────── */
-
-@media (prefers-color-scheme: dark) {
-
-  .msg.bot .bubble ul > li::before {
-    color: var(--color-text-dark-muted);
-    opacity: 0.82;
-  }
-
-  .msg.bot .bubble li > ul > li::before {
-    color: var(--color-text-dark-muted);
-    opacity: 0.68;
-  }
-}
-
-
 /* ════════════════════════════════════════════════════════════════
    ORDERED LIST
-   UNCHANGED
 ════════════════════════════════════════════════════════════════ */
 
 .msg.bot .bubble ol {
@@ -242,8 +216,6 @@
   line-height: 1.6;
 }
 
-
-/* Nested ordered list */
 .msg.bot .bubble li > ol {
   margin-top: 5px;
   margin-bottom: 6px;
@@ -259,8 +231,72 @@
 
 
 /* ════════════════════════════════════════════════════════════════
+   TASK / CHECK LISTS
+   Supports common Markdown checkbox renderers.
+════════════════════════════════════════════════════════════════ */
+
+.msg.bot .bubble li.task-list-item,
+.msg.bot .bubble li:has(> input[type="checkbox"]) {
+  padding-left: 24px;
+}
+
+.msg.bot .bubble li.task-list-item::before,
+.msg.bot .bubble li:has(> input[type="checkbox"])::before {
+  display: none;
+}
+
+.msg.bot .bubble input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+
+  width: 15px;
+  height: 15px;
+
+  margin: 0 7px 0 0;
+
+  vertical-align: -2px;
+
+  border: 1px solid rgba(0, 0, 0, 0.24);
+  border-radius: 4px;
+
+  background: transparent;
+
+  position: relative;
+
+  cursor: default;
+}
+
+.msg.bot .bubble input[type="checkbox"]:checked {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+}
+
+.msg.bot .bubble input[type="checkbox"]:checked::after {
+  content: "";
+
+  position: absolute;
+
+  width: 4px;
+  height: 8px;
+
+  left: 5px;
+  top: 2px;
+
+  border-right: 1.6px solid #fff;
+  border-bottom: 1.6px solid #fff;
+
+  transform: rotate(45deg);
+}
+
+@media (prefers-color-scheme: dark) {
+  .msg.bot .bubble input[type="checkbox"] {
+    border-color: rgba(255, 255, 255, 0.25);
+  }
+}
+
+
+/* ════════════════════════════════════════════════════════════════
    LIST + PARAGRAPH INTERACTION
-   UNCHANGED
 ════════════════════════════════════════════════════════════════ */
 
 .msg.bot .bubble li > p {
@@ -274,8 +310,7 @@
 
 
 /* ════════════════════════════════════════════════════════════════
-   STRONG / EMPHASIS
-   UNCHANGED
+   STRONG / EMPHASIS / DELETION
 ════════════════════════════════════════════════════════════════ */
 
 .msg.bot .bubble strong {
@@ -286,10 +321,16 @@
   font-style: italic;
 }
 
+.msg.bot .bubble del,
+.msg.bot .bubble s {
+  text-decoration-thickness: 1px;
+  text-decoration-color: currentColor;
+  opacity: 0.72;
+}
+
 
 /* ════════════════════════════════════════════════════════════════
    LINKS
-   UNCHANGED
 ════════════════════════════════════════════════════════════════ */
 
 .msg.bot .bubble a {
@@ -322,7 +363,6 @@
 
 /* ════════════════════════════════════════════════════════════════
    INLINE CODE
-   UNCHANGED
 ════════════════════════════════════════════════════════════════ */
 
 .msg.bot .bubble code:not(.code-block code) {
@@ -356,30 +396,67 @@
 
 
 /* ════════════════════════════════════════════════════════════════
-   HORIZONTAL RULE
-   Cleaner professional divider
+   CODE BLOCKS
+   Works with existing .code-block renderer.
+════════════════════════════════════════════════════════════════ */
+
+.msg.bot .bubble pre {
+  margin: 15px 0;
+
+  max-width: 100%;
+
+  overflow-x: auto;
+  overflow-y: hidden;
+
+  -webkit-overflow-scrolling: touch;
+
+  border-radius: 10px;
+
+  line-height: 1.55;
+}
+
+.msg.bot .bubble pre code {
+  font-family:
+    'JetBrains Mono',
+    'SFMono-Regular',
+    'SF Mono',
+    Menlo,
+    Consolas,
+    monospace;
+
+  font-size: 0.82rem;
+
+  white-space: pre;
+
+  tab-size: 2;
+}
+
+
+/* ════════════════════════════════════════════════════════════════
+   HORIZONTAL DIVIDER
+   Retina-friendly professional hairline.
 ════════════════════════════════════════════════════════════════ */
 
 .msg.bot .bubble hr.md-hr {
   border: 0;
 
-  height: 1px;
+  height: 0.5px;
+  min-height: 0.5px;
 
-  background: rgba(0, 0, 0, 0.075);
+  background: rgba(0, 0, 0, 0.11);
 
   margin: 20px 0;
 }
 
 @media (prefers-color-scheme: dark) {
   .msg.bot .bubble hr.md-hr {
-    background: rgba(255, 255, 255, 0.085);
+    background: rgba(255, 255, 255, 0.12);
   }
 }
 
 
 /* ════════════════════════════════════════════════════════════════
    BLOCKQUOTE
-   UNCHANGED
 ════════════════════════════════════════════════════════════════ */
 
 .msg.bot .bubble blockquote {
@@ -387,7 +464,7 @@
 
   padding: 2px 0 2px 13px;
 
-  border-left: 3px solid var(--color-text-muted);
+  border-left: 2px solid var(--color-text-muted);
 
   color: var(--color-text-muted);
 }
@@ -402,7 +479,6 @@
 
 /* ════════════════════════════════════════════════════════════════
    TABLES
-   UNCHANGED
 ════════════════════════════════════════════════════════════════ */
 
 .msg.bot .bubble table {
@@ -430,6 +506,10 @@
   font-weight: 650;
 }
 
+.msg.bot .bubble tbody tr:last-child td {
+  border-bottom: 0;
+}
+
 @media (prefers-color-scheme: dark) {
   .msg.bot .bubble th,
   .msg.bot .bubble td {
@@ -439,7 +519,181 @@
 
 
 /* ════════════════════════════════════════════════════════════════
+   MARK / HIGHLIGHT
+════════════════════════════════════════════════════════════════ */
+
+.msg.bot .bubble mark {
+  background: rgba(255, 214, 10, 0.28);
+
+  color: inherit;
+
+  padding: 1px 3px;
+
+  border-radius: 3px;
+}
+
+
+/* ════════════════════════════════════════════════════════════════
+   KEYBOARD KEY
+════════════════════════════════════════════════════════════════ */
+
+.msg.bot .bubble kbd {
+  display: inline-block;
+
+  font-family:
+    'SFMono-Regular',
+    'SF Mono',
+    Menlo,
+    Consolas,
+    monospace;
+
+  font-size: 0.78em;
+  line-height: 1;
+
+  padding: 4px 6px;
+
+  border: 1px solid rgba(0, 0, 0, 0.16);
+
+  border-bottom-width: 2px;
+
+  border-radius: 5px;
+
+  background: var(--color-bg-alt);
+
+  color: var(--color-text);
+
+  white-space: nowrap;
+}
+
+@media (prefers-color-scheme: dark) {
+  .msg.bot .bubble kbd {
+    border-color: rgba(255, 255, 255, 0.16);
+    background: var(--color-press-dark-md);
+    color: var(--color-text-dark);
+  }
+}
+
+
+/* ════════════════════════════════════════════════════════════════
+   SUPERSCRIPT / SUBSCRIPT
+════════════════════════════════════════════════════════════════ */
+
+.msg.bot .bubble sup,
+.msg.bot .bubble sub {
+  font-size: 0.72em;
+  line-height: 0;
+}
+
+.msg.bot .bubble sup {
+  vertical-align: super;
+}
+
+.msg.bot .bubble sub {
+  vertical-align: sub;
+}
+
+
+/* ════════════════════════════════════════════════════════════════
+   IMAGES
+   Never distort source aspect ratio.
+════════════════════════════════════════════════════════════════ */
+
+.msg.bot .bubble img {
+  max-width: 100%;
+  height: auto;
+
+  display: block;
+
+  border-radius: 8px;
+}
+
+.msg.bot .bubble p > img,
+.msg.bot .bubble figure > img {
+  margin: 12px 0;
+}
+
+
+/* ════════════════════════════════════════════════════════════════
+   FIGURE / CAPTION
+════════════════════════════════════════════════════════════════ */
+
+.msg.bot .bubble figure {
+  margin: 14px 0;
+}
+
+.msg.bot .bubble figcaption {
+  margin-top: 6px;
+
+  font-size: 0.82rem;
+  line-height: 1.45;
+
+  color: var(--color-text-muted);
+}
+
+
+/* ════════════════════════════════════════════════════════════════
+   DETAILS / SUMMARY
+════════════════════════════════════════════════════════════════ */
+
+.msg.bot .bubble details {
+  margin: 12px 0;
+}
+
+.msg.bot .bubble summary {
+  cursor: pointer;
+
+  font-weight: 600;
+
+  list-style: none;
+
+  user-select: none;
+}
+
+.msg.bot .bubble summary::-webkit-details-marker {
+  display: none;
+}
+
+.msg.bot .bubble summary::before {
+  content: "›";
+
+  display: inline-block;
+
+  margin-right: 7px;
+
+  font-size: 1.1em;
+
+  transform: rotate(0deg);
+
+  transition: transform 0.15s ease;
+}
+
+.msg.bot .bubble details[open] > summary::before {
+  transform: rotate(90deg);
+}
+
+
+/* ════════════════════════════════════════════════════════════════
+   DEFINITION LIST
+════════════════════════════════════════════════════════════════ */
+
+.msg.bot .bubble dl {
+  margin: 12px 0;
+}
+
+.msg.bot .bubble dt {
+  font-weight: 680;
+  margin-top: 9px;
+}
+
+.msg.bot .bubble dd {
+  margin: 3px 0 8px 0;
+  color: var(--color-text-muted);
+}
+
+
+/* ════════════════════════════════════════════════════════════════
    MOBILE
+   Existing paragraph rhythm preserved.
 ════════════════════════════════════════════════════════════════ */
 
 @media (max-width: 600px) {
@@ -450,7 +704,16 @@
   }
 
 
-  /* Headings */
+  .msg.bot .bubble h1 {
+    font-size: 1.18rem;
+    margin-top: 18px;
+  }
+
+  .msg.bot .bubble h2 {
+    font-size: 1.12rem;
+    margin-top: 18px;
+  }
+
   .msg.bot .bubble h3 {
     font-size: 1.06rem;
     line-height: 1.4;
@@ -471,9 +734,6 @@
     padding-left: 20px;
     margin: 5px 0;
   }
-
-
-  /* Refined top-level marker */
 
   .msg.bot .bubble ul > li::before {
     width: 5px;
@@ -499,9 +759,6 @@
     padding-left: 18px !important;
     margin: 5px 0;
   }
-
-
-  /* Refined nested marker */
 
   .msg.bot .bubble li > ul > li::before {
     width: 4.5px;
@@ -533,4 +790,31 @@
     margin-left: 0 !important;
     padding-left: 19px !important;
   }
-}
+
+
+  /* Code */
+
+  .msg.bot .bubble pre {
+    margin: 13px 0;
+
+    border-radius: 9px;
+  }
+
+  .msg.bot .bubble pre code {
+    font-size: 0.78rem;
+  }
+
+
+  /* Tables */
+
+  .msg.bot .bubble table {
+    min-width: 520px;
+  }
+
+
+  /* Images */
+
+  .msg.bot .bubble img {
+    max-width: 100%;
+  }
+   }

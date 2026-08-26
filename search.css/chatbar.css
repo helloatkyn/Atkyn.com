@@ -1,6 +1,6 @@
 /* ════════════════════════════════════════════════════════════════
-   chatbar.css — Minimal Professional Chatbar
-   Pill · Borderless · Shadowless · Clean
+   chatbar.css — Premium Floating Chatbar
+   Clean · Floating · Borderless · Shadowless
 ════════════════════════════════════════════════════════════════ */
 
 /* ────────────────────────────────────────────────────────────────
@@ -8,12 +8,19 @@
 ──────────────────────────────────────────────────────────────── */
 .chatbar-wrap {
   flex-shrink: 0;
-  padding: 8px 16px calc(12px + env(safe-area-inset-bottom));
+
+  padding:
+    10px
+    16px
+    calc(14px + env(safe-area-inset-bottom));
+
   position: relative;
   z-index: 10;
-  will-change: transform;
-  transform: translateZ(0);
+
   background: #ffffff;
+
+  will-change: transform;
+  transform: translate3d(0, 0, 0);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -23,16 +30,15 @@
 }
 
 /* ────────────────────────────────────────────────────────────────
-   PILL
-   Keep the original pill shape.
-   No outline · No border · No shadow.
+   FLOATING PILL
 ──────────────────────────────────────────────────────────────── */
 .overlay-pill {
   width: 100%;
+
   display: flex;
   align-items: center;
 
-  background: #f7f7f8;
+  background: #f8f8f8;
 
   border: none;
   outline: none;
@@ -40,18 +46,28 @@
   border-radius: 100px;
 
   padding: 0 18px 0 20px;
+
   height: 66px;
+
   gap: 12px;
 
   box-shadow: none;
 
+  /*
+   * Subtle lift without a visible shadow.
+   * The contrast against the page creates the floating effect.
+   */
+  transform: translate3d(0, -1px, 0);
+
   transition:
     background-color 0.18s ease,
-    opacity 0.18s ease;
+    transform 0.18s ease;
 }
 
 .overlay-pill:focus-within {
   background: #f5f5f6;
+  transform: translate3d(0, -1.5px, 0);
+
   border: none;
   outline: none;
   box-shadow: none;
@@ -59,22 +75,16 @@
 
 @media (prefers-color-scheme: dark) {
   .overlay-pill {
-    background: #363737;
-    border: none;
-    outline: none;
-    box-shadow: none;
+    background: #343535;
   }
 
   .overlay-pill:focus-within {
-    background: #393a3a;
-    border: none;
-    outline: none;
-    box-shadow: none;
+    background: #383939;
   }
 }
 
 /* ────────────────────────────────────────────────────────────────
-   PLUS / ATTACH BUTTON
+   PLUS / ATTACH
 ──────────────────────────────────────────────────────────────── */
 .ico-plus {
   flex-shrink: 0;
@@ -82,6 +92,9 @@
   display: flex;
   align-items: center;
   justify-content: center;
+
+  width: 32px;
+  height: 32px;
 
   border: none;
   background: transparent;
@@ -91,11 +104,10 @@
   padding: 4px;
   border-radius: 50%;
 
-  color: rgba(0, 0, 0, 0.72);
+  color: rgba(0, 0, 0, 0.70);
 
   transition:
     background-color 0.14s ease,
-    opacity 0.14s ease,
     transform 0.14s ease;
 }
 
@@ -105,17 +117,17 @@
 }
 
 .ico-plus svg {
-  width: 24px;
-  height: 24px;
+  width: 23px;
+  height: 23px;
 }
 
 @media (prefers-color-scheme: dark) {
   .ico-plus {
-    color: rgba(255, 255, 255, 0.58);
+    color: rgba(255, 255, 255, 0.60);
   }
 
   .ico-plus:active {
-    background: rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.075);
   }
 }
 
@@ -124,7 +136,9 @@
 ──────────────────────────────────────────────────────────────── */
 .overlay-input-wrap {
   flex: 1;
+
   position: relative;
+
   height: 100%;
 
   display: flex;
@@ -156,14 +170,13 @@
 
   caret-color: var(--color-primary);
 
-  letter-spacing: 0.01em;
+  letter-spacing: 0.005em;
 }
 
 .search-input::placeholder {
   color: transparent;
 }
 
-/* Hide browser default search X button */
 .search-input::-webkit-search-cancel-button,
 .search-input::-webkit-search-decoration,
 .search-input::-webkit-search-results-button,
@@ -180,7 +193,7 @@
 }
 
 /* ────────────────────────────────────────────────────────────────
-   ANIMATED SHIMMER PLACEHOLDER
+   SHIMMER PLACEHOLDER
 ──────────────────────────────────────────────────────────────── */
 .shimmer-overlay {
   position: absolute;
@@ -190,6 +203,7 @@
   align-items: center;
 
   pointer-events: none;
+
   z-index: 1;
 
   overflow: hidden;
@@ -200,7 +214,8 @@
   font-weight: 500;
 
   white-space: nowrap;
-  letter-spacing: 0.01em;
+
+  letter-spacing: 0.005em;
 
   background: linear-gradient(
     90deg,
@@ -236,28 +251,30 @@
 }
 
 /* ────────────────────────────────────────────────────────────────
-   CAMERA BUTTON
+   CAMERA
 ──────────────────────────────────────────────────────────────── */
 .ico-camera {
   flex-shrink: 0;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  width: 32px;
+  height: 32px;
 
   border: none;
   background: transparent;
 
   cursor: pointer;
 
-  display: flex;
-  align-items: center;
-  justify-content: center;
-
   padding: 4px;
   border-radius: 50%;
 
-  color: rgba(0, 0, 0, 0.72);
+  color: rgba(0, 0, 0, 0.70);
 
   transition:
     background-color 0.14s ease,
-    opacity 0.14s ease,
     transform 0.14s ease;
 }
 
@@ -267,22 +284,22 @@
 }
 
 .ico-camera svg {
-  width: 24px;
-  height: 24px;
+  width: 23px;
+  height: 23px;
 }
 
 @media (prefers-color-scheme: dark) {
   .ico-camera {
-    color: rgba(255, 255, 255, 0.58);
+    color: rgba(255, 255, 255, 0.60);
   }
 
   .ico-camera:active {
-    background: rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.075);
   }
 }
 
 /* ────────────────────────────────────────────────────────────────
-   SEND BUTTON
+   SEND
 ──────────────────────────────────────────────────────────────── */
 .send-btn {
   flex-shrink: 0;
@@ -295,6 +312,7 @@
   height: 40px;
 
   border-radius: 50%;
+
   border: none;
 
   background: var(--color-primary);
@@ -303,8 +321,7 @@
 
   transition:
     transform 0.15s ease,
-    opacity 0.15s ease,
-    background-color 0.15s ease;
+    opacity 0.15s ease;
 }
 
 .send-btn:active {
@@ -320,7 +337,6 @@
   height: 17px;
 }
 
-/* Toggle camera ↔ send */
 .overlay-pill.has-text .ico-camera {
   display: none;
 }
@@ -330,14 +346,14 @@
 }
 
 /* ────────────────────────────────────────────────────────────────
-   CROSS MODE — NON-AI TABS
+   CROSS MODE
 ──────────────────────────────────────────────────────────────── */
 .send-btn.cross-mode {
   background: rgba(0, 0, 0, 0.07);
 }
 
 .send-btn.cross-mode svg {
-  stroke: rgba(0, 0, 0, 0.6);
+  stroke: rgba(0, 0, 0, 0.60);
   width: 18px;
   height: 18px;
 }
@@ -348,14 +364,15 @@
   }
 
   .send-btn.cross-mode svg {
-    stroke: rgba(255, 255, 255, 0.7);
+    stroke: rgba(255, 255, 255, 0.70);
   }
 }
 
-/* ────────────────────────────────────────────────────────────────
-   PLUS MENU — PREMIUM FLOATING SHEET
-   No shadow · No heavy outline
-──────────────────────────────────────────────────────────────── */
+/* ════════════════════════════════════════════════════════════════
+   PLUS MENU
+   Premium command sheet · No shadow · No outline
+════════════════════════════════════════════════════════════════ */
+
 .plus-menu-backdrop {
   position: fixed;
   inset: 0;
@@ -363,28 +380,37 @@
   z-index: 100;
 
   display: none;
+
+  background: transparent;
 }
 
 .plus-menu-backdrop.open {
   display: block;
 }
 
+/* ────────────────────────────────────────────────────────────────
+   MENU CONTAINER
+──────────────────────────────────────────────────────────────── */
 .plus-menu {
   position: fixed;
 
-  left: 20px;
-  bottom: calc(90px + env(safe-area-inset-bottom));
+  left: 16px;
 
-  width: 220px;
+  bottom:
+    calc(88px + env(safe-area-inset-bottom));
 
-  background: var(--color-glass-bg);
+  width: 232px;
 
-  -webkit-backdrop-filter: blur(28px) saturate(1.6);
-  backdrop-filter: blur(28px) saturate(1.6);
+  padding: 6px;
 
-  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.97);
+
+  -webkit-backdrop-filter: blur(22px) saturate(1.4);
+  backdrop-filter: blur(22px) saturate(1.4);
 
   border: none;
+
+  border-radius: 18px;
 
   box-shadow: none;
 
@@ -392,66 +418,82 @@
 
   z-index: 101;
 
-  transform: translate3d(0, 7px, 0) scale(0.98);
+  transform:
+    translate3d(0, 8px, 0)
+    scale(0.96);
 
   transform-origin: bottom left;
 
   opacity: 0;
+
   pointer-events: none;
 
   transition:
-    transform 0.2s cubic-bezier(0.22, 1, 0.36, 1),
-    opacity 0.14s ease;
+    transform 0.22s cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 0.15s ease;
 }
 
 .plus-menu.open {
-  transform: translate3d(0, 0, 0) scale(1);
+  transform:
+    translate3d(0, 0, 0)
+    scale(1);
+
   opacity: 1;
+
   pointer-events: auto;
 }
 
 @media (prefers-color-scheme: dark) {
   .plus-menu {
-    background: #363737;
+    background: rgba(48, 49, 49, 0.98);
     border: none;
     box-shadow: none;
   }
 }
 
 /* ────────────────────────────────────────────────────────────────
-   PLUS MENU ITEMS
+   MENU ITEMS
 ──────────────────────────────────────────────────────────────── */
 .pm-item {
   display: flex;
   align-items: center;
 
-  gap: 12px;
+  width: 100%;
+  min-height: 46px;
 
-  padding: 14px 18px;
+  gap: 13px;
+
+  padding: 9px 12px;
 
   cursor: pointer;
 
   border: none;
+
   background: transparent;
 
-  width: 100%;
+  border-radius: 12px;
 
   text-align: left;
 
   color: var(--color-text);
 
-  font-size: 0.92rem;
+  font-size: 0.91rem;
+
   font-weight: 600;
 
-  letter-spacing: 0.005em;
+  letter-spacing: -0.005em;
 
   transition:
-    background-color 0.12s ease,
-    opacity 0.12s ease;
+    background-color 0.13s ease,
+    opacity 0.13s ease;
+}
+
+.pm-item:hover {
+  background: rgba(0, 0, 0, 0.045);
 }
 
 .pm-item:active {
-  background: var(--color-press-light-sm);
+  background: rgba(0, 0, 0, 0.075);
   opacity: 0.72;
 }
 
@@ -460,36 +502,66 @@
     color: var(--color-text-dark);
   }
 
+  .pm-item:hover {
+    background: rgba(255, 255, 255, 0.055);
+  }
+
   .pm-item:active {
-    background: var(--color-press-dark);
+    background: rgba(255, 255, 255, 0.085);
   }
 }
 
 /* ────────────────────────────────────────────────────────────────
-   PLUS MENU ICON
+   MENU ICON
 ──────────────────────────────────────────────────────────────── */
 .pm-icon {
   flex-shrink: 0;
 
-  width: 20px;
-  height: 20px;
-
-  background: transparent;
+  width: 30px;
+  height: 30px;
 
   display: flex;
   align-items: center;
   justify-content: center;
+
+  background: rgba(0, 0, 0, 0.045);
+
+  border-radius: 9px;
 }
 
 .pm-icon svg {
-  width: 18px;
-  height: 18px;
+  width: 17px;
+  height: 17px;
 
   stroke: var(--color-icon-stroke);
+
+  stroke-width: 1.8;
 }
 
 @media (prefers-color-scheme: dark) {
+  .pm-icon {
+    background: rgba(255, 255, 255, 0.07);
+  }
+
   .pm-icon svg {
     stroke: var(--color-icon-dark);
   }
 }
+
+/* ────────────────────────────────────────────────────────────────
+   ACCESSIBILITY
+──────────────────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .overlay-pill,
+  .plus-menu,
+  .ico-plus,
+  .ico-camera,
+  .send-btn,
+  .pm-item {
+    transition: none !important;
+  }
+
+  .shimmer-overlay span {
+    animation: none !important;
+  }
+   }

@@ -1,241 +1,232 @@
 /* ════════════════════════════════════════════════════════════════
-   base.css — Reset · Body · Scroll Host
-   Production UI Foundation · Google Sans Flex
+base.css — Reset · Body · Scroll Host
+Production UI Foundation · Nunito
 ════════════════════════════════════════════════════════════════ */
 
-
 /* ────────────────────────────────────────────────────────────────
-   FONT
-   Google Sans Flex: 100 / 200 / 300 / 400 / 500 / 600 / 700 / 800 / 900
+FONT
+Nunito: 400 / 500 / 600 / 700 / 800
 ──────────────────────────────────────────────────────────────── */
 
 @import url(
-  'https://fonts.googleapis.com/css2?family=Google+Sans+Flex:wght@100..900&display=swap'
+'https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&display=swap'
 );
 
-
 /* ────────────────────────────────────────────────────────────────
-   ROOT
+ROOT
 ──────────────────────────────────────────────────────────────── */
 
 html {
-  height: 100%;
-  width: 100%;
+height: 100%;
+width: 100%;
 
-  font-family:
-    'Google Sans Flex',
-    -apple-system,
-    BlinkMacSystemFont,
-    'Segoe UI',
-    sans-serif;
+font-family:
+'Nunito',
+-apple-system,
+BlinkMacSystemFont,
+'Segoe UI',
+sans-serif;
 
-  -webkit-text-size-adjust: 100%;
-  text-size-adjust: 100%;
+-webkit-text-size-adjust: 100%;
+text-size-adjust: 100%;
 
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+-webkit-font-smoothing: antialiased;
+-moz-osx-font-smoothing: grayscale;
 
-  text-rendering: optimizeLegibility;
+text-rendering: optimizeLegibility;
 }
 
-
 /* ────────────────────────────────────────────────────────────────
-   UNIVERSAL RESET
+UNIVERSAL RESET
 ──────────────────────────────────────────────────────────────── */
 
 *,
 *::before,
 *::after {
-  box-sizing: border-box;
+box-sizing: border-box;
 
-  margin: 0;
-  padding: 0;
+margin: 0;
+padding: 0;
 
-  font-family: inherit;
+font-family: inherit;
 
-  -webkit-tap-highlight-color: transparent;
+-webkit-tap-highlight-color: transparent;
 }
 
-
 /* ────────────────────────────────────────────────────────────────
-   FORM CONTROLS
-   Explicitly inherit Google Sans Flex from the document.
+FORM CONTROLS
+Explicitly inherit Nunito from the document.
 ──────────────────────────────────────────────────────────────── */
 
 button,
 input,
 textarea,
 select {
-  font: inherit;
+font: inherit;
 }
 
-
 /* ────────────────────────────────────────────────────────────────
-   BODY
+BODY
 ──────────────────────────────────────────────────────────────── */
 
 body {
-  position: fixed;
+position: fixed;
 
-  inset: 0;
+inset: 0;
 
-  width: 100%;
-  height: 100%;
+width: 100%;
+height: 100%;
 
-  overflow: hidden;
+overflow: hidden;
 
-  overscroll-behavior: none;
+overscroll-behavior: none;
 
-  background: var(--color-bg);
-  color: var(--color-text);
+background: var(--color-bg);
+color: var(--color-text);
 
-  font-family:
-    'Google Sans Flex',
-    -apple-system,
-    BlinkMacSystemFont,
-    'Segoe UI',
-    sans-serif;
+font-family:
+'Nunito',
+-apple-system,
+BlinkMacSystemFont,
+'Segoe UI',
+sans-serif;
 
-  font-size: 16px;
+font-size: 16px;
 
-  /* Reduced from 500 → 400 for a lighter, cleaner UI */
-  font-weight: 400;
+/* Increased from 400 → 500 for better readability */
+font-weight: 500;
 
-  line-height: 1.5;
+line-height: 1.5;
 
-  letter-spacing: 0;
+letter-spacing: 0;
 
-  display: flex;
-  flex-direction: column;
+display: flex;
+flex-direction: column;
 
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+-webkit-font-smoothing: antialiased;
+-moz-osx-font-smoothing: grayscale;
 
-  text-rendering: optimizeLegibility;
+text-rendering: optimizeLegibility;
 }
 
-
 /* ────────────────────────────────────────────────────────────────
-   DARK MODE
+DARK MODE
 ──────────────────────────────────────────────────────────────── */
 
 @media (prefers-color-scheme: dark) {
 
-  body {
-    background: var(--color-bg-dark);
-    color: var(--color-text-dark);
-  }
+body {
+background: var(--color-bg-dark);
+color: var(--color-text-dark);
+}
 
 }
 
-
 /* ────────────────────────────────────────────────────────────────
-   SELECTION
-   Subtle and professional.
+SELECTION
+Subtle and professional.
 ──────────────────────────────────────────────────────────────── */
 
 ::selection {
-  background: rgba(0, 119, 181, 0.16);
-  color: inherit;
+background: rgba(0, 119, 181, 0.16);
+color: inherit;
 }
 
 ::-moz-selection {
-  background: rgba(0, 119, 181, 0.16);
-  color: inherit;
+background: rgba(0, 119, 181, 0.16);
+color: inherit;
 }
 
-
 /* ────────────────────────────────────────────────────────────────
-   IMAGES / MEDIA
+IMAGES / MEDIA
 ──────────────────────────────────────────────────────────────── */
 
 img,
 svg,
 video,
 canvas {
-  display: block;
+display: block;
 }
 
 img {
-  max-width: 100%;
+max-width: 100%;
 }
 
-
 /* ────────────────────────────────────────────────────────────────
-   BUTTON / LINK DEFAULTS
+BUTTON / LINK DEFAULTS
 ──────────────────────────────────────────────────────────────── */
 
 button {
-  color: inherit;
+color: inherit;
 }
 
 a {
-  color: inherit;
+color: inherit;
+}
+
+/* ────────────────────────────────────────────────────────────────
+SCROLL HOST
+Main content scroll container inside body flex column.
+──────────────────────────────────────────────────────────────── */
+
+.scroll-host {
+flex: 1;
+
+min-height: 0;
+min-width: 0;
+
+width: 100%;
+
+overflow-y: auto;
+overflow-x: hidden;
+
+-webkit-overflow-scrolling: touch;
+
+overscroll-behavior-y: none;
+overscroll-behavior-x: none;
+
+scroll-behavior: auto;
+
+/*
+
+Prevent horizontal content from causing
+
+accidental page-level overflow.
+*/
+contain: layout paint;
 }
 
 
 /* ────────────────────────────────────────────────────────────────
-   SCROLL HOST
-   Main content scroll container inside body flex column.
+SCROLLBAR
 ──────────────────────────────────────────────────────────────── */
 
 .scroll-host {
-  flex: 1;
-
-  min-height: 0;
-  min-width: 0;
-
-  width: 100%;
-
-  overflow-y: auto;
-  overflow-x: hidden;
-
-  -webkit-overflow-scrolling: touch;
-
-  overscroll-behavior-y: none;
-  overscroll-behavior-x: none;
-
-  scroll-behavior: auto;
-
-  /*
-   * Prevent horizontal content from causing
-   * accidental page-level overflow.
-   */
-  contain: layout paint;
-}
-
-
-/* ────────────────────────────────────────────────────────────────
-   SCROLLBAR
-──────────────────────────────────────────────────────────────── */
-
-.scroll-host {
-  scrollbar-width: none;
-  -ms-overflow-style: none;
+scrollbar-width: none;
+-ms-overflow-style: none;
 }
 
 .scroll-host::-webkit-scrollbar {
-  display: none;
-  width: 0;
-  height: 0;
+display: none;
+width: 0;
+height: 0;
 }
 
-
 /* ────────────────────────────────────────────────────────────────
-   REDUCED MOTION
-   Accessibility + smoother low-power devices.
+REDUCED MOTION
+Accessibility + smoother low-power devices.
 ──────────────────────────────────────────────────────────────── */
 
 @media (prefers-reduced-motion: reduce) {
 
-  html {
-    scroll-behavior: auto;
-  }
+html {
+scroll-behavior: auto;
+}
 
-  *,
-  *::before,
-  *::after {
-    scroll-behavior: auto !important;
-  }
+*,
+*::before,
+*::after {
+scroll-behavior: auto !important;
+}
 
 }

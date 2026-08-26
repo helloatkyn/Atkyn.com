@@ -3,6 +3,11 @@
 ════════════════════════════════════════════════════════════════ */
 
 /* ────────────────────────────────────────────────────────────────
+   FONT
+──────────────────────────────────────────────────────────────── */
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&display=swap');
+
+/* ────────────────────────────────────────────────────────────────
    RESET
    Merged into one universal block. font-family: inherit ensures
    buttons/inputs follow the body font without explicit overrides.
@@ -25,12 +30,16 @@ body {
   overscroll-behavior: none;
   background: var(--color-bg);
   color: var(--color-text);
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-family: 'Nunito', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   display: flex;
   flex-direction: column;
 }
+
 @media (prefers-color-scheme: dark) {
-  body { background: var(--color-bg-dark); color: var(--color-text-dark); }
+  body {
+    background: var(--color-bg-dark);
+    color: var(--color-text-dark);
+  }
 }
 
 /* ────────────────────────────────────────────────────────────────
@@ -46,4 +55,7 @@ body {
   overscroll-behavior-y: none;
   scroll-behavior: auto;
 }
-.scroll-host::-webkit-scrollbar { display: none; }
+
+.scroll-host::-webkit-scrollbar {
+  display: none;
+}

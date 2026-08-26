@@ -93,17 +93,18 @@ margin-left: 0;
 
 /* ────────────────────────────────────────────────────────────────
 TOP-LEVEL BULLET
-Compact left alignment
+2px further left
 ──────────────────────────────────────────────────────────────── */
 
 .msg.bot .bubble ul > li {
 position: relative;
-padding-left: 14px;
+padding-left: 12px;
 margin: 6px 0;
 line-height: 1.58;
 }
 
 /*
+
 Refined hollow-point marker.
 */
 
@@ -115,7 +116,7 @@ position: absolute;
 width: 5px;
 height: 5px;
 
-left: 1px;
+left: 0;
 top: 0.72em;
 
 box-sizing: border-box;
@@ -130,7 +131,7 @@ opacity: 0.82;
 
 /* ────────────────────────────────────────────────────────────────
 NESTED UNORDERED LIST
-Compact nested indentation
+2px further left
 ──────────────────────────────────────────────────────────────── */
 
 .msg.bot .bubble li > ul {
@@ -140,7 +141,7 @@ margin-top: 5px;
 margin-bottom: 6px;
 
 margin-left: 0 !important;
-padding-left: 9px !important;
+padding-left: 7px !important;
 }
 
 .msg.bot .bubble li > ul > li {
@@ -148,13 +149,15 @@ position: relative;
 
 margin: 5px 0;
 
-padding-left: 14px !important;
+padding-left: 12px !important;
 
 line-height: 1.56;
 }
 
 /*
+
 Nested marker:
+
 slightly smaller + quieter than parent marker.
 */
 
@@ -166,7 +169,7 @@ position: absolute;
 width: 4.5px;
 height: 4.5px;
 
-left: 1px;
+left: 0;
 top: 0.72em;
 
 box-sizing: border-box;
@@ -186,15 +189,16 @@ DEEP NESTING
 .msg.bot .bubble li > ul > li > ul,
 .msg.bot .bubble li > ol > li > ul {
 margin-left: 0 !important;
-padding-left: 9px !important;
+padding-left: 7px !important;
 }
 
 .msg.bot .bubble li > ul > li > ul > li {
-padding-left: 13px !important;
+padding-left: 11px !important;
 }
 
 /* ────────────────────────────────────────────────────────────────
 DARK MODE — LIST MARKERS
+UNCHANGED
 ──────────────────────────────────────────────────────────────── */
 
 @media (prefers-color-scheme: dark) {
@@ -212,7 +216,7 @@ opacity: 0.68;
 
 /* ════════════════════════════════════════════════════════════════
 ORDERED LIST
-UNCHANGED
+COMPLETELY UNCHANGED
 ════════════════════════════════════════════════════════════════ */
 
 .msg.bot .bubble ol {
@@ -338,6 +342,7 @@ color: var(--color-text-dark-code);
 /* ════════════════════════════════════════════════════════════════
 HORIZONTAL RULE
 Cleaner professional divider
+UNCHANGED
 ════════════════════════════════════════════════════════════════ */
 
 .msg.bot .bubble hr.md-hr {
@@ -443,7 +448,7 @@ margin-bottom: 5px;
 /* Top-level unordered */
 
 .msg.bot .bubble ul > li {
-padding-left: 14px;
+padding-left: 12px;
 margin: 5px 0;
 }
 
@@ -453,7 +458,7 @@ margin: 5px 0;
 width: 5px;
 height: 5px;
 
-left: 1px;
+left: 0;
 top: 0.72em;
 
 border-width: 1.35px;
@@ -465,11 +470,11 @@ opacity: 0.82;
 
 .msg.bot .bubble li > ul {
 margin-left: 0 !important;
-padding-left: 9px !important;
+padding-left: 7px !important;
 }
 
 .msg.bot .bubble li > ul > li {
-padding-left: 14px !important;
+padding-left: 12px !important;
 margin: 5px 0;
 }
 
@@ -479,7 +484,7 @@ margin: 5px 0;
 width: 4.5px;
 height: 4.5px;
 
-left: 1px;
+left: 0;
 top: 0.72em;
 
 border-width: 1.25px;
@@ -487,7 +492,7 @@ border-width: 1.25px;
 opacity: 0.68;
 }
 
-/* Ordered */
+/* Ordered — UNCHANGED */
 
 .msg.bot .bubble ol {
 padding-left: 21px;
@@ -497,10 +502,10 @@ padding-left: 21px;
 padding-left: 2px;
 }
 
-/* Nested ordered */
+/* Nested ordered — UNCHANGED */
 
 .msg.bot .bubble li > ol {
 margin-left: 0 !important;
 padding-left: 19px !important;
 }
-}
+  }

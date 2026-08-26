@@ -208,6 +208,11 @@ function _buildMarked() {
     );
   };
 
+  /* Horizontal rule — thin professional divider */
+  renderer.hr = function() {
+    return '<hr class="md-hr">\n';
+  };
+
   marked.use({ renderer, breaks: true, gfm: true });
 }
 
@@ -310,3 +315,4 @@ function createStreamingRenderer(onUpdate, debounceMs = 40) {
 /* ── Public API ── */
 function universalRender(content) { return new UniversalMessageRenderer().render(content); }
 function renderMarkdown(text)     { return universalRender(text); }
+     

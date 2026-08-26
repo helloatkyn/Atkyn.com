@@ -11,7 +11,7 @@ Change a value here → updates everywhere automatically.
 --color-primary-dark:   #005f8e;
 --color-primary-link:   #0066cc;
 
-/* ── Neutral text ───────────────────────────────────────────── */
+/* ─ Neutral text ───────────────────────────────────────────── */
 --color-text:           #1a1a1a;
 --color-text-strong:    #111111;
 --color-text-muted:     #555555;
@@ -19,9 +19,9 @@ Change a value here → updates everywhere automatically.
 --color-text-faint:     #444;
 --color-text-placeholder: #b0bec5;
 
-/* ── Surfaces (light) ───────────────────────────────────────── /
+/* ── Surfaces (light) ──────────────────────────────────────── */
 --color-bg:             #ffffff;
---color-bg-alt:         #F0F0F0;   / user bubble — Gemini exact match */
+--color-bg-alt:         #F0F0F0;   /* user bubble — Gemini exact match */
 --color-bg-card:        #F1F3F4;
 --color-bg-card-active: #F8F8F8;
 --color-bg-code:        #fafafa;
@@ -38,7 +38,7 @@ Change a value here → updates everywhere automatically.
 --color-bg-card-active-dark: #28282A;
 --color-bg-plus-menu-dark: rgba(36, 36, 40, 0.78);
 
-/* ── Dark text ──────────────────────────────────────────────── */
+/* ── Dark text ─────────────────────────────────────────────── */
 --color-text-dark:      #f0f0f2;
 --color-text-dark-alt:  #e5e5e7;
 --color-text-dark-dim:  #d4d4d6;
@@ -112,7 +112,7 @@ Change a value here → updates everywhere automatically.
 --color-tk-prop: #116329;
 --color-tk-bool: #cf222e;
 
-/* ── Syntax highlighting (dark) ─────────────────────────────── */
+/* ── Syntax highlighting (dark) ────────────────────────────── */
 --color-tk-kw-dark:   #ff7b72;
 --color-tk-fn-dark:   #d2a8ff;
 --color-tk-str-dark:  #a5d6ff;
@@ -122,7 +122,7 @@ Change a value here → updates everywhere automatically.
 --color-tk-prop-dark: #7ee787;
 --color-tk-bool-dark: #ff7b72;
 
-/* ── Code block chrome ──────────────────────────────────────── /
+/* ── Code block chrome ──────────────────────────────────────── */
 --color-code-lang:      #6e6e80;
 --color-code-lang-bg:   rgba(0, 0, 0, 0.07);
 --color-code-lang-dark: #9b9bab;
@@ -130,6 +130,6 @@ Change a value here → updates everywhere automatically.
 --color-code-num:       rgba(0, 0, 0, 0.26);
 --color-code-num-dark:  rgba(255, 255, 255, 0.24);
 --color-code-content:   #0d0d0d;
---color-inline-code-bg: #F0F0F0;   / inline code — same as user bubble, Gemini style */
+--color-inline-code-bg: #F0F0F0;   /* inline code — same as user bubble, Gemini style */
 
 }

@@ -1,6 +1,6 @@
 /* ════════════════════════════════════════════════════════════════
    chatbar.css — Minimal Professional Chatbar
-   Premium · Clean · No Shadow · Native Smoothness
+   Pill · Borderless · Shadowless · Clean
 ════════════════════════════════════════════════════════════════ */
 
 /* ────────────────────────────────────────────────────────────────
@@ -11,13 +11,9 @@
   padding: 8px 16px calc(12px + env(safe-area-inset-bottom));
   position: relative;
   z-index: 10;
-
   will-change: transform;
-  transform: translate3d(0, 0, 0);
-
+  transform: translateZ(0);
   background: #ffffff;
-
-  contain: layout style;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -28,46 +24,51 @@
 
 /* ────────────────────────────────────────────────────────────────
    PILL
+   Keep the original pill shape.
+   No outline · No border · No shadow.
 ──────────────────────────────────────────────────────────────── */
 .overlay-pill {
   width: 100%;
-
   display: flex;
   align-items: center;
 
   background: #f7f7f8;
 
-  border: 1px solid rgba(0, 0, 0, 0.055);
-  border-radius: 18px;
+  border: none;
+  outline: none;
 
-  padding: 0 14px 0 16px;
+  border-radius: 100px;
 
-  height: 62px;
-  gap: 11px;
+  padding: 0 18px 0 20px;
+  height: 66px;
+  gap: 12px;
 
   box-shadow: none;
 
   transition:
     background-color 0.18s ease,
-    border-color 0.18s ease;
+    opacity 0.18s ease;
 }
 
 .overlay-pill:focus-within {
   background: #f5f5f6;
-  border-color: rgba(0, 0, 0, 0.10);
+  border: none;
+  outline: none;
   box-shadow: none;
 }
 
 @media (prefers-color-scheme: dark) {
   .overlay-pill {
-    background: #303131;
-    border-color: rgba(255, 255, 255, 0.065);
+    background: #363737;
+    border: none;
+    outline: none;
     box-shadow: none;
   }
 
   .overlay-pill:focus-within {
-    background: #323333;
-    border-color: rgba(255, 255, 255, 0.11);
+    background: #393a3a;
+    border: none;
+    outline: none;
     box-shadow: none;
   }
 }
@@ -82,22 +83,19 @@
   align-items: center;
   justify-content: center;
 
-  width: 32px;
-  height: 32px;
-
   border: none;
   background: transparent;
 
   cursor: pointer;
 
   padding: 4px;
-  border-radius: 9px;
+  border-radius: 50%;
 
-  color: rgba(0, 0, 0, 0.68);
+  color: rgba(0, 0, 0, 0.72);
 
   transition:
     background-color 0.14s ease,
-    color 0.14s ease,
+    opacity 0.14s ease,
     transform 0.14s ease;
 }
 
@@ -107,8 +105,8 @@
 }
 
 .ico-plus svg {
-  width: 21px;
-  height: 21px;
+  width: 24px;
+  height: 24px;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -117,7 +115,7 @@
   }
 
   .ico-plus:active {
-    background: rgba(255, 255, 255, 0.075);
+    background: rgba(255, 255, 255, 0.08);
   }
 }
 
@@ -127,7 +125,6 @@
 .overlay-input-wrap {
   flex: 1;
   position: relative;
-
   height: 100%;
 
   display: flex;
@@ -159,7 +156,7 @@
 
   caret-color: var(--color-primary);
 
-  letter-spacing: 0;
+  letter-spacing: 0.01em;
 }
 
 .search-input::placeholder {
@@ -199,21 +196,20 @@
 }
 
 .shimmer-overlay span {
-  font-size: 1rem;
+  font-size: 1.08rem;
   font-weight: 500;
 
   white-space: nowrap;
-
-  letter-spacing: 0;
+  letter-spacing: 0.01em;
 
   background: linear-gradient(
     90deg,
-    #999 0%,
-    #999 28%,
+    #9e9e9e 0%,
+    #9e9e9e 25%,
     #0077B5 48%,
     #0077B5 52%,
-    #999 72%,
-    #999 100%
+    #9e9e9e 75%,
+    #9e9e9e 100%
   );
 
   background-size: 300% auto;
@@ -245,9 +241,6 @@
 .ico-camera {
   flex-shrink: 0;
 
-  width: 32px;
-  height: 32px;
-
   border: none;
   background: transparent;
 
@@ -258,13 +251,13 @@
   justify-content: center;
 
   padding: 4px;
-  border-radius: 9px;
+  border-radius: 50%;
 
-  color: rgba(0, 0, 0, 0.68);
+  color: rgba(0, 0, 0, 0.72);
 
   transition:
     background-color 0.14s ease,
-    color 0.14s ease,
+    opacity 0.14s ease,
     transform 0.14s ease;
 }
 
@@ -274,8 +267,8 @@
 }
 
 .ico-camera svg {
-  width: 21px;
-  height: 21px;
+  width: 24px;
+  height: 24px;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -284,7 +277,7 @@
   }
 
   .ico-camera:active {
-    background: rgba(255, 255, 255, 0.075);
+    background: rgba(255, 255, 255, 0.08);
   }
 }
 
@@ -298,10 +291,10 @@
   align-items: center;
   justify-content: center;
 
-  width: 38px;
-  height: 38px;
+  width: 40px;
+  height: 40px;
 
-  border-radius: 11px;
+  border-radius: 50%;
   border: none;
 
   background: var(--color-primary);
@@ -309,17 +302,17 @@
   cursor: pointer;
 
   transition:
-    transform 0.14s ease,
-    opacity 0.14s ease,
-    background-color 0.14s ease;
+    transform 0.15s ease,
+    opacity 0.15s ease,
+    background-color 0.15s ease;
 }
 
 .send-btn:active {
-  transform: scale(0.91);
+  transform: scale(0.88);
 }
 
 .send-btn:hover {
-  opacity: 0.9;
+  opacity: 0.88;
 }
 
 .send-btn svg {
@@ -340,28 +333,28 @@
    CROSS MODE — NON-AI TABS
 ──────────────────────────────────────────────────────────────── */
 .send-btn.cross-mode {
-  background: rgba(0, 0, 0, 0.065);
+  background: rgba(0, 0, 0, 0.07);
 }
 
 .send-btn.cross-mode svg {
-  stroke: rgba(0, 0, 0, 0.58);
+  stroke: rgba(0, 0, 0, 0.6);
   width: 18px;
   height: 18px;
 }
 
 @media (prefers-color-scheme: dark) {
   .send-btn.cross-mode {
-    background: rgba(255, 255, 255, 0.105);
+    background: rgba(255, 255, 255, 0.12);
   }
 
   .send-btn.cross-mode svg {
-    stroke: rgba(255, 255, 255, 0.68);
+    stroke: rgba(255, 255, 255, 0.7);
   }
 }
 
 /* ────────────────────────────────────────────────────────────────
-   PLUS MENU — PREMIUM GLASS SHEET
-   No shadow · restrained glass · compact proportions
+   PLUS MENU — PREMIUM FLOATING SHEET
+   No shadow · No heavy outline
 ──────────────────────────────────────────────────────────────── */
 .plus-menu-backdrop {
   position: fixed;
@@ -370,8 +363,6 @@
   z-index: 100;
 
   display: none;
-
-  background: transparent;
 }
 
 .plus-menu-backdrop.open {
@@ -381,28 +372,27 @@
 .plus-menu {
   position: fixed;
 
-  left: 16px;
-  bottom: calc(84px + env(safe-area-inset-bottom));
+  left: 20px;
+  bottom: calc(90px + env(safe-area-inset-bottom));
 
-  width: 228px;
+  width: 220px;
 
-  background: rgba(255, 255, 255, 0.94);
+  background: var(--color-glass-bg);
 
-  -webkit-backdrop-filter: blur(24px) saturate(1.45);
-  backdrop-filter: blur(24px) saturate(1.45);
+  -webkit-backdrop-filter: blur(28px) saturate(1.6);
+  backdrop-filter: blur(28px) saturate(1.6);
 
-  border-radius: 16px;
+  border-radius: 18px;
 
-  border: 1px solid rgba(0, 0, 0, 0.075);
+  border: none;
 
-  /* Intentionally no shadow */
   box-shadow: none;
 
   overflow: hidden;
 
   z-index: 101;
 
-  transform: translate3d(0, 7px, 0) scale(0.985);
+  transform: translate3d(0, 7px, 0) scale(0.98);
 
   transform-origin: bottom left;
 
@@ -416,17 +406,14 @@
 
 .plus-menu.open {
   transform: translate3d(0, 0, 0) scale(1);
-
   opacity: 1;
   pointer-events: auto;
 }
 
 @media (prefers-color-scheme: dark) {
   .plus-menu {
-    background: rgba(48, 49, 49, 0.96);
-
-    border-color: rgba(255, 255, 255, 0.075);
-
+    background: #363737;
+    border: none;
     box-shadow: none;
   }
 }
@@ -440,9 +427,7 @@
 
   gap: 12px;
 
-  min-height: 48px;
-
-  padding: 10px 15px;
+  padding: 14px 18px;
 
   cursor: pointer;
 
@@ -455,18 +440,19 @@
 
   color: var(--color-text);
 
-  font-size: 0.9rem;
+  font-size: 0.92rem;
   font-weight: 600;
 
-  letter-spacing: -0.005em;
+  letter-spacing: 0.005em;
 
   transition:
-    background-color 0.13s ease,
-    color 0.13s ease;
+    background-color 0.12s ease,
+    opacity 0.12s ease;
 }
 
 .pm-item:active {
-  background: rgba(0, 0, 0, 0.055);
+  background: var(--color-press-light-sm);
+  opacity: 0.72;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -475,7 +461,7 @@
   }
 
   .pm-item:active {
-    background: rgba(255, 255, 255, 0.075);
+    background: var(--color-press-dark);
   }
 }
 
@@ -485,8 +471,8 @@
 .pm-icon {
   flex-shrink: 0;
 
-  width: 22px;
-  height: 22px;
+  width: 20px;
+  height: 20px;
 
   background: transparent;
 
@@ -500,30 +486,10 @@
   height: 18px;
 
   stroke: var(--color-icon-stroke);
-
-  stroke-width: 1.8;
 }
 
 @media (prefers-color-scheme: dark) {
   .pm-icon svg {
     stroke: var(--color-icon-dark);
-  }
-}
-
-/* ────────────────────────────────────────────────────────────────
-   REDUCED MOTION
-──────────────────────────────────────────────────────────────── */
-@media (prefers-reduced-motion: reduce) {
-  .plus-menu,
-  .overlay-pill,
-  .ico-plus,
-  .ico-camera,
-  .send-btn,
-  .pm-item {
-    transition: none !important;
-  }
-
-  .shimmer-overlay span {
-    animation: none !important;
   }
 }

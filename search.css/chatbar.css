@@ -1,6 +1,6 @@
 /* ════════════════════════════════════════════════════════════════
-   chatbar.css — Optimized for maximum smoothness
-   GPU-friendly transitions · Zero layout shifts · 60fps toggles
+   chatbar.css — Minimal professional chatbar
+   Inspired by Gemini-level cleanliness, shadow-minimal design
 ════════════════════════════════════════════════════════════════ */
 
 /* ────────────────────────────────────────────────────────────────
@@ -11,8 +11,9 @@
   padding: 8px 16px calc(12px + env(safe-area-inset-bottom));
   position: relative;
   z-index: 10;
+  will-change: transform;
+  transform: translateZ(0);
   background: #ffffff;
-  contain: layout style;
 }
 @media (prefers-color-scheme: dark) {
   .chatbar-wrap { background: var(--color-bg-dark); }
@@ -31,11 +32,22 @@
   padding: 0 18px 0 20px;
   height: 66px;
   gap: 12px;
-  contain: layout style;
+  box-shadow: none;
+  transition: box-shadow 0.2s;
+}
+.overlay-pill:focus-within {
+  box-shadow: none;
 }
 
 @media (prefers-color-scheme: dark) {
-  .overlay-pill { background: #363737; }
+  .overlay-pill {
+    background: #363737;
+    border: none;
+    box-shadow: none;
+  }
+  .overlay-pill:focus-within {
+    box-shadow: none;
+  }
 }
 
 /* ────────────────────────────────────────────────────────────────
@@ -51,7 +63,7 @@
   padding: 4px;
   border-radius: 50%;
   color: rgba(0, 0, 0, 0.75);
-  transition: background 0.12s ease, color 0.12s ease;
+  transition: background 0.12s, color 0.12s;
 }
 .ico-plus:active { background: rgba(0, 0, 0, 0.06); }
 .ico-plus svg    { width: 24px; height: 24px; }
@@ -90,6 +102,7 @@
 }
 .search-input::placeholder { color: transparent; }
 
+/* Hide browser default search X button */
 .search-input::-webkit-search-cancel-button,
 .search-input::-webkit-search-decoration,
 .search-input::-webkit-search-results-button,
@@ -114,7 +127,6 @@
   pointer-events: none;
   z-index: 1;
   overflow: hidden;
-  will-change: transform;
 }
 .shimmer-overlay span {
   font-size: 1.08rem;
@@ -149,8 +161,7 @@
   padding: 4px;
   border-radius: 50%;
   color: rgba(0, 0, 0, 0.75);
-  transition: background 0.12s ease, color 0.12s ease,
-              opacity 0.18s ease, transform 0.18s ease, visibility 0.18s;
+  transition: background 0.12s, color 0.12s;
 }
 .ico-camera:active { background: rgba(0, 0, 0, 0.06); }
 .ico-camera svg    { width: 24px; height: 24px; }
@@ -161,11 +172,11 @@
 }
 
 /* ────────────────────────────────────────────────────────────────
-   SEND BUTTON — Smooth toggle (no display:none jank)
+   SEND BUTTON
 ──────────────────────────────────────────────────────────────── */
 .send-btn {
   flex-shrink: 0;
-  display: flex;
+  display: none;
   align-items: center;
   justify-content: center;
   width: 40px;
@@ -174,28 +185,15 @@
   border: none;
   background: var(--color-primary);
   cursor: pointer;
-  opacity: 0;
-  visibility: hidden;
-  transform: scale(0.7);
-  transition: opacity 0.18s ease, transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1),
-              visibility 0.18s, background 0.15s ease;
-  will-change: transform, opacity;
+  transition: transform 0.15s ease, opacity 0.15s ease, background 0.15s ease;
 }
-.send-btn svg { width: 17px; height: 17px; }
-.send-btn:active { transform: scale(0.88); }
+.send-btn:active  { transform: scale(0.88); }
+.send-btn:hover   { opacity: 0.88; }
+.send-btn svg     { width: 17px; height: 17px; }
 
-/* Toggle camera ↔ send — SMOOTH, no layout jump */
-.overlay-pill.has-text .ico-camera {
-  opacity: 0;
-  visibility: hidden;
-  transform: scale(0.7);
-  pointer-events: none;
-}
-.overlay-pill.has-text .send-btn {
-  opacity: 1;
-  visibility: visible;
-  transform: scale(1);
-}
+/* Toggle camera ↔ send */
+.overlay-pill.has-text .ico-camera { display: none; }
+.overlay-pill.has-text .send-btn   { display: flex; }
 
 /* Cross mode — non-AI tabs */
 .send-btn.cross-mode {
@@ -207,25 +205,24 @@
   height: 18px;
 }
 @media (prefers-color-scheme: dark) {
-  .send-btn.cross-mode { background: rgba(255, 255, 255, 0.12); }
-  .send-btn.cross-mode svg { stroke: rgba(255, 255, 255, 0.7); }
+  .send-btn.cross-mode {
+    background: rgba(255, 255, 255, 0.12);
+  }
+  .send-btn.cross-mode svg {
+    stroke: rgba(255, 255, 255, 0.7);
+  }
 }
 
 /* ────────────────────────────────────────────────────────────────
-   PLUS MENU — Glassmorphism floating sheet (GPU-optimized)
+   PLUS MENU — Glassmorphism floating sheet
 ──────────────────────────────────────────────────────────────── */
 .plus-menu-backdrop {
   position: fixed;
   inset: 0;
   z-index: 100;
-  opacity: 0;
-  visibility: hidden;
-  transition: opacity 0.2s ease, visibility 0.2s;
+  display: none;
 }
-.plus-menu-backdrop.open {
-  opacity: 1;
-  visibility: visible;
-}
+.plus-menu-backdrop.open { display: block; }
 
 .plus-menu {
   position: fixed;
@@ -242,22 +239,17 @@
     0 12px 36px rgba(0, 0, 0, 0.10);
   overflow: hidden;
   z-index: 101;
-  isolation: isolate;
   transform: translateY(8px) scale(0.97);
   transform-origin: bottom left;
   opacity: 0;
-  visibility: hidden;
   pointer-events: none;
   transition:
     transform 0.22s cubic-bezier(0.22, 1, 0.36, 1),
-    opacity   0.18s ease,
-    visibility 0.18s;
-  will-change: transform, opacity;
+    opacity   0.14s ease;
 }
 .plus-menu.open {
   transform: translateY(0) scale(1);
   opacity: 1;
-  visibility: visible;
   pointer-events: auto;
 }
 
@@ -285,7 +277,7 @@
   font-size: 0.92rem;
   font-weight: 500;
   letter-spacing: 0.01em;
-  transition: background 0.1s ease;
+  transition: background 0.1s;
 }
 .pm-item:active { background: var(--color-press-light-sm); }
 

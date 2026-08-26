@@ -8,6 +8,7 @@
 
 /* ────────────────────────────────────────────────────────────────
    PARAGRAPHS
+   UNCHANGED
 ──────────────────────────────────────────────────────────────── */
 
 .msg.bot .bubble p {
@@ -22,6 +23,7 @@
 
 /* ────────────────────────────────────────────────────────────────
    HEADINGS
+   UNCHANGED
 ──────────────────────────────────────────────────────────────── */
 
 .msg.bot .bubble h3 {
@@ -68,13 +70,13 @@
 
 /* ════════════════════════════════════════════════════════════════
    LIST SYSTEM
-   Deliberately compact.
-   Prevents nested content from drifting too far right.
+   Professional restrained markers
 ════════════════════════════════════════════════════════════════ */
 
 
 /* ────────────────────────────────────────────────────────────────
    GLOBAL LIST RESET
+   UNCHANGED
 ──────────────────────────────────────────────────────────────── */
 
 .msg.bot .bubble ul,
@@ -95,45 +97,49 @@
 }
 
 
-/* Top-level bullet */
+/* ────────────────────────────────────────────────────────────────
+   TOP-LEVEL BULLET
+   Only marker styling refined.
+──────────────────────────────────────────────────────────────── */
+
 .msg.bot .bubble ul > li {
   position: relative;
-
-  /* Small controlled indentation */
   padding-left: 20px;
-
   margin: 6px 0;
-
   line-height: 1.58;
 }
 
 
-/* Professional hollow circle */
+/*
+ * Refined hollow-point marker.
+ *
+ * Smaller and lighter than a standard bullet.
+ * Uses currentColor so it remains theme-aware.
+ */
 .msg.bot .bubble ul > li::before {
   content: "";
 
   position: absolute;
 
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
 
-  left: 2px;
-  top: 0.68em;
+  left: 3px;
+  top: 0.72em;
 
   box-sizing: border-box;
 
-  border: 1.6px solid currentColor;
+  border: 1.35px solid currentColor;
   border-radius: 50%;
 
   color: var(--color-text-muted);
+
+  opacity: 0.82;
 }
 
 
 /* ────────────────────────────────────────────────────────────────
    NESTED UNORDERED LIST
-   IMPORTANT:
-   Keep nested text close to parent column.
-   Do NOT compound indentation aggressively.
 ──────────────────────────────────────────────────────────────── */
 
 .msg.bot .bubble li > ul {
@@ -147,7 +153,6 @@
 }
 
 
-/* Nested bullet */
 .msg.bot .bubble li > ul > li {
   position: relative;
 
@@ -159,30 +164,35 @@
 }
 
 
-/* Nested hollow circle */
+/*
+ * Nested marker:
+ * slightly smaller + quieter than parent marker.
+ */
 .msg.bot .bubble li > ul > li::before {
   content: "";
 
   position: absolute;
 
-  width: 5.5px;
-  height: 5.5px;
+  width: 4.5px;
+  height: 4.5px;
 
-  left: 1px;
-  top: 0.68em;
+  left: 2px;
+  top: 0.72em;
 
   box-sizing: border-box;
 
-  border: 1.5px solid currentColor;
+  border: 1.25px solid currentColor;
   border-radius: 50%;
 
   color: var(--color-text-muted);
+
+  opacity: 0.68;
 }
 
 
 /* ────────────────────────────────────────────────────────────────
    DEEP NESTING
-   Don't allow every level to move farther right.
+   Layout unchanged.
 ──────────────────────────────────────────────────────────────── */
 
 .msg.bot .bubble li > ul > li > ul,
@@ -201,15 +211,22 @@
 ──────────────────────────────────────────────────────────────── */
 
 @media (prefers-color-scheme: dark) {
-  .msg.bot .bubble ul > li::before,
+
+  .msg.bot .bubble ul > li::before {
+    color: var(--color-text-dark-muted);
+    opacity: 0.82;
+  }
+
   .msg.bot .bubble li > ul > li::before {
     color: var(--color-text-dark-muted);
+    opacity: 0.68;
   }
 }
 
 
 /* ════════════════════════════════════════════════════════════════
    ORDERED LIST
+   UNCHANGED
 ════════════════════════════════════════════════════════════════ */
 
 .msg.bot .bubble ol {
@@ -243,6 +260,7 @@
 
 /* ════════════════════════════════════════════════════════════════
    LIST + PARAGRAPH INTERACTION
+   UNCHANGED
 ════════════════════════════════════════════════════════════════ */
 
 .msg.bot .bubble li > p {
@@ -257,6 +275,7 @@
 
 /* ════════════════════════════════════════════════════════════════
    STRONG / EMPHASIS
+   UNCHANGED
 ════════════════════════════════════════════════════════════════ */
 
 .msg.bot .bubble strong {
@@ -270,6 +289,7 @@
 
 /* ════════════════════════════════════════════════════════════════
    LINKS
+   UNCHANGED
 ════════════════════════════════════════════════════════════════ */
 
 .msg.bot .bubble a {
@@ -302,6 +322,7 @@
 
 /* ════════════════════════════════════════════════════════════════
    INLINE CODE
+   UNCHANGED
 ════════════════════════════════════════════════════════════════ */
 
 .msg.bot .bubble code:not(.code-block code) {
@@ -336,6 +357,7 @@
 
 /* ════════════════════════════════════════════════════════════════
    HORIZONTAL RULE
+   Cleaner professional divider
 ════════════════════════════════════════════════════════════════ */
 
 .msg.bot .bubble hr.md-hr {
@@ -343,20 +365,21 @@
 
   height: 1px;
 
-  background: rgba(0, 0, 0, 0.08);
+  background: rgba(0, 0, 0, 0.075);
 
   margin: 20px 0;
 }
 
 @media (prefers-color-scheme: dark) {
   .msg.bot .bubble hr.md-hr {
-    background: rgba(255, 255, 255, 0.09);
+    background: rgba(255, 255, 255, 0.085);
   }
 }
 
 
 /* ════════════════════════════════════════════════════════════════
    BLOCKQUOTE
+   UNCHANGED
 ════════════════════════════════════════════════════════════════ */
 
 .msg.bot .bubble blockquote {
@@ -379,6 +402,7 @@
 
 /* ════════════════════════════════════════════════════════════════
    TABLES
+   UNCHANGED
 ════════════════════════════════════════════════════════════════ */
 
 .msg.bot .bubble table {
@@ -416,7 +440,6 @@
 
 /* ════════════════════════════════════════════════════════════════
    MOBILE
-   Keep answer content visually centered and balanced.
 ════════════════════════════════════════════════════════════════ */
 
 @media (max-width: 600px) {
@@ -443,25 +466,30 @@
 
 
   /* Top-level unordered */
+
   .msg.bot .bubble ul > li {
     padding-left: 20px;
     margin: 5px 0;
   }
 
 
-  /* Top-level circle */
+  /* Refined top-level marker */
+
   .msg.bot .bubble ul > li::before {
-    width: 6px;
-    height: 6px;
+    width: 5px;
+    height: 5px;
 
-    left: 2px;
-    top: 0.68em;
+    left: 3px;
+    top: 0.72em;
 
-    border-width: 1.6px;
+    border-width: 1.35px;
+
+    opacity: 0.82;
   }
 
 
-  /* Nested — intentionally compact */
+  /* Nested */
+
   .msg.bot .bubble li > ul {
     margin-left: 0 !important;
     padding-left: 15px !important;
@@ -473,19 +501,23 @@
   }
 
 
-  /* Nested circle */
+  /* Refined nested marker */
+
   .msg.bot .bubble li > ul > li::before {
-    width: 5.5px;
-    height: 5.5px;
+    width: 4.5px;
+    height: 4.5px;
 
-    left: 1px;
-    top: 0.68em;
+    left: 2px;
+    top: 0.72em;
 
-    border-width: 1.5px;
+    border-width: 1.25px;
+
+    opacity: 0.68;
   }
 
 
   /* Ordered */
+
   .msg.bot .bubble ol {
     padding-left: 21px;
   }
@@ -496,8 +528,9 @@
 
 
   /* Nested ordered */
+
   .msg.bot .bubble li > ol {
     margin-left: 0 !important;
     padding-left: 19px !important;
   }
-   }
+}

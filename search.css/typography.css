@@ -1,332 +1,506 @@
 /* ════════════════════════════════════════════════════════════════
-   LIST SYSTEM
-   Professional compact alignment
+typography.css — Bot Bubble Rich Text
+Professional AI Chat Typography
+ChatGPT / Gemini inspired
+Headings · Paragraphs · Lists · Links · Code · Tables · HR
 ════════════════════════════════════════════════════════════════ */
 
+/* ────────────────────────────────────────────────────────────────
+PARAGRAPHS
+UNCHANGED
+──────────────────────────────────────────────────────────────── */
+
+.msg.bot .bubble p {
+margin: 0 0 11px;
+line-height: 1.62;
+}
+
+.msg.bot .bubble p:last-child {
+margin-bottom: 0;
+}
 
 /* ────────────────────────────────────────────────────────────────
-   GLOBAL LIST RESET
+HEADINGS
+UNCHANGED
+──────────────────────────────────────────────────────────────── */
+
+.msg.bot .bubble h3 {
+font-size: 1.08rem;
+line-height: 1.4;
+font-weight: 700;
+margin: 18px 0 7px;
+letter-spacing: -0.012em;
+}
+
+.msg.bot .bubble h4 {
+font-size: 1rem;
+line-height: 1.45;
+font-weight: 650;
+margin: 15px 0 6px;
+letter-spacing: -0.008em;
+}
+
+.msg.bot .bubble h5 {
+font-size: 0.94rem;
+line-height: 1.45;
+font-weight: 600;
+margin: 12px 0 5px;
+color: var(--color-text-muted);
+}
+
+.msg.bot .bubble h3:first-child,
+.msg.bot .bubble h4:first-child,
+.msg.bot .bubble h5:first-child {
+margin-top: 0;
+}
+
+@media (prefers-color-scheme: dark) {
+.msg.bot .bubble h3,
+.msg.bot .bubble h4 {
+color: var(--color-text-dark);
+}
+
+.msg.bot .bubble h5 {
+color: var(--color-text-dark-muted);
+}
+}
+
+/* ════════════════════════════════════════════════════════════════
+LIST SYSTEM
+Professional restrained markers
+════════════════════════════════════════════════════════════════ */
+
+/* ────────────────────────────────────────────────────────────────
+GLOBAL LIST RESET
+UNCHANGED
 ──────────────────────────────────────────────────────────────── */
 
 .msg.bot .bubble ul,
 .msg.bot .bubble ol {
-  margin-top: 7px;
-  margin-bottom: 12px;
+margin-top: 7px;
+margin-bottom: 12px;
 }
-
-
-/* ════════════════════════════════════════════════════════════════
-   UNORDERED LIST
-════════════════════════════════════════════════════════════════ */
-
-.msg.bot .bubble ul {
-  list-style: none;
-  padding-left: 0;
-  margin-left: 0;
-}
-
 
 /* ────────────────────────────────────────────────────────────────
-   TOP-LEVEL BULLET
+UNORDERED LIST
+──────────────────────────────────────────────────────────────── */
+
+.msg.bot .bubble ul {
+list-style: none;
+padding-left: 0;
+margin-left: 0;
+}
+
+/* ────────────────────────────────────────────────────────────────
+TOP-LEVEL BULLET
+Compact left alignment
 ──────────────────────────────────────────────────────────────── */
 
 .msg.bot .bubble ul > li {
-  position: relative;
-  padding-left: 17px;
-  margin: 6px 0;
-  line-height: 1.58;
+position: relative;
+padding-left: 14px;
+margin: 6px 0;
+line-height: 1.58;
 }
+
+/*
+Refined hollow-point marker.
+*/
 
 .msg.bot .bubble ul > li::before {
-  content: "";
+content: "";
 
-  position: absolute;
+position: absolute;
 
-  width: 5px;
-  height: 5px;
+width: 5px;
+height: 5px;
 
-  left: 1px;
-  top: 0.72em;
+left: 1px;
+top: 0.72em;
 
-  box-sizing: border-box;
+box-sizing: border-box;
 
-  border: 1.35px solid currentColor;
-  border-radius: 50%;
+border: 1.35px solid currentColor;
+border-radius: 50%;
 
-  color: var(--color-text-muted);
-  opacity: 0.82;
+color: var(--color-text-muted);
+
+opacity: 0.82;
 }
 
+/* ────────────────────────────────────────────────────────────────
+NESTED UNORDERED LIST
+Compact nested indentation
+──────────────────────────────────────────────────────────────── */
 
-/* ════════════════════════════════════════════════════════════════
-   BULLET INSIDE ORDERED LIST
-   Cancels the ordered-list indentation so bullets sit
-   closer to the main content column.
-════════════════════════════════════════════════════════════════ */
+.msg.bot .bubble li > ul {
+list-style: none;
 
-.msg.bot .bubble ol > li > ul {
-  list-style: none;
+margin-top: 5px;
+margin-bottom: 6px;
 
-  margin-top: 5px;
-  margin-bottom: 6px;
-
-  /* Cancel parent's ordered-list indentation */
-  margin-left: -19px !important;
-
-  padding-left: 17px !important;
+margin-left: 0 !important;
+padding-left: 9px !important;
 }
 
-.msg.bot .bubble ol > li > ul > li {
-  position: relative;
+.msg.bot .bubble li > ul > li {
+position: relative;
 
-  margin: 5px 0;
+margin: 5px 0;
 
-  padding-left: 17px !important;
+padding-left: 14px !important;
 
-  line-height: 1.56;
+line-height: 1.56;
 }
 
-.msg.bot .bubble ol > li > ul > li::before {
-  content: "";
+/*
+Nested marker:
+slightly smaller + quieter than parent marker.
+*/
 
-  position: absolute;
+.msg.bot .bubble li > ul > li::before {
+content: "";
 
-  width: 5px;
-  height: 5px;
+position: absolute;
 
-  left: 1px;
-  top: 0.72em;
+width: 4.5px;
+height: 4.5px;
 
-  box-sizing: border-box;
+left: 1px;
+top: 0.72em;
 
-  border: 1.25px solid currentColor;
-  border-radius: 50%;
+box-sizing: border-box;
 
-  color: var(--color-text-muted);
-  opacity: 0.68;
+border: 1.25px solid currentColor;
+border-radius: 50%;
+
+color: var(--color-text-muted);
+
+opacity: 0.68;
 }
 
-
-/* ════════════════════════════════════════════════════════════════
-   NESTED BULLET INSIDE BULLET
-════════════════════════════════════════════════════════════════ */
-
-.msg.bot .bubble ul > li > ul {
-  list-style: none;
-
-  margin-top: 5px;
-  margin-bottom: 6px;
-
-  margin-left: 0 !important;
-  padding-left: 14px !important;
-}
-
-.msg.bot .bubble ul > li > ul > li {
-  position: relative;
-
-  margin: 5px 0;
-
-  padding-left: 16px !important;
-
-  line-height: 1.56;
-}
-
-.msg.bot .bubble ul > li > ul > li::before {
-  content: "";
-
-  position: absolute;
-
-  width: 4.5px;
-  height: 4.5px;
-
-  left: 1px;
-  top: 0.72em;
-
-  box-sizing: border-box;
-
-  border: 1.25px solid currentColor;
-  border-radius: 50%;
-
-  color: var(--color-text-muted);
-  opacity: 0.68;
-}
-
-
-/* ════════════════════════════════════════════════════════════════
-   DEEP NESTING
-════════════════════════════════════════════════════════════════ */
+/* ────────────────────────────────────────────────────────────────
+DEEP NESTING
+──────────────────────────────────────────────────────────────── */
 
 .msg.bot .bubble li > ul > li > ul,
 .msg.bot .bubble li > ol > li > ul {
-  margin-left: 0 !important;
-  padding-left: 12px !important;
+margin-left: 0 !important;
+padding-left: 9px !important;
 }
 
 .msg.bot .bubble li > ul > li > ul > li {
-  padding-left: 15px !important;
+padding-left: 13px !important;
 }
 
-
-/* ════════════════════════════════════════════════════════════════
-   DARK MODE — LIST MARKERS
-════════════════════════════════════════════════════════════════ */
+/* ────────────────────────────────────────────────────────────────
+DARK MODE — LIST MARKERS
+──────────────────────────────────────────────────────────────── */
 
 @media (prefers-color-scheme: dark) {
 
-  .msg.bot .bubble ul > li::before,
-  .msg.bot .bubble ol > li > ul > li::before,
-  .msg.bot .bubble li > ul > li::before {
-    color: var(--color-text-dark-muted);
-  }
-
-  .msg.bot .bubble ul > li::before {
-    opacity: 0.82;
-  }
-
-  .msg.bot .bubble ol > li > ul > li::before,
-  .msg.bot .bubble li > ul > li::before {
-    opacity: 0.68;
-  }
+.msg.bot .bubble ul > li::before {
+color: var(--color-text-dark-muted);
+opacity: 0.82;
 }
 
+.msg.bot .bubble li > ul > li::before {
+color: var(--color-text-dark-muted);
+opacity: 0.68;
+}
+}
 
 /* ════════════════════════════════════════════════════════════════
-   ORDERED LIST
+ORDERED LIST
+UNCHANGED
 ════════════════════════════════════════════════════════════════ */
 
 .msg.bot .bubble ol {
-  list-style: decimal;
+list-style: decimal;
 
-  margin-left: 0;
-  padding-left: 19px;
+margin-left: 0;
+padding-left: 22px;
 }
 
 .msg.bot .bubble ol > li {
-  padding-left: 1px;
-  margin: 6px 0;
-  line-height: 1.6;
+padding-left: 2px;
+margin: 6px 0;
+line-height: 1.6;
 }
 
-
-/* ────────────────────────────────────────────────────────────────
-   NESTED ORDERED LIST
-──────────────────────────────────────────────────────────────── */
-
+/* Nested ordered list */
 .msg.bot .bubble li > ol {
-  margin-top: 5px;
-  margin-bottom: 6px;
+margin-top: 5px;
+margin-bottom: 6px;
 
-  margin-left: 0 !important;
-  padding-left: 17px !important;
+margin-left: 0 !important;
+padding-left: 20px !important;
 }
 
 .msg.bot .bubble li > ol > li {
-  padding-left: 1px;
-  margin: 5px 0;
+padding-left: 2px;
+margin: 5px 0;
 }
 
-
 /* ════════════════════════════════════════════════════════════════
-   LIST + PARAGRAPH INTERACTION
+LIST + PARAGRAPH INTERACTION
+UNCHANGED
 ════════════════════════════════════════════════════════════════ */
 
 .msg.bot .bubble li > p {
-  margin: 0 0 5px;
-  line-height: 1.58;
+margin: 0 0 5px;
+line-height: 1.58;
 }
 
 .msg.bot .bubble li > p:last-child {
-  margin-bottom: 0;
+margin-bottom: 0;
 }
 
+/* ════════════════════════════════════════════════════════════════
+STRONG / EMPHASIS
+UNCHANGED
+════════════════════════════════════════════════════════════════ */
+
+.msg.bot .bubble strong {
+font-weight: 680;
+}
+
+.msg.bot .bubble em {
+font-style: italic;
+}
 
 /* ════════════════════════════════════════════════════════════════
-   MOBILE
+LINKS
+UNCHANGED
+════════════════════════════════════════════════════════════════ */
+
+.msg.bot .bubble a {
+color: var(--color-link);
+
+text-decoration: none;
+
+border-bottom: 1px solid rgba(0, 102, 204, 0.28);
+
+transition:
+opacity 0.15s ease,
+border-color 0.15s ease;
+}
+
+.msg.bot .bubble a:hover {
+border-bottom-color: rgba(0, 102, 204, 0.55);
+}
+
+.msg.bot .bubble a:active {
+opacity: 0.7;
+}
+
+@media (prefers-color-scheme: dark) {
+.msg.bot .bubble a {
+color: var(--color-link-dark);
+border-bottom-color: var(--color-link-border-dark);
+}
+}
+
+/* ════════════════════════════════════════════════════════════════
+INLINE CODE
+UNCHANGED
+════════════════════════════════════════════════════════════════ */
+
+.msg.bot .bubble code:not(.code-block code) {
+font-family:
+'JetBrains Mono',
+'SFMono-Regular',
+'SF Mono',
+Menlo,
+Consolas,
+monospace;
+
+font-size: 0.84em;
+line-height: 1.45;
+
+background: var(--color-bg-alt);
+color: var(--color-text);
+
+padding: 2px 6px;
+
+border-radius: 5px;
+
+white-space: break-spaces;
+}
+
+@media (prefers-color-scheme: dark) {
+.msg.bot .bubble code:not(.code-block code) {
+background: var(--color-press-dark-md);
+color: var(--color-text-dark-code);
+}
+}
+
+/* ════════════════════════════════════════════════════════════════
+HORIZONTAL RULE
+Cleaner professional divider
+════════════════════════════════════════════════════════════════ */
+
+.msg.bot .bubble hr.md-hr {
+border: 0;
+
+height: 1px;
+
+background: rgba(0, 0, 0, 0.075);
+
+margin: 20px 0;
+}
+
+@media (prefers-color-scheme: dark) {
+.msg.bot .bubble hr.md-hr {
+background: rgba(255, 255, 255, 0.085);
+}
+}
+
+/* ════════════════════════════════════════════════════════════════
+BLOCKQUOTE
+UNCHANGED
+════════════════════════════════════════════════════════════════ */
+
+.msg.bot .bubble blockquote {
+margin: 13px 0;
+
+padding: 2px 0 2px 13px;
+
+border-left: 3px solid var(--color-text-muted);
+
+color: var(--color-text-muted);
+}
+
+@media (prefers-color-scheme: dark) {
+.msg.bot .bubble blockquote {
+color: var(--color-text-dark-muted);
+border-left-color: var(--color-text-dark-muted);
+}
+}
+
+/* ════════════════════════════════════════════════════════════════
+TABLES
+UNCHANGED
+════════════════════════════════════════════════════════════════ */
+
+.msg.bot .bubble table {
+width: 100%;
+
+border-collapse: collapse;
+
+margin: 14px 0;
+
+font-size: 0.94em;
+line-height: 1.5;
+}
+
+.msg.bot .bubble th,
+.msg.bot .bubble td {
+padding: 8px 10px;
+
+text-align: left;
+vertical-align: top;
+
+border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.msg.bot .bubble th {
+font-weight: 650;
+}
+
+@media (prefers-color-scheme: dark) {
+.msg.bot .bubble th,
+.msg.bot .bubble td {
+border-bottom-color: rgba(255, 255, 255, 0.09);
+}
+}
+
+/* ════════════════════════════════════════════════════════════════
+MOBILE
 ════════════════════════════════════════════════════════════════ */
 
 @media (max-width: 600px) {
 
-  .msg.bot .bubble ul > li {
-    padding-left: 17px;
-    margin: 5px 0;
-  }
+.msg.bot .bubble p {
+line-height: 1.6;
+margin-bottom: 11px;
+}
 
-  .msg.bot .bubble ul > li::before {
-    width: 5px;
-    height: 5px;
-    left: 1px;
-    top: 0.72em;
-    border-width: 1.35px;
-    opacity: 0.82;
-  }
+/* Headings */
+.msg.bot .bubble h3 {
+font-size: 1.06rem;
+line-height: 1.4;
+margin-top: 17px;
+margin-bottom: 6px;
+}
 
+.msg.bot .bubble h4 {
+font-size: 0.99rem;
+margin-top: 14px;
+margin-bottom: 5px;
+}
 
-  /* ──────────────────────────────────────────────────────────────
-     MOBILE: BULLET INSIDE NUMBERED LIST
-     This is the important fix.
-  ────────────────────────────────────────────────────────────── */
+/* Top-level unordered */
 
-  .msg.bot .bubble ol > li > ul {
-    margin-left: -19px !important;
-    padding-left: 17px !important;
-  }
+.msg.bot .bubble ul > li {
+padding-left: 14px;
+margin: 5px 0;
+}
 
-  .msg.bot .bubble ol > li > ul > li {
-    padding-left: 17px !important;
-    margin: 5px 0;
-  }
+/* Refined top-level marker */
 
-  .msg.bot .bubble ol > li > ul > li::before {
-    width: 5px;
-    height: 5px;
+.msg.bot .bubble ul > li::before {
+width: 5px;
+height: 5px;
 
-    left: 1px;
-    top: 0.72em;
+left: 1px;
+top: 0.72em;
 
-    border-width: 1.25px;
-    opacity: 0.68;
-  }
+border-width: 1.35px;
 
+opacity: 0.82;
+}
 
-  /* Nested bullet */
+/* Nested */
 
-  .msg.bot .bubble ul > li > ul {
-    margin-left: 0 !important;
-    padding-left: 14px !important;
-  }
+.msg.bot .bubble li > ul {
+margin-left: 0 !important;
+padding-left: 9px !important;
+}
 
-  .msg.bot .bubble ul > li > ul > li {
-    padding-left: 16px !important;
-    margin: 5px 0;
-  }
+.msg.bot .bubble li > ul > li {
+padding-left: 14px !important;
+margin: 5px 0;
+}
 
-  .msg.bot .bubble ul > li > ul > li::before {
-    width: 4.5px;
-    height: 4.5px;
+/* Refined nested marker */
 
-    left: 1px;
-    top: 0.72em;
+.msg.bot .bubble li > ul > li::before {
+width: 4.5px;
+height: 4.5px;
 
-    border-width: 1.25px;
-    opacity: 0.68;
-  }
+left: 1px;
+top: 0.72em;
 
+border-width: 1.25px;
 
-  /* Ordered */
+opacity: 0.68;
+}
 
-  .msg.bot .bubble ol {
-    padding-left: 19px;
-  }
+/* Ordered */
 
-  .msg.bot .bubble ol > li {
-    padding-left: 1px;
-  }
+.msg.bot .bubble ol {
+padding-left: 21px;
+}
 
+.msg.bot .bubble ol > li {
+padding-left: 2px;
+}
 
-  /* Nested ordered */
+/* Nested ordered */
 
-  .msg.bot .bubble li > ol {
-    margin-left: 0 !important;
-    padding-left: 17px !important;
-  }
-   }
+.msg.bot .bubble li > ol {
+margin-left: 0 !important;
+padding-left: 19px !important;
+}
+}

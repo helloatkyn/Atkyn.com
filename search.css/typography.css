@@ -98,7 +98,7 @@
   position: absolute;
   width: 5px;
   height: 5px;
-  left: 2.3px;
+  left: 0.5px;
   top: 0.72em;
   box-sizing: border-box;
   border: 1.35px solid currentColor;
@@ -130,7 +130,7 @@
   position: absolute;
   width: 4.5px;
   height: 4.5px;
-  left: 1.3px;
+  left: 0.5px;
   top: 0.72em;
   box-sizing: border-box;
   border: 1.25px solid currentColor;
@@ -255,7 +255,7 @@
 
 .msg.bot .bubble hr.md-hr {
   border: 0;
-  height: 0.5px;
+  height: 1px;
   background: rgba(0, 0, 0, 0.075);
   margin: 20px 0;
 }
@@ -348,7 +348,7 @@
   .msg.bot .bubble ul > li::before {
     width: 5px;
     height: 5px;
-    left: 2.3px;
+    left: 0.5px;
     top: 0.72em;
     border-width: 1.35px;
     opacity: 0.82;
@@ -368,7 +368,7 @@
   .msg.bot .bubble li > ul > li::before {
     width: 4.5px;
     height: 4.5px;
-    left: 1.3px;
+    left: 0.5px;
     top: 0.72em;
     border-width: 1.25px;
     opacity: 0.68;
@@ -389,4 +389,4 @@
     padding-left: 19px !important;
   }
 
-}
+                              }

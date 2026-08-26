@@ -1,622 +1,241 @@
-import { SYSTEM_PROMPT } from './systemPrompt.js';
+/* ════════════════════════════════════════════════════════════════
+   base.css — Reset · Body · Scroll Host
+   Production UI Foundation · Nunito
+════════════════════════════════════════════════════════════════ */
 
-// ═══════════════════════════════════════════════════════════
-// 1. STRICT SCHEMA VALIDATION (No Regex, Pure Logic)
-// Big Tech pattern: Validate LLM output BEFORE executing tools
-// ═══════════════════════════════════════════════════════════
-function validateToolArgs(toolName, rawArgs) {
-  if (toolName === 'web_search') {
-    if (!rawArgs.query || typeof rawArgs.query !== 'string') {
-      throw new Error('Missing or invalid "query". Must be a string.');
-    }
-    const cleanQuery = rawArgs.query.trim();
-    if (cleanQuery.length < 2) {
-      throw new Error('Query is too short. Must be at least 2 characters.');
-    }
-    return { query: cleanQuery };
-  }
 
-  if (toolName === 'stock_data') {
-    if (!rawArgs.symbol || typeof rawArgs.symbol !== 'string') {
-      throw new Error('Missing or invalid "symbol". Must be a string.');
-    }
-    const cleanSymbol = rawArgs.symbol.trim().toUpperCase();
-    if (cleanSymbol.length < 1 || cleanSymbol.length > 10) {
-      throw new Error('Invalid stock symbol length. Must be 1-10 characters.');
-    }
+/* ────────────────────────────────────────────────────────────────
+   FONT
+   Nunito: 400 / 500 / 600 / 700 / 800
+──────────────────────────────────────────────────────────────── */
 
-    // Basic alphanumeric check without regex
-    for (let i = 0; i < cleanSymbol.length; i++) {
-      const char = cleanSymbol.charCodeAt(i);
-      const isAlpha = (char >= 65 && char <= 90); // A-Z
-      const isNum = (char >= 48 && char <= 57);   // 0-9
+@import url(
+  'https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&display=swap'
+);
 
-      if (!isAlpha && !isNum) {
-        throw new Error('Stock symbol must contain only letters and numbers.');
-      }
-    }
 
-    return { symbol: cleanSymbol };
-  }
+/* ────────────────────────────────────────────────────────────────
+   ROOT
+──────────────────────────────────────────────────────────────── */
 
-  throw new Error(`Unknown tool requested: ${toolName}`);
+html {
+  height: 100%;
+  width: 100%;
+
+  font-family:
+    'Nunito',
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    sans-serif;
+
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+
+  text-rendering: optimizeLegibility;
 }
 
-// ═══════════════════════════════════════════════════════════
-// 2. ROBUST TOOL EXECUTION (Graceful Degradation)
-// ═══════════════════════════════════════════════════════════
-async function fetchPageText(url) {
-  try {
-    const resp = await fetch(url, {
-      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; AtkynBot/1.0)' },
-      signal: AbortSignal.timeout(3000),
-    });
 
-    if (!resp.ok || !resp.headers.get('content-type')?.includes('text/html')) {
-      return '';
-    }
+/* ────────────────────────────────────────────────────────────────
+   UNIVERSAL RESET
+──────────────────────────────────────────────────────────────── */
 
-    const html = await resp.text();
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
 
-    return html
-      .replace(/<script[\s\S]*?<\/script>/gi, '')
-      .replace(/<style[\s\S]*?<\/style>/gi, '')
-      .replace(/<[^>]+>/g, ' ')
-      .replace(/\s+/g, ' ')
-      .trim()
-      .slice(0, 4000);
-  } catch {
-    return '';
-  }
+  margin: 0;
+  padding: 0;
+
+  font-family: inherit;
+
+  -webkit-tap-highlight-color: transparent;
 }
 
-async function executeSearXNG(searchQuery, searxngUrl) {
-  try {
-    const searxResp = await fetch(
-      `${searxngUrl}/search?q=${encodeURIComponent(searchQuery)}&format=json&categories=general&language=en`,
-      {
-        headers: { 'Accept': 'application/json' },
-        signal: AbortSignal.timeout(5000),
-      }
-    );
 
-    if (!searxResp.ok) return [];
+/* ────────────────────────────────────────────────────────────────
+   FORM CONTROLS
+   Explicitly inherit Nunito from the document.
+──────────────────────────────────────────────────────────────── */
 
-    const data = await searxResp.json();
-    const raw = (data.results || []).slice(0, 5);
-
-    const enriched = await Promise.all(
-      raw.map(async (r) => {
-        let content = r.content || 'No snippet available.';
-        const pageText = await fetchPageText(r.url);
-
-        if (pageText && pageText.length > 100) {
-          content = pageText;
-        }
-
-        return {
-          title: r.title || 'Untitled',
-          url: r.url || '#',
-          snippet: content,
-        };
-      })
-    );
-
-    return enriched.filter(r => r.url !== '#');
-  } catch {
-    return [];
-  }
+button,
+input,
+textarea,
+select {
+  font: inherit;
 }
 
-async function executeStockData(symbol, finnhubApiKey) {
-  const base = 'https://finnhub.io/api/v1';
-  const token = `token=${finnhubApiKey}`;
 
-  try {
-    const [quoteResp, profileResp, metricResp] = await Promise.all([
-      fetch(`${base}/quote?symbol=${symbol}&${token}`, {
-        signal: AbortSignal.timeout(4000),
-      }),
+/* ────────────────────────────────────────────────────────────────
+   BODY
+──────────────────────────────────────────────────────────────── */
 
-      fetch(`${base}/stock/profile2?symbol=${symbol}&${token}`, {
-        signal: AbortSignal.timeout(4000),
-      }),
+body {
+  position: fixed;
 
-      fetch(`${base}/stock/metric?symbol=${symbol}&metric=all&${token}`, {
-        signal: AbortSignal.timeout(4000),
-      }),
-    ]);
+  inset: 0;
 
-    if (!quoteResp.ok) {
-      throw new Error('Quote API failed');
-    }
+  width: 100%;
+  height: 100%;
 
-    const q = await quoteResp.json();
-    const p = (await profileResp.json()) || {};
-    const m = ((await metricResp.json()) || {}).metric || {};
+  overflow: hidden;
 
-    if (q.c === 0 && q.d === 0 && q.dp === 0) {
-      throw new Error(
-        `Symbol '${symbol}' not found or market is closed with no data.`
-      );
-    }
+  overscroll-behavior: none;
 
-    const marketCapM = p.marketCapitalization || 0;
+  background: var(--color-bg);
+  color: var(--color-text);
 
-    let marketCapStr = 'N/A';
+  font-family:
+    'Nunito',
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    sans-serif;
 
-    if (marketCapM >= 1_000_000) {
-      marketCapStr = `$${(marketCapM / 1_000_000).toFixed(2)}T`;
-    } else if (marketCapM >= 1_000) {
-      marketCapStr = `$${(marketCapM / 1_000).toFixed(2)}B`;
-    } else if (marketCapM > 0) {
-      marketCapStr = `$${marketCapM.toFixed(2)}M`;
-    }
+  font-size: 16px;
 
-    return {
-      ticker: symbol,
-      name: p.name || symbol,
-      exchange: p.exchange || 'Unknown',
-      logo: p.logo || '',
-      currency: p.currency || 'USD',
-      marketCap: marketCapStr,
-      price: q.c ?? 0,
-      change: q.d ?? 0,
-      changePct: q.dp ?? 0,
-      open: q.o ?? 0,
-      high: q.h ?? 0,
-      low: q.l ?? 0,
-      prevClose: q.pc ?? 0,
-      pe: m['peNormalizedAnnual'] ?? m['peTTM'] ?? null,
-      eps: m['epsNormalizedAnnual'] ?? m['epsTTM'] ?? null,
-      series: [],
-    };
-  } catch (err) {
-    return {
-      error: true,
-      message: `Failed to fetch data for ${symbol}: ${err.message}`,
-    };
-  }
+  /* Increased from 400 → 500 for better readability */
+  font-weight: 500;
+
+  line-height: 1.5;
+
+  letter-spacing: 0;
+
+  display: flex;
+  flex-direction: column;
+
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+
+  text-rendering: optimizeLegibility;
 }
 
-// ═══════════════════════════════════════════════════════════
-// 3. STRUCTURED CONTEXT FORMATTING
-// ═══════════════════════════════════════════════════════════
-function formatSearchResultsForLLM(results) {
-  if (results.length === 0) {
-    return 'No search results found.';
+
+/* ────────────────────────────────────────────────────────────────
+   DARK MODE
+──────────────────────────────────────────────────────────────── */
+
+@media (prefers-color-scheme: dark) {
+
+  body {
+    background: var(--color-bg-dark);
+    color: var(--color-text-dark);
   }
 
-  return results
-    .map(
-      (r, i) =>
-        `--- SOURCE ${i + 1} ---\nTitle: ${r.title}\nURL: ${r.url}\nContent: ${r.snippet}`
-    )
-    .join('\n\n');
 }
 
-function formatStockDataForLLM(data) {
-  if (data.error) {
-    return `Error: ${data.message}`;
-  }
 
-  return `Stock: ${data.name} (${data.ticker})
-Exchange: ${data.exchange}
-Price: ${data.currency === 'USD' ? '$' : ''}${data.price}
-Change: ${data.change >= 0 ? '+' : ''}${data.change} (${data.changePct}%)
-Market Cap: ${data.marketCap}
-Open: ${data.open} | High: ${data.high} | Low: ${data.low} | Prev Close: ${data.prevClose}`;
+/* ────────────────────────────────────────────────────────────────
+   SELECTION
+   Subtle and professional.
+──────────────────────────────────────────────────────────────── */
+
+::selection {
+  background: rgba(0, 119, 181, 0.16);
+  color: inherit;
 }
 
-// ═══════════════════════════════════════════════════════════
-// 4. TOOL DEFINITIONS (Optimized for Mistral)
-// ═══════════════════════════════════════════════════════════
-const TOOLS = [
-  {
-    type: 'function',
-    function: {
-      name: 'web_search',
-      description:
-        'Search the web for real-time facts, recent events, or specific URLs. Do NOT use for general knowledge, math, or coding.',
-      parameters: {
-        type: 'object',
-        properties: {
-          query: {
-            type: 'string',
-            description:
-              'A concise, keyword-focused search query (e.g., "Nvidia Q3 2024 earnings report").',
-          },
-        },
-        required: ['query'],
-        additionalProperties: false,
-      },
-    },
-  },
-
-  {
-    type: 'function',
-    function: {
-      name: 'stock_data',
-      description:
-        'Fetch real-time stock price, market cap, and valuation metrics for a given ticker symbol.',
-      parameters: {
-        type: 'object',
-        properties: {
-          symbol: {
-            type: 'string',
-            description:
-              'Stock ticker symbol only (e.g., AAPL, TSLA, RELIANCE.NS). Do not include company names.',
-          },
-        },
-        required: ['symbol'],
-        additionalProperties: false,
-      },
-    },
-  },
-];
-
-// ═══════════════════════════════════════════════════════════
-// 5. MAIN REQUEST HANDLER
-// ═══════════════════════════════════════════════════════════
-export async function onRequestPost(context) {
-  const { request, env } = context;
-  const requestId = crypto.randomUUID();
-
-  let query, history;
-
-  try {
-    ({ query, history } = await request.json());
-  } catch {
-    return new Response(
-      JSON.stringify({ error: 'Invalid request body' }),
-      {
-        status: 400,
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      }
-    );
-  }
-
-  if (!query?.trim()) {
-    return new Response(
-      JSON.stringify({ error: 'Empty query' }),
-      {
-        status: 400,
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      }
-    );
-  }
-
-  const baseMessages = [
-    {
-      role: 'system',
-      content: SYSTEM_PROMPT,
-    },
-
-    ...(Array.isArray(history) ? history.slice(-10) : []),
-
-    {
-      role: 'user',
-      content: query,
-    },
-  ];
-
-  const { readable, writable } = new TransformStream();
-  const writer = writable.getWriter();
-  const enc = new TextEncoder();
-
-  (async () => {
-    try {
-      console.log(
-        `[${requestId}] Calling Mistral Small for routing...`
-      );
-
-      // ═════════════════════════════════════════════════════
-      // CALL #1: MISTRAL SMALL — TOOL ROUTING ONLY
-      // ═════════════════════════════════════════════════════
-      const call1Resp = await fetch(
-        'https://api.mistral.ai/v1/chat/completions',
-        {
-          method: 'POST',
-
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${env.MISTRAL_API_KEY}`,
-          },
-
-          body: JSON.stringify({
-            model: 'mistral-small-latest',
-            messages: baseMessages,
-            tools: TOOLS,
-            tool_choice: 'auto',
-            stream: false,
-            max_tokens: 500,
-            temperature: 0.1,
-          }),
-        }
-      );
-
-      if (!call1Resp.ok) {
-        throw new Error(
-          `Mistral API Error: ${call1Resp.status} ${await call1Resp.text()}`
-        );
-      }
-
-      const call1Data = await call1Resp.json();
-
-      const assistantMessage =
-        call1Data.choices?.[0]?.message;
-
-      const toolCalls =
-        assistantMessage?.tool_calls;
-
-      // ═════════════════════════════════════════════════════
-      // SCENARIO A: NO TOOL CALL
-      // ═════════════════════════════════════════════════════
-      if (!toolCalls || toolCalls.length === 0) {
-        console.log(
-          `[${requestId}] No tool call. Streaming direct answer.`
-        );
-
-        const directAnswer =
-          assistantMessage?.content ??
-          'I could not process that request.';
-
-        const chunks =
-          directAnswer.match(/.{1,64}/gs) || [''];
-
-        for (const chunk of chunks) {
-          await writer.write(
-            enc.encode(
-              `data: ${JSON.stringify({
-                choices: [
-                  {
-                    delta: {
-                      content: chunk,
-                    },
-                    finish_reason: null,
-                  },
-                ],
-              })}\n\n`
-            )
-          );
-        }
-
-        await writer.write(
-          enc.encode(`data: [DONE]\n\n`)
-        );
-
-        await writer.close();
-        return;
-      }
-
-      // ═════════════════════════════════════════════════════
-      // SCENARIO B: TOOL CALL EXECUTION
-      // ═════════════════════════════════════════════════════
-      const toolCall = toolCalls[0];
-
-      const toolCallId = toolCall.id;
-
-      const functionName =
-        toolCall.function?.name;
-
-      console.log(
-        `[${requestId}] Executing tool: ${functionName}`
-      );
-
-      let functionArgs = {};
-
-      try {
-        functionArgs = JSON.parse(
-          toolCall.function?.arguments || '{}'
-        );
-      } catch {
-        throw new Error(
-          'LLM returned invalid JSON for tool arguments.'
-        );
-      }
-
-      // ═════════════════════════════════════════════════════
-      // 1. VALIDATE
-      // ═════════════════════════════════════════════════════
-      let validatedArgs;
-
-      try {
-        validatedArgs = validateToolArgs(
-          functionName,
-          functionArgs
-        );
-      } catch (err) {
-        console.error(
-          `[${requestId}] Validation failed:`,
-          err.message
-        );
-
-        const errorMsg =
-          `Tool execution failed: ${err.message}. Please ask the user for clarification or try a different approach.`;
-
-        await writer.write(
-          enc.encode(
-            `data: ${JSON.stringify({
-              choices: [
-                {
-                  delta: {
-                    content: errorMsg,
-                  },
-                  finish_reason: 'stop',
-                },
-              ],
-            })}\n\n`
-          )
-        );
-
-        await writer.write(
-          enc.encode(`data: [DONE]\n\n`)
-        );
-
-        await writer.close();
-        return;
-      }
-
-      // ═════════════════════════════════════════════════════
-      // 2. EXECUTE
-      // ═════════════════════════════════════════════════════
-      let toolResultContent = '';
-      let frontendEvent = null;
-      let frontendData = null;
-
-      if (functionName === 'web_search') {
-        const results = await executeSearXNG(
-          validatedArgs.query,
-          env.SEARXNG_URL
-        );
-
-        toolResultContent =
-          formatSearchResultsForLLM(results);
-
-        if (results.length > 0) {
-          frontendEvent = 'results';
-          frontendData = results;
-        }
-      } else if (functionName === 'stock_data') {
-        const data = await executeStockData(
-          validatedArgs.symbol,
-          env.FINNHUB_API_KEY
-        );
-
-        toolResultContent =
-          formatStockDataForLLM(data);
-
-        if (!data.error) {
-          frontendEvent = 'stock';
-          frontendData = data;
-        }
-      }
-
-      // ═════════════════════════════════════════════════════
-      // 3. EMIT TO FRONTEND
-      // ═════════════════════════════════════════════════════
-      if (frontendEvent && frontendData) {
-        await writer.write(
-          enc.encode(
-            `event: ${frontendEvent}\ndata: ${JSON.stringify(frontendData)}\n\n`
-          )
-        );
-      }
-
-      // ═════════════════════════════════════════════════════
-      // CALL #2: FINAL ANSWER
-      // NOTE: UNCHANGED
-      // ═════════════════════════════════════════════════════
-      console.log(
-        `[${requestId}] Calling Ministral for final answer...`
-      );
-
-      const call2Resp = await fetch(
-        'https://api.mistral.ai/v1/chat/completions',
-        {
-          method: 'POST',
-
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${env.MISTRAL_API_KEY}`,
-          },
-
-          body: JSON.stringify({
-            model: 'ministral-14b-2512',
-            messages: [
-              ...baseMessages,
-
-              {
-                role: 'assistant',
-                content:
-                  assistantMessage.content ?? null,
-                tool_calls: toolCalls,
-              },
-
-              {
-                role: 'tool',
-                content: toolResultContent,
-                tool_call_id: toolCallId,
-              },
-            ],
-
-            stream: true,
-            max_tokens: 2048,
-            temperature: 0.6,
-          }),
-        }
-      );
-
-      if (!call2Resp.ok) {
-        throw new Error(
-          `Final generation API Error: ${call2Resp.status} ${await call2Resp.text()}`
-        );
-      }
-
-      const reader =
-        call2Resp.body.getReader();
-
-      while (true) {
-        const { done, value } =
-          await reader.read();
-
-        if (done) break;
-
-        await writer.write(value);
-      }
-
-      console.log(
-        `[${requestId}] Request completed successfully.`
-      );
-
-      await writer.close();
-
-    } catch (err) {
-      console.error(
-        `[${requestId}] Fatal Error:`,
-        err
-      );
-
-      try {
-        await writer.write(
-          enc.encode(
-            `data: ${JSON.stringify({
-              error:
-                'An internal error occurred. Please try again.',
-            })}\n\n`
-          )
-        );
-
-        await writer.write(
-          enc.encode(`data: [DONE]\n\n`)
-        );
-
-        await writer.close();
-      } catch (_) {}
-    }
-  })();
-
-  return new Response(readable, {
-    headers: {
-      'Content-Type': 'text/event-stream',
-      'Cache-Control': 'no-cache, no-transform',
-      'Connection': 'keep-alive',
-      'X-Accel-Buffering': 'no',
-    },
-  });
+::-moz-selection {
+  background: rgba(0, 119, 181, 0.16);
+  color: inherit;
 }
 
-export async function onRequestOptions() {
-  return new Response(null, {
-    headers: {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'POST, OPTIONS',
-      'Access-Control-Allow-Headers':
-        'Content-Type, Authorization',
-    },
-  });
+
+/* ────────────────────────────────────────────────────────────────
+   IMAGES / MEDIA
+──────────────────────────────────────────────────────────────── */
+
+img,
+svg,
+video,
+canvas {
+  display: block;
+}
+
+img {
+  max-width: 100%;
+}
+
+
+/* ────────────────────────────────────────────────────────────────
+   BUTTON / LINK DEFAULTS
+──────────────────────────────────────────────────────────────── */
+
+button {
+  color: inherit;
+}
+
+a {
+  color: inherit;
+}
+
+
+/* ────────────────────────────────────────────────────────────────
+   SCROLL HOST
+   Main content scroll container inside body flex column.
+──────────────────────────────────────────────────────────────── */
+
+.scroll-host {
+  flex: 1;
+
+  min-height: 0;
+  min-width: 0;
+
+  width: 100%;
+
+  overflow-y: auto;
+  overflow-x: hidden;
+
+  -webkit-overflow-scrolling: touch;
+
+  overscroll-behavior-y: none;
+  overscroll-behavior-x: none;
+
+  scroll-behavior: auto;
+
+  /*
+   * Prevent horizontal content from causing
+   * accidental page-level overflow.
+   */
+  contain: layout paint;
+}
+
+
+/* ────────────────────────────────────────────────────────────────
+   SCROLLBAR
+──────────────────────────────────────────────────────────────── */
+
+.scroll-host {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.scroll-host::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+
+/* ────────────────────────────────────────────────────────────────
+   REDUCED MOTION
+   Accessibility + smoother low-power devices.
+──────────────────────────────────────────────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+  }
+
 }

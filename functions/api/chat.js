@@ -1,9 +1,5 @@
 import { SYSTEM_PROMPT } from './systemPrompt.js';
 
-// ═══════════════════════════════════════════════════════════
-// 1. STRICT SCHEMA VALIDATION (No Regex, Pure Logic)
-// Big Tech pattern: Validate LLM output BEFORE executing tools
-// ═══════════════════════════════════════════════════════════
 function validateToolArgs(toolName, rawArgs) {
   if (toolName === 'web_search') {
     if (!rawArgs.query || typeof rawArgs.query !== 'string') {
@@ -24,11 +20,10 @@ function validateToolArgs(toolName, rawArgs) {
     if (cleanSymbol.length < 1 || cleanSymbol.length > 10) {
       throw new Error('Invalid stock symbol length. Must be 1-10 characters.');
     }
-    // Basic alphanumeric check without regex
     for (let i = 0; i < cleanSymbol.length; i++) {
       const char = cleanSymbol.charCodeAt(i);
-      const isAlpha = (char >= 65 && char <= 90); // A-Z
-      const isNum = (char >= 48 && char <= 57);   // 0-9
+      const isAlpha = (char >= 65 && char <= 90);
+      const isNum = (char >= 48 && char <= 57);
       if (!isAlpha && !isNum) {
         throw new Error('Stock symbol must contain only letters and numbers.');
       }
@@ -39,29 +34,25 @@ function validateToolArgs(toolName, rawArgs) {
   throw new Error(`Unknown tool requested: ${toolName}`);
 }
 
-// ═══════════════════════════════════════════════════════════
-// 2. ROBUST TOOL EXECUTION (Graceful Degradation)
-// ═══════════════════════════════════════════════════════════
 async function fetchPageText(url) {
   try {
     const resp = await fetch(url, {
       headers: { 'User-Agent': 'Mozilla/5.0 (compatible; AtkynBot/1.0)' },
-      signal: AbortSignal.timeout(3000), // 3s strict timeout
+      signal: AbortSignal.timeout(3000),
     });
     if (!resp.ok || !resp.headers.get('content-type')?.includes('text/html')) {
       return '';
     }
     const html = await resp.text();
-    // Aggressive but safe cleanup
     return html
       .replace(/<script[\s\S]*?<\/script>/gi, '')
       .replace(/<style[\s\S]*?<\/style>/gi, '')
       .replace(/<[^>]+>/g, ' ')
       .replace(/\s+/g, ' ')
       .trim()
-      .slice(0, 4000); // Limit context window pollution
+      .slice(0, 4000);
   } catch {
-    return ''; // Fail silently, fallback to snippet
+    return '';
   }
 }
 
@@ -74,15 +65,14 @@ async function executeSearXNG(searchQuery, searxngUrl) {
 
     if (!searxResp.ok) return [];
     const data = await searxResp.json();
-    const raw = (data.results || []).slice(0, 5); // Reduced to 5 for speed + quality
+    const raw = (data.results || []).slice(0, 5);
 
-    // Concurrent fetching with graceful fallback
     const enriched = await Promise.all(
       raw.map(async (r) => {
         let content = r.content || 'No snippet available.';
         const pageText = await fetchPageText(r.url);
         if (pageText && pageText.length > 100) {
-          content = pageText; // Override only if we got substantial text
+          content = pageText;
         }
         return {
           title: r.title || 'Untitled',
@@ -91,7 +81,7 @@ async function executeSearXNG(searchQuery, searxngUrl) {
         };
       })
     );
-    return enriched.filter(r => r.url !== '#'); // Filter out dead links
+    return enriched.filter(r => r.url !== '#');
   } catch {
     return [];
   }
@@ -109,12 +99,11 @@ async function executeStockData(symbol, finnhubApiKey) {
     ]);
 
     if (!quoteResp.ok) throw new Error('Quote API failed');
-    
+
     const q = await quoteResp.json();
     const p = (await profileResp.json()) || {};
     const m = ((await metricResp.json()) || {}).metric || {};
 
-    // Handle Finnhub's weird "null" responses for invalid symbols
     if (q.c === 0 && q.d === 0 && q.dp === 0) {
       throw new Error(`Symbol '${symbol}' not found or market is closed with no data.`);
     }
@@ -144,18 +133,13 @@ async function executeStockData(symbol, finnhubApiKey) {
       series: [],
     };
   } catch (err) {
-    // Return structured error FOR THE LLM, not just a crash
     return { error: true, message: `Failed to fetch data for ${symbol}: ${err.message}` };
   }
 }
 
-// ═══════════════════════════════════════════════════════════
-// 3. STRUCTURED CONTEXT FORMATTING (The 90% Accuracy Secret)
-// LLMs understand delimited, labeled data much better than raw JSON.
-// ═══════════════════════════════════════════════════════════
 function formatSearchResultsForLLM(results) {
   if (results.length === 0) return 'No search results found.';
-  return results.map((r, i) => 
+  return results.map((r, i) =>
     `--- SOURCE ${i + 1} ---\nTitle: ${r.title}\nURL: ${r.url}\nContent: ${r.snippet}`
   ).join('\n\n');
 }
@@ -165,9 +149,6 @@ function formatStockDataForLLM(data) {
   return `Stock: ${data.name} (${data.ticker})\nExchange: ${data.exchange}\nPrice: ${data.currency === 'USD' ? '$' : ''}${data.price}\nChange: ${data.change >= 0 ? '+' : ''}${data.change} (${data.changePct}%)\nMarket Cap: ${data.marketCap}\nOpen: ${data.open} | High: ${data.high} | Low: ${data.low} | Prev Close: ${data.prevClose}`;
 }
 
-// ═══════════════════════════════════════════════════════════
-// 4. TOOL DEFINITIONS (Optimized for Mistral)
-// ═══════════════════════════════════════════════════════════
 const TOOLS = [
   {
     type: 'function',
@@ -177,10 +158,10 @@ const TOOLS = [
       parameters: {
         type: 'object',
         properties: {
-          query: { type: 'string', description: 'A concise, keyword-focused search query (e.g., "Nvidia Q3 2024 earnings report").' },
+          query: { type: 'string', description: 'A concise, keyword-focused search query.' },
         },
         required: ['query'],
-        additionalProperties: false, // Strict mode
+        additionalProperties: false,
       },
     },
   },
@@ -195,18 +176,15 @@ const TOOLS = [
           symbol: { type: 'string', description: 'Stock ticker symbol only (e.g., AAPL, TSLA, RELIANCE.NS). Do not include company names.' },
         },
         required: ['symbol'],
-        additionalProperties: false, // Strict mode
+        additionalProperties: false,
       },
     },
   },
 ];
 
-// ═══════════════════════════════════════════════════════════
-// 5. MAIN REQUEST HANDLER
-// ═══════════════════════════════════════════════════════════
 export async function onRequestPost(context) {
   const { request, env } = context;
-  const requestId = crypto.randomUUID(); // Big Tech pattern: Tracing
+  const requestId = crypto.randomUUID();
 
   let query, history;
   try {
@@ -221,7 +199,7 @@ export async function onRequestPost(context) {
 
   const baseMessages = [
     { role: 'system', content: SYSTEM_PROMPT },
-    ...(Array.isArray(history) ? history.slice(-10) : []), // Keep context window small (last 10 turns)
+    ...(Array.isArray(history) ? history.slice(-10) : []),
     { role: 'user', content: query },
   ];
 
@@ -231,8 +209,8 @@ export async function onRequestPost(context) {
 
   (async () => {
     try {
-      console.log(`[${requestId}] Calling Mistral Large for routing...`);
-      
+      console.log(`[${requestId}] Calling Ministral for routing...`);
+
       const call1Resp = await fetch('https://api.mistral.ai/v1/chat/completions', {
         method: 'POST',
         headers: {
@@ -240,13 +218,13 @@ export async function onRequestPost(context) {
           'Authorization': `Bearer ${env.MISTRAL_API_KEY}`,
         },
         body: JSON.stringify({
-          model: 'mistral-large-latest',
+          model: 'ministral-14b-2512',
           messages: baseMessages,
           tools: TOOLS,
           tool_choice: 'auto',
           stream: false,
-          max_tokens: 500, // Tool routing doesn't need 2048 tokens
-          temperature: 0.1, // Low temp for deterministic tool calling
+          max_tokens: 500,
+          temperature: 0.1,
         }),
       });
 
@@ -258,7 +236,6 @@ export async function onRequestPost(context) {
       const assistantMessage = call1Data.choices?.[0]?.message;
       const toolCalls = assistantMessage?.tool_calls;
 
-      // SCENARIO A: NO TOOL CALL (Direct Answer)
       if (!toolCalls || toolCalls.length === 0) {
         console.log(`[${requestId}] No tool call. Streaming direct answer.`);
         const directAnswer = assistantMessage?.content ?? 'I could not process that request.';
@@ -271,11 +248,10 @@ export async function onRequestPost(context) {
         return;
       }
 
-      // SCENARIO B: TOOL CALL EXECUTION
       const toolCall = toolCalls[0];
       const toolCallId = toolCall.id;
       const functionName = toolCall.function?.name;
-      
+
       console.log(`[${requestId}] Executing tool: ${functionName}`);
 
       let functionArgs = {};
@@ -285,13 +261,11 @@ export async function onRequestPost(context) {
         throw new Error('LLM returned invalid JSON for tool arguments.');
       }
 
-      // 1. VALIDATE
       let validatedArgs;
       try {
         validatedArgs = validateToolArgs(functionName, functionArgs);
       } catch (err) {
         console.error(`[${requestId}] Validation failed:`, err.message);
-        // Feed the error back to the LLM so it can correct itself or inform the user
         const errorMsg = `Tool execution failed: ${err.message}. Please ask the user for clarification or try a different approach.`;
         await writer.write(enc.encode(`data: ${JSON.stringify({ choices: [{ delta: { content: errorMsg }, finish_reason: 'stop' }] })}\n\n`));
         await writer.write(enc.encode(`data: [DONE]\n\n`));
@@ -299,7 +273,6 @@ export async function onRequestPost(context) {
         return;
       }
 
-      // 2. EXECUTE
       let toolResultContent = '';
       let frontendEvent = null;
       let frontendData = null;
@@ -320,14 +293,12 @@ export async function onRequestPost(context) {
         }
       }
 
-      // 3. EMIT TO FRONTEND (UI Cards)
       if (frontendEvent && frontendData) {
         await writer.write(enc.encode(`event: ${frontendEvent}\ndata: ${JSON.stringify(frontendData)}\n\n`));
       }
 
-      // 4. CALL #2: Stream final answer with tool context
       console.log(`[${requestId}] Calling Ministral for final answer...`);
-      
+
       const call2Resp = await fetch('https://api.mistral.ai/v1/chat/completions', {
         method: 'POST',
         headers: {
@@ -335,7 +306,7 @@ export async function onRequestPost(context) {
           'Authorization': `Bearer ${env.MISTRAL_API_KEY}`,
         },
         body: JSON.stringify({
-          model: 'ministral-14b-2512', // Cost-effective for final generation
+          model: 'ministral-14b-2512',
           messages: [
             ...baseMessages,
             {
@@ -346,7 +317,7 @@ export async function onRequestPost(context) {
             {
               role: 'tool',
               content: toolResultContent,
-              tool_call_id: toolCallId, // CRITICAL: Mistral requires this exact match
+              tool_call_id: toolCallId,
             },
           ],
           stream: true,
@@ -397,4 +368,4 @@ export async function onRequestOptions() {
       'Access-Control-Allow-Headers': 'Content-Type, Authorization',
     },
   });
-}
+            }

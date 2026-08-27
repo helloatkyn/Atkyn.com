@@ -32,20 +32,32 @@ function _fetchOg(url) {
 function _injectOgImage(cardEl, image) {
   if (!image) return;
 
-  const img = document.createElement('img');
-  img.src      = image;
-  img.loading  = 'eager';
-  img.decoding = 'async';
-  img.alt      = '';
+  const title = cardEl.querySelector('.wc-title');
+  const wrap  = document.createElement('div');
+  wrap.className = 'wc-thumb-full-wrap';
 
+  const img = document.createElement('img');
+  img.className = 'wc-thumb-full';
+  img.src       = image;
+  img.loading   = 'lazy';
+  img.decoding  = 'async';
+  img.alt       = '';
+
+  wrap.appendChild(img);
+  if (title?.nextSibling) {
+    title.parentNode.insertBefore(wrap, title.nextSibling);
+  } else if (title) {
+    title.parentNode.appendChild(wrap);
+  }
+
+  // Load hone ke baad aspect ratio check karo
   img.addEventListener('load', () => {
     const ratio = img.naturalWidth / img.naturalHeight;
-    // Landscape (ratio >= 1.3) → full width below title
-    // Square / portrait (ratio < 1.3) → inline right side
-    const layout = ratio >= 1.3 ? 0 : 1;
-
-    if (layout === 1) {
+    if (ratio < 1.3) {
+      // Square/portrait — inline side pe move karo
+      wrap.remove();
       img.className = 'wc-thumb-inline';
+
       const thumbWrap = document.createElement('div');
       thumbWrap.className = 'wc-thumb-inline-wrap';
       thumbWrap.appendChild(img);
@@ -59,27 +71,11 @@ function _injectOgImage(cardEl, image) {
         row.appendChild(snippet);
       }
       row.appendChild(thumbWrap);
-
-    } else {
-      img.className = 'wc-thumb-full';
-      const wrap = document.createElement('div');
-      wrap.className = 'wc-thumb-full-wrap';
-      wrap.appendChild(img);
-
-      const title = cardEl.querySelector('.wc-title');
-      if (title?.nextSibling) {
-        title.parentNode.insertBefore(wrap, title.nextSibling);
-      } else if (title) {
-        title.parentNode.appendChild(wrap);
-      }
     }
+    // Landscape — wrap already sahi jagah hai, kuch nahi karna
   }, { once: true });
 
-  img.addEventListener('error', () => img.remove(), { once: true });
-
-  // Preload silently — body mein hidden rakh taaki load event fire ho
-  img.style.cssText = 'position:absolute;width:1px;height:1px;opacity:0;pointer-events:none;';
-  document.body.appendChild(img);
+  img.addEventListener('error', () => wrap.remove(), { once: true });
 }
 
 /* ── Result card ── */

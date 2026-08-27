@@ -18,13 +18,6 @@ const _safeUrl = u => {
   } catch (_) { return '#'; }
 };
 
-/* ── Image layout types
-   0 = full width below title
-   1 = right-side inline (contain, no crop)          ── */
-const _LAYOUTS = [0, 0, 1, 1, 0]; // weighted: full more common
-
-const _pickLayout = i => _LAYOUTS[i % _LAYOUTS.length];
-
 /* ── Fetch OG image from worker ── */
 function _fetchOg(url) {
   return fetch(`/api/og?url=${encodeURIComponent(url)}`, {
@@ -35,55 +28,57 @@ function _fetchOg(url) {
     .catch(() => null);
 }
 
-/* ── Inject image into result card ── */
-function _injectOgImage(cardEl, layout, image) {
+/* ── Inject image into result card — layout decided by aspect ratio ── */
+function _injectOgImage(cardEl, image) {
   if (!image) return;
 
-  if (layout === 1) {
-    // Right-side thumbnail — wrap snippet + image in a flex row
-    const snippet = cardEl.querySelector('.wc-snippet');
-    const row = document.createElement('div');
-    row.className = 'wc-inline-row';
+  const img = document.createElement('img');
+  img.src      = image;
+  img.loading  = 'lazy';
+  img.decoding = 'async';
+  img.alt      = '';
 
-    const thumbWrap = document.createElement('div');
-    thumbWrap.className = 'wc-thumb-inline-wrap';
+  img.addEventListener('load', () => {
+    const ratio = img.naturalWidth / img.naturalHeight;
+    // Landscape (ratio >= 1.3) → full width below title
+    // Square / portrait (ratio < 1.3) → inline right side
+    const layout = ratio >= 1.3 ? 0 : 1;
 
-    const img = document.createElement('img');
-    img.className  = 'wc-thumb-inline';
-    img.src        = image;
-    img.loading    = 'lazy';
-    img.decoding   = 'async';
-    img.alt        = '';
-    img.addEventListener('error', () => thumbWrap.remove(), { once: true });
-    thumbWrap.appendChild(img);
+    if (layout === 1) {
+      img.className = 'wc-thumb-inline';
+      const thumbWrap = document.createElement('div');
+      thumbWrap.className = 'wc-thumb-inline-wrap';
+      thumbWrap.appendChild(img);
 
-    if (snippet) {
-      snippet.parentNode.insertBefore(row, snippet);
-      row.appendChild(snippet);
+      const snippet = cardEl.querySelector('.wc-snippet');
+      const row = document.createElement('div');
+      row.className = 'wc-inline-row';
+
+      if (snippet) {
+        snippet.parentNode.insertBefore(row, snippet);
+        row.appendChild(snippet);
+      }
+      row.appendChild(thumbWrap);
+
+    } else {
+      img.className = 'wc-thumb-full';
+      const wrap = document.createElement('div');
+      wrap.className = 'wc-thumb-full-wrap';
+      wrap.appendChild(img);
+
+      const title = cardEl.querySelector('.wc-title');
+      if (title?.nextSibling) {
+        title.parentNode.insertBefore(wrap, title.nextSibling);
+      } else if (title) {
+        title.parentNode.appendChild(wrap);
+      }
     }
-    row.appendChild(thumbWrap);
+  }, { once: true });
 
-  } else {
-    // Full-width banner below title (layout 0)
-    const title = cardEl.querySelector('.wc-title');
-    const wrap  = document.createElement('div');
-    wrap.className = 'wc-thumb-full-wrap';
+  img.addEventListener('error', () => {}, { once: true });
 
-    const img = document.createElement('img');
-    img.className  = 'wc-thumb-full';
-    img.src        = image;
-    img.loading    = 'lazy';
-    img.decoding   = 'async';
-    img.alt        = '';
-    img.addEventListener('error', () => wrap.remove(), { once: true });
-    wrap.appendChild(img);
-
-    if (title?.nextSibling) {
-      title.parentNode.insertBefore(wrap, title.nextSibling);
-    } else if (title) {
-      title.parentNode.appendChild(wrap);
-    }
-  }
+  // Preload silently
+  document.createElement('div').appendChild(img);
 }
 
 /* ── Result card ── */
@@ -101,7 +96,6 @@ function _buildCard(r, index) {
   const fav1    = `https://www.google.com/s2/favicons?sz=64&domain=${encodeURIComponent(host)}`;
   const fav2    = `https://icons.duckduckgo.com/ip3/${host}.ico`;
   const snippet = r.content || r.snippet || r.description || r.summary || '';
-  const layout  = _pickLayout(index);
 
   const a  = document.createElement('a');
   a.className = 'wc-card';
@@ -133,11 +127,10 @@ function _buildCard(r, index) {
     else { this.closest('.wc-fav-wrap').style.display = 'none'; }
   }, { once: true, passive: true });
 
-  // Use pre-fetched image if search API returned one, otherwise fetch OG
   if (r.image) {
-    _injectOgImage(a, layout, r.image);
+    _injectOgImage(a, r.image);
   } else {
-    _fetchOg(r.url).then(img => _injectOgImage(a, layout, img));
+    _fetchOg(r.url).then(img => _injectOgImage(a, img));
   }
 
   return a;
@@ -346,4 +339,3 @@ window._atkynInit_web = _init;
 _init();
 
 }());
-     

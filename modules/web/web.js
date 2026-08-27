@@ -34,7 +34,7 @@ function _injectOgImage(cardEl, image) {
 
   const img = document.createElement('img');
   img.src      = image;
-  img.loading  = 'lazy';
+  img.loading  = 'eager';
   img.decoding = 'async';
   img.alt      = '';
 

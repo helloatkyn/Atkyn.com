@@ -1,52 +1,27 @@
 /* modules/images/images.js — Images tab
-   [PRODUCTION READY: Parallel Loading · Aggressive Caching · 60FPS Scroll]
-   v4: Google-speed loading · Bing-smooth scroll · Instant Wikipedia
+   v3: Bing-style cards · 64px favicons · Wikipedia inline (scroll lazy, once)
 */
 (function () {
 
-  let _seen         = new Set();
-  let _cols          = [null, null];
-  let _colH          = [0, 0];
-  let _grid          = null;
-  let _lazyIo        = null;
-  let _prefetchIo    = null;
-  let _loading       = false;
-  let _wikiLoading   = false;
-  let _q             = '';
-  let _renderQueue   = [];
-  let _isRendering   = false;
-  let _totalImages   = 0;
+  let _seen      = new Set();
+  let _cols      = [null, null];
+  let _colH      = [0, 0];
+  let _grid      = null;
+  let _lazyIo    = null;
+  let _scrollIo  = null;
+  let _sentinel  = null;
+  let _loading   = false;
+  let _wikiDone  = false;
+  let _q         = '';
 
-  // ─ Column helpers ────────────────────────────────────────────
+  let _queue      = [];
+  let _batchTimer = null;
+
+  // ── Column helpers ────────────────────────────────────────────
   function _shortCol() { return _colH[0] <= _colH[1] ? 0 : 1; }
 
-  // ── Cache helpers ─────────────────────────────────────────────
-  function _getCacheKey() { return `img_cache_${_q}`; }
-  
-  function _getCached() {
-    try {
-      const cached = sessionStorage.getItem(_getCacheKey());
-      if (cached) {
-        const data = JSON.parse(cached);
-        if (Date.now() - data.timestamp < 300000) { // 5 min cache
-          return data.results;
-        }
-      }
-    } catch (_) {}
-    return null;
-  }
-  
-  function _setCache(results) {
-    try {
-      sessionStorage.setItem(_getCacheKey(), JSON.stringify({
-        timestamp: Date.now(),
-        results: results
-      }));
-    } catch (_) {}
-  }
-
-  // ── Tile builder (optimized) ──────────────────────────────────
-  function _buildTile(img, priority = false) {
+  // ── Tile builder ──────────────────────────────────────────────
+  function _buildTile(img) {
     const src   = img.img_src       || img.thumbnail_src || '';
     const thumb = img.thumbnail_src || img.img_src       || '';
     if (!src) return null;
@@ -56,27 +31,20 @@
     a.href        = img.url || src;
     a.target      = '_blank';
     a.rel         = 'noopener noreferrer';
-    a.style.cssText = 'will-change:transform;transform:translateZ(0);';
 
     const imgEl         = document.createElement('img');
     imgEl.alt           = img.title || '';
-    imgEl.decoding      = priority ? 'sync' : 'async';
-    imgEl.fetchPriority = priority ? 'high' : 'low';
+    imgEl.decoding      = 'async';
     imgEl.dataset.src   = src;
     imgEl.dataset.thumb = thumb;
     imgEl.classList.add('img-lazy');
     imgEl.style.cssText =
-      'opacity:0;transition:opacity 0.15s ease-out;display:block;' +
-      'width:100%;height:auto;border-radius:10px;will-change:opacity,transform;' +
-      'content-visibility:auto;contain-intrinsic-size:300px 400px;';
+      'opacity:0;transition:opacity 0.2s ease;display:block;' +
+      'width:100%;height:auto;border-radius:10px;will-change:opacity;';
 
     imgEl.onload = function () {
-      requestAnimationFrame(() => { 
-        this.style.opacity = '1';
-        this.style.transform = 'translateZ(0)';
-      });
+      requestAnimationFrame(() => { this.style.opacity = '1'; });
     };
-    
     imgEl.onerror = function () {
       if (this.dataset.triedThumb !== '1' && thumb && thumb !== this.src) {
         this.dataset.triedThumb = '1';
@@ -84,19 +52,14 @@
         return;
       }
       const tile = this.closest('.img-tile');
-      if (tile) { 
-        tile.style.transition = 'opacity 0.2s ease, transform 0.2s ease';
-        tile.style.opacity = '0';
-        tile.style.transform = 'scale(0.95)';
-        setTimeout(() => tile.remove(), 200);
-      }
+      if (tile) { tile.style.display = 'none'; setTimeout(() => tile.remove(), 200); }
     };
 
     a.appendChild(imgEl);
     return a;
   }
 
-  // ── Favicon (unchanged) ───────────────────────────────────────
+  // ── Favicon — 64px Google → DuckDuckGo → favicon.im → letter SVG ──
   function _faviconEl(url) {
     let host = '';
     try { host = new URL(url).hostname.replace(/^www\./, ''); } catch { /* skip */ }
@@ -131,13 +94,12 @@
     return img;
   }
 
-  // ── Related searches & Source cards (unchanged) ──────────────
+  // ── Related searches card (Bing style) ───────────────────────
   function _buildSuggestionCard(suggestions) {
     if (!suggestions?.length) return null;
 
     const card        = document.createElement('div');
     card.className    = 'img-suggestion-card';
-    card.style.cssText = 'will-change:transform;transform:translateZ(0);';
 
     const label       = document.createElement('p');
     label.className   = 'img-card-label';
@@ -160,12 +122,12 @@
     return card;
   }
 
+  // ── Top sources card (Bing style) ────────────────────────────
   function _buildSourceCard(results) {
     if (!results?.length) return null;
 
     const card        = document.createElement('div');
     card.className    = 'img-source-card';
-    card.style.cssText = 'will-change:transform;transform:translateZ(0);';
 
     const label       = document.createElement('p');
     label.className   = 'img-card-label';
@@ -212,7 +174,7 @@
     return card;
   }
 
-  // ── Smart placer (balanced columns) ───────────────────────────
+  // ── Place filler cards in gap column ─────────────────────────
   function _placeFiller(suggestions, sourceResults) {
     const c     = _shortCol();
     const other = 1 - c;
@@ -227,85 +189,66 @@
     }
   }
 
-  // ── FAST BATCH RENDERER (12 tiles per frame) ──────────────────
-  function _renderBatch() {
-    if (!_renderQueue.length || _isRendering) {
-      _isRendering = false;
-      return;
-    }
+  // ── Sentinel — triggers Wikipedia fetch on scroll ─────────────
+  function _attachSentinel() {
+    if (_sentinel) _sentinel.remove();
+    _sentinel           = document.createElement('div');
+    _sentinel.className = 'img-sentinel';
+    _cols[_shortCol()].appendChild(_sentinel);
 
-    _isRendering = true;
-    const batchSize = 12; // Google-level batch size
-    const batch = _renderQueue.splice(0, batchSize);
-    
-    const fragment = document.createDocumentFragment();
-    batch.forEach((img, idx) => {
-      const tile = _buildTile(img, idx < 4); // First 4 = high priority
-      if (tile) {
-        const c = _shortCol();
-        fragment.appendChild(tile);
-        _cols[c].appendChild(tile);
-        const aspect = (img.width && img.height) ? img.height / img.width : 0.75;
-        _colH[c] += aspect;
-      }
+    if (_scrollIo) _scrollIo.disconnect();
+    _scrollIo = new IntersectionObserver(entries => {
+      if (!entries[0].isIntersecting || _wikiDone) return;
+      _wikiDone = true;
+      _scrollIo.disconnect();
+      _fetchWiki();
+    }, { rootMargin: '400px' });
+    _scrollIo.observe(_sentinel);
+  }
+
+  // ── Drip renderer: 4 tiles every 80ms ────────────────────────
+  function _drip() {
+    if (!_queue.length) { _batchTimer = null; return; }
+
+    const batch = _queue.splice(0, 4);
+    batch.forEach(img => {
+      const tile = _buildTile(img);
+      if (!tile) return;
+      const c    = _shortCol();
+      _cols[c].appendChild(tile);
+      const aspect = (img.width && img.height) ? img.height / img.width : 0.75;
+      _colH[c] += aspect;
     });
 
-    // Observe new lazy images
     _grid.querySelectorAll('.img-lazy:not([data-ob])').forEach(el => {
       el.dataset.ob = '1';
       _lazyIo.observe(el);
     });
 
-    // Schedule next batch using requestIdleCallback for smoothness
-    if (_renderQueue.length > 0) {
-      if ('requestIdleCallback' in window) {
-        requestIdleCallback(() => _renderBatch(), { timeout: 100 });
-      } else {
-        setTimeout(() => { _isRendering = false; _renderBatch(); }, 16);
-      }
-    } else {
-      _isRendering = false;
-    }
+    _batchTimer = setTimeout(_drip, 80);
   }
 
-  function _appendResults(results, isWiki = false) {
+  function _appendResults(results) {
     const fresh = results.filter(r => {
       const key = r.img_src;
       if (!key || _seen.has(key)) return false;
       _seen.add(key);
       return true;
     });
-    
     if (!fresh.length) return;
-    
-    // Wikipedia results go to end of queue, Serper results to front
-    if (isWiki) {
-      _renderQueue.push(...fresh);
-    } else {
-      _renderQueue.unshift(...fresh);
-    }
-    
-    if (!_isRendering) _renderBatch();
+    _queue.push(...fresh);
+    if (!_batchTimer) _drip();
   }
 
-  // ── PARALLEL FETCH: Serper + Wikipedia simultaneously ─────────
-  function _fetchAll() {
+  // ── Fetch #1 — Serper (upfront, max 100) ─────────────────────
+  function _fetchSerper() {
     if (_loading) return;
     _loading = true;
 
-    // Check cache first
-    const cached = _getCached();
-    if (cached) {
-      _appendResults(cached);
-      _loading = false;
-      _fetchWiki(); // Still fetch Wikipedia for more results
-      return;
-    }
-
-    // Fetch Serper
     fetch(`/api/images?q=${encodeURIComponent(_q)}`)
       .then(r => r.ok ? r.json() : Promise.reject())
       .then(data => {
+        _loading = false;
         const results       = data.results       || [];
         const suggestions   = data.suggestions   || [];
         const sourceResults = data.sourceResults || [];
@@ -313,35 +256,24 @@
         if (!results.length) {
           document.getElementById('pageContent').innerHTML =
             '<div class="tab-empty"><p>No images found</p></div>';
-          _loading = false;
           return;
         }
 
-        // Cache results
-        _setCache(results);
-        _totalImages = results.length;
-        
-        // Render immediately
         _appendResults(results);
-        
-        // Place filler cards after initial render
+
+        const delay = Math.ceil(results.length / 4) * 80 + 300;
         setTimeout(() => {
           _placeFiller(suggestions, sourceResults);
-        }, 200);
-        
-        _loading = false;
+          _attachSentinel();
+        }, delay);
       })
       .catch(() => { _loading = false; });
-
-    // Wikipedia fetch starts IMMEDIATELY (parallel, not sequential)
-    _fetchWiki();
   }
 
-  // ── Wikipedia: Parallel 4-page fetch with timeout ─────────────
+  // ── Fetch #2 — Wikipedia Commons (on scroll, 4 parallel pages) ─
+  // gsrlimit=50 per call, offsets 0/50/100/150 → up to ~200 results.
+  // All 4 fired in parallel with Promise.all — free API, no key.
   function _fetchWiki() {
-    if (_wikiLoading) return;
-    _wikiLoading = true;
-
     const LIMIT   = 50;
     const PAGES   = 4;
     const BASE    = {
@@ -358,62 +290,49 @@
       redirects:    '1',
     };
 
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 4000); // 4s timeout
-
     const calls = Array.from({ length: PAGES }, (_, i) => {
       const p = new URLSearchParams({ ...BASE, gsroffset: String(i * LIMIT) });
-      return fetch(`https://commons.wikimedia.org/w/api.php?${p}`, {
-        signal: controller.signal
-      })
+      return fetch(`https://commons.wikimedia.org/w/api.php?${p}`)
         .then(r => r.ok ? r.json() : {})
         .catch(() => ({}));
     });
 
-    Promise.all(calls)
-      .then(responses => {
-        clearTimeout(timeoutId);
-        const allPages = responses.flatMap(data =>
-          Object.values(data?.query?.pages || {})
-        );
+    Promise.all(calls).then(responses => {
+      const allPages = responses.flatMap(data =>
+        Object.values(data?.query?.pages || {})
+      );
 
-        const results = allPages
-          .filter(p => {
-            const ii   = p.imageinfo?.[0];
-            if (!ii) return false;
-            const mime = ii.mime || '';
-            return mime.startsWith('image/jpeg') ||
-                   mime.startsWith('image/png')  ||
-                   mime.startsWith('image/webp') ||
-                   mime.startsWith('image/gif');
-          })
-          .map(p => {
-            const ii       = p.imageinfo[0];
-            const thumbUrl = ii.thumburl || ii.url || '';
-            const fullUrl  = ii.url      || thumbUrl;
-            return {
-              title:         (p.title || '').replace(/^File:/, ''),
-              url:           p.fullurl || ii.descriptionurl || fullUrl,
-              img_src:       fullUrl,
-              thumbnail_src: thumbUrl,
-              width:         ii.thumbwidth  || ii.width  || 0,
-              height:        ii.thumbheight || ii.height || 0,
-              source:        'wikipedia',
-            };
-          })
-          .filter(img => img.width >= 100 && img.height >= 100);
+      const results = allPages
+        .filter(p => {
+          const ii   = p.imageinfo?.[0];
+          if (!ii) return false;
+          const mime = ii.mime || '';
+          return mime.startsWith('image/jpeg') ||
+                 mime.startsWith('image/png')  ||
+                 mime.startsWith('image/webp') ||
+                 mime.startsWith('image/gif');
+        })
+        .map(p => {
+          const ii       = p.imageinfo[0];
+          const thumbUrl = ii.thumburl || ii.url || '';
+          const fullUrl  = ii.url      || thumbUrl;
+          return {
+            title:         (p.title || '').replace(/^File:/, ''),
+            url:           p.fullurl || ii.descriptionurl || fullUrl,
+            img_src:       fullUrl,
+            thumbnail_src: thumbUrl,
+            width:         ii.thumbwidth  || ii.width  || 0,
+            height:        ii.thumbheight || ii.height || 0,
+            source:        'wikipedia',
+          };
+        })
+        .filter(img => img.width >= 100 && img.height >= 100);
 
-        if (results.length) {
-          _appendResults(results, true);
-        }
-      })
-      .catch(() => {})
-      .finally(() => {
-        _wikiLoading = false;
-      });
+      if (results.length) _appendResults(results);
+    });
   }
 
-  // ── AGGRESSIVE Lazy loader (2000px threshold) ─────────────────
+  // ── Lazy image loader ─────────────────────────────────────────
   function _initLazyIo() {
     if (_lazyIo) _lazyIo.disconnect();
     _lazyIo = new IntersectionObserver((entries, obs) => {
@@ -425,64 +344,34 @@
         const thumbSrc = el.dataset.thumb || el.dataset.src;
         const fullSrc  = el.dataset.src;
 
-        if (thumbSrc) {
-          el.src = thumbSrc;
-        }
+        if (thumbSrc) el.src = thumbSrc;
 
         if (fullSrc && fullSrc !== thumbSrc) {
           const full    = new Image();
           full.decoding = 'async';
           full.onload   = () => {
             if (!el.isConnected) return;
-            el.style.transition = 'opacity 0.12s ease-out';
             el.style.opacity = '0';
-            requestAnimationFrame(() => { 
-              el.src = fullSrc;
-              requestAnimationFrame(() => {
-                el.style.opacity = '1';
-              });
-            });
+            requestAnimationFrame(() => { el.src = fullSrc; });
           };
           full.src = fullSrc;
         }
       });
-    }, { rootMargin: '2000px' }); // Aggressive prefetch
-  }
-
-  // ── Prefetch observer (preload next images) ──────────────────
-  function _initPrefetchIo() {
-    if (_prefetchIo) _prefetchIo.disconnect();
-    _prefetchIo = new IntersectionObserver((entries) => {
-      entries.forEach(entry => {
-        if (entry.isIntersecting) {
-          const img = entry.target.querySelector('img');
-          if (img && !img.dataset.prefetched) {
-            img.dataset.prefetched = '1';
-            // Prefetch full resolution
-            const fullSrc = img.dataset.src;
-            if (fullSrc) {
-              const link = document.createElement('link');
-              link.rel = 'prefetch';
-              link.href = fullSrc;
-              document.head.appendChild(link);
-            }
-          }
-        }
-      });
-    }, { rootMargin: '800px' });
+    }, { rootMargin: '1200px' });
   }
 
   // ── Init ──────────────────────────────────────────────────────
   window._atkynInit_images = function () {
-    _seen         = new Set();
-    _cols         = [null, null];
-    _colH         = [0, 0];
-    _grid         = null;
-    _loading      = false;
-    _wikiLoading  = false;
-    _renderQueue  = [];
-    _isRendering  = false;
-    _totalImages  = 0;
+    _seen     = new Set();
+    _cols     = [null, null];
+    _colH     = [0, 0];
+    _grid     = null;
+    _loading  = false;
+    _wikiDone = false;
+    _queue    = [];
+    if (_batchTimer) { clearTimeout(_batchTimer); _batchTimer = null; }
+    if (_scrollIo)   { _scrollIo.disconnect();    _scrollIo   = null; }
+    if (_sentinel)   { _sentinel.remove();         _sentinel   = null; }
 
     _q = sessionStorage.getItem('atkyn_last_query') || '';
 
@@ -508,7 +397,6 @@
       </div>`;
 
     _initLazyIo();
-    _initPrefetchIo();
 
     _grid = document.createElement('div');
     _grid.className = 'images-grid';
@@ -522,8 +410,9 @@
     pc.innerHTML = '';
     pc.appendChild(_grid);
 
-    _fetchAll();
+    _fetchSerper();
   };
 
   window._atkynInit_images();
 }());
+         

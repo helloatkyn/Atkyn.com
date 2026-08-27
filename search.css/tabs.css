@@ -1,6 +1,6 @@
 /* ════════════════════════════════════════════════════════════════
    tabs.css — Tab bar (Answer / Web / Images / Videos / News …)
-   Google-style · Underline indicator · No chip/container
+   Google-style · Bold active · No underline · Grey divider
 ════════════════════════════════════════════════════════════════ */
 
 /* ────────────────────────────────────────────────────────────────
@@ -36,8 +36,7 @@
 
   transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
 
-  /* 0.2px thicker divider */
-  border-bottom: 1.2px solid rgba(0, 0, 0, 0.055);
+  border-bottom: 1.2px solid rgba(0, 0, 0, 0.12);
 }
 
 .tab-bar::-webkit-scrollbar {
@@ -54,7 +53,7 @@
 @media (prefers-color-scheme: dark) {
   .tab-bar {
     background: var(--color-tab-bar-bg-dark);
-    border-bottom-color: rgba(255, 255, 255, 0.065);
+    border-bottom-color: rgba(255, 255, 255, 0.12);
   }
 }
 
@@ -64,7 +63,6 @@
 .tab {
   flex-shrink: 0;
 
-  /* Full height so underline can sit flush at bottom */
   height: 100%;
   padding: 0 14px;
 
@@ -78,9 +76,6 @@
   border: 0;
   border-radius: 0;
 
-  /* Underline indicator — hidden by default */
-  border-bottom: 3px solid transparent;
-
   cursor: pointer;
   white-space: nowrap;
 
@@ -92,7 +87,6 @@
 
   transition:
     color 0.16s ease,
-    border-bottom-color 0.16s ease,
     opacity 0.16s ease;
 
   -webkit-tap-highlight-color: transparent;
@@ -106,12 +100,11 @@
 }
 
 /* ────────────────────────────────────────────────────────────────
-   ACTIVE — Google style: bold text + underline, no background
+   ACTIVE — Google style: sirf bold, koi underline/background nahi
 ──────────────────────────────────────────────────────────────── */
 .tab.active {
   font-weight: 700;
   color: var(--color-text-strong);
-  border-bottom-color: var(--color-accent, #1a73e8);
 }
 
 /* ────────────────────────────────────────────────────────────────
@@ -137,6 +130,5 @@
 
   .tab.active {
     color: rgba(255, 255, 255, 0.96);
-    border-bottom-color: var(--color-accent, #4fa3f7);
   }
 }

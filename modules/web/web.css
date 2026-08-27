@@ -269,7 +269,7 @@
   .wc-thumb-inline-wrap { background: #2c2c2e; }
 
   .wc-kg-card {
-    background: #000000;
+    background: #1c1c1e;
     box-shadow: none;
     border: none;
   }
@@ -288,7 +288,7 @@
   .wc-answer-pill { background: #1c1c1e; color: #f0f0f0; box-shadow: 0 1px 4px rgba(0,0,0,0.3); }
 
   .wc-related {
-    background: #000000;
+    background: #1c1c1e;
     box-shadow: none;
     border: none;
   }
@@ -305,4 +305,4 @@
   .wc-suggest-item.active { background: #2a2a2c; color: #4BA8D8; }
   .wc-suggest-icon { color: #555; }
   .wc-suggest-item.active .wc-suggest-icon { color: #4BA8D8; }
-  }
+}

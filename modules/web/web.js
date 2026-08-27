@@ -50,11 +50,9 @@ function _injectOgImage(cardEl, image) {
     title.parentNode.appendChild(wrap);
   }
 
-  // Load hone ke baad aspect ratio check karo
   img.addEventListener('load', () => {
     const ratio = img.naturalWidth / img.naturalHeight;
     if (ratio < 1.3) {
-      // Square/portrait — inline side pe move karo
       wrap.remove();
       img.className = 'wc-thumb-inline';
 
@@ -72,14 +70,13 @@ function _injectOgImage(cardEl, image) {
       }
       row.appendChild(thumbWrap);
     }
-    // Landscape — wrap already sahi jagah hai, kuch nahi karna
   }, { once: true });
 
   img.addEventListener('error', () => wrap.remove(), { once: true });
 }
 
 /* ── Result card ── */
-function _buildCard(r, index) {
+function _buildCard(r) {
   let host = '', path = '';
   try {
     const u = new URL(r.url);
@@ -190,7 +187,7 @@ function _buildInfobox(box) {
 function _buildRelated(suggestions) {
   if (!suggestions?.length) return null;
 
-  const el   = document.createElement('div');
+  const el = document.createElement('div');
   el.className = 'wc-related';
   el.innerHTML = '<div class="wc-related-title">People also search for</div>';
 
@@ -249,14 +246,13 @@ function _render(q, data) {
   const infobox = _buildInfobox(data.infobox);
   if (infobox) frag.appendChild(infobox);
 
-  // Hide Wikipedia results when an infobox is already shown
   const results = data.infobox
     ? data.results.filter(r => !r.url.includes('wikipedia.org'))
     : data.results;
 
   const list = document.createElement('div');
   list.className = 'wc-list';
-  results.forEach((r, i) => list.appendChild(_buildCard(r, i)));
+  results.forEach(r => list.appendChild(_buildCard(r)));
   frag.appendChild(list);
 
   pc.innerHTML = '';

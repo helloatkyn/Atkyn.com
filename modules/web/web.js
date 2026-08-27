@@ -75,10 +75,11 @@ function _injectOgImage(cardEl, image) {
     }
   }, { once: true });
 
-  img.addEventListener('error', () => {}, { once: true });
+  img.addEventListener('error', () => img.remove(), { once: true });
 
-  // Preload silently
-  document.createElement('div').appendChild(img);
+  // Preload silently — body mein hidden rakh taaki load event fire ho
+  img.style.cssText = 'position:absolute;width:1px;height:1px;opacity:0;pointer-events:none;';
+  document.body.appendChild(img);
 }
 
 /* ── Result card ── */

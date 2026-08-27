@@ -256,8 +256,8 @@
 @media (prefers-color-scheme: dark) {
   .wc-list { background: #000000; }
 
-  .wc-card { background: #1c1c1e; box-shadow: 0 1px 4px rgba(0,0,0,0.3); }
-  .wc-card:active { background: #2a2a2c; }
+  .wc-card { background: #000000; box-shadow: none; }
+  .wc-card:active { background: #1c1c1e; }
   .wc-title { color: #4BA8D8; }
   .wc-snippet { color: #d4d4d6; }
   .wc-domain { color: rgba(255,255,255,0.75); }
@@ -265,36 +265,36 @@
   .wc-fav-wrap { background: #2c2c2e; }
   .wc-dots svg { fill: #555; }
 
-  .wc-thumb-full-wrap { background: #2c2c2e; }
-  .wc-thumb-inline-wrap { background: #2c2c2e; }
+  .wc-thumb-full-wrap { background: #1c1c1e; }
+  .wc-thumb-inline-wrap { background: #1c1c1e; }
 
   .wc-kg-card {
-    background: #000000;
+    background: #1c1c1e;
     box-shadow: none;
     border: none;
   }
   .wc-kg-title { color: #f0f0f0; }
   .wc-kg-desc { color: #ccc; }
-  .wc-kg-image-box { background: #1c1c1e; }
-  .wc-kg-source { background: #1c1c1e; }
+  .wc-kg-image-box { background: #2c2c2e; }
+  .wc-kg-source { background: #2c2c2e; }
   .wc-kg-source-text { color: #aaa; }
 
   .wc-sitelinks { border-top-color: #2c2c2e; }
   .wc-sitelink { border-bottom-color: #2c2c2e; }
-  .wc-sitelink:active { background: #1e1e20; }
+  .wc-sitelink:active { background: #2a2a2c; }
   .wc-sitelink-title { color: #4BA8D8; }
   .wc-sitelink-arrow { color: #444; }
 
-  .wc-answer-pill { background: #1c1c1e; color: #f0f0f0; box-shadow: 0 1px 4px rgba(0,0,0,0.3); }
+  .wc-answer-pill { background: #1c1c1e; color: #f0f0f0; box-shadow: none; }
 
   .wc-related {
-    background: #000000;
+    background: #1c1c1e;
     box-shadow: none;
     border: none;
   }
   .wc-related-title { color: #f0f0f0; }
   .wc-related-item { border-bottom-color: #2c2c2e; }
-  .wc-related-item:active { background: #1c1c1e; }
+  .wc-related-item:active { background: #2a2a2c; }
   .wc-related-item span { color: #e0e0e0; }
   .wc-related-icon { color: #555; }
   .wc-related-arrow { color: #444; }

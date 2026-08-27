@@ -274,7 +274,7 @@
     border: none;
   }
   .wc-kg-title { color: #f0f0f0; }
-  .wc-kg-desc { color: #ccc; }
+  .wc-kg-desc { color: #d4d4d6; }          /* was #ccc — snippet ke saath match */
   .wc-kg-image-box { background: #1c1c1e; }
   .wc-kg-source { background: #1c1c1e; }
   .wc-kg-source-text { color: #aaa; }
@@ -295,7 +295,7 @@
   .wc-related-title { color: #f0f0f0; }
   .wc-related-item { border-bottom-color: #2c2c2e; }
   .wc-related-item:active { background: #1c1c1e; }
-  .wc-related-item span { color: #e0e0e0; }
+  .wc-related-item span { color: #d4d4d6; }  /* was #e0e0e0 — snippet ke saath match */
   .wc-related-icon { color: #555; }
   .wc-related-arrow { color: #444; }
 

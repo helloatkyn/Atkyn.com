@@ -250,7 +250,9 @@
 .wc-suggest-icon { width: 15px; height: 15px; flex-shrink: 0; color: #aaa; stroke-width: 2.2; }
 .wc-suggest-item.active .wc-suggest-icon { color: #000080; }
 
-/* ── Dark mode ── */
+/* ══════════════════════════════════════════════════
+   DARK MODE
+══════════════════════════════════════════════════ */
 @media (prefers-color-scheme: dark) {
   .wc-list { background: #000000; }
 
@@ -266,7 +268,11 @@
   .wc-thumb-full-wrap { background: #2c2c2e; }
   .wc-thumb-inline-wrap { background: #2c2c2e; }
 
-  .wc-kg-card { background: #1c1c1e; box-shadow: 0 1px 4px rgba(0,0,0,0.3); }
+  .wc-kg-card {
+    background: #1c1c1e;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+    border: 1px solid #2c2c2e;
+  }
   .wc-kg-title { color: #f0f0f0; }
   .wc-kg-desc { color: #ccc; }
   .wc-kg-image-box { background: #2c2c2e; }
@@ -281,7 +287,11 @@
 
   .wc-answer-pill { background: #1c1c1e; color: #f0f0f0; box-shadow: 0 1px 4px rgba(0,0,0,0.3); }
 
-  .wc-related { background: #1c1c1e; box-shadow: 0 1px 4px rgba(0,0,0,0.3); }
+  .wc-related {
+    background: #1c1c1e;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+    border: 1px solid #2c2c2e;
+  }
   .wc-related-title { color: #f0f0f0; }
   .wc-related-item { border-bottom-color: #2c2c2e; }
   .wc-related-item:active { background: #2a2a2c; }
@@ -295,4 +305,4 @@
   .wc-suggest-item.active { background: #2a2a2c; color: #4BA8D8; }
   .wc-suggest-icon { color: #555; }
   .wc-suggest-item.active .wc-suggest-icon { color: #4BA8D8; }
-  }
+}

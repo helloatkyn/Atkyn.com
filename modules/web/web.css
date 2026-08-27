@@ -135,8 +135,7 @@
 ══════════════════════════════════════════════════ */
 .wc-kg-card {
   background: #fff;
-  border-radius: 16px;
-  overflow: hidden;
+  border-radius: 14px;
   padding: 16px 16px 18px;
   margin: 6px 8px 4px;
   box-shadow: 0 1px 2px rgba(0,0,0,0.06);
@@ -213,8 +212,7 @@
 ══════════════════════════════════════════════════ */
 .wc-related {
   margin: 8px 8px 4px; background: #fff;
-  border-radius: 16px; overflow: hidden;
-  padding: 14px 14px 6px;
+  border-radius: 16px; padding: 14px 14px 6px;
   box-shadow: 0 1px 2px rgba(0,0,0,0.06);
 }
 .wc-related-title { font-size: 1rem; font-weight: 700; color: #111; margin-bottom: 4px; }
@@ -274,7 +272,6 @@
     background: #1c1c1e;
     box-shadow: none;
     border: none;
-    border-radius: 16px;
   }
   .wc-kg-title { color: #f0f0f0; }
   .wc-kg-desc { color: #d4d4d6; }
@@ -294,7 +291,6 @@
     background: #1c1c1e;
     box-shadow: none;
     border: none;
-    border-radius: 16px;
   }
   .wc-related-title { color: #f0f0f0; }
   .wc-related-item { border-bottom-color: #2c2c2e; }

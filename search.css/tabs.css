@@ -1,6 +1,6 @@
 /* ════════════════════════════════════════════════════════════════
    tabs.css — Tab bar (Answer / Web / Images / Videos / News …)
-   Clean · Premium · Minimal · No Shadow · No Indicator
+   Google-style · Underline indicator · No chip/container
 ════════════════════════════════════════════════════════════════ */
 
 /* ────────────────────────────────────────────────────────────────
@@ -14,7 +14,7 @@
   overflow-y: hidden;
 
   padding: 0 12px;
-  gap: 3px;
+  gap: 0;
   height: 46px;
 
   -webkit-overflow-scrolling: touch;
@@ -34,11 +34,10 @@
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
 
-  transition:
-    transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
 
-  /* No shadow — clean separation */
-  border-bottom: 1px solid rgba(0, 0, 0, 0.055);
+  /* 0.2px thicker divider */
+  border-bottom: 1.2px solid rgba(0, 0, 0, 0.055);
 }
 
 .tab-bar::-webkit-scrollbar {
@@ -50,7 +49,7 @@
 }
 
 /* ────────────────────────────────────────────────────────────────
-   DARK MODE
+   DARK MODE — BAR
 ──────────────────────────────────────────────────────────────── */
 @media (prefers-color-scheme: dark) {
   .tab-bar {
@@ -65,18 +64,22 @@
 .tab {
   flex-shrink: 0;
 
-  height: 34px;
+  /* Full height so underline can sit flush at bottom */
+  height: 100%;
   padding: 0 14px;
 
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 500;
   letter-spacing: -0.01em;
 
   color: var(--color-text-muted);
 
   background: transparent;
   border: 0;
-  border-radius: 9px;
+  border-radius: 0;
+
+  /* Underline indicator — hidden by default */
+  border-bottom: 3px solid transparent;
 
   cursor: pointer;
   white-space: nowrap;
@@ -89,7 +92,7 @@
 
   transition:
     color 0.16s ease,
-    background-color 0.16s ease,
+    border-bottom-color 0.16s ease,
     opacity 0.16s ease;
 
   -webkit-tap-highlight-color: transparent;
@@ -100,17 +103,15 @@
 ──────────────────────────────────────────────────────────────── */
 .tab:hover {
   color: var(--color-text-strong);
-  background: rgba(0, 0, 0, 0.045);
 }
 
 /* ────────────────────────────────────────────────────────────────
-   ACTIVE
-   No underline / no bottom indicator.
+   ACTIVE — Google style: bold text + underline, no background
 ──────────────────────────────────────────────────────────────── */
 .tab.active {
   font-weight: 700;
   color: var(--color-text-strong);
-  background: rgba(0, 0, 0, 0.075);
+  border-bottom-color: var(--color-accent, #1a73e8);
 }
 
 /* ────────────────────────────────────────────────────────────────
@@ -132,11 +133,10 @@
 
   .tab:hover {
     color: rgba(255, 255, 255, 0.92);
-    background: rgba(255, 255, 255, 0.055);
   }
 
   .tab.active {
     color: rgba(255, 255, 255, 0.96);
-    background: rgba(255, 255, 255, 0.095);
+    border-bottom-color: var(--color-accent, #4fa3f7);
   }
 }

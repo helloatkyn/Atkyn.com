@@ -272,11 +272,12 @@
     background: #1c1c1e;
     box-shadow: none;
     border: none;
+    border-radius: 16px;
   }
   .wc-kg-title { color: #f0f0f0; }
-  .wc-kg-desc { color: #d4d4d6; }          /* was #ccc — snippet ke saath match */
-  .wc-kg-image-box { background: #1c1c1e; }
-  .wc-kg-source { background: #1c1c1e; }
+  .wc-kg-desc { color: #d4d4d6; }
+  .wc-kg-image-box { background: #3a3a3c; }  /* was #1c1c1e — contrast taaki transparent image dike */
+  .wc-kg-source { background: #2c2c2e; }
   .wc-kg-source-text { color: #aaa; }
 
   .wc-sitelinks { border-top-color: #2c2c2e; }
@@ -291,6 +292,7 @@
     background: #1c1c1e;
     box-shadow: none;
     border: none;
+    border-radius: 16px;
   }
   .wc-related-title { color: #f0f0f0; }
   .wc-related-item { border-bottom-color: #2c2c2e; }

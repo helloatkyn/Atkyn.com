@@ -14,6 +14,8 @@
   will-change: transform;
   transform: translateZ(0);
   background: var(--color-bg);
+  /* transition is set dynamically by JS — no static transition here
+     to avoid the "bounce" when keyboard opens/closes */
 }
 
 @media (prefers-color-scheme: dark) {
@@ -35,6 +37,7 @@
   padding: 0 18px 0 20px;
   height: 66px;
   gap: 12px;
+  /* flex-shrink:0 omitted — chatbar-wrap is not a flex container */
   transition: border-color 0.18s;
 }
 
@@ -114,6 +117,7 @@
 
 /* ────────────────────────────────────────────────────────────────
    ANIMATED SHIMMER PLACEHOLDER
+   Visible when input is empty.
 ──────────────────────────────────────────────────────────────── */
 .shimmer-overlay {
   position: absolute;
@@ -155,12 +159,13 @@
   }
 }
 
+/* Hide shimmer once user has typed */
 .search-input:not(:placeholder-shown) + .shimmer-overlay {
   display: none;
 }
 
 /* ────────────────────────────────────────────────────────────────
-   CAMERA BUTTON / SEND BUTTON
+   CAMERA BUTTON (idle state) & SEND BUTTON (has-text state)
 ──────────────────────────────────────────────────────────────── */
 .ico-camera {
   flex-shrink: 0;
@@ -207,6 +212,7 @@
   height: 17px;
 }
 
+/* Toggle camera ↔ send based on input state */
 .overlay-pill.has-text .ico-camera {
   display: none;
 }
@@ -217,25 +223,27 @@
 
 /* ────────────────────────────────────────────────────────────────
    DISCLAIMER
-   Compact · Single line · Professional
+   Compact · Professional · Single line
 ──────────────────────────────────────────────────────────────── */
 .chatbar-disclaimer {
-  margin: 7px 0 0;
+  display: block;
+  width: 100%;
+  margin: 6px 0 0;
   padding: 0;
   text-align: center;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  font-size: 0.72rem;
+  font-size: 0.70rem;
   line-height: 1.2;
   font-weight: 400;
-  letter-spacing: 0.005em;
-  color: var(--color-text-muted);
+  letter-spacing: 0;
+  color: #6f6f6f;
 }
 
 @media (prefers-color-scheme: dark) {
   .chatbar-disclaimer {
-    color: var(--color-text-dark-alt);
+    color: rgba(255, 255, 255, 0.52);
   }
 }
 
@@ -343,4 +351,4 @@
   .pm-icon svg {
     stroke: var(--color-icon-dark);
   }
-}
+   }

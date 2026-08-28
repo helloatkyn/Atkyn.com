@@ -43,6 +43,13 @@
   display: none;
 }
 
+/* Last tab clip fix — pseudo-element spacer */
+.tab-bar::after {
+  content: '';
+  flex-shrink: 0;
+  width: 12px;
+}
+
 .tab-bar.hide {
   transform: translateY(-100%) translateZ(0);
 }
@@ -66,9 +73,9 @@
   height: 100%;
   padding: 0 14px;
 
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 500;
-  letter-spacing: -0.01em;
+  letter-spacing: 0;
 
   color: var(--color-text-muted);
 

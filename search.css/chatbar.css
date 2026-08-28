@@ -76,7 +76,7 @@ PLUS / ATTACH BUTTON
   padding: 4px;
   border-radius: 50%;
 
-  color: rgba(0, 0, 0, 0.75);
+  color: var(--color-primary);
 
   transition:
     background 0.12s,
@@ -93,10 +93,6 @@ PLUS / ATTACH BUTTON
 }
 
 @media (prefers-color-scheme: dark) {
-  .ico-plus {
-    color: rgba(255, 255, 255, 0.55);
-  }
-
   .ico-plus:active {
     background: rgba(255, 255, 255, 0.08);
   }
@@ -233,7 +229,7 @@ CAMERA BUTTON
 
   border-radius: 50%;
 
-  color: rgba(0, 0, 0, 0.75);
+  color: var(--color-primary);
 
   transition:
     background 0.12s,
@@ -250,10 +246,6 @@ CAMERA BUTTON
 }
 
 @media (prefers-color-scheme: dark) {
-  .ico-camera {
-    color: rgba(255, 255, 255, 0.55);
-  }
-
   .ico-camera:active {
     background: rgba(255, 255, 255, 0.08);
   }
@@ -501,4 +493,4 @@ PLUS MENU ICON
   .pm-icon svg {
     stroke: var(--color-icon-dark);
   }
-  }
+}

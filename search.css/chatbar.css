@@ -1,6 +1,6 @@
 /* ════════════════════════════════════════════════════════════════
    chatbar.css — Minimal professional chatbar
-   Visible pill · No shadow · Same shape & dimensions
+   White pill · #f8f8f8 wrapper · No shadow
 ════════════════════════════════════════════════════════════════ */
 
 /* ────────────────────────────────────────────────────────────────
@@ -13,7 +13,7 @@
   z-index: 10;
   will-change: transform;
   transform: translateZ(0);
-  background: #ffffff;
+  background: #f8f8f8;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -24,13 +24,12 @@
 
 /* ────────────────────────────────────────────────────────────────
    PILL
-   Same exact shape / size — NO SHADOW
 ──────────────────────────────────────────────────────────────── */
 .overlay-pill {
   width: 100%;
   display: flex;
   align-items: center;
-  background: #F3F6F8;
+  background: #ffffff;
   border: none;
   border-radius: 100px;
   padding: 0 18px 0 20px;
@@ -42,19 +41,19 @@
 }
 
 .overlay-pill:focus-within {
-  background: #F3F6F8;
+  background: #ffffff;
   box-shadow: none;
 }
 
 @media (prefers-color-scheme: dark) {
   .overlay-pill {
-    background: #2F3133;
+    background: #363737;
     border: none;
     box-shadow: none;
   }
 
   .overlay-pill:focus-within {
-    background: #2F3133;
+    background: #363737;
     box-shadow: none;
   }
 }

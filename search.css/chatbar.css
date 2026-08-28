@@ -33,11 +33,11 @@ padding: 0 18px 0 20px;
 margin: 0;
 height: 66px;
 gap: 12px;
-box-shadow: 0 2px 6px rgba(0,0,0,0.10);
+box-shadow: 0 0 6px rgba(0,0,0,0.10);
 transition: box-shadow 0.2s;
 }
 .overlay-pill:focus-within {
-box-shadow: 0 2px 6px rgba(0,0,0,0.10);
+box-shadow: 0 0 6px rgba(0,0,0,0.10);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -322,4 +322,4 @@ stroke: var(--color-icon-stroke);
 
 @media (prefers-color-scheme: dark) {
 .pm-icon svg { stroke: var(--color-icon-dark); }
-}
+  }

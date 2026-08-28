@@ -8,7 +8,7 @@ CHATBAR WRAPPER
 ──────────────────────────────────────────────────────────────── */
 .chatbar-wrap {
 flex-shrink: 0;
-padding: 8px 16px calc(12px + env(safe-area-inset-bottom));
+padding: 8px 16px calc(4px + env(safe-area-inset-bottom));
 position: relative;
 z-index: 10;
 will-change: transform;

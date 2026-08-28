@@ -5,8 +5,6 @@
 
 /* ────────────────────────────────────────────────────────────────
    CHATBAR WRAPPER
-   #FFFFFF → #F8F8F8 → #F0F0F0 → #EBEBEB → #E7E7E7
-   Entire transition stays INSIDE the wrapper
 ──────────────────────────────────────────────────────────────── */
 .chatbar-wrap {
   flex-shrink: 0;
@@ -30,33 +28,9 @@
   );
 }
 
-.chatbar-wrap::before {
-  content: '';
-  position: absolute;
-  top: -28px;
-  left: 0;
-  right: 0;
-  height: 28px;
-  background: linear-gradient(
-    to bottom,
-    transparent 0%,
-    #ffffff 100%
-  );
-  pointer-events: none;
-  z-index: 9;
-}
-
 @media (prefers-color-scheme: dark) {
   .chatbar-wrap {
     background: var(--color-bg-dark);
-  }
-
-  .chatbar-wrap::before {
-    background: linear-gradient(
-      to bottom,
-      transparent 0%,
-      var(--color-bg-dark) 100%
-    );
   }
 }
 
@@ -80,27 +54,26 @@
   height: 66px;
   gap: 12px;
 
-  /* No shadow */
-  box-shadow: none;
+  box-shadow: 0 -8px 16px 4px #ffffff;
 
   transition: background-color 0.2s ease;
 }
 
 .overlay-pill:focus-within {
   background: #ffffff;
-  box-shadow: none;
+  box-shadow: 0 -8px 16px 4px #ffffff;
 }
 
 @media (prefers-color-scheme: dark) {
   .overlay-pill {
     background: #363737;
     border: none;
-    box-shadow: none;
+    box-shadow: 0 -8px 16px 4px #363737;
   }
 
   .overlay-pill:focus-within {
     background: #363737;
-    box-shadow: none;
+    box-shadow: 0 -8px 16px 4px #363737;
   }
 }
 
@@ -192,7 +165,6 @@
   color: transparent;
 }
 
-/* Hide browser default search X button */
 .search-input::-webkit-search-cancel-button,
 .search-input::-webkit-search-decoration,
 .search-input::-webkit-search-results-button,
@@ -349,7 +321,6 @@
   height: 17px;
 }
 
-/* Toggle camera ↔ send */
 .overlay-pill.has-text .ico-camera {
   display: none;
 }
@@ -554,4 +525,4 @@
   .pm-icon svg {
     stroke: var(--color-icon-dark);
   }
-    }
+}

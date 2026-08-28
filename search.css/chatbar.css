@@ -2,6 +2,7 @@
    chatbar.css
 ════════════════════════════════════════════════════════════════ */
 
+
 /* ────────────────────────────────────────────────────────────────
    CHATBAR WRAPPER
 ──────────────────────────────────────────────────────────────── */
@@ -16,10 +17,40 @@
   overflow: hidden;
   display: flex;
   flex-direction: column;
+
+  /* Full-width hard partition ko remove */
+  border-top: none;
+  box-shadow: none;
 }
+
+/* ────────────────────────────────────────────────────────────────
+   SOFT ROUNDED PARTITION LINE
+──────────────────────────────────────────────────────────────── */
+.chatbar-wrap::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 16px;
+  right: 16px;
+  height: 1px;
+
+  background: rgba(0, 0, 0, 0.08);
+  border-radius: 999px;
+
+  pointer-events: none;
+  z-index: 20;
+}
+
 @media (prefers-color-scheme: dark) {
-  .chatbar-wrap { background: var(--color-bg-dark); }
+  .chatbar-wrap {
+    background: var(--color-bg-dark);
+  }
+
+  .chatbar-wrap::before {
+    background: rgba(255, 255, 255, 0.10);
+  }
 }
+
 
 /* ────────────────────────────────────────────────────────────────
    DISCLAIMER
@@ -42,9 +73,13 @@
   box-sizing: border-box;
   order: 2;
 }
+
 @media (prefers-color-scheme: dark) {
-  .atkyn-disclaimer { color: var(--color-text-muted-dark); }
+  .atkyn-disclaimer {
+    color: var(--color-text-muted-dark);
+  }
 }
+
 
 /* ────────────────────────────────────────────────────────────────
    PILL
@@ -64,10 +99,18 @@
   box-sizing: border-box;
   order: 1;
 }
-.overlay-pill:focus-within { border-color: var(--color-primary-dark); }
-@media (prefers-color-scheme: dark) {
-  .overlay-pill { background: var(--color-bg-alt-dark); border-color: var(--color-primary); }
+
+.overlay-pill:focus-within {
+  border-color: var(--color-primary-dark);
 }
+
+@media (prefers-color-scheme: dark) {
+  .overlay-pill {
+    background: var(--color-bg-alt-dark);
+    border-color: var(--color-primary);
+  }
+}
+
 
 /* ────────────────────────────────────────────────────────────────
    PLUS BUTTON
@@ -84,8 +127,16 @@
   border-radius: 50%;
   transition: background 0.12s;
 }
-.ico-plus:active { background: var(--color-press-light-icon); }
-.ico-plus svg    { width: 24px; height: 24px; }
+
+.ico-plus:active {
+  background: var(--color-press-light-icon);
+}
+
+.ico-plus svg {
+  width: 24px;
+  height: 24px;
+}
+
 
 /* ────────────────────────────────────────────────────────────────
    INPUT WRAPPER
@@ -114,10 +165,17 @@
   caret-color: var(--color-primary);
   letter-spacing: 0.01em;
 }
-.search-input::placeholder { color: transparent; }
-@media (prefers-color-scheme: dark) {
-  .search-input { color: var(--color-text-dark-alt); }
+
+.search-input::placeholder {
+  color: transparent;
 }
+
+@media (prefers-color-scheme: dark) {
+  .search-input {
+    color: var(--color-text-dark-alt);
+  }
+}
+
 
 /* ────────────────────────────────────────────────────────────────
    SHIMMER PLACEHOLDER
@@ -131,25 +189,45 @@
   z-index: 1;
   overflow: hidden;
 }
+
 .shimmer-overlay span {
   font-size: 1.08rem;
   white-space: nowrap;
   letter-spacing: 0.01em;
-  background: linear-gradient(90deg,
-    #b0bec5 0%,   #b0bec5 25%,
-    #0077B5 48%,  #0077B5 52%,
-    #b0bec5 75%,  #b0bec5 100%);
+
+  background: linear-gradient(
+    90deg,
+    #b0bec5 0%,
+    #b0bec5 25%,
+    #0077B5 48%,
+    #0077B5 52%,
+    #b0bec5 75%,
+    #b0bec5 100%
+  );
+
   background-size: 300% auto;
+
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
+
   animation: sweep 3.5s 1s linear infinite;
 }
+
 @keyframes sweep {
-  0%   { background-position:  150% center; }
-  100% { background-position: -150% center; }
+  0% {
+    background-position: 150% center;
+  }
+
+  100% {
+    background-position: -150% center;
+  }
 }
-.search-input:not(:placeholder-shown) + .shimmer-overlay { display: none; }
+
+.search-input:not(:placeholder-shown) + .shimmer-overlay {
+  display: none;
+}
+
 
 /* ────────────────────────────────────────────────────────────────
    CAMERA & SEND BUTTON
@@ -166,8 +244,15 @@
   border-radius: 50%;
   transition: background 0.12s;
 }
-.ico-camera:active { background: var(--color-press-light-icon); }
-.ico-camera svg    { width: 24px; height: 24px; }
+
+.ico-camera:active {
+  background: var(--color-press-light-icon);
+}
+
+.ico-camera svg {
+  width: 24px;
+  height: 24px;
+}
 
 .send-btn {
   flex-shrink: 0;
@@ -182,11 +267,24 @@
   cursor: pointer;
   transition: transform 0.15s ease;
 }
-.send-btn:active { transform: scale(0.88); }
-.send-btn svg    { width: 17px; height: 17px; }
 
-.overlay-pill.has-text .ico-camera { display: none; }
-.overlay-pill.has-text .send-btn   { display: flex; }
+.send-btn:active {
+  transform: scale(0.88);
+}
+
+.send-btn svg {
+  width: 17px;
+  height: 17px;
+}
+
+.overlay-pill.has-text .ico-camera {
+  display: none;
+}
+
+.overlay-pill.has-text .send-btn {
+  display: flex;
+}
+
 
 /* ────────────────────────────────────────────────────────────────
    PLUS MENU — Glassmorphism
@@ -197,81 +295,123 @@
   z-index: 100;
   display: none;
 }
-.plus-menu-backdrop.open { display: block; }
+
+.plus-menu-backdrop.open {
+  display: block;
+}
 
 .plus-menu {
   position: fixed;
   left: 20px;
   width: 224px;
+
   background: var(--color-glass-bg);
+
   -webkit-backdrop-filter: blur(28px) saturate(1.8);
   backdrop-filter: blur(28px) saturate(1.8);
+
   border-radius: 20px;
   border: 0.5px solid rgba(255, 255, 255, 0.55);
+
   box-shadow:
-    0 2px 8px  rgba(0, 0, 0, 0.06),
+    0 2px 8px rgba(0, 0, 0, 0.06),
     0 16px 48px rgba(0, 0, 0, 0.14);
+
   overflow: hidden;
   z-index: 101;
+
   transform: translateY(10px) scale(0.96);
   transform-origin: bottom left;
+
   opacity: 0;
   pointer-events: none;
+
   transition:
     transform 0.24s cubic-bezier(0.22, 1, 0.36, 1),
-    opacity   0.16s ease;
+    opacity 0.16s ease;
 }
+
 .plus-menu.open {
   transform: translateY(0) scale(1);
   opacity: 1;
   pointer-events: auto;
 }
+
 @media (prefers-color-scheme: dark) {
   .plus-menu {
     background: var(--color-bg-plus-menu-dark);
     border-color: var(--color-glass-border-dark);
+
     box-shadow:
-      0 2px 8px  rgba(0, 0, 0, 0.18),
+      0 2px 8px rgba(0, 0, 0, 0.18),
       0 16px 48px rgba(0, 0, 0, 0.48);
   }
 }
 
+
+/* ────────────────────────────────────────────────────────────────
+   PLUS MENU ITEMS
+──────────────────────────────────────────────────────────────── */
 .pm-item {
   display: flex;
   align-items: center;
   gap: 14px;
+
   padding: 15px 20px;
+
   cursor: pointer;
   border: none;
   background: none;
+
   width: 100%;
   text-align: left;
+
   color: var(--color-text);
   font-size: 0.95rem;
   font-weight: 500;
   letter-spacing: 0;
+
   transition: background 0.1s;
 }
-.pm-item:active { background: var(--color-press-light-sm); }
-@media (prefers-color-scheme: dark) {
-  .pm-item        { color: var(--color-text-dark); }
-  .pm-item:active { background: var(--color-press-dark); }
+
+.pm-item:active {
+  background: var(--color-press-light-sm);
 }
 
+@media (prefers-color-scheme: dark) {
+  .pm-item {
+    color: var(--color-text-dark);
+  }
+
+  .pm-item:active {
+    background: var(--color-press-dark);
+  }
+}
+
+
+/* ────────────────────────────────────────────────────────────────
+   PLUS MENU ICON
+──────────────────────────────────────────────────────────────── */
 .pm-icon {
   flex-shrink: 0;
   width: 22px;
   height: 22px;
+
   background: none;
+
   display: flex;
   align-items: center;
   justify-content: center;
 }
+
 .pm-icon svg {
   width: 20px;
   height: 20px;
   stroke: var(--color-icon-stroke);
 }
+
 @media (prefers-color-scheme: dark) {
-  .pm-icon svg { stroke: var(--color-icon-dark); }
-}
+  .pm-icon svg {
+    stroke: var(--color-icon-dark);
+  }
+   }

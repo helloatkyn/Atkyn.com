@@ -30,23 +30,24 @@ background: #ffffff;
 border: none;
 border-radius: 100px;
 padding: 0 18px 0 20px;
+  margin: 0 8px;
 height: 66px;
 gap: 12px;
-box-shadow: none;
+box-shadow: 0 1px 2px rgba(0,0,0,0.06);
 transition: box-shadow 0.2s;
 }
 .overlay-pill:focus-within {
-box-shadow: none;
+box-shadow: 0 1px 2px rgba(0,0,0,0.06);
 }
 
 @media (prefers-color-scheme: dark) {
 .overlay-pill {
-background: #363737;
+background: #1c1c1e;
 border: none;
-box-shadow: none;
+box-shadow: 0 1px 4px rgba(0,0,0,0.3);
 }
 .overlay-pill:focus-within {
-box-shadow: none;
+box-shadow: 0 1px 4px rgba(0,0,0,0.3);
 }
 }
 
@@ -273,7 +274,7 @@ pointer-events: auto;
 
 @media (prefers-color-scheme: dark) {
 .plus-menu {
-background: #363737;
+background: #1c1c1e;
 border-color: rgba(255, 255, 255, 0.08);
 box-shadow:
 0 2px 8px  rgba(0, 0, 0, 0.16),

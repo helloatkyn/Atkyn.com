@@ -1,14 +1,12 @@
 /* ════════════════════════════════════════════════════════════════
    chatbar.css — Minimal professional chatbar
-   White pill · Slow soft wrapper transition · No pill shadow
+   Professional soft gradient · White pill · No pill shadow
 ════════════════════════════════════════════════════════════════ */
 
 /* ────────────────────────────────────────────────────────────────
    CHATBAR WRAPPER
-   TOP:    #FFFFFF
-   MIDDLE: very gradual transition
-   BOTTOM: #EBEBEB
-   Transition remains INSIDE wrapper
+   #FFFFFF → #F8F8F8 → #F0F0F0 → #EBEBEB → #E7E7E7
+   Entire transition stays INSIDE the wrapper
 ──────────────────────────────────────────────────────────────── */
 .chatbar-wrap {
   flex-shrink: 0;
@@ -24,15 +22,11 @@
   background: linear-gradient(
     to bottom,
     #ffffff 0%,
-    #ffffff 4%,
-    #fefefe 10%,
-    #fcfcfc 18%,
-    #fafafa 29%,
-    #f7f7f7 42%,
-    #f4f4f4 56%,
-    #f1f1f1 70%,
-    #eeeeee 84%,
-    #ebebeb 100%
+    #ffffff 8%,
+    #f8f8f8 28%,
+    #f0f0f0 52%,
+    #ebebeb 76%,
+    #e7e7e7 100%
   );
 }
 
@@ -47,6 +41,7 @@
 ──────────────────────────────────────────────────────────────── */
 .overlay-pill {
   width: 100%;
+
   display: flex;
   align-items: center;
 
@@ -61,6 +56,7 @@
   height: 66px;
   gap: 12px;
 
+  /* No shadow */
   box-shadow: none;
 
   transition: background-color 0.2s ease;
@@ -534,4 +530,4 @@
   .pm-icon svg {
     stroke: var(--color-icon-dark);
   }
-   }
+     }

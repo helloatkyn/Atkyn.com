@@ -1,6 +1,6 @@
 /* ════════════════════════════════════════════════════════════════
    chatbar.css — Minimal professional chatbar
-   White → soft grey transition inside wrapper
+   White top → smooth slow fade → #EBEBEB bottom
 ════════════════════════════════════════════════════════════════ */
 
 /* ────────────────────────────────────────────────────────────────
@@ -14,19 +14,27 @@
   will-change: transform;
   transform: translateZ(0);
 
-  /* TOP WHITE → BOTTOM #F0F0F0 */
+  /*
+   * Smooth, slow visual transition.
+   * Entire gradient stays INSIDE the wrapper.
+   */
   background: linear-gradient(
     to bottom,
     #ffffff 0%,
-    #ffffff 12%,
-    #fcfcfc 28%,
-    #f8f8f8 48%,
-    #f4f4f4 70%,
-    #f0f0f0 100%
+    #ffffff 16%,
+    #fefefe 30%,
+    #fafafa 46%,
+    #f5f5f5 62%,
+    #f0f0f0 80%,
+    #ebebeb 100%
   );
 }
 
-/* NO pseudo-element extending outside wrapper */
+@media (prefers-color-scheme: dark) {
+  .chatbar-wrap {
+    background: var(--color-bg-dark);
+  }
+}
 
 /* ────────────────────────────────────────────────────────────────
    PILL
@@ -52,10 +60,6 @@
 }
 
 @media (prefers-color-scheme: dark) {
-  .chatbar-wrap {
-    background: var(--color-bg-dark);
-  }
-
   .overlay-pill {
     background: #363737;
     border: none;
@@ -135,6 +139,7 @@
   color: transparent;
 }
 
+/* Hide browser default search X button */
 .search-input::-webkit-search-cancel-button,
 .search-input::-webkit-search-decoration,
 .search-input::-webkit-search-results-button,
@@ -270,6 +275,7 @@
   height: 17px;
 }
 
+/* Toggle camera ↔ send */
 .overlay-pill.has-text .ico-camera {
   display: none;
 }
@@ -442,6 +448,7 @@
 .pm-icon svg {
   width: 18px;
   height: 18px;
+
   stroke: var(--color-icon-stroke);
 }
 
@@ -449,4 +456,4 @@
   .pm-icon svg {
     stroke: var(--color-icon-dark);
   }
-     }
+}

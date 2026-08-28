@@ -1,10 +1,6 @@
 /* ════════════════════════════════════════════════════════════════
    base.css — Reset · Body · Scroll host
-   Typography — Official Google Sans Text
 ════════════════════════════════════════════════════════════════ */
-
-/* Google Sans Text — official Google Fonts */
-@import url('https://fonts.googleapis.com/css2?family=Google+Sans+Text:opsz,wght@6..144,300..700&display=swap');
 
 *, *::before, *::after {
   box-sizing: border-box;
@@ -28,11 +24,7 @@ body {
   background: var(--color-bg);
   color: var(--color-text);
 
-  /*
-   * GOOGLE SANS TEXT
-   * Primary UI typeface
-   */
-  font-family: 'Google Sans Text', sans-serif;
+  font-family: sans-serif;
 
   font-size: 16px;
   line-height: 1.6;
@@ -41,7 +33,6 @@ body {
   display: flex;
   flex-direction: column;
 
-  /* Better mobile rendering */
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
@@ -52,30 +43,6 @@ body {
     background: var(--color-bg-dark);
     color: var(--color-text-dark);
   }
-}
-
-/* ────────────────────────────────────────────────────────────────
-   FORCE GOOGLE SANS TEXT THROUGHOUT THE APP
-──────────────────────────────────────────────────────────────── */
-
-body,
-button,
-input,
-textarea,
-select,
-option,
-label,
-a,
-p,
-span,
-div,
-h1,
-h2,
-h3,
-h4,
-h5,
-h6 {
-  font-family: 'Google Sans Text', sans-serif;
 }
 
 /* ────────────────────────────────────────────────────────────────

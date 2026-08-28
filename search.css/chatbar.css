@@ -35,9 +35,9 @@ PILL
   display: flex;
   align-items: center;
 
-  background: #F5F5F5;
+  background: var(--color-bg);
 
-  border: none;
+  border: 2px solid #ffffff;
   border-radius: 100px;
 
   padding: 0 18px 0 20px;
@@ -46,14 +46,17 @@ PILL
   height: 66px;
   gap: 12px;
 
-  transition:
-    background-color 0.2s ease,
-    box-shadow 0.2s ease;
+  transition: border-color 0.18s;
+}
+
+.overlay-pill:focus-within {
+  border-color: rgba(255, 255, 255, 0.70);
 }
 
 @media (prefers-color-scheme: dark) {
   .overlay-pill {
-    background: #363737;
+    background: var(--color-bg-alt-dark);
+    border-color: rgba(255, 255, 255, 0.60);
   }
 }
 
@@ -183,34 +186,6 @@ ANIMATED SHIMMER PLACEHOLDER
   white-space: nowrap;
 
   letter-spacing: 0.01em;
-
-  background: linear-gradient(
-    90deg,
-    #9e9e9e 0%,
-    #9e9e9e 25%,
-    #0077B5 48%,
-    #0077B5 52%,
-    #9e9e9e 75%,
-    #9e9e9e 100%
-  );
-
-  background-size: 300% auto;
-
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-
-  animation: sweep 3.5s 1s linear infinite;
-}
-
-@keyframes sweep {
-  0% {
-    background-position: 150% center;
-  }
-
-  100% {
-    background-position: -150% center;
-  }
 }
 
 .search-input:not(:placeholder-shown) + .shimmer-overlay {
@@ -503,4 +478,4 @@ PLUS MENU ICON
   .pm-icon svg {
     stroke: var(--color-icon-dark);
   }
-}
+  }

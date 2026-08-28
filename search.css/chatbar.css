@@ -322,4 +322,4 @@ stroke: var(--color-icon-stroke);
 
 @media (prefers-color-scheme: dark) {
 .pm-icon svg { stroke: var(--color-icon-dark); }
-  }
+}

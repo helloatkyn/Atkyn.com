@@ -8,7 +8,7 @@
 ──────────────────────────────────────────────────────────────── */
 .chatbar-wrap {
   flex-shrink: 0;
-  padding: 8px 16px calc(28px + env(safe-area-inset-bottom));
+  padding: 8px 16px calc(52px + env(safe-area-inset-bottom));
   position: relative;
   z-index: 10;
   will-change: transform;
@@ -226,7 +226,7 @@
 .atkyn-disclaimer {
   text-align: center;
   font-size: 0.72rem;
-  color: rgba(0, 0, 0, 0.35);
+  color: rgba(0, 0, 0, 0.55);
   margin: 8px 0 0 0;
   padding: 0;
   letter-spacing: 0.01em;
@@ -234,7 +234,7 @@
 
 @media (prefers-color-scheme: dark) {
   .atkyn-disclaimer {
-    color: rgba(255, 255, 255, 0.28);
+    color: rgba(255, 255, 255, 0.50);
   }
 }
 

@@ -1,6 +1,6 @@
 /* ════════════════════════════════════════════════════════════════
 chatbar.css — Minimal professional chatbar
-Professional soft gradient · White pill · Subtle floating
+Professional soft gradient · White pill · No pill shadow
 ════════════════════════════════════════════════════════════════ */
 
 /* ────────────────────────────────────────────────────────────────
@@ -46,9 +46,7 @@ PILL
   height: 66px;
   gap: 12px;
 
-  box-shadow:
-    0 -2px 8px rgba(0, 0, 0, 0.025),
-    0 2px 8px rgba(0, 0, 0, 0.035);
+  box-shadow: none;
 
   transition:
     background-color 0.2s ease,
@@ -58,9 +56,7 @@ PILL
 .overlay-pill:focus-within {
   background: #ffffff;
 
-  box-shadow:
-    0 -2px 8px rgba(0, 0, 0, 0.025),
-    0 2px 8px rgba(0, 0, 0, 0.035);
+  box-shadow: none;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -68,15 +64,13 @@ PILL
     background: #363737;
     border: none;
 
-    box-shadow:
-      0 -8px 16px 4px #363737;
+    box-shadow: none;
   }
 
   .overlay-pill:focus-within {
     background: #363737;
 
-    box-shadow:
-      0 -8px 16px 4px #363737;
+    box-shadow: none;
   }
 }
 

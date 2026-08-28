@@ -14,40 +14,39 @@ CHATBAR WRAPPER
   will-change: transform;
   transform: translateZ(0);
   background: #ffffff;
+  border-radius: 28px 28px 0 0;
+  border: 1.5px solid transparent;
+  background-clip: padding-box;
 }
 
-/* Green aurora glow — bottom edge of the wrap */
-.chatbar-wrap::after {
+/* Animated green gradient border via ::before */
+.chatbar-wrap::before {
   content: '';
   position: absolute;
-  bottom: 0;
-  left: 10%;
-  width: 80%;
-  height: 3px;
-  border-radius: 0 0 100px 100px;
+  inset: -1.5px;
+  border-radius: inherit;
+  z-index: -1;
   background: linear-gradient(
-    90deg,
-    transparent 0%,
-    #34d399 20%,
-    #10b981 50%,
-    #34d399 80%,
-    transparent 100%
+    120deg,
+    #a7f3d0,
+    #34d399,
+    #10b981,
+    #6ee7b7,
+    #a7f3d0
   );
-  background-size: 200% auto;
-  animation: aurora-slide 3.5s ease-in-out infinite;
-  opacity: 0.75;
-  pointer-events: none;
+  background-size: 300% 300%;
+  animation: border-flow 3s ease infinite;
+  opacity: 0.8;
 }
 
-@keyframes aurora-slide {
-  0%   { background-position: 0% center;   opacity: 0.5; }
-  50%  { background-position: 100% center; opacity: 0.9; }
-  100% { background-position: 0% center;   opacity: 0.5; }
+@keyframes border-flow {
+  0%   { background-position: 0%   50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0%   50%; }
 }
 
 @media (prefers-color-scheme: dark) {
   .chatbar-wrap { background: var(--color-bg-dark); }
-  .chatbar-wrap::after { opacity: 0.55; }
 }
 
 /* ────────────────────────────────────────────────────────────────
@@ -64,21 +63,17 @@ PILL
   margin: 0;
   height: 66px;
   gap: 12px;
-  box-shadow: 0 0 6px rgba(0,0,0,0.18);
   transition: box-shadow 0.2s;
 }
 .overlay-pill:focus-within {
-  box-shadow: 0 0 6px rgba(0,0,0,0.18);
 }
 
 @media (prefers-color-scheme: dark) {
   .overlay-pill {
     background: #363737;
     border: none;
-    box-shadow: 0 1px 2px rgba(0,0,0,0.06);
   }
   .overlay-pill:focus-within {
-    box-shadow: 0 1px 2px rgba(0,0,0,0.06);
   }
 }
 
@@ -161,13 +156,14 @@ ANIMATED SHIMMER PLACEHOLDER — grey only, no blue
   overflow: hidden;
 }
 .shimmer-overlay span {
+  font-family: 'Google Sans', 'Product Sans', sans-serif;
   font-size: 1.08rem;
   white-space: nowrap;
   letter-spacing: 0.01em;
   background: linear-gradient(90deg,
-    #bdbdbd 0%,   #bdbdbd 25%,
-    #757575 48%,  #757575 52%,
-    #bdbdbd 75%,  #bdbdbd 100%
+    #9e9e9e 0%,   #9e9e9e 25%,
+    #0077B5 48%,  #0077B5 52%,
+    #9e9e9e 75%,  #9e9e9e 100%
   );
   background-size: 300% auto;
   -webkit-background-clip: text;
@@ -354,5 +350,4 @@ PLUS MENU — Glassmorphism floating sheet
 
 @media (prefers-color-scheme: dark) {
   .pm-icon svg { stroke: var(--color-icon-dark); }
-  }
-                       
+               }

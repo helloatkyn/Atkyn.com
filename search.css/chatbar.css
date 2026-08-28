@@ -1,6 +1,6 @@
 /* ════════════════════════════════════════════════════════════════
 chatbar.css — Minimal professional chatbar
-Professional soft gradient · Light Blue pill · No pill shadow
+Professional soft gradient · Light Gray pill · No pill shadow
 ════════════════════════════════════════════════════════════════ */
 
 /* ────────────────────────────────────────────────────────────────
@@ -35,7 +35,7 @@ PILL
   display: flex;
   align-items: center;
 
-  background: #e8f4fb;
+  background: #F5F5F5;
 
   border: none;
   border-radius: 100px;
@@ -54,7 +54,7 @@ PILL
 }
 
 .overlay-pill:focus-within {
-  background: #e8f4fb;
+  background: #F5F5F5;
 
   box-shadow: none;
 }
@@ -522,4 +522,5 @@ PLUS MENU ICON
   .pm-icon svg {
     stroke: var(--color-icon-dark);
   }
-    }
+}
+```1

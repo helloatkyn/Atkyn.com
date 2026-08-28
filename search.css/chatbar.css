@@ -46,31 +46,14 @@ PILL
   height: 66px;
   gap: 12px;
 
-  box-shadow: none;
-
   transition:
     background-color 0.2s ease,
     box-shadow 0.2s ease;
 }
 
-.overlay-pill:focus-within {
-  background: #F5F5F5;
-
-  box-shadow: none;
-}
-
 @media (prefers-color-scheme: dark) {
   .overlay-pill {
     background: #363737;
-    border: none;
-
-    box-shadow: none;
-  }
-
-  .overlay-pill:focus-within {
-    background: #363737;
-
-    box-shadow: none;
   }
 }
 
@@ -504,8 +487,6 @@ PLUS MENU ICON
   width: 20px;
   height: 20px;
 
-  background: none;
-
   display: flex;
   align-items: center;
   justify-content: center;
@@ -523,4 +504,3 @@ PLUS MENU ICON
     stroke: var(--color-icon-dark);
   }
 }
-```1

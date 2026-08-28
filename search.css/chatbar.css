@@ -8,7 +8,7 @@
 ──────────────────────────────────────────────────────────────── */
 .chatbar-wrap {
   flex-shrink: 0;
-  padding: 8px 16px calc(22px + env(safe-area-inset-bottom));
+  padding: 8px 16px calc(28px + env(safe-area-inset-bottom));
   position: relative;
   z-index: 10;
   will-change: transform;
@@ -221,6 +221,24 @@
 }
 
 /* ────────────────────────────────────────────────────────────────
+   DISCLAIMER LINE
+──────────────────────────────────────────────────────────────── */
+.atkyn-disclaimer {
+  text-align: center;
+  font-size: 0.72rem;
+  color: rgba(0, 0, 0, 0.35);
+  margin: 8px 0 0 0;
+  padding: 0;
+  letter-spacing: 0.01em;
+}
+
+@media (prefers-color-scheme: dark) {
+  .atkyn-disclaimer {
+    color: rgba(255, 255, 255, 0.28);
+  }
+}
+
+/* ────────────────────────────────────────────────────────────────
    PLUS MENU — Glassmorphism floating sheet
 ──────────────────────────────────────────────────────────────── */
 .plus-menu-backdrop {
@@ -310,4 +328,4 @@
 
 @media (prefers-color-scheme: dark) {
   .pm-icon svg { stroke: var(--color-icon-dark); }
-   }
+}

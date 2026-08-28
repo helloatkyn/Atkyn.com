@@ -1,10 +1,10 @@
 /* ════════════════════════════════════════════════════════════════
-   chatbar.css — Minimal professional chatbar
-   Professional soft gradient · White pill · Subtle floating
+chatbar.css — Minimal professional chatbar
+Professional soft gradient · White pill · Subtle floating
 ════════════════════════════════════════════════════════════════ */
 
 /* ────────────────────────────────────────────────────────────────
-   CHATBAR WRAPPER
+CHATBAR WRAPPER
 ──────────────────────────────────────────────────────────────── */
 .chatbar-wrap {
   flex-shrink: 0;
@@ -17,58 +17,17 @@
   will-change: transform;
   transform: translateZ(0);
 
-  background: linear-gradient(
-    to bottom,
-    #ffffff 0%,
-    #ffffff 8%,
-    #f8f8f8 28%,
-    #f0f0f0 52%,
-    #ebebeb 76%,
-    #e7e7e7 100%
-  );
-}
-
-/*
- * Edge-to-edge bottom background.
- * Only the bottom grey area extends full viewport width.
- */
-.chatbar-wrap::after {
-  content: "";
-  position: absolute;
-
-  left: 50%;
-  bottom: 0;
-
-  width: 100vw;
-  height: 28px;
-
-  transform: translateX(-50%);
-
-  background: linear-gradient(
-    to bottom,
-    rgba(231, 231, 231, 0) 0%,
-    rgba(231, 231, 231, 0.35) 25%,
-    rgba(231, 231, 231, 0.72) 55%,
-    #e7e7e7 100%
-  );
-
-  pointer-events: none;
-
-  z-index: -1;
+  background: #ffffff;
 }
 
 @media (prefers-color-scheme: dark) {
   .chatbar-wrap {
     background: var(--color-bg-dark);
   }
-
-  .chatbar-wrap::after {
-    display: none;
-  }
 }
 
 /* ────────────────────────────────────────────────────────────────
-   PILL
+PILL
 ──────────────────────────────────────────────────────────────── */
 .overlay-pill {
   width: 100%;
@@ -91,7 +50,9 @@
     0 -2px 8px rgba(0, 0, 0, 0.025),
     0 2px 8px rgba(0, 0, 0, 0.035);
 
-  transition: none;
+  transition:
+    background-color 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
 .overlay-pill:focus-within {
@@ -120,7 +81,7 @@
 }
 
 /* ────────────────────────────────────────────────────────────────
-   PLUS / ATTACH BUTTON
+PLUS / ATTACH BUTTON
 ──────────────────────────────────────────────────────────────── */
 .ico-plus {
   flex-shrink: 0;
@@ -162,7 +123,7 @@
 }
 
 /* ────────────────────────────────────────────────────────────────
-   INPUT WRAPPER
+INPUT WRAPPER
 ──────────────────────────────────────────────────────────────── */
 .overlay-input-wrap {
   flex: 1;
@@ -175,7 +136,7 @@
 }
 
 /* ────────────────────────────────────────────────────────────────
-   SEARCH INPUT
+SEARCH INPUT
 ──────────────────────────────────────────────────────────────── */
 .search-input {
   position: absolute;
@@ -223,7 +184,7 @@
 }
 
 /* ────────────────────────────────────────────────────────────────
-   ANIMATED SHIMMER PLACEHOLDER
+ANIMATED SHIMMER PLACEHOLDER
 ──────────────────────────────────────────────────────────────── */
 .shimmer-overlay {
   position: absolute;
@@ -280,7 +241,7 @@
 }
 
 /* ────────────────────────────────────────────────────────────────
-   CAMERA BUTTON
+CAMERA BUTTON
 ──────────────────────────────────────────────────────────────── */
 .ico-camera {
   flex-shrink: 0;
@@ -324,7 +285,7 @@
 }
 
 /* ────────────────────────────────────────────────────────────────
-   SEND BUTTON
+SEND BUTTON
 ──────────────────────────────────────────────────────────────── */
 .send-btn {
   flex-shrink: 0;
@@ -372,7 +333,7 @@
 }
 
 /* ────────────────────────────────────────────────────────────────
-   CROSS MODE — NON-AI TABS
+CROSS MODE — NON-AI TABS
 ──────────────────────────────────────────────────────────────── */
 .send-btn.cross-mode {
   background: rgba(0, 0, 0, 0.07);
@@ -396,7 +357,7 @@
 }
 
 /* ────────────────────────────────────────────────────────────────
-   DISCLAIMER LINE
+DISCLAIMER LINE
 ──────────────────────────────────────────────────────────────── */
 .atkyn-disclaimer {
   text-align: center;
@@ -418,7 +379,7 @@
 }
 
 /* ────────────────────────────────────────────────────────────────
-   PLUS MENU — Glassmorphism floating sheet
+PLUS MENU — Glassmorphism floating sheet
 ──────────────────────────────────────────────────────────────── */
 .plus-menu-backdrop {
   position: fixed;
@@ -497,7 +458,7 @@
 }
 
 /* ────────────────────────────────────────────────────────────────
-   PLUS MENU ITEMS
+PLUS MENU ITEMS
 ──────────────────────────────────────────────────────────────── */
 .pm-item {
   display: flex;
@@ -541,7 +502,7 @@
 }
 
 /* ────────────────────────────────────────────────────────────────
-   PLUS MENU ICON
+PLUS MENU ICON
 ──────────────────────────────────────────────────────────────── */
 .pm-icon {
   flex-shrink: 0;

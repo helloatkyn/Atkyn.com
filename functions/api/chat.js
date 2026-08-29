@@ -218,12 +218,12 @@ export async function onRequestPost(context) {
           'Authorization': `Bearer ${env.MISTRAL_API_KEY}`,
         },
         body: JSON.stringify({
-          model: 'ministral-14b-2512',
+          model: 'mistral-small-2503',
           messages: baseMessages,
           tools: TOOLS,
           tool_choice: 'auto',
           stream: false,
-          max_tokens: 500,
+          max_tokens: 750,
           temperature: 0.1,
         }),
       });
@@ -306,7 +306,7 @@ export async function onRequestPost(context) {
           'Authorization': `Bearer ${env.MISTRAL_API_KEY}`,
         },
         body: JSON.stringify({
-          model: 'ministral-14b-2512',
+          model: 'mistral-small-2503',
           messages: [
             ...baseMessages,
             {
@@ -321,7 +321,7 @@ export async function onRequestPost(context) {
             },
           ],
           stream: true,
-          max_tokens: 2048,
+          max_tokens: 750,
           temperature: 0.6,
         }),
       });
@@ -368,4 +368,4 @@ export async function onRequestOptions() {
       'Access-Control-Allow-Headers': 'Content-Type, Authorization',
     },
   });
-        }
+}

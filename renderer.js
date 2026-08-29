@@ -1,23 +1,20 @@
 /* ═══════════════════════════════════════════════════════════════
    renderer.js — Atkyn Search
-   marked@13 + KaTeX auto-render + highlight.js  (all CDN)
+   marked@13 + KaTeX (CDN) + highlight.js (CDN)
 
    MATH POLICY:
-   • $...$ single-dollar  → NEVER rendered as math (price/variable safe)
-   • $$...$$              → display math  (our custom marked extension)
-   • \[...\]              → display math  (KaTeX auto-render post-pass)
-   • \(...\)              → inline math   (KaTeX auto-render post-pass)
-   • marked-katex-extension CDN plugin is NOT used (no singleDollar toggle)
+   • $price   → plain text, never math  (price protection)
+   • $...$    → NEVER math              (disabled — too many false positives)
+   • $$...$$  → display math            (marked block extension)
+   • \[...\]  → display math            (marked block extension)
+   • \(...\)  → inline math             (marked inline extension)
 ═══════════════════════════════════════════════════════════════ */
 
 /* ── HTML entity escape ── */
 function _he(s) {
   return String(s)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
 /* ── Cheap hash ── */
@@ -45,7 +42,7 @@ function _normalizeNewlines(str) {
 
 /* ══════════════════════════════════════════════════════════════
    PRICE + CODE PROTECTION
-   Runs before marked — $ signs never reach any math parser.
+   Protect BEFORE marked sees the text — $ never reaches KaTeX.
 ══════════════════════════════════════════════════════════════ */
 const _PH_PRE = '\x00PH', _PH_SUF = '\x00';
 
@@ -53,54 +50,76 @@ function _protect(raw) {
   const slots = [];
   const ph = v => { const i = slots.length; slots.push(v); return _PH_PRE + i + _PH_SUF; };
 
-  // 1. Fenced code blocks
-  let t = raw.replace(/```[\s\S]*?```/g, ph);
-  // 2. Inline code
-  t = t.replace(/`[^`\n]+`/g, ph);
-  // 3. Currency: $5  $1,000  $49.99 — NOT $$ (display math)
+  let t = raw;
+  t = t.replace(/```[\s\S]*?```/g, ph);          // fenced code blocks
+  t = t.replace(/`[^`\n]+`/g, ph);               // inline code
+  // Currency $5  $1,000  $49.99 — skip $$ (math opener)
   t = t.replace(
     /(?<!\$)\$(\d{1,3}(?:,\d{3})*(?:\.\d{1,2})?|\d+(?:\.\d{1,2})?)(?!\d)/g,
     ph
   );
 
-  const restore = s => s.replace(new RegExp(_PH_PRE + '(\\d+)' + _PH_SUF, 'g'), (_, i) => slots[+i]);
+  const restore = s =>
+    s.replace(new RegExp(_PH_PRE + '(\\d+)' + _PH_SUF, 'g'), (_, i) => slots[+i]);
   return { text: t, restore };
 }
 
 /* ══════════════════════════════════════════════════════════════
-   MARKED SETUP
-   • We register ONE extension: $$ block math only.
-   • marked-katex-extension CDN plugin is intentionally skipped.
-   • \(...\) and \[...\] are handled by KaTeX auto-render AFTER
-     marked produces HTML (see _postRenderMath).
+   KaTeX helper
+══════════════════════════════════════════════════════════════ */
+function _katex(tex, display) {
+  if (typeof katex === 'undefined')
+    return display ? '$$' + _he(tex) + '$$' : '\\(' + _he(tex) + '\\)';
+  try {
+    return katex.renderToString(tex, { displayMode: display, throwOnError: false, strict: false });
+  } catch (_) {
+    return display ? '$$' + _he(tex) + '$$' : '\\(' + _he(tex) + '\\)';
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════
+   MARKED EXTENSIONS
+   All three math delimiters handled here — no post-render pass needed.
+   marked-katex-extension CDN plugin is NOT used.
 ══════════════════════════════════════════════════════════════ */
 function _buildMarked() {
-  // Display-math-only extension: $$ ... $$ (block level)
-  // Single $ is NOT intercepted — ever.
-  const blockMath = {
-    name: 'blockMath',
-    level: 'block',
+
+  /* ── Block: $$...$$ ── */
+  const extBlockDollar = {
+    name: 'blockDollar', level: 'block',
     start: src => src.indexOf('$$'),
     tokenizer(src) {
       const m = src.match(/^\$\$([\s\S]+?)\$\$/);
-      if (m) return { type: 'blockMath', raw: m[0], text: m[1].trim() };
+      if (m) return { type: 'blockDollar', raw: m[0], tex: m[1].trim() };
     },
-    renderer(token) {
-      if (typeof katex === 'undefined') {
-        return '<div class="math-display">$$' + _he(token.text) + '$$</div>\n';
-      }
-      try {
-        return '<div class="math-display">' +
-          katex.renderToString(token.text, { displayMode: true, throwOnError: false }) +
-          '</div>\n';
-      } catch (_) {
-        return '<div class="math-display">$$' + _he(token.text) + '$$</div>\n';
-      }
-    },
+    renderer: t => '<div class="math-display">' + _katex(t.tex, true) + '</div>\n',
   };
 
-  marked.use({ extensions: [blockMath] });
+  /* ── Block: \[...\] ── */
+  const extBlockBracket = {
+    name: 'blockBracket', level: 'block',
+    start: src => src.indexOf('\\['),
+    tokenizer(src) {
+      const m = src.match(/^\\\[([\s\S]+?)\\\]/);
+      if (m) return { type: 'blockBracket', raw: m[0], tex: m[1].trim() };
+    },
+    renderer: t => '<div class="math-display">' + _katex(t.tex, true) + '</div>\n',
+  };
 
+  /* ── Inline: \(...\) ── */
+  const extInlineParen = {
+    name: 'inlineParen', level: 'inline',
+    start: src => src.indexOf('\\('),
+    tokenizer(src) {
+      const m = src.match(/^\\\(([\s\S]+?)\\\)/);
+      if (m) return { type: 'inlineParen', raw: m[0], tex: m[1].trim() };
+    },
+    renderer: t => _katex(t.tex, false),
+  };
+
+  marked.use({ extensions: [extBlockDollar, extBlockBracket, extInlineParen] });
+
+  /* ── Custom renderer (code, table, hr) ── */
   const renderer = new marked.Renderer();
 
   renderer.code = function (codeOrToken, lang) {
@@ -108,19 +127,21 @@ function _buildMarked() {
     if (codeOrToken && typeof codeOrToken === 'object') {
       code = codeOrToken.text ?? codeOrToken.code ?? '';
       language = (codeOrToken.lang || '').trim().toLowerCase();
-    } else {
-      code = codeOrToken; language = (lang || '').trim().toLowerCase();
-    }
+    } else { code = codeOrToken; language = (lang || '').trim().toLowerCase(); }
+
     const id = 'cb' + Math.random().toString(36).slice(2, 8);
     let hi = _he(code);
     if (typeof hljs !== 'undefined') {
       const valid = language && hljs.getLanguage(language);
-      hi = (valid ? hljs.highlight(code, { language, ignoreIllegals: true }) : hljs.highlightAuto(code)).value;
+      hi = (valid
+        ? hljs.highlight(code, { language, ignoreIllegals: true })
+        : hljs.highlightAuto(code)).value;
     }
     return (
       '<div class="code-block" id="' + id + '">' +
         '<button class="code-copy-btn" data-target="' + id + '" aria-label="Copy">' +
-          '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">' +
+          '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"' +
+          ' stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">' +
             '<rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>' +
             '<path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>' +
           '</svg>' +
@@ -130,8 +151,8 @@ function _buildMarked() {
     );
   };
 
-  renderer.table = (header, body) =>
-    '<div class="table-wrap"><table><thead>' + header + '</thead><tbody>' + body + '</tbody></table></div>';
+  renderer.table = (h, b) =>
+    '<div class="table-wrap"><table><thead>' + h + '</thead><tbody>' + b + '</tbody></table></div>';
 
   renderer.hr = () => '<hr class="md-hr">\n';
 
@@ -141,26 +162,18 @@ function _buildMarked() {
 _buildMarked();
 
 /* ══════════════════════════════════════════════════════════════
-   POST-RENDER MATH  (\[...\] and \(...\) via KaTeX auto-render)
-   Called on the container DOM element after innerHTML is set.
-══════════════════════════════════════════════════════════════ */
-function _postRenderMath(el) {
-  if (!el || typeof renderMathInElement === 'undefined') return;
-  renderMathInElement(el, {
-    delimiters: [
-      { left: '\\[', right: '\\]', display: true  },
-      { left: '\\(', right: '\\)', display: false },
-    ],
-    throwOnError: false,
-  });
-}
-
-/* ══════════════════════════════════════════════════════════════
-   STREAMING GUARD — hold back unclosed $$ at buffer tail
+   STREAMING GUARD — hold back unclosed $$ or \[ at buffer tail
 ══════════════════════════════════════════════════════════════ */
 function _holdIncomplete(text) {
-  const m = text.match(/((?:^|\n)\$\$(?![\s\S]*?\$\$)[\s\S]*)$/);
-  if (m) { const idx = text.lastIndexOf(m[0]); return { safe: text.slice(0, idx), held: m[0] }; }
+  // Unclosed $$
+  const m1 = text.match(/((?:^|\n)\$\$(?![\s\S]*?\$\$)[\s\S]*)$/);
+  if (m1) return { safe: text.slice(0, text.lastIndexOf(m1[0])), held: m1[0] };
+  // Unclosed \[
+  const m2 = text.match(/(\\\[(?![\s\S]*?\\\])[\s\S]*)$/);
+  if (m2) return { safe: text.slice(0, text.lastIndexOf(m2[0])), held: m2[0] };
+  // Unclosed \(
+  const m3 = text.match(/(\\\((?![\s\S]*?\\\))[\s\S]{0,300})$/);
+  if (m3) return { safe: text.slice(0, text.lastIndexOf(m3[0])), held: m3[0] };
   return { safe: text, held: '' };
 }
 

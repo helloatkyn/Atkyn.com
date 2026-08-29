@@ -50,7 +50,7 @@ async function fetchPageText(url) {
       .replace(/<[^>]+>/g, ' ')
       .replace(/\s+/g, ' ')
       .trim()
-      .slice(0, 4000);
+      .slice(0, 8000);
   } catch {
     return '';
   }
@@ -218,7 +218,7 @@ export async function onRequestPost(context) {
           'Authorization': `Bearer ${env.MISTRAL_API_KEY}`,
         },
         body: JSON.stringify({
-          model: 'mistral-small-2503',
+          model: 'mistral-small-2603',
           messages: baseMessages,
           tools: TOOLS,
           tool_choice: 'auto',
@@ -306,7 +306,7 @@ export async function onRequestPost(context) {
           'Authorization': `Bearer ${env.MISTRAL_API_KEY}`,
         },
         body: JSON.stringify({
-          model: 'mistral-small-2503',
+          model: 'mistral-small-2603',
           messages: [
             ...baseMessages,
             {
@@ -321,7 +321,7 @@ export async function onRequestPost(context) {
             },
           ],
           stream: true,
-          max_tokens: 750,
+          max_tokens: 3000,
           temperature: 0.6,
         }),
       });
@@ -368,5 +368,4 @@ export async function onRequestOptions() {
       'Access-Control-Allow-Headers': 'Content-Type, Authorization',
     },
   });
-        }
-    
+}

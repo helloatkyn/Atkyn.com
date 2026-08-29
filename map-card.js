@@ -1,40 +1,15 @@
 /* ═══════════════════════════════════════════════════════════════
    maps-card.js — Atkyn Map Card (Answer Tab)
-   Renders an inline map + place cards in the chat stream,
-   exactly like _renderStockCard / _renderWebCards pattern.
-   Requires: Leaflet loaded via CDN (added to index.html)
+   Uses OpenStreetMap iframe embed — zero API key, zero dependencies.
+   _renderMapCard(data, query) is called from search.js SSE onMap handler.
    ═══════════════════════════════════════════════════════════════ */
-
-/* ── Detect if query is map-worthy ── */
-function _isMapQuery(q) {
-  if (!q) return false;
-  return /near me|nearby|near |restaurants?|hotels?|cafes?|coffee|hospital|clinic|pharmacy|atm|bank|park|gym|petrol|fuel|shops?|mall|school|college|university|directions?|where is|located|location of|map of|places in|things to do in/i.test(q);
-}
-
-/* ── Main entry: called from send() after typing starts ── */
-async function _tryRenderMapCard(query) {
-  if (!_isMapQuery(query)) return;
-
-  try {
-    const resp = await fetch('/api/maps', {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ query }),
-    });
-    if (!resp.ok) return;
-    const data = await resp.json();
-    if (!data.center && !data.places?.length) return;
-
-    _renderMapCard(data, query);
-  } catch (_) {}
-}
 
 /* ── Render the map card bubble ── */
 function _renderMapCard(data, query) {
   const { center, places } = data;
   if (!center) return;
 
-  /* Outer msg wrapper — same as stock/web cards */
+  /* Outer msg wrapper */
   const wrap = document.createElement('div');
   wrap.className = 'msg bot';
   wrap.style.cssText = 'opacity:0;transform:translateY(6px);transition:opacity 0.22s ease-out,transform 0.22s ease-out';
@@ -42,27 +17,68 @@ function _renderMapCard(data, query) {
   const card = document.createElement('div');
   card.className = 'map-card';
 
-  /* ── Map container ── */
-  const mapEl = document.createElement('div');
-  mapEl.className = 'map-container';
-  const mapId = 'atkyn-map-' + Date.now();
-  mapEl.id = mapId;
-  card.appendChild(mapEl);
+  /* ── OSM iframe embed ── */
+  const mapWrap = document.createElement('div');
+  mapWrap.className = 'map-container';
+  mapWrap.style.cssText = 'position:relative;width:100%;height:220px;border-radius:12px;overflow:hidden;background:#1a1a1a;';
+
+  /* Build bbox around center (roughly 2km box) */
+  const delta = 0.018;
+  const bbox  = [
+    center.lon - delta,
+    center.lat - delta,
+    center.lon + delta,
+    center.lat + delta,
+  ].join('%2C');
+
+  /* Build marker list for OSM embed (up to 5 places) */
+  const markerPlaces = (places || []).slice(0, 5);
+  let markerParam = `&marker=${center.lat}%2C${center.lon}`;
+  markerPlaces.forEach(p => {
+    markerParam += `&marker=${p.lat}%2C${p.lon}`;
+  });
+
+  const osmSrc = `https://www.openstreetmap.org/export/embed.html?bbox=${bbox}&layer=mapnik${markerParam}`;
+
+  const iframe = document.createElement('iframe');
+  iframe.src              = osmSrc;
+  iframe.width            = '100%';
+  iframe.height           = '220';
+  iframe.frameBorder      = '0';
+  iframe.scrolling        = 'no';
+  iframe.marginHeight     = '0';
+  iframe.marginWidth      = '0';
+  iframe.loading          = 'lazy';
+  iframe.style.cssText    = 'border:none;border-radius:12px;display:block;';
+  iframe.setAttribute('title', 'Map');
+  iframe.setAttribute('referrerpolicy', 'no-referrer-when-downgrade');
+
+  /* OSM link overlay (bottom right) */
+  const osmLink = document.createElement('a');
+  osmLink.href        = `https://www.openstreetmap.org/?mlat=${center.lat}&mlon=${center.lon}#map=15/${center.lat}/${center.lon}`;
+  osmLink.target      = '_blank';
+  osmLink.rel         = 'noopener noreferrer';
+  osmLink.textContent = '© OpenStreetMap';
+  osmLink.style.cssText = 'position:absolute;bottom:4px;right:6px;font-size:10px;opacity:0.6;color:inherit;text-decoration:none;z-index:2;pointer-events:auto;';
+
+  mapWrap.appendChild(iframe);
+  mapWrap.appendChild(osmLink);
+  card.appendChild(mapWrap);
 
   /* ── Places list ── */
   if (places && places.length) {
     const list = document.createElement('div');
     list.className = 'map-places-list';
+    list.style.cssText = 'margin-top:10px;display:flex;flex-direction:column;gap:8px;';
     places.forEach((p, i) => {
-      const item = _buildPlaceItem(p, i);
-      list.appendChild(item);
+      list.appendChild(_buildPlaceItem(p, i));
     });
     card.appendChild(list);
   }
 
   wrap.appendChild(card);
 
-  /* Insert before typing indicator so it appears in flow */
+  /* Insert before typing indicator */
   const typingEl = msgWrap.querySelector('.bubble.typing')?.closest('.msg');
   if (typingEl) {
     msgWrap.insertBefore(wrap, typingEl);
@@ -75,106 +91,68 @@ function _renderMapCard(data, query) {
     requestAnimationFrame(() => {
       wrap.style.opacity   = '1';
       wrap.style.transform = '';
-      scrollToMsg(wrap);
+      if (typeof scrollToMsg === 'function') scrollToMsg(wrap);
     });
   });
-
-  /* Init Leaflet map after DOM paint */
-  requestAnimationFrame(() => {
-    _initLeafletMap(mapId, center, places || []);
-  });
-}
-
-/* ── Leaflet map init ── */
-function _initLeafletMap(mapId, center, places) {
-  if (!window.L) { console.warn('Leaflet not loaded'); return; }
-
-  const map = L.map(mapId, {
-    center:          [center.lat, center.lon],
-    zoom:            14,
-    zoomControl:     true,
-    attributionControl: false,
-    scrollWheelZoom: false,
-  });
-
-  /* Tile layer — CartoDB light (no API key, looks clean) */
-  const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-  const tileUrl = isDark
-    ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
-    : 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
-
-  L.tileLayer(tileUrl, { maxZoom: 19 }).addTo(map);
-
-  /* Center marker */
-  const centerIcon = L.divIcon({
-    className: 'map-pin-center',
-    html: `<div class="map-pin-dot"></div>`,
-    iconSize: [14, 14],
-    iconAnchor: [7, 7],
-  });
-  L.marker([center.lat, center.lon], { icon: centerIcon })
-   .addTo(map)
-   .bindPopup(`<b>${_esc(center.label)}</b>`);
-
-  /* Place markers */
-  places.forEach((p, i) => {
-    const icon = L.divIcon({
-      className: 'map-pin-place',
-      html: `<div class="map-pin-num">${i + 1}</div>`,
-      iconSize: [24, 24],
-      iconAnchor: [12, 12],
-    });
-    L.marker([p.lat, p.lon], { icon })
-     .addTo(map)
-     .bindPopup(`<b>${_esc(p.name)}</b><br><span style="font-size:12px;opacity:.7">${_esc(p.address)}</span>`);
-  });
-
-  /* Fit bounds to all markers */
-  if (places.length > 0) {
-    const allPoints = [[center.lat, center.lon], ...places.map(p => [p.lat, p.lon])];
-    map.fitBounds(allPoints, { padding: [32, 32] });
-  }
-
-  /* Fix map rendering inside flex/hidden containers */
-  setTimeout(() => map.invalidateSize(), 120);
 }
 
 /* ── Build one place row ── */
 function _buildPlaceItem(place, index) {
   const item = document.createElement('div');
   item.className = 'map-place-item';
+  item.style.cssText = 'display:flex;align-items:flex-start;gap:10px;padding:8px 10px;border-radius:10px;background:rgba(255,255,255,0.04);';
 
-  const cat = _formatCategory(place.category);
+  const num = document.createElement('div');
+  num.className = 'map-place-num';
+  num.textContent = index + 1;
+  num.style.cssText = 'min-width:22px;height:22px;border-radius:50%;background:rgba(255,255,255,0.12);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;flex-shrink:0;margin-top:1px;';
+
+  const info = document.createElement('div');
+  info.className = 'map-place-info';
+  info.style.cssText = 'flex:1;min-width:0;';
+
+  const cat  = _formatCategory(place.category);
   const dist = place.distance ? _formatDist(place.distance) : '';
 
-  item.innerHTML = `
-    <div class="map-place-num">${index + 1}</div>
-    <div class="map-place-info">
-      <div class="map-place-name">${_esc(place.name)}</div>
-      <div class="map-place-meta">
-        ${cat ? `<span class="map-place-cat">${_esc(cat)}</span>` : ''}
-        ${dist ? `<span class="map-place-dist">${_esc(dist)}</span>` : ''}
-      </div>
-      ${place.address ? `<div class="map-place-addr">${_esc(place.address)}</div>` : ''}
-    </div>
-    ${place.website ? `<a class="map-place-link" href="${_esc(place.website)}" target="_blank" rel="noopener noreferrer">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" width="16" height="16">
-        <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
-        <polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
-      </svg>
-    </a>` : ''}
-  `;
+  const name = document.createElement('div');
+  name.className   = 'map-place-name';
+  name.textContent = place.name || 'Unknown';
+  name.style.cssText = 'font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;';
+
+  const meta = document.createElement('div');
+  meta.className = 'map-place-meta';
+  meta.style.cssText = 'font-size:11px;opacity:0.55;margin-top:2px;display:flex;gap:6px;flex-wrap:wrap;';
+  if (cat)  { const s = document.createElement('span'); s.textContent = cat;  meta.appendChild(s); }
+  if (dist) { const s = document.createElement('span'); s.textContent = dist; meta.appendChild(s); }
+
+  info.appendChild(name);
+  if (cat || dist) info.appendChild(meta);
+
+  if (place.address) {
+    const addr = document.createElement('div');
+    addr.className   = 'map-place-addr';
+    addr.textContent = place.address;
+    addr.style.cssText = 'font-size:11px;opacity:0.45;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;';
+    info.appendChild(addr);
+  }
+
+  item.appendChild(num);
+  item.appendChild(info);
+
+  if (place.website) {
+    const link = document.createElement('a');
+    link.href   = place.website;
+    link.target = '_blank';
+    link.rel    = 'noopener noreferrer';
+    link.style.cssText = 'flex-shrink:0;opacity:0.5;display:flex;align-items:center;margin-top:2px;';
+    link.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>';
+    item.appendChild(link);
+  }
 
   return item;
 }
 
-/* ── Tiny utils ── */
-function _esc(str) {
-  return String(str || '')
-    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
-    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
-}
-
+/* ── Utils ── */
 function _formatDist(meters) {
   return meters < 1000
     ? Math.round(meters) + ' m'
@@ -187,4 +165,4 @@ function _formatCategory(cat) {
     .split('.').pop()
     .replace(/_/g, ' ')
     .replace(/\b\w/g, c => c.toUpperCase());
-                                                                     }
+}

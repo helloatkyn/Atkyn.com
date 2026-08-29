@@ -1,8 +1,8 @@
 /* ═══════════════════════════════════════════════════════════════
-   renderer.js — Atkyn Search
+   renderer.js — Atkyn Search (Production-Ready)
    Markdown + Math : marked.js + KaTeX
    Code highlight  : highlight.js
-   [KATeX-SAFE · PRICE-PROTECTED · STREAMING-OPTIMIZED]
+   [KATEX-SAFE · PRICE-PROTECTED · STREAMING-OPTIMIZED · NO CURSIVE BUGS]
 ═══════════════════════════════════════════════════════════════ */
 
 /* ── HTML entity escape ── */
@@ -77,84 +77,118 @@ function _protectAndRestore(raw) {
   return { text, restore };
 }
 
-/* ── Smart math detection (prevents false positives) ── */
+/* ── Smart math detection (PREVENTS CURSIVE / FALSE POSITIVES) ── */
 function _looksLikeMath(text) {
-  // Reject plain text with only letters/numbers/spaces
-  if (/^\s*[a-zA-Z0-9\s,.'"]+\s*$/.test(text)) return false;
+  const trimmed = text.trim();
   
-  // Accept if contains math indicators
-  const mathPatterns = [
-    /[+\-*/=^_]/,        // operators
-    /\\[a-zA-Z]+/,       // LaTeX commands (\frac, \sqrt, etc.)
-    /[{}]/,              // braces (grouping)
-    /\d+\s*[+\-*/=]/,    // numbers with operators
-    /[+\-*/=]\s*\d+/,    // operators with numbers
+  // 1. Reject pure alphabetic strings (prevents "$hello$" from becoming cursive)
+  if (/^[a-zA-Z\s]+$/.test(trimmed)) return false;
+  
+  // 2. Reject pure numbers (prevents normal numbers from being parsed as math)
+  if (/^\d+$/.test(trimmed)) return false;
+
+  // 3. Accept ONLY if it contains clear mathematical indicators
+  const mathIndicators = [
+    /\\[a-zA-Z]+/,       // LaTeX commands (\frac, \sqrt, \alpha, etc.)
+    /[{}]/,              // Grouping braces { }
+    /[+\-*/=^_]/,        // Math operators
+    /\d+\s*[+\-*/=]/,    // Number followed by operator
+    /[+\-*/=]\s*\d+/     // Operator followed by number
   ];
   
-  return mathPatterns.some(regex => regex.test(text));
+  return mathIndicators.some(regex => regex.test(trimmed));
 }
 
-/* ── \[...\] → $$...$$ and \(...\) → $...$ ── */
+/* ── Convert \[...\] to $$...$$ (But DO NOT convert \(...\) to $...$) ── */
 function _convertLatexDelimiters(str) {
-  str = str.replace(/\\\[([\s\S]*?)\\\]/g, (_, inner) =>
-    '\n$$\n' + inner.trim() + '\n$$\n'
-  );
-  str = str.replace(/\\\(([\s\S]*?)\\\)/g, (_, inner) =>
-    '$' + inner.trim() + '$'
-  );
+  // Convert block delimiters \[ ... \] to $$ ... $$
+  str = str.replace(/\\\[\s*([\s\S]*?)\s*\\\]/g, '\n$$\n$1\n$$\n');
+  
+  // NOTE: We intentionally leave \( ... \) as is.
+  // Our custom tokenizer will parse \( ... \) directly, avoiding the ambiguous $...$ entirely.
   return str;
 }
 
-/* ── KaTeX with smart validation ── */
+/* ── KaTeX with strict validation and graceful fallback ── */
 const KATEX_OPTS = {
-  throwOnError: false,
-  errorColor: '#888888',
+  throwOnError: false,       // CRITICAL: Prevents app crash on bad syntax
+  errorColor: '#cc0000',     // Visible but non-breaking error color
   trust: false,
   strict: false
 };
 
 function _renderMath(text, displayMode) {
-  // Smart validation: only render if it looks like math
+  // Smart validation: only render if it genuinely looks like math
   if (!_looksLikeMath(text)) {
-    // Graceful fallback: return original text
-    return displayMode ? '$$' + _he(text) + '$$' : '$' + _he(text) + '$';
+    // Graceful fallback: return original text, safely escaped
+    return displayMode ? '<pre>' + _he(text) + '</pre>' : _he(text);
   }
   
   try {
     return katex.renderToString(text, { ...KATEX_OPTS, displayMode });
   } catch (_) {
-    // Graceful fallback: return original text, NOT error span
-    return displayMode ? '$$' + _he(text) + '$$' : '$' + _he(text) + '$';
+    // Graceful fallback on KaTeX error: return original text in <code> or <pre>
+    return displayMode ? '<pre>' + _he(text) + '</pre>' : '<code>' + _he(text) + '</code>';
   }
 }
 
+/* ── Marked.js KaTeX Extensions (STRICT DELIMITERS ONLY) ── */
 function _katexExtensions() {
+  // 1. Block Math: $$ ... $$
   const blockKatex = {
-    name: 'blockKatex', level: 'block',
-    start: src => { const i = src.indexOf('$$'); return i >= 0 ? i : undefined; },
-    tokenizer(src) {
-      const m = src.match(/^\$\$([\s\S]+?)\$\$/);
-      if (m) return { type: 'blockKatex', raw: m[0], text: m[1].trim() };
+    name: 'blockKatex',
+    level: 'block',
+    start: (src) => {
+      const match = src.match(/^\$\$/m);
+      return match ? match.index : undefined;
     },
-    renderer: token =>
+    tokenizer(src) {
+      const rule = /^\$\$([\s\S]+?)\$\$/;
+      const match = rule.exec(src);
+      if (match) {
+        return {
+          type: 'blockKatex',
+          raw: match[0],
+          text: match[1].trim()
+        };
+      }
+    },
+    renderer: (token) =>
       '<div class="math-display">' + _renderMath(token.text, true) + '</div>\n'
   };
 
+  // 2. Inline Math: \( ... \)  <-- NO $...$ SUPPORT (Prevents cursive bugs)
   const inlineKatex = {
-    name: 'inlineKatex', level: 'inline',
-    start: src => { const i = src.indexOf('$'); return i >= 0 ? i : undefined; },
-    tokenizer(src) {
-      const m = src.match(/^\$(?!\$)((?:[^$\n\\]|\\.)+?)\$(?!\$)/);
-      if (m) return { type: 'inlineKatex', raw: m[0], text: m[1].trim() };
+    name: 'inlineKatex',
+    level: 'inline',
+    start: (src) => {
+      const match = src.match(/\\\(/);
+      return match ? match.index : undefined;
     },
-    renderer: token => _renderMath(token.text, false)
+    tokenizer(src) {
+      const rule = /^\\\(([\s\S]*?)\\\)/;
+      const match = rule.exec(src);
+      if (match) {
+        return {
+          type: 'inlineKatex',
+          raw: match[0],
+          text: match[1].trim()
+        };
+      }
+    },
+    renderer: (token) => _renderMath(token.text, false)
   };
 
   return { extensions: [blockKatex, inlineKatex] };
 }
 
-/* ── Build marked ── */
+/* ── Build Marked ── */
 function _buildMarked() {
+  // Reset options to prevent duplicate extensions on hot-reload
+  if (typeof marked.setOptions === 'function') {
+    marked.setOptions({});
+  }
+
   if (typeof katex !== 'undefined') {
     marked.use(_katexExtensions());
   } else if (typeof markedKatex === 'function') {
@@ -163,22 +197,22 @@ function _buildMarked() {
 
   const renderer = new marked.Renderer();
 
-  /* Code blocks */
-  renderer.code = function(codeOrToken, lang) {
-    let code, language;
-    if (codeOrToken && typeof codeOrToken === 'object') {
-      code     = codeOrToken.text ?? codeOrToken.code ?? '';
-      language = (codeOrToken.lang || '').trim().toLowerCase();
-    } else {
-      code     = codeOrToken;
-      language = (lang || '').trim().toLowerCase();
-    }
+  /* Code blocks (Compatible with both old and new marked.js API) */
+  renderer.code = function(tokenOrCode, lang) {
+    // Handle new marked.js (token object) and old marked.js (string, lang)
+    const code = (tokenOrCode && typeof tokenOrCode === 'object') 
+      ? (tokenOrCode.text ?? tokenOrCode.code ?? '') 
+      : tokenOrCode;
+    
+    const language = (tokenOrCode && typeof tokenOrCode === 'object')
+      ? (tokenOrCode.lang || '').trim().toLowerCase()
+      : (lang || '').trim().toLowerCase();
 
     const id = 'cb' + Math.random().toString(36).slice(2, 8);
     let highlighted = _he(code);
 
     if (typeof hljs !== 'undefined') {
-      const valid  = language && hljs.getLanguage(language);
+      const valid = language && hljs.getLanguage(language);
       const result = valid
         ? hljs.highlight(code, { language, ignoreIllegals: true })
         : hljs.highlightAuto(code);
@@ -187,13 +221,13 @@ function _buildMarked() {
 
     return (
       '<div class="code-block" id="' + id + '">' +
-        '<button class="code-copy-btn" data-target="' + id + '" aria-label="Copy">' +
+        '<button class="code-copy-btn" data-target="' + id + '" aria-label="Copy code">' +
           '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">' +
             '<rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>' +
             '<path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>' +
           '</svg>' +
         '</button>' +
-        '<pre><code class="hljs">' + highlighted + '</code></pre>' +
+        '<pre><code class="hljs' + (language ? ' language-' + language : '') + '">' + highlighted + '</code></pre>' +
       '</div>'
     );
   };
@@ -222,10 +256,10 @@ _buildMarked();
 function _safePipeline(raw, isStreaming = false) {
   if (!raw) return '';
   
-  // Step 1: Protect prices before any processing
+  // Step 1: Protect prices before ANY processing
   const { text: protectedText, restore } = _protectAndRestore(raw);
   
-  // Step 2: Normalize and convert delimiters
+  // Step 2: Normalize newlines and convert \[...\] to $$...$$
   let text = _normalizeNewlines(_convertLatexDelimiters(protectedText));
   if (!text) return '';
   
@@ -234,7 +268,8 @@ function _safePipeline(raw, isStreaming = false) {
     let html = marked.parse(text);
     // Step 4: Restore prices after rendering
     return restore(html);
-  } catch (_) {
+  } catch (e) {
+    console.warn('Markdown parse error:', e);
     // Fallback with price restoration
     const fallback = '<pre class="render-fallback">' + _he(raw) + '</pre>';
     return restore(fallback);
@@ -291,8 +326,9 @@ function createStreamingRenderer(onUpdate, debounceMs = 40) {
   function _flush(final) {
     clearTimeout(_timer);
     _timer = null;
-    if (typeof onUpdate === 'function')
+    if (typeof onUpdate === 'function') {
       onUpdate(final ? renderer.finishStream() : renderer.getHTML(), { final });
+    }
   }
 
   return {
@@ -315,4 +351,8 @@ function createStreamingRenderer(onUpdate, debounceMs = 40) {
 /* ── Public API ── */
 function universalRender(content) { return new UniversalMessageRenderer().render(content); }
 function renderMarkdown(text)     { return universalRender(text); }
-     
+
+// Expose for module systems if needed
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = { universalRender, renderMarkdown, createStreamingRenderer, UniversalMessageRenderer };
+}

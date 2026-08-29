@@ -1,8 +1,8 @@
 /* ═══════════════════════════════════════════════════════════════
-   renderer.js — Atkyn Search (Production-Ready)
+   renderer.js — Atkyn Search [PRODUCTION-READY v2]
    Markdown + Math : marked.js + KaTeX
    Code highlight  : highlight.js
-   [KATEX-SAFE · PRICE-PROTECTED · STREAMING-OPTIMIZED · NO CURSIVE BUGS]
+   [ZERO FALSE POSITIVES · PRICE-SAFE · NO CURSIVE BUGS]
 ═══════════════════════════════════════════════════════════════ */
 
 /* ── HTML entity escape ── */
@@ -31,149 +31,145 @@ function _cheapHash(str) {
   return h;
 }
 
-/* ── Normalize newlines ── */
+/* ── Normalize newlines (SAFE — preserves all spaces) ── */
 function _normalizeNewlines(str) {
-  let start = 0;
-  while (start < str.length && str[start] === '\n') start++;
-  let end = str.length - 1;
-  while (end >= start && str[end] === '\n') end--;
-  if (start > end) return '';
-  const out = [];
-  let i = start;
-  while (i <= end) {
-    if (str[i] !== '\n') { out.push(str[i]); i++; }
-    else {
-      let run = 0;
-      while (i <= end && str[i] === '\n') { run++; i++; }
-      out.push('\n');
-      if (run > 1) out.push('\n');
-    }
-  }
-  return out.join('');
+  // Only collapse 3+ consecutive newlines into 2. Preserve ALL spaces/tabs.
+  return str.replace(/\n{3,}/g, '\n\n');
 }
 
-/* ── Price pattern protection (CRITICAL FIX) ── */
-const PRICE_PH_PREFIX = '\x00PRICE_';
-const PRICE_PH_SUFFIX = '\x00';
+/* ═══════════════════════════════════════════════════════════════
+   PRICE PROTECTION — THE REAL FIX
+   Problem: "$100 and another for $1,250.50" was being parsed as
+   inline math $...$ by marked, making middle text italic/cursive.
+   
+   Solution: Replace $PRICE with placeholders that CANNOT form
+   $...$ pairs, and run this BEFORE marked.parse().
+═══════════════════════════════════════════════════════════════ */
+const PRICE_PH = '\x01PRICE';  // Use SOH control char — never appears in normal text
+const PRICE_PH_END = '\x01';
 
-function _protectAndRestore(raw) {
+function _protectPrices(raw) {
   const placeholders = [];
   
-  // Protect: $100, $1,000, $50.99, $1,000,000.50
+  // Match $100, $1,000, $50.99, $1,250.50, $1,000,000.50
+  // Handles trailing punctuation: $100. or $1,250.50,
   let text = raw.replace(
-    /\$(\d{1,3}(?:,\d{3})*(?:\.\d{1,2})?|\d+(?:\.\d{1,2})?)/g,
-    (match) => {
+    /\$(\d{1,3}(?:,\d{3})*(?:\.\d{1,2})?|\d+(?:\.\d{1,2})?)(?=[\s,;:.\)!?\]}]|$)/g,
+    (match, price) => {
       const idx = placeholders.length;
-      placeholders.push(match);
-      return PRICE_PH_PREFIX + idx + PRICE_PH_SUFFIX;
+      placeholders.push('$' + price);
+      return PRICE_PH + idx + PRICE_PH_END;
     }
   );
   
-  const restore = (str) => str.replace(
-    new RegExp(PRICE_PH_PREFIX + '(\\d+)' + PRICE_PH_SUFFIX, 'g'),
-    (_, idx) => placeholders[parseInt(idx, 10)]
-  );
+  const restore = (str) => {
+    let result = str;
+    for (let i = 0; i < placeholders.length; i++) {
+      const ph = PRICE_PH + i + PRICE_PH_END;
+      // Use split/join instead of regex to avoid escaping issues
+      result = result.split(ph).join(placeholders[i]);
+    }
+    return result;
+  };
   
   return { text, restore };
 }
 
-/* ── Smart math detection (PREVENTS CURSIVE / FALSE POSITIVES) ── */
+/* ══════════════════════════════════════════════════════════════
+   SMART MATH DETECTION — STRICT MODE
+   Only render as math if it contains UNAMBIGUOUS math indicators.
+   Rejects: plain words, plain numbers, mixed word+number without operators.
+═══════════════════════════════════════════════════════════════ */
 function _looksLikeMath(text) {
-  const trimmed = text.trim();
+  const t = text.trim();
+  if (!t) return false;
   
-  // 1. Reject pure alphabetic strings (prevents "$hello$" from becoming cursive)
-  if (/^[a-zA-Z\s]+$/.test(trimmed)) return false;
+  // Hard rejects
+  if (/^[a-zA-Z\s]+$/.test(t)) return false;           // pure words
+  if (/^[\d,]+\.?\d*$/.test(t)) return false;           // pure numbers (with commas/decimals)
+  if (t.length < 2) return false;                       // single char
+  if (/^\d+\s+\w+\s+\d+$/.test(t)) return false;        // "100 and 200" pattern
   
-  // 2. Reject pure numbers (prevents normal numbers from being parsed as math)
-  if (/^\d+$/.test(trimmed)) return false;
-
-  // 3. Accept ONLY if it contains clear mathematical indicators
+  // Must contain at least ONE of these unambiguous math indicators:
   const mathIndicators = [
-    /\\[a-zA-Z]+/,       // LaTeX commands (\frac, \sqrt, \alpha, etc.)
-    /[{}]/,              // Grouping braces { }
-    /[+\-*/=^_]/,        // Math operators
-    /\d+\s*[+\-*/=]/,    // Number followed by operator
-    /[+\-*/=]\s*\d+/     // Operator followed by number
+    /\\[a-zA-Z]+/,       // LaTeX commands: \frac, \sqrt, \alpha, \sum, etc.
+    /[{}]/,              // Grouping braces (KaTeX uses these heavily)
+    /[\^_]\s*[a-zA-Z0-9]/, // Superscript/subscript: x^2, a_b
+    /\\[{}]/,            // Escaped braces
+    /\d+\s*[+\-*/=]\s*\d+/, // "2 + 3" pattern
+    /[+\-*/=]\s*[a-zA-Z]/,  // "= x" or "+ y" pattern
+    /[a-zA-Z]\s*[+\-*/=]/,  // "x =" or "y +" pattern
   ];
   
-  return mathIndicators.some(regex => regex.test(trimmed));
+  return mathIndicators.some(regex => regex.test(t));
 }
 
-/* ── Convert \[...\] to $$...$$ (But DO NOT convert \(...\) to $...$) ── */
+/* ── Convert \[...\] to $$...$$ ONLY (never introduce $...$) ── */
 function _convertLatexDelimiters(str) {
-  // Convert block delimiters \[ ... \] to $$ ... $$
+  // Convert block delimiters \[ ... \] → $$ ... $$
   str = str.replace(/\\\[\s*([\s\S]*?)\s*\\\]/g, '\n$$\n$1\n$$\n');
-  
-  // NOTE: We intentionally leave \( ... \) as is.
-  // Our custom tokenizer will parse \( ... \) directly, avoiding the ambiguous $...$ entirely.
+  // Leave \( ... \) as-is — our custom tokenizer handles it directly
   return str;
 }
 
-/* ── KaTeX with strict validation and graceful fallback ── */
+/* ── KaTeX rendering with strict validation ── */
 const KATEX_OPTS = {
-  throwOnError: false,       // CRITICAL: Prevents app crash on bad syntax
-  errorColor: '#cc0000',     // Visible but non-breaking error color
+  throwOnError: false,
+  errorColor: '#cc0000',
   trust: false,
   strict: false
 };
 
 function _renderMath(text, displayMode) {
-  // Smart validation: only render if it genuinely looks like math
   if (!_looksLikeMath(text)) {
-    // Graceful fallback: return original text, safely escaped
-    return displayMode ? '<pre>' + _he(text) + '</pre>' : _he(text);
+    // NOT math — return original text safely escaped
+    return _he(text);
   }
   
   try {
     return katex.renderToString(text, { ...KATEX_OPTS, displayMode });
   } catch (_) {
-    // Graceful fallback on KaTeX error: return original text in <code> or <pre>
-    return displayMode ? '<pre>' + _he(text) + '</pre>' : '<code>' + _he(text) + '</code>';
+    // KaTeX failed — return original text, NOT an error span
+    return _he(text);
   }
 }
 
-/* ── Marked.js KaTeX Extensions (STRICT DELIMITERS ONLY) ── */
+/* ═══════════════════════════════════════════════════════════════
+   MARKED.JS KATEX EXTENSIONS — STRICT DELIMITERS ONLY
+   Supports: $$...$$ (block) and \(...\) (inline)
+   DOES NOT support $...$ — this is the root cause of cursive bugs.
+═══════════════════════════════════════════════════════════════ */
 function _katexExtensions() {
-  // 1. Block Math: $$ ... $$
+  // Block math: $$ ... $$
   const blockKatex = {
     name: 'blockKatex',
     level: 'block',
     start: (src) => {
-      const match = src.match(/^\$\$/m);
-      return match ? match.index : undefined;
+      const m = src.match(/^\$\$/m);
+      return m ? m.index : undefined;
     },
     tokenizer(src) {
-      const rule = /^\$\$([\s\S]+?)\$\$/;
-      const match = rule.exec(src);
-      if (match) {
-        return {
-          type: 'blockKatex',
-          raw: match[0],
-          text: match[1].trim()
-        };
+      const m = /^\$\$([\s\S]+?)\$\$/.exec(src);
+      if (m) {
+        return { type: 'blockKatex', raw: m[0], text: m[1].trim() };
       }
     },
     renderer: (token) =>
       '<div class="math-display">' + _renderMath(token.text, true) + '</div>\n'
   };
 
-  // 2. Inline Math: \( ... \)  <-- NO $...$ SUPPORT (Prevents cursive bugs)
+  // Inline math: \( ... \) — NO $...$ SUPPORT
   const inlineKatex = {
     name: 'inlineKatex',
     level: 'inline',
     start: (src) => {
-      const match = src.match(/\\\(/);
-      return match ? match.index : undefined;
+      const m = src.match(/\\\(/);
+      return m ? m.index : undefined;
     },
     tokenizer(src) {
-      const rule = /^\\\(([\s\S]*?)\\\)/;
-      const match = rule.exec(src);
-      if (match) {
-        return {
-          type: 'inlineKatex',
-          raw: match[0],
-          text: match[1].trim()
-        };
+      const m = /^\\\(([\s\S]*?)\\\)/.exec(src);
+      if (m) {
+        return { type: 'inlineKatex', raw: m[0], text: m[1].trim() };
       }
     },
     renderer: (token) => _renderMath(token.text, false)
@@ -184,7 +180,6 @@ function _katexExtensions() {
 
 /* ── Build Marked ── */
 function _buildMarked() {
-  // Reset options to prevent duplicate extensions on hot-reload
   if (typeof marked.setOptions === 'function') {
     marked.setOptions({});
   }
@@ -197,13 +192,11 @@ function _buildMarked() {
 
   const renderer = new marked.Renderer();
 
-  /* Code blocks (Compatible with both old and new marked.js API) */
+  /* Code blocks — compatible with old & new marked.js */
   renderer.code = function(tokenOrCode, lang) {
-    // Handle new marked.js (token object) and old marked.js (string, lang)
-    const code = (tokenOrCode && typeof tokenOrCode === 'object') 
-      ? (tokenOrCode.text ?? tokenOrCode.code ?? '') 
+    const code = (tokenOrCode && typeof tokenOrCode === 'object')
+      ? (tokenOrCode.text ?? tokenOrCode.code ?? '')
       : tokenOrCode;
-    
     const language = (tokenOrCode && typeof tokenOrCode === 'object')
       ? (tokenOrCode.lang || '').trim().toLowerCase()
       : (lang || '').trim().toLowerCase();
@@ -232,7 +225,6 @@ function _buildMarked() {
     );
   };
 
-  /* Tables — wrapped for horizontal scroll */
   renderer.table = function(header, body) {
     return (
       '<div class="table-wrap"><table>' +
@@ -242,7 +234,6 @@ function _buildMarked() {
     );
   };
 
-  /* Horizontal rule — thin professional divider */
   renderer.hr = function() {
     return '<hr class="md-hr">\n';
   };
@@ -252,25 +243,36 @@ function _buildMarked() {
 
 _buildMarked();
 
-/* ── Safe render pipeline with price protection ── */
+/* ═══════════════════════════════════════════════════════════════
+   SAFE RENDER PIPELINE — ORDER MATTERS
+   1. Protect prices (BEFORE marked sees $ signs)
+   2. Normalize newlines
+   3. Convert \[...\] → $$...$$
+   4. Parse markdown + math
+   5. Restore prices
+═══════════════════════════════════════════════════════════════ */
 function _safePipeline(raw, isStreaming = false) {
   if (!raw) return '';
   
-  // Step 1: Protect prices before ANY processing
-  const { text: protectedText, restore } = _protectAndRestore(raw);
+  // STEP 1: Protect prices BEFORE anything else
+  // This prevents "$100 ... $1,250.50" from being parsed as inline math
+  const { text: protectedText, restore } = _protectPrices(raw);
   
-  // Step 2: Normalize newlines and convert \[...\] to $$...$$
-  let text = _normalizeNewlines(_convertLatexDelimiters(protectedText));
+  // STEP 2: Normalize newlines (preserves spaces)
+  let text = _normalizeNewlines(protectedText);
   if (!text) return '';
   
-  // Step 3: Render markdown + math
+  // STEP 3: Convert \[...\] → $$...$$ (never introduces $...$)
+  text = _convertLatexDelimiters(text);
+  
+  // STEP 4: Parse markdown + math
   try {
     let html = marked.parse(text);
-    // Step 4: Restore prices after rendering
+    
+    // STEP 5: Restore prices
     return restore(html);
   } catch (e) {
     console.warn('Markdown parse error:', e);
-    // Fallback with price restoration
     const fallback = '<pre class="render-fallback">' + _he(raw) + '</pre>';
     return restore(fallback);
   }
@@ -352,7 +354,6 @@ function createStreamingRenderer(onUpdate, debounceMs = 40) {
 function universalRender(content) { return new UniversalMessageRenderer().render(content); }
 function renderMarkdown(text)     { return universalRender(text); }
 
-// Expose for module systems if needed
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = { universalRender, renderMarkdown, createStreamingRenderer, UniversalMessageRenderer };
 }

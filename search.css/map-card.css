@@ -1,0 +1,181 @@
+/* ═══════════════════════════════════════════════════════════════
+   map-card.css — Atkyn Map Card styles
+   Drop into search.css/ folder, link in index.html
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Card wrapper ── */
+.map-card {
+  border-radius: 16px;
+  overflow: hidden;
+  background: var(--bubble-bg, #f5f5f5);
+  border: 1px solid var(--card-border, rgba(0,0,0,0.08));
+  width: 100%;
+  max-width: 480px;
+}
+
+@media (prefers-color-scheme: dark) {
+  .map-card {
+    background: var(--bubble-bg, #2c2c2e);
+    border-color: rgba(255,255,255,0.08);
+  }
+}
+
+/* ── Map container ── */
+.map-container {
+  width: 100%;
+  height: 220px;
+  background: #e8e8e8;
+}
+
+@media (prefers-color-scheme: dark) {
+  .map-container { background: #1c1c1e; }
+}
+
+/* ── Custom pin icons ── */
+.map-pin-center {
+  background: none !important;
+  border: none !important;
+}
+.map-pin-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #4a90e2;
+  border: 2.5px solid #fff;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+}
+
+.map-pin-place {
+  background: none !important;
+  border: none !important;
+}
+.map-pin-num {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #ff4b4b;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid #fff;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* ── Places list ── */
+.map-places-list {
+  display: flex;
+  flex-direction: column;
+  padding: 6px 0;
+  max-height: 260px;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.map-places-list::-webkit-scrollbar { display: none; }
+
+/* ── Single place row ── */
+.map-place-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 14px;
+  border-bottom: 1px solid rgba(0,0,0,0.05);
+  min-height: 52px;
+}
+
+@media (prefers-color-scheme: dark) {
+  .map-place-item { border-bottom-color: rgba(255,255,255,0.05); }
+}
+
+.map-place-item:last-child { border-bottom: none; }
+
+.map-place-num {
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #ff4b4b;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 1px;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.map-place-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.map-place-name {
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--text-primary, #111);
+}
+
+@media (prefers-color-scheme: dark) {
+  .map-place-name { color: #f2f2f7; }
+}
+
+.map-place-meta {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  margin-top: 2px;
+}
+
+.map-place-cat {
+  font-size: 11px;
+  color: #4a90e2;
+  font-weight: 500;
+  text-transform: capitalize;
+}
+
+.map-place-dist {
+  font-size: 11px;
+  color: var(--text-secondary, #888);
+}
+
+.map-place-addr {
+  font-size: 12px;
+  color: var(--text-secondary, #888);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: 2px;
+}
+
+/* ── External link button ── */
+.map-place-link {
+  flex-shrink: 0;
+  color: var(--text-secondary, #888);
+  display: flex;
+  align-items: center;
+  padding: 4px;
+  opacity: 0.6;
+  transition: opacity 0.15s;
+  margin-top: 2px;
+}
+
+.map-place-link:hover { opacity: 1; }
+
+/* ── Leaflet popup override — match Atkyn theme ── */
+.leaflet-popup-content-wrapper {
+  border-radius: 10px !important;
+  font-family: 'JetBrains Mono', monospace !important;
+  font-size: 13px !important;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.15) !important;
+}
+
+.leaflet-popup-tip-container { display: none; }
+  

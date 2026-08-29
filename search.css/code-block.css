@@ -1,0 +1,94 @@
+/* ════════════════════════════════════════════════════════════════
+   code-block.css
+════════════════════════════════════════════════════════════════ */
+
+.code-block {
+  margin: 12px 0 16px;
+  border-radius: 22px;
+  overflow: hidden;
+  background: #fafafa;
+  border: none;
+  box-shadow: none;
+  width: 100%;
+  position: relative;
+  box-sizing: border-box;
+}
+@media (prefers-color-scheme: dark) {
+  .code-block { background: #1e1e1e; }
+}
+
+/* ── Copy button ── */
+.code-copy-btn {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: #57606a;
+  padding: 6px;
+  border-radius: 6px;
+  font-size: 0;
+  -webkit-tap-highlight-color: transparent;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+  z-index: 2;
+}
+.code-block:hover .code-copy-btn,
+.code-block:focus-within .code-copy-btn { opacity: 1; }
+@media (hover: none) { .code-copy-btn { opacity: 1; } }
+.code-copy-btn svg { width: 20px; height: 20px; stroke-width: 1.75; }
+.code-copy-btn:active { opacity: 0.4 !important; }
+.code-copy-btn.copied { color: #3fb950; }
+@media (prefers-color-scheme: dark) {
+  .code-copy-btn        { color: #8b949e; }
+  .code-copy-btn.copied { color: #3fb950; }
+}
+
+/* ── Pre ── */
+.code-block pre {
+  margin: 0;
+  padding: 20px 20px 16px 20px;
+  overflow-x: scroll;
+  overflow-y: hidden;
+  background: transparent;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.code-block pre::-webkit-scrollbar        { display: none; width: 0; height: 0; }
+.code-block pre::-webkit-scrollbar-track  { display: none; }
+.code-block pre::-webkit-scrollbar-thumb  { display: none; }
+.code-block     ::-webkit-scrollbar       { display: none; width: 0; height: 0; }
+.code-block     ::-webkit-scrollbar-track { display: none; }
+.code-block     ::-webkit-scrollbar-thumb { display: none; }
+
+/* ── Code ── */
+.code-block pre code {
+  font-family: 'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace;
+  font-size: 13px;
+  line-height: 1.7;
+  font-weight: 400;
+  white-space: pre;
+  color: #1f2328;
+  background: none;
+  display: block;
+  padding: 0;
+  tab-size: 2;
+  -webkit-font-smoothing: antialiased;
+}
+@media (prefers-color-scheme: dark) {
+  .code-block pre code { color: #d4d4d4; }
+}
+
+/* ── hljs base sync ── */
+.code-block .hljs {
+  background: transparent;
+  padding: 0;
+  font-family: 'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace;
+  font-size: 13px;
+  line-height: 1.7;
+}

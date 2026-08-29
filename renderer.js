@@ -1,304 +1,139 @@
 /* ═══════════════════════════════════════════════════════════════
    renderer.js — Atkyn Search
-   Markdown + Math : marked.js + KaTeX
-   Code highlight  : highlight.js
-   [PRODUCTION-READY · KaTeX-SAFE · PRICE-PROTECTED · STREAMING-OPTIMIZED]
+   marked@13 + KaTeX auto-render + highlight.js  (all CDN)
+
+   MATH POLICY:
+   • $...$ single-dollar  → NEVER rendered as math (price/variable safe)
+   • $$...$$              → display math  (our custom marked extension)
+   • \[...\]              → display math  (KaTeX auto-render post-pass)
+   • \(...\)              → inline math   (KaTeX auto-render post-pass)
+   • marked-katex-extension CDN plugin is NOT used (no singleDollar toggle)
 ═══════════════════════════════════════════════════════════════ */
 
 /* ── HTML entity escape ── */
 function _he(s) {
-  const src = String(s);
-  const out = [];
-  for (let i = 0; i < src.length; i++) {
-    const c = src[i];
-    if      (c === '&')  out.push('&amp;');
-    else if (c === '<')  out.push('&lt;');
-    else if (c === '>')  out.push('&gt;');
-    else if (c === '"')  out.push('&quot;');
-    else if (c === "'")  out.push('&#39;');
-    else                 out.push(c);
-  }
-  return out.join('');
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
-/* ── Cheap hash for render cache ── */
+/* ── Cheap hash ── */
 function _cheapHash(str) {
   let h = 5381;
-  for (let i = 0; i < str.length; i++) {
-    h = ((h << 5) + h) ^ str.charCodeAt(i);
-    h = h >>> 0;
-  }
+  for (let i = 0; i < str.length; i++) h = (((h << 5) + h) ^ str.charCodeAt(i)) >>> 0;
   return h;
 }
 
 /* ── Normalize newlines ── */
 function _normalizeNewlines(str) {
-  let start = 0;
-  while (start < str.length && str[start] === '\n') start++;
-  let end = str.length - 1;
-  while (end >= start && str[end] === '\n') end--;
-  if (start > end) return '';
-  const out = [];
-  let i = start;
-  while (i <= end) {
-    if (str[i] !== '\n') { out.push(str[i]); i++; }
+  let s = 0; while (s < str.length && str[s] === '\n') s++;
+  let e = str.length - 1; while (e >= s && str[e] === '\n') e--;
+  if (s > e) return '';
+  const out = []; let i = s;
+  while (i <= e) {
+    if (str[i] !== '\n') { out.push(str[i++]); }
     else {
-      let run = 0;
-      while (i <= end && str[i] === '\n') { run++; i++; }
-      out.push('\n');
-      if (run > 1) out.push('\n');
+      let run = 0; while (i <= e && str[i] === '\n') { run++; i++; }
+      out.push('\n'); if (run > 1) out.push('\n');
     }
   }
   return out.join('');
 }
 
 /* ══════════════════════════════════════════════════════════════
-   PRICE + INLINE-CODE PROTECTION
-   Run before any LaTeX/markdown processing so dollar signs and
-   backtick spans are never misread as math delimiters.
+   PRICE + CODE PROTECTION
+   Runs before marked — $ signs never reach any math parser.
 ══════════════════════════════════════════════════════════════ */
-
-const _PH_PRE  = '\x00PH';   // placeholder prefix
-const _PH_SUF  = '\x00';     // placeholder suffix
+const _PH_PRE = '\x00PH', _PH_SUF = '\x00';
 
 function _protect(raw) {
   const slots = [];
-  const _ph   = (val) => { const i = slots.length; slots.push(val); return _PH_PRE + i + _PH_SUF; };
+  const ph = v => { const i = slots.length; slots.push(v); return _PH_PRE + i + _PH_SUF; };
 
-  // 1. Inline code spans first (backtick content must never be touched)
-  let text = raw.replace(/`+[\s\S]*?`+/g, _ph);
-
-  // 2. Currency / price amounts: $5, $1,000, $49.99, $1,000,000.00
-  //    Must NOT match things like $variable or $$
-  text = text.replace(
+  // 1. Fenced code blocks
+  let t = raw.replace(/```[\s\S]*?```/g, ph);
+  // 2. Inline code
+  t = t.replace(/`[^`\n]+`/g, ph);
+  // 3. Currency: $5  $1,000  $49.99 — NOT $$ (display math)
+  t = t.replace(
     /(?<!\$)\$(\d{1,3}(?:,\d{3})*(?:\.\d{1,2})?|\d+(?:\.\d{1,2})?)(?!\d)/g,
-    _ph
+    ph
   );
 
-  const restore = (str) =>
-    str.replace(new RegExp(_PH_PRE + '(\\d+)' + _PH_SUF, 'g'),
-      (_, i) => slots[+i]);
-
-  return { text, restore };
+  const restore = s => s.replace(new RegExp(_PH_PRE + '(\\d+)' + _PH_SUF, 'g'), (_, i) => slots[+i]);
+  return { text: t, restore };
 }
 
 /* ══════════════════════════════════════════════════════════════
-   LaTeX DELIMITER NORMALISATION
-   Only convert explicit LaTeX bracket / paren delimiters.
-   Plain prose is not touched.
+   MARKED SETUP
+   • We register ONE extension: $$ block math only.
+   • marked-katex-extension CDN plugin is intentionally skipped.
+   • \(...\) and \[...\] are handled by KaTeX auto-render AFTER
+     marked produces HTML (see _postRenderMath).
 ══════════════════════════════════════════════════════════════ */
-
-function _convertLatexDelimiters(str) {
-  // \[...\]  →  display math $$...$$
-  str = str.replace(/\\\[([\s\S]*?)\\\]/g, (_, inner) =>
-    '\n$$\n' + inner.trim() + '\n$$\n'
-  );
-  // \(...\)  →  inline math $...$
-  str = str.replace(/\\\(([\s\S]*?)\\\)/g, (_, inner) =>
-    '$' + inner.trim() + '$'
-  );
-  return str;
-}
-
-/* ══════════════════════════════════════════════════════════════
-   MATH CONTENT VALIDATOR
-   Called on the *content* inside $ ... $ or $$ ... $$
-   Returns false → treat as plain text, not LaTeX.
-══════════════════════════════════════════════════════════════ */
-
-// Patterns that strongly indicate real LaTeX math
-const _MATH_STRONG = [
-  /\\[a-zA-Z]+/,            // any LaTeX command: \frac, \sum, \alpha …
-  /\^[{0-9a-zA-Z]/,         // superscript: x^2, e^{x}
-  /[_][{0-9a-zA-Z]/,        // subscript:   a_1, H_{2}
-  /\{[^}]*\}/,              // brace groups: {x+1}
-  /\\[(),[\]]/,             // \(, \[, etc. (nested)
-  /[∑∏∫∂∇√±×÷≤≥≠≈→←]/,     // Unicode math symbols
-];
-
-// If the content matches these patterns → almost certainly NOT math
-const _NOT_MATH = [
-  /^[a-zA-Z]{4,}$/,                       // plain word: "hello"
-  /^[a-zA-Z\s]{6,}$/,                     // plain phrase: "hello world"
-  /^[A-Z][a-z]+(?:\s+[A-Za-z]+)*$/,       // sentence-case words
-  /^https?:\/\//,                          // URLs
-  /^[a-zA-Z0-9._%+\-]+@/,                 // email-like
-];
-
-function _looksLikeMath(text) {
-  const t = text.trim();
-  if (!t) return false;
-
-  // Immediate reject: plain text patterns
-  for (const re of _NOT_MATH) {
-    if (re.test(t)) return false;
-  }
-
-  // Immediate accept: known LaTeX
-  for (const re of _MATH_STRONG) {
-    if (re.test(t)) return true;
-  }
-
-  // Heuristic: must contain at least one math operator or digit with operator
-  // Single letters like $x$ are valid in real LaTeX context, but we require
-  // at least an operator neighbour to avoid italicising random $words$.
-  const hasMathOp = /[+\-*/=<>|^~]|(?:\d\s*[+\-*/=])/.test(t);
-  const isSingleToken = /^[a-zA-Z0-9]+$/.test(t); // single identifier → risky
-
-  if (isSingleToken && !hasMathOp) return false;  // e.g. $x$, $foo$ — reject
-  return hasMathOp;
-}
-
-/* ══════════════════════════════════════════════════════════════
-   KaTeX RENDER (safe wrapper)
-══════════════════════════════════════════════════════════════ */
-
-const KATEX_OPTS = {
-  throwOnError : false,
-  errorColor   : '#888888',
-  trust        : false,
-  strict       : false,
-};
-
-function _renderMath(text, displayMode) {
-  if (!_looksLikeMath(text)) {
-    // Return verbatim — never italicise / cursivify plain text
-    return displayMode
-      ? '<p>$$' + _he(text) + '$$</p>'
-      : _he(text);                        // inline: just the original text
-  }
-  try {
-    return katex.renderToString(text, { ...KATEX_OPTS, displayMode });
-  } catch (_) {
-    return displayMode
-      ? '<p>$$' + _he(text) + '$$</p>'
-      : '$' + _he(text) + '$';
-  }
-}
-
-/* ══════════════════════════════════════════════════════════════
-   STREAMING GUARD
-   During streaming, incomplete $...  or $$... blocks at the
-   very END of the buffer are held back to avoid partial renders.
-══════════════════════════════════════════════════════════════ */
-
-/**
- * Strips a potentially incomplete trailing math delimiter.
- * Returns { safe, held } where `held` goes back into the buffer.
- */
-function _holdIncomplete(text) {
-  // If last chars are an odd/unclosed $$ block
-  const trailBlock = text.match(/((?:^|\n)\$\$(?![\s\S]*\$\$)[\s\S]*)$/);
-  if (trailBlock) {
-    const idx = text.lastIndexOf(trailBlock[0]);
-    return { safe: text.slice(0, idx), held: trailBlock[0] };
-  }
-  // If last chars are an unclosed $ inline (not $$)
-  // Only hold back if the $ appears in the last 120 chars (short enough to be inline)
-  const tail = text.slice(-120);
-  const inlineMatch = tail.match(/(?<!\$)\$(?!\$)(?:[^$\n\\]|\\.)*$/);
-  if (inlineMatch) {
-    const holdFrom = text.length - 120 + inlineMatch.index;
-    return { safe: text.slice(0, holdFrom), held: text.slice(holdFrom) };
-  }
-  return { safe: text, held: '' };
-}
-
-/* ══════════════════════════════════════════════════════════════
-   MARKED EXTENSIONS + RENDERER BUILD
-══════════════════════════════════════════════════════════════ */
-
-function _katexExtensions() {
-  const blockKatex = {
-    name      : 'blockKatex',
-    level     : 'block',
-    start     : src => { const i = src.indexOf('$$'); return i >= 0 ? i : undefined; },
-    tokenizer(src) {
-      // Must have opening AND closing $$
-      const m = src.match(/^\$\$([\s\S]+?)\$\$/);
-      if (m) return { type: 'blockKatex', raw: m[0], text: m[1].trim() };
-    },
-    renderer: token =>
-      '<div class="math-display">' + _renderMath(token.text, true) + '</div>\n',
-  };
-
-  const inlineKatex = {
-    name      : 'inlineKatex',
-    level     : 'inline',
-    start     : src => {
-      // Skip $$ (block), only start on single $
-      let i = src.indexOf('$');
-      while (i >= 0 && src[i + 1] === '$') i = src.indexOf('$', i + 2);
-      return i >= 0 ? i : undefined;
-    },
-    tokenizer(src) {
-      // Single $ not followed by another $, not spanning newlines
-      const m = src.match(/^\$(?!\$)((?:[^$\n\\]|\\.)+?)\$(?!\$)/);
-      if (m) return { type: 'inlineKatex', raw: m[0], text: m[1].trim() };
-    },
-    renderer: token => _renderMath(token.text, false),
-  };
-
-  return { extensions: [blockKatex, inlineKatex] };
-}
-
 function _buildMarked() {
-  if (typeof katex !== 'undefined') {
-    marked.use(_katexExtensions());
-  } else if (typeof markedKatex === 'function') {
-    marked.use(markedKatex(KATEX_OPTS));
-  }
+  // Display-math-only extension: $$ ... $$ (block level)
+  // Single $ is NOT intercepted — ever.
+  const blockMath = {
+    name: 'blockMath',
+    level: 'block',
+    start: src => src.indexOf('$$'),
+    tokenizer(src) {
+      const m = src.match(/^\$\$([\s\S]+?)\$\$/);
+      if (m) return { type: 'blockMath', raw: m[0], text: m[1].trim() };
+    },
+    renderer(token) {
+      if (typeof katex === 'undefined') {
+        return '<div class="math-display">$$' + _he(token.text) + '$$</div>\n';
+      }
+      try {
+        return '<div class="math-display">' +
+          katex.renderToString(token.text, { displayMode: true, throwOnError: false }) +
+          '</div>\n';
+      } catch (_) {
+        return '<div class="math-display">$$' + _he(token.text) + '$$</div>\n';
+      }
+    },
+  };
+
+  marked.use({ extensions: [blockMath] });
 
   const renderer = new marked.Renderer();
 
-  /* Code blocks */
-  renderer.code = function(codeOrToken, lang) {
+  renderer.code = function (codeOrToken, lang) {
     let code, language;
     if (codeOrToken && typeof codeOrToken === 'object') {
-      code     = codeOrToken.text ?? codeOrToken.code ?? '';
+      code = codeOrToken.text ?? codeOrToken.code ?? '';
       language = (codeOrToken.lang || '').trim().toLowerCase();
     } else {
-      code     = codeOrToken;
-      language = (lang || '').trim().toLowerCase();
+      code = codeOrToken; language = (lang || '').trim().toLowerCase();
     }
-
     const id = 'cb' + Math.random().toString(36).slice(2, 8);
-    let highlighted = _he(code);
-
+    let hi = _he(code);
     if (typeof hljs !== 'undefined') {
-      const valid  = language && hljs.getLanguage(language);
-      const result = valid
-        ? hljs.highlight(code, { language, ignoreIllegals: true })
-        : hljs.highlightAuto(code);
-      highlighted = result.value;
+      const valid = language && hljs.getLanguage(language);
+      hi = (valid ? hljs.highlight(code, { language, ignoreIllegals: true }) : hljs.highlightAuto(code)).value;
     }
-
     return (
       '<div class="code-block" id="' + id + '">' +
         '<button class="code-copy-btn" data-target="' + id + '" aria-label="Copy">' +
-          '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"' +
-          ' stroke-linecap="round" stroke-linejoin="round">' +
+          '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">' +
             '<rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>' +
             '<path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>' +
           '</svg>' +
         '</button>' +
-        '<pre><code class="hljs">' + highlighted + '</code></pre>' +
+        '<pre><code class="hljs">' + hi + '</code></pre>' +
       '</div>'
     );
   };
 
-  /* Tables */
-  renderer.table = function(header, body) {
-    return (
-      '<div class="table-wrap"><table>' +
-        '<thead>' + header + '</thead>' +
-        '<tbody>' + body + '</tbody>' +
-      '</table></div>'
-    );
-  };
+  renderer.table = (header, body) =>
+    '<div class="table-wrap"><table><thead>' + header + '</thead><tbody>' + body + '</tbody></table></div>';
 
-  /* Horizontal rule */
-  renderer.hr = function() { return '<hr class="md-hr">\n'; };
+  renderer.hr = () => '<hr class="md-hr">\n';
 
   marked.use({ renderer, breaks: true, gfm: true });
 }
@@ -306,58 +141,52 @@ function _buildMarked() {
 _buildMarked();
 
 /* ══════════════════════════════════════════════════════════════
-   SAFE RENDER PIPELINE
+   POST-RENDER MATH  (\[...\] and \(...\) via KaTeX auto-render)
+   Called on the container DOM element after innerHTML is set.
 ══════════════════════════════════════════════════════════════ */
+function _postRenderMath(el) {
+  if (!el || typeof renderMathInElement === 'undefined') return;
+  renderMathInElement(el, {
+    delimiters: [
+      { left: '\\[', right: '\\]', display: true  },
+      { left: '\\(', right: '\\)', display: false },
+    ],
+    throwOnError: false,
+  });
+}
 
+/* ══════════════════════════════════════════════════════════════
+   STREAMING GUARD — hold back unclosed $$ at buffer tail
+══════════════════════════════════════════════════════════════ */
+function _holdIncomplete(text) {
+  const m = text.match(/((?:^|\n)\$\$(?![\s\S]*?\$\$)[\s\S]*)$/);
+  if (m) { const idx = text.lastIndexOf(m[0]); return { safe: text.slice(0, idx), held: m[0] }; }
+  return { safe: text, held: '' };
+}
+
+/* ══════════════════════════════════════════════════════════════
+   PIPELINE
+══════════════════════════════════════════════════════════════ */
 function _safePipeline(raw, isStreaming = false) {
   if (!raw) return '';
-
-  // 1. Protect inline code + currency before any mutation
-  const { text: protected_, restore } = _protect(raw);
-
-  // 2. Convert explicit LaTeX delimiters
-  let text = _convertLatexDelimiters(protected_);
-
-  // 3. Streaming guard: hold back dangling incomplete math
-  let held = '';
-  if (isStreaming) {
-    const res = _holdIncomplete(text);
-    text = res.safe;
-    held = res.held;  // held stays in buffer, not rendered yet
-    if (!text) return '';
-  }
-
-  // 4. Normalise newlines
-  text = _normalizeNewlines(text);
-  if (!text) return '';
-
-  // 5. Render markdown + math
+  const { text, restore } = _protect(raw);
+  let src = isStreaming ? _holdIncomplete(text).safe : text;
+  src = _normalizeNewlines(src);
+  if (!src) return '';
   let html;
-  try {
-    html = marked.parse(text);
-  } catch (_) {
-    html = '<pre class="render-fallback">' + _he(raw) + '</pre>';
-  }
-
-  // 6. Restore protected spans
+  try { html = marked.parse(src); }
+  catch (_) { html = '<pre class="render-fallback">' + _he(raw) + '</pre>'; }
   return restore(html);
 }
 
 /* ══════════════════════════════════════════════════════════════
-   UniversalMessageRenderer CLASS
+   UniversalMessageRenderer
 ══════════════════════════════════════════════════════════════ */
-
 class UniversalMessageRenderer {
   constructor() {
-    this.rawContent      = '';
-    this.renderedContent = '';
-    this._hash           = null;
-    this._buf            = '';     // accumulated streaming buffer
-    this._held           = '';     // incomplete math held back during stream
-    this._streaming      = false;
+    this.rawContent = ''; this.renderedContent = '';
+    this._hash = null; this._buf = ''; this._streaming = false;
   }
-
-  /* One-shot render (non-streaming) */
   render(content) {
     this.rawContent = content;
     const h = _cheapHash(content);
@@ -365,38 +194,20 @@ class UniversalMessageRenderer {
     this._hash = h;
     return (this.renderedContent = _safePipeline(content, false));
   }
-
-  /* Streaming API */
   startStream() {
-    this._buf            = '';
-    this._held           = '';
-    this._streaming      = true;
-    this.rawContent      = '';
-    this.renderedContent = '';
-    this._hash           = null;
+    this._buf = ''; this._streaming = true;
+    this.rawContent = ''; this.renderedContent = ''; this._hash = null;
   }
-
   pushChunk(chunk) {
     if (!this._streaming) this.startStream();
-    // Re-inject any previously held incomplete tail, then add new chunk
-    this._buf       += chunk;
-    this.rawContent  = this._buf;
-
-    // Compute held-back tail for this frame
-    const { safe, held } = _holdIncomplete(this._buf);
-    this._held = held;
-
-    this.renderedContent = _safePipeline(safe, true);
+    this._buf += chunk; this.rawContent = this._buf;
+    this.renderedContent = _safePipeline(_holdIncomplete(this._buf).safe, true);
     return this.renderedContent;
   }
-
   finishStream() {
     this._streaming = false;
-    // Flush everything including previously held tail
-    this.renderedContent = _safePipeline(this._buf, false);
-    return this.renderedContent;
+    return (this.renderedContent = _safePipeline(this._buf, false));
   }
-
   getHTML() { return this.renderedContent; }
   getRaw()  { return this.rawContent; }
 }
@@ -404,24 +215,15 @@ class UniversalMessageRenderer {
 /* ══════════════════════════════════════════════════════════════
    STREAMING FACTORY
 ══════════════════════════════════════════════════════════════ */
-
 function createStreamingRenderer(onUpdate, debounceMs = 40) {
   const renderer = new UniversalMessageRenderer();
   renderer.startStream();
-  let _timer = null;
-  let _done  = false;
-
-  function _flush(final) {
-    clearTimeout(_timer);
-    _timer = null;
-    if (typeof onUpdate === 'function') {
-      onUpdate(
-        final ? renderer.finishStream() : renderer.getHTML(),
-        { final }
-      );
-    }
-  }
-
+  let _timer = null, _done = false;
+  const _flush = final => {
+    clearTimeout(_timer); _timer = null;
+    if (typeof onUpdate === 'function')
+      onUpdate(final ? renderer.finishStream() : renderer.getHTML(), { final });
+  };
   return {
     push(chunk) {
       if (_done) return;
@@ -430,10 +232,8 @@ function createStreamingRenderer(onUpdate, debounceMs = 40) {
       _timer = setTimeout(() => _flush(false), debounceMs);
     },
     finish() {
-      if (_done) return;
-      _done = true;
-      clearTimeout(_timer);
-      _flush(true);
+      if (_done) return; _done = true;
+      clearTimeout(_timer); _flush(true);
     },
     getRenderer() { return renderer; },
   };

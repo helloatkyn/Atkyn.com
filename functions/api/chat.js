@@ -226,7 +226,7 @@ export async function onRequestPost(context) {
   }
 
   const baseMessages = [
-    { role: 'system', content: SYSTEM_PROMPT },
+    { role: 'system', content: SYSTEM_PROMPT + '\n\nCRITICAL: You have a limited output token budget. Always complete your response fully within it. Never truncate mid-sentence. If space is tight, summarise — never cut off.' },
     ...(Array.isArray(history) ? history.slice(-10) : []),
     { role: 'user', content: query },
   ];
@@ -252,7 +252,7 @@ export async function onRequestPost(context) {
           tools:       TOOLS,
           tool_choice: 'auto',
           stream:      false,
-          max_tokens:  750,
+          max_tokens:  4000, // enough for direct answers; tool calls only need a few tokens
           temperature: 0.1,
         }),
       });
@@ -356,7 +356,7 @@ export async function onRequestPost(context) {
             },
           ],
           stream:      true,
-          max_tokens:  8000,
+          max_tokens:  4000, // high ceiling — model self-terminates when answer is complete
           temperature: 0.6,
         }),
       });
@@ -405,4 +405,5 @@ export async function onRequestOptions() {
       'Access-Control-Allow-Headers': 'Content-Type, Authorization',
     },
   });
-}
+      }
+        

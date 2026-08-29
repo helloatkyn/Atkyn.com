@@ -31,6 +31,17 @@ function validateToolArgs(toolName, rawArgs) {
     return { symbol: cleanSymbol };
   }
 
+  if (toolName === 'maps_search') {
+    if (!rawArgs.query || typeof rawArgs.query !== 'string') {
+      throw new Error('Missing or invalid "query". Must be a string.');
+    }
+    const cleanQuery = rawArgs.query.trim();
+    if (cleanQuery.length < 2) {
+      throw new Error('Query is too short. Must be at least 2 characters.');
+    }
+    return { query: cleanQuery };
+  }
+
   throw new Error(`Unknown tool requested: ${toolName}`);
 }
 
@@ -137,6 +148,73 @@ async function executeStockData(symbol, finnhubApiKey) {
   }
 }
 
+async function executeMapsSearch(query, geoapifyApiKey) {
+  try {
+    const geoUrl = `https://api.geoapify.com/v1/geocode/search?text=${encodeURIComponent(query)}&limit=1&apiKey=${geoapifyApiKey}`;
+    const geoResp = await fetch(geoUrl, { signal: AbortSignal.timeout(5000) });
+    if (!geoResp.ok) throw new Error('Geocoding failed');
+
+    const geoData = await geoResp.json();
+    const firstFeature = geoData?.features?.[0];
+    if (!firstFeature) throw new Error('No location found');
+
+    const [lon, lat] = firstFeature.geometry.coordinates;
+    const center = {
+      lat,
+      lon,
+      label: firstFeature.properties?.formatted || query,
+    };
+
+    const categories = detectCategories(query);
+    const placesUrl = `https://api.geoapify.com/v2/places?categories=${categories}&filter=circle:${lon},${lat},2000&limit=10&apiKey=${geoapifyApiKey}`;
+    const placesResp = await fetch(placesUrl, { signal: AbortSignal.timeout(5000) });
+    if (!placesResp.ok) throw new Error('Places fetch failed');
+
+    const placesData = await placesResp.json();
+    const places = (placesData?.features || []).map(f => {
+      const p = f.properties;
+      return {
+        name:     p.name     || p.formatted || 'Unknown',
+        address:  p.formatted || '',
+        category: p.categories?.[0] || '',
+        lat:      f.geometry.coordinates[1],
+        lon:      f.geometry.coordinates[0],
+        distance: p.distance || null,
+        phone:    p.contact?.phone || null,
+        website:  p.website  || null,
+        opening:  p.opening_hours || null,
+      };
+    });
+
+    return { center, places };
+  } catch (err) {
+    return { error: true, message: `Maps search failed: ${err.message}` };
+  }
+}
+
+function detectCategories(query) {
+  const q = query.toLowerCase();
+  if (/restaurant|food|eat|dining|biryani|pizza|burger|cafe|coffee/.test(q))
+    return 'catering.restaurant,catering.cafe,catering.fast_food';
+  if (/hotel|stay|lodge|motel|hostel/.test(q))
+    return 'accommodation.hotel,accommodation.hostel';
+  if (/hospital|clinic|doctor|pharmacy|medical/.test(q))
+    return 'healthcare.hospital,healthcare.clinic,healthcare.pharmacy';
+  if (/petrol|fuel|gas station|cng/.test(q))
+    return 'service.vehicle.fuel';
+  if (/gym|fitness|workout/.test(q))
+    return 'sport.fitness';
+  if (/school|college|university/.test(q))
+    return 'education.school,education.college,education.university';
+  if (/bank|atm/.test(q))
+    return 'financial.bank,financial.atm';
+  if (/park|garden/.test(q))
+    return 'leisure.park';
+  if (/shop|store|mall|market/.test(q))
+    return 'commercial.shopping_mall,commercial.supermarket';
+  return 'catering,accommodation,commercial,service,leisure';
+}
+
 function formatSearchResultsForLLM(results) {
   if (results.length === 0) return 'No search results found.';
   return results.map((r, i) =>
@@ -147,6 +225,16 @@ function formatSearchResultsForLLM(results) {
 function formatStockDataForLLM(data) {
   if (data.error) return `Error: ${data.message}`;
   return `Stock: ${data.name} (${data.ticker})\nExchange: ${data.exchange}\nPrice: ${data.currency === 'USD' ? '$' : ''}${data.price}\nChange: ${data.change >= 0 ? '+' : ''}${data.change} (${data.changePct}%)\nMarket Cap: ${data.marketCap}\nOpen: ${data.open} | High: ${data.high} | Low: ${data.low} | Prev Close: ${data.prevClose}`;
+}
+
+function formatMapsDataForLLM(data) {
+  if (data.error) return `Error: ${data.message}`;
+  const { center, places } = data;
+  if (!places || places.length === 0) return `Location found: ${center.label}. No nearby places found.`;
+  const placeLines = places.map((p, i) =>
+    `${i + 1}. ${p.name}${p.address ? ' — ' + p.address : ''}${p.distance ? ' (' + Math.round(p.distance) + 'm away)' : ''}`
+  ).join('\n');
+  return `Location: ${center.label}\nNearby places:\n${placeLines}`;
 }
 
 const TOOLS = [
@@ -176,6 +264,21 @@ const TOOLS = [
           symbol: { type: 'string', description: 'Stock ticker symbol only (e.g., AAPL, TSLA, RELIANCE.NS). Do not include company names.' },
         },
         required: ['symbol'],
+        additionalProperties: false,
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'maps_search',
+      description: 'Find businesses, services, or places near a location. Use when the user asks about nearby restaurants, hotels, hospitals, shops, or any place with a location context.',
+      parameters: {
+        type: 'object',
+        properties: {
+          query: { type: 'string', description: 'The place or business type with location context (e.g., "restaurants near Connaught Place Delhi", "hospitals near me Mumbai").' },
+        },
+        required: ['query'],
         additionalProperties: false,
       },
     },
@@ -291,6 +394,13 @@ export async function onRequestPost(context) {
           frontendEvent = 'stock';
           frontendData = data;
         }
+      } else if (functionName === 'maps_search') {
+        const data = await executeMapsSearch(validatedArgs.query, env.GEOAPIFY_API_KEY);
+        toolResultContent = formatMapsDataForLLM(data);
+        if (!data.error) {
+          frontendEvent = 'map';
+          frontendData = data;
+        }
       }
 
       if (frontendEvent && frontendData) {
@@ -368,4 +478,4 @@ export async function onRequestOptions() {
       'Access-Control-Allow-Headers': 'Content-Type, Authorization',
     },
   });
-            }
+    }

@@ -160,6 +160,10 @@ _buildMarked();
    STREAMING GUARD — hold back unclosed $$ or \[ at buffer tail
 ══════════════════════════════════════════════════════════════ */
 function _holdIncomplete(text) {
+  // Unclosed fenced code block — ``` without a closing ```
+  const m0 = text.match(/((?:^|\n)```[\s\S]*)$/);
+  if (m0 && !m0[1].slice(3).includes('```'))
+    return { safe: text.slice(0, text.lastIndexOf(m0[0])), held: m0[0] };
   // Unclosed $$
   const m1 = text.match(/((?:^|\n)\$\$(?![\s\S]*?\$\$)[\s\S]*)$/);
   if (m1) return { safe: text.slice(0, text.lastIndexOf(m1[0])), held: m1[0] };
@@ -250,4 +254,4 @@ function createStreamingRenderer(onUpdate, debounceMs = 40) {
 /* ── Public API ── */
 function universalRender(content) { return new UniversalMessageRenderer().render(content); }
 function renderMarkdown(text)     { return universalRender(text); }
-    
+     

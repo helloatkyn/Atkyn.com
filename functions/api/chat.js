@@ -38,19 +38,28 @@ async function fetchPageText(url) {
   try {
     const resp = await fetch(url, {
       headers: { 'User-Agent': 'Mozilla/5.0 (compatible; AtkynBot/1.0)' },
-      signal: AbortSignal.timeout(3000),
+      signal: AbortSignal.timeout(2500),
     });
-    if (!resp.ok || !resp.headers.get('content-type')?.includes('text/html')) {
-      return '';
-    }
+    if (!resp.ok) return '';
+    const ct = resp.headers.get('content-type') || '';
+    if (!ct.includes('text/html')) return '';
+
     const html = await resp.text();
-    return html
+
+    // Prefer <main> or <article> content for higher signal-to-noise ratio
+    const bodyMatch = html.match(/<(?:main|article)[^>]*>([\s\S]*?)<\/(?:main|article)>/i);
+    const source = bodyMatch ? bodyMatch[1] : html;
+
+    return source
       .replace(/<script[\s\S]*?<\/script>/gi, '')
       .replace(/<style[\s\S]*?<\/style>/gi, '')
+      .replace(/<nav[\s\S]*?<\/nav>/gi, '')
+      .replace(/<footer[\s\S]*?<\/footer>/gi, '')
+      .replace(/<header[\s\S]*?<\/header>/gi, '')
       .replace(/<[^>]+>/g, ' ')
       .replace(/\s+/g, ' ')
       .trim()
-      .slice(0, 4000);
+      .slice(0, 1500); // Reduced from 4000 — enough context, far less noise
   } catch {
     return '';
   }
@@ -65,15 +74,20 @@ async function executeSearXNG(searchQuery, searxngUrl) {
 
     if (!searxResp.ok) return [];
     const data = await searxResp.json();
-    const raw = (data.results || []).slice(0, 5);
+    const raw = (data.results || []).slice(0, 3); // Reduced from 5 — quality over quantity
 
     const enriched = await Promise.all(
       raw.map(async (r) => {
-        let content = r.content || 'No snippet available.';
-        const pageText = await fetchPageText(r.url);
-        if (pageText && pageText.length > 100) {
-          content = pageText;
-        }
+        const snippet = r.content?.trim();
+
+        // Only fetch full page if SearXNG snippet is missing or too short
+        let content = snippet && snippet.length > 80
+          ? snippet
+          : await fetchPageText(r.url);
+
+        // Last resort: use title
+        if (!content || content.length < 30) content = r.title || 'No content available.';
+
         return {
           title: r.title || 'Untitled',
           url: r.url || '#',
@@ -140,7 +154,7 @@ async function executeStockData(symbol, finnhubApiKey) {
 function formatSearchResultsForLLM(results) {
   if (results.length === 0) return 'No search results found.';
   return results.map((r, i) =>
-    `--- SOURCE ${i + 1} ---\nTitle: ${r.title}\nURL: ${r.url}\nContent: ${r.snippet}`
+    `[${i + 1}] ${r.title}\nURL: ${r.url}\n${r.snippet}`
   ).join('\n\n');
 }
 
@@ -369,3 +383,4 @@ export async function onRequestOptions() {
     },
   });
       }
+      

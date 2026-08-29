@@ -312,6 +312,18 @@ export async function onRequestPost(context) {
 
   (async () => {
     try {
+      /* Force maps_search if query is clearly location-based */
+      const MAP_PATTERN = /near|nearby|close to|around here|restaurant|hotel|cafe|coffee shop|hospital|clinic|pharmacy|atm|bank|gym|petrol|fuel|park|mall|shop|market|school|college|directions|where is|located|location of|places in|things to do in/i;
+      const isMapQuery = MAP_PATTERN.test(query);
+
+      let assistantMessage, toolCalls;
+
+      if (isMapQuery) {
+        console.log(`[${requestId}] Map query detected — forcing maps_search.`);
+        assistantMessage = { content: null };
+        toolCalls = [{ id: 'forced_map', type: 'function', function: { name: 'maps_search', arguments: JSON.stringify({ query }) } }];
+      } else {
+
       console.log(`[${requestId}] Calling Ministral for routing...`);
 
       const call1Resp = await fetch('https://api.mistral.ai/v1/chat/completions', {
@@ -336,8 +348,10 @@ export async function onRequestPost(context) {
       }
 
       const call1Data = await call1Resp.json();
-      const assistantMessage = call1Data.choices?.[0]?.message;
-      const toolCalls = assistantMessage?.tool_calls;
+      assistantMessage = call1Data.choices?.[0]?.message;
+      toolCalls = assistantMessage?.tool_calls;
+
+      } // end non-map routing
 
       if (!toolCalls || toolCalls.length === 0) {
         console.log(`[${requestId}] No tool call. Streaming direct answer.`);
@@ -478,5 +492,5 @@ export async function onRequestOptions() {
       'Access-Control-Allow-Headers': 'Content-Type, Authorization',
     },
   });
-      }
-        
+                      }
+      

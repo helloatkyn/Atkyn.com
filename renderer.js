@@ -122,12 +122,19 @@ function _buildMarked() {
   /* ── Custom renderer (code, table, hr) ── */
   const renderer = new marked.Renderer();
 
-  renderer.code = function (codeOrToken, lang) {
+  renderer.code = function (token) {
+    // Handle both new marked v13+ (object) and old versions (string)
     let code, language;
-    if (codeOrToken && typeof codeOrToken === 'object') {
-      code = codeOrToken.text ?? codeOrToken.code ?? '';
-      language = (codeOrToken.lang || '').trim().toLowerCase();
-    } else { code = codeOrToken; language = (lang || '').trim().toLowerCase(); }
+    
+    if (token && typeof token === 'object') {
+      // marked v13+ passes token object
+      code = token.text || token.code || '';
+      language = (token.lang || '').trim().toLowerCase();
+    } else {
+      // Old version passes string directly
+      code = token || '';
+      language = (language || '').trim().toLowerCase();
+    }
 
     const id = 'cb' + Math.random().toString(36).slice(2, 8);
     const hi = _he(code);
@@ -254,4 +261,3 @@ function createStreamingRenderer(onUpdate, debounceMs = 40) {
 /* ── Public API ── */
 function universalRender(content) { return new UniversalMessageRenderer().render(content); }
 function renderMarkdown(text)     { return universalRender(text); }
-     

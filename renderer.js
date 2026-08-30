@@ -222,7 +222,10 @@ function renderMarkdown(text)     { return universalRender(text); }
 const _chipRegistry = {};
 let   _chipCounter  = 0;
 
-/* Delegated favicon error handler */
+/* Global sources — search.js mein set karo:
+   window._atkynSources = sourcesArray; */
+window._atkynSources = [];
+
 document.addEventListener('error', function(e) {
   const img = e.target;
   if (!img || img.tagName !== 'IMG' || !img.dataset.chipId) return;
@@ -244,10 +247,9 @@ function _buildChip(src) {
   try { domain = new URL(src.url).hostname.replace(/^www\./, ''); }
   catch (_) { domain = src.url; }
 
-  const label = domain.length > 22 ? domain.slice(0, 20) + '\u2026' : domain;
-  const chipId = 'chip' + (++_chipCounter);
+  const label      = domain.length > 22 ? domain.slice(0, 20) + '\u2026' : domain;
+  const chipId     = 'chip' + (++_chipCounter);
   _chipRegistry[chipId] = src;
-
   const faviconUrl = 'https://www.google.com/s2/favicons?domain=' + encodeURIComponent(domain) + '&sz=64';
 
   return (
@@ -292,7 +294,7 @@ function injectCitationChips(html, sources) {
 }
 
 /* ══════════════════════════════════════════════════════════════
-   SOURCE CHIP BOTTOM SHEET
+   SOURCE CHIP BOTTOM SHEET — all sources SERP style
 ══════════════════════════════════════════════════════════════ */
 (function () {
   const sheet = document.createElement('div');
@@ -300,24 +302,60 @@ function injectCitationChips(html, sources) {
   sheet.innerHTML =
     '<div id="chipSheetBackdrop"></div>' +
     '<div id="chipSheetCard">' +
-      '<div id="chipSheetHeader">' +
-        '<img id="chipSheetFavicon" width="32" height="32" alt="">' +
-        '<div id="chipSheetMeta">' +
-          '<div id="chipSheetDomain"></div>' +
-          '<div id="chipSheetUrl"></div>' +
-        '</div>' +
-      '</div>' +
-      '<div id="chipSheetTitle"></div>' +
-      '<a id="chipSheetBtn" target="_blank" rel="noopener">Open Website</a>' +
+      '<div id="chipSheetPill"></div>' +
+      '<div id="chipSheetList"></div>' +
     '</div>';
   document.body.appendChild(sheet);
 
-  function openSheet(url, domain, title, favicon) {
-    document.getElementById('chipSheetFavicon').src = favicon;
-    document.getElementById('chipSheetDomain').textContent = domain;
-    document.getElementById('chipSheetUrl').textContent = url.length > 40 ? url.slice(0, 38) + '\u2026' : url;
-    document.getElementById('chipSheetTitle').textContent = title;
-    document.getElementById('chipSheetBtn').href = url;
+  function _domain(url) {
+    try { return new URL(url).hostname.replace(/^www\./, ''); } catch (_) { return url; }
+  }
+
+  function _favicon(domain) {
+    return 'https://www.google.com/s2/favicons?domain=' + encodeURIComponent(domain) + '&sz=64';
+  }
+
+  function buildItem(src, isActive) {
+    const domain  = _domain(src.url);
+    const favicon = _favicon(domain);
+    const title   = src.title || domain;
+    const shortUrl = src.url.length > 45 ? src.url.slice(0, 43) + '\u2026' : src.url;
+
+    return (
+      '<a class="csi' + (isActive ? ' csi--active' : '') + '" href="' + _he(src.url) + '" target="_blank" rel="noopener">' +
+        '<img class="csi-favicon" src="' + _he(favicon) + '" width="28" height="28" alt="" onerror="this.style.visibility=\'hidden\'">' +
+        '<div class="csi-body">' +
+          '<div class="csi-domain">' + _he(domain) + '</div>' +
+          '<div class="csi-title">' + _he(title) + '</div>' +
+          '<div class="csi-url">' + _he(shortUrl) + '</div>' +
+        '</div>' +
+        '<svg class="csi-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>' +
+      '</a>'
+    );
+  }
+
+  function openSheet(clickedUrl) {
+    const sources = window._atkynSources || [];
+    if (!sources.length) return;
+
+    /* Pill — clicked source highlight */
+    const clickedDomain  = _domain(clickedUrl);
+    const clickedFavicon = _favicon(clickedDomain);
+    const clickedSrc     = sources.find(s => s.url === clickedUrl) || sources[0];
+
+    document.getElementById('chipSheetPill').innerHTML =
+      '<img src="' + _he(clickedFavicon) + '" width="20" height="20" alt="" onerror="this.style.visibility=\'hidden\'">' +
+      '<span>' + _he(clickedDomain) + '</span>';
+
+    /* List — all sources, clicked wala top pe */
+    const sorted = [
+      clickedSrc,
+      ...sources.filter(s => s.url !== clickedSrc.url)
+    ];
+
+    document.getElementById('chipSheetList').innerHTML =
+      sorted.map((s, i) => buildItem(s, i === 0)).join('');
+
     sheet.classList.add('open');
   }
 
@@ -329,11 +367,6 @@ function injectCitationChips(html, sources) {
     const chip = e.target.closest('.source-chip[data-chip-url]');
     if (!chip) return;
     e.preventDefault();
-    openSheet(
-      chip.dataset.chipUrl,
-      chip.dataset.chipDomain,
-      chip.dataset.chipTitle,
-      chip.dataset.chipFavicon
-    );
+    openSheet(chip.dataset.chipUrl);
   });
 })();

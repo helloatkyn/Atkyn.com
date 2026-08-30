@@ -1,0 +1,203 @@
+/* ════════════════════════════════════════════════════════════════
+   chat.css — Chat area · Bubbles · Animations · Typing · Actions
+════════════════════════════════════════════════════════════════ */
+
+/* ────────────────────────────────────────────────────────────────
+   CHAT AREA & MESSAGE LAYOUT
+──────────────────────────────────────────────────────────────── */
+.chat-area {
+  padding: 14px 16px 0;
+  display: flex;
+  flex-direction: column;
+}
+
+#chatSpacer { flex-shrink: 0; width: 100%; }
+
+.msg-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  contain: layout;
+}
+
+.msg          { display: flex; flex-direction: column; }
+.msg.user     { align-items: flex-end; }
+.msg.bot      { align-items: center; }
+
+/* ── User bubble ── */
+.msg.user .bubble {
+  max-width: 78%;
+  background: var(--color-bg-alt);
+  color: var(--color-text);
+  padding: 9px 14px;
+  border-radius: 18px;
+  border-bottom-right-radius: 4px;
+  font-size: 0.97rem;
+  line-height: 1.45;
+  animation: bubbleIn 0.18s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
+}
+@media (prefers-color-scheme: dark) {
+  .msg.user .bubble { background: var(--color-bg-alt-dark); color: var(--color-text-dark); }
+}
+
+/* ── Bot bubble ── */
+.msg.bot .bubble {
+  width: 100%;
+  max-width: 100%;
+  background: none;
+  border: none;
+  padding: 1px 2px;
+  font-size: 1.05rem;
+  line-height: 1.75;
+  color: var(--color-text);
+  animation: botIn 0.18s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+@media (prefers-color-scheme: dark) {
+  .msg.bot .bubble { color: var(--color-text-dark-dim); }
+}
+
+/* ────────────────────────────────────────────────────────────────
+   ENTRANCE ANIMATIONS
+──────────────────────────────────────────────────────────────── */
+@keyframes bubbleIn {
+  from { opacity: 0; transform: translateY(5px); }
+  to   { opacity: 1; transform: translateY(0);   }
+}
+@keyframes botIn {
+  from { transform: translateY(5px); }
+  to   { transform: translateY(0);   }
+}
+
+/* ────────────────────────────────────────────────────────────────
+   TYPING INDICATOR
+──────────────────────────────────────────────────────────────── */
+.typing {
+  position: relative;
+  width: 54px;
+  height: 40px;
+  padding: 0;
+  margin: 2px 0;
+}
+.typing span {
+  position: absolute;
+  border-radius: 50%;
+  background: var(--color-primary);
+  animation: tPulse 1.4s ease-in-out infinite;
+}
+.typing span:nth-child(1) { width: 16px; height: 16px; left: 0px;  top: 6px;  animation-delay: 0s;    }
+.typing span:nth-child(2) { width: 11px; height: 11px; left: 20px; top: 22px; animation-delay: 0.2s;  }
+.typing span:nth-child(3) { width: 8px;  height: 8px;  left: 34px; top: 10px; animation-delay: 0.35s; }
+.typing span:nth-child(4) { width: 6px;  height: 6px;  left: 46px; top: 13px; animation-delay: 0.5s;  }
+@keyframes tPulse {
+  0%, 100% { transform: scale(1);    opacity: 0.55; }
+  45%       { transform: scale(1.35); opacity: 1;    }
+}
+
+/* ────────────────────────────────────────────────────────────────
+   BOT ACTION BAR (copy / like / dislike / read)
+──────────────────────────────────────────────────────────────── */
+.bot-actions {
+  display: flex;
+  align-items: center;
+  align-self: flex-start;
+  gap: 1px;
+  padding: 3px 0 0;
+  opacity: 0;
+  transform: translateY(4px);
+  animation: fadeUp 0.22s ease 0.1s forwards;
+}
+@keyframes fadeUp {
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.bot-actions button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  border-radius: 8px;
+  color: var(--color-text-subtle);
+  padding: 0;
+  transition: background 0.13s, color 0.13s;
+}
+.bot-actions button svg                    { width: 18px; height: 18px; stroke-width: 1.65; }
+.bot-actions button[aria-label="Read"] svg { width: 21px; height: 21px; }
+.bot-actions button:active                 { background: var(--color-press-light-md); color: var(--color-text-faint); }
+.bot-actions button.active-like            { color: var(--color-like); }
+.bot-actions button.active-dislike         { color: var(--color-primary); }
+
+@media (prefers-color-scheme: dark) {
+  .bot-actions button                { color: var(--color-text-dark-faint); }
+  .bot-actions button:active         { background: var(--color-press-dark-md); color: var(--color-text-dark-muted); }
+  .bot-actions button.active-like    { color: var(--color-like-dark); }
+  .bot-actions button.active-dislike { color: var(--color-primary); }
+}
+
+/* ────────────────────────────────────────────────────────────────
+   SOURCE CHIPS — inline citation badges (Google AI Mode style)
+──────────────────────────────────────────────────────────────── */
+.source-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--color-bg-alt);
+  border: 0.5px solid rgba(0, 0, 0, 0.12);
+  border-radius: 20px;
+  padding: 2px 7px 2px 4px;
+  font-size: 11.5px;
+  font-weight: 500;
+  color: var(--color-text-subtle);
+  vertical-align: middle;
+  margin: 0 1px;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  line-height: 1.2;
+  transition: background 0.13s;
+  /* prevent chip from breaking mid-word */
+  word-break: keep-all;
+}
+.source-chip:hover {
+  background: rgba(0, 0, 0, 0.07);
+}
+.source-chip img {
+  width: 13px;
+  height: 13px;
+  border-radius: 2px;
+  object-fit: contain;
+  display: block;
+  flex-shrink: 0;
+}
+.chip-fallback {
+  width: 13px;
+  height: 13px;
+  border-radius: 2px;
+  background: var(--color-primary);
+  color: #fff;
+  font-size: 8px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  text-transform: uppercase;
+  line-height: 1;
+}
+.source-chip-overflow {
+  padding: 2px 5px;
+}
+
+@media (prefers-color-scheme: dark) {
+  .source-chip {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.12);
+    color: var(--color-text-dark-faint);
+  }
+  .source-chip:hover {
+    background: rgba(255, 255, 255, 0.13);
+  }
+}

@@ -218,16 +218,11 @@ function renderMarkdown(text)     { return universalRender(text); }
 
 /* ══════════════════════════════════════════════════════════════
    CITATION CHIP RENDERER
-   DOM-based chip builder — no inline onerror escaping hell.
-   sources = [{ url, title }]
 ══════════════════════════════════════════════════════════════ */
-
-/* Chip registry: data-chip-id → src, populated at inject time,
-   used by the delegated error handler below. */
 const _chipRegistry = {};
 let   _chipCounter  = 0;
 
-/* Delegated favicon error handler — attached once to document */
+/* Delegated favicon error handler */
 document.addEventListener('error', function(e) {
   const img = e.target;
   if (!img || img.tagName !== 'IMG' || !img.dataset.chipId) return;
@@ -249,16 +244,19 @@ function _buildChip(src) {
   try { domain = new URL(src.url).hostname.replace(/^www\./, ''); }
   catch (_) { domain = src.url; }
 
-  /* Always use domain as label — clean, short, no HTML artifacts */
   const label = domain.length > 22 ? domain.slice(0, 20) + '\u2026' : domain;
-
-  const chipId     = 'chip' + (++_chipCounter);
+  const chipId = 'chip' + (++_chipCounter);
   _chipRegistry[chipId] = src;
 
   const faviconUrl = 'https://www.google.com/s2/favicons?domain=' + encodeURIComponent(domain) + '&sz=64';
 
   return (
-    '<a class="source-chip" href="' + _he(src.url) + '" target="_blank" rel="noopener">' +
+    '<a class="source-chip"' +
+    ' href="' + _he(src.url) + '"' +
+    ' data-chip-url="' + _he(src.url) + '"' +
+    ' data-chip-domain="' + _he(domain) + '"' +
+    ' data-chip-title="' + _he(src.title || domain) + '"' +
+    ' data-chip-favicon="' + _he(faviconUrl) + '">' +
     '<img src="' + _he(faviconUrl) + '" width="16" height="16" data-chip-id="' + chipId + '" alt="">' +
     _he(label) +
     '</a>'
@@ -274,7 +272,6 @@ function injectCitationChips(html, sources) {
     let m;
     while ((m = re.exec(match)) !== null) nums.push(parseInt(m[1], 10));
 
-    /* Deduplicate */
     const unique   = [...new Set(nums)];
     const MAX_SHOW = 2;
     const toShow   = unique.slice(0, MAX_SHOW);
@@ -292,4 +289,51 @@ function injectCitationChips(html, sources) {
 
     return inner ? '<span class="chip-group">' + inner + '</span>' : match;
   });
-       }
+}
+
+/* ══════════════════════════════════════════════════════════════
+   SOURCE CHIP BOTTOM SHEET
+══════════════════════════════════════════════════════════════ */
+(function () {
+  const sheet = document.createElement('div');
+  sheet.id = 'chipSheet';
+  sheet.innerHTML =
+    '<div id="chipSheetBackdrop"></div>' +
+    '<div id="chipSheetCard">' +
+      '<div id="chipSheetHeader">' +
+        '<img id="chipSheetFavicon" width="32" height="32" alt="">' +
+        '<div id="chipSheetMeta">' +
+          '<div id="chipSheetDomain"></div>' +
+          '<div id="chipSheetUrl"></div>' +
+        '</div>' +
+      '</div>' +
+      '<div id="chipSheetTitle"></div>' +
+      '<a id="chipSheetBtn" target="_blank" rel="noopener">Open Website</a>' +
+    '</div>';
+  document.body.appendChild(sheet);
+
+  function openSheet(url, domain, title, favicon) {
+    document.getElementById('chipSheetFavicon').src = favicon;
+    document.getElementById('chipSheetDomain').textContent = domain;
+    document.getElementById('chipSheetUrl').textContent = url.length > 40 ? url.slice(0, 38) + '\u2026' : url;
+    document.getElementById('chipSheetTitle').textContent = title;
+    document.getElementById('chipSheetBtn').href = url;
+    sheet.classList.add('open');
+  }
+
+  function closeSheet() { sheet.classList.remove('open'); }
+
+  document.getElementById('chipSheetBackdrop').addEventListener('click', closeSheet);
+
+  document.addEventListener('click', function (e) {
+    const chip = e.target.closest('.source-chip[data-chip-url]');
+    if (!chip) return;
+    e.preventDefault();
+    openSheet(
+      chip.dataset.chipUrl,
+      chip.dataset.chipDomain,
+      chip.dataset.chipTitle,
+      chip.dataset.chipFavicon
+    );
+  });
+})();

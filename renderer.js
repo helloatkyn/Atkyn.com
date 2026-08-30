@@ -292,7 +292,7 @@ function injectCitationChips(html, sources) {
 }
 
 /* ══════════════════════════════════════════════════════════════
-   SOURCE CHIP BOTTOM SHEET — all sources SERP style
+   SOURCE CHIP BOTTOM SHEET — exactly wc-card structure
 ══════════════════════════════════════════════════════════════ */
 (function () {
   const sheet = document.createElement('div');
@@ -316,23 +316,31 @@ function injectCitationChips(html, sources) {
   function buildItem(src, isActive) {
     const domain   = _domain(src.url);
     const favicon  = _favicon(domain);
+    const favicon2 = 'https://icons.duckduckgo.com/ip3/' + domain + '.ico';
     const title    = src.title || domain;
-    const shortUrl = src.url.length > 45 ? src.url.slice(0, 43) + '\u2026' : src.url;
+    const path     = (domain + new URL(src.url).pathname).replace(/\/$/, '').substring(0, 60);
     const letter   = (domain[0] || '?').toUpperCase();
 
     return (
       '<a class="csi' + (isActive ? ' csi--active' : '') + '" href="' + _he(src.url) + '" target="_blank" rel="noopener">' +
-        '<div class="csi-favicon-wrap">' +
-          '<img class="csi-favicon" src="' + _he(favicon) + '" width="16" height="16" alt="" ' +
-            'onerror="this.style.display=\'none\';this.parentNode.querySelector(\'.csi-fav-fb\').style.display=\'flex\'">' +
-          '<span class="csi-fav-fb chip-fallback" style="display:none">' + _he(letter) + '</span>' +
+        '<div class="wc-meta">' +
+          '<div class="wc-fav-wrap">' +
+            '<img class="wc-fav" src="' + _he(favicon) + '" width="16" height="16" alt="" ' +
+              'onerror="if(this.src!==\'' + _he(favicon2) + '\'){this.src=\'' + _he(favicon2) + '\'}else{this.closest(\'.wc-fav-wrap\').innerHTML=\'<span class=\\\'chip-fallback\\\'>' + _he(letter) + '</span>\'}">' +
+          '</div>' +
+          '<div class="wc-meta-text">' +
+            '<span class="wc-domain">' + _he(domain) + '</span>' +
+            '<span class="wc-path">' + _he(path) + '</span>' +
+          '</div>' +
+          '<span class="wc-dots" aria-hidden="true">' +
+            '<svg viewBox="0 0 4 16" xmlns="http://www.w3.org/2000/svg">' +
+              '<circle cx="2" cy="2" r="1.5"/>' +
+              '<circle cx="2" cy="8" r="1.5"/>' +
+              '<circle cx="2" cy="14" r="1.5"/>' +
+            '</svg>' +
+          '</span>' +
         '</div>' +
-        '<div class="csi-body">' +
-          '<div class="csi-domain">' + _he(domain) + '</div>' +
-          '<div class="csi-title">' + _he(title) + '</div>' +
-          '<div class="csi-url">' + _he(shortUrl) + '</div>' +
-        '</div>' +
-        '<svg class="csi-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>' +
+        '<div class="wc-title">' + _he(title) + '</div>' +
       '</a>'
     );
   }

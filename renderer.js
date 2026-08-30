@@ -408,7 +408,7 @@ function injectCitationChips(html, sources) {
     a.rel       = 'noopener noreferrer';
     a.innerHTML =
       '<div class="wc-meta">' +
-        '<div class="wc-fav-wrap">' +
+        '<div class="wc-fav-wrap" style="background:transparent">' +
           '<img class="wc-fav" src="' + _he(fav1) + '" width="16" height="16" loading="lazy" decoding="async" alt="">' +
         '</div>' +
         '<div class="wc-meta-text">' +
@@ -426,8 +426,12 @@ function injectCitationChips(html, sources) {
       '<div class="wc-title">' + _he(src.title || host) + '</div>' +
       (snippet ? '<div class="wc-snippet">' + _he(snippet) + '</div>' : '');
 
-    /* Favicon fallback: google → duckduckgo → hide */
-    a.querySelector('.wc-fav').addEventListener('error', function () {
+    /* Favicon: load hone par bg restore, error par fallback chain */
+    const favEl = a.querySelector('.wc-fav');
+    favEl.addEventListener('load', function () {
+      this.closest('.wc-fav-wrap').style.background = '#f1f1f1';
+    }, { once: true, passive: true });
+    favEl.addEventListener('error', function () {
       if (this.src !== fav2) { this.src = fav2; }
       else { this.closest('.wc-fav-wrap').style.display = 'none'; }
     }, { once: true, passive: true });
@@ -444,7 +448,15 @@ function injectCitationChips(html, sources) {
 
   /* ── Open sheet — clicked source pehle, baaki uske neeche ── */
   function openSheet(clickedUrl) {
-    const sources = window._atkynSources || [];
+    /* Primary: _atkynSources (search.js sets this)
+       Fallback: _chipRegistry (inline chips se reconstruct) */
+    let sources = window._atkynSources || [];
+    if (!sources.length) {
+      sources = Object.values(_chipRegistry).filter(s => s && s.url);
+      /* dedupe by url */
+      const seen = new Set();
+      sources = sources.filter(s => { if (seen.has(s.url)) return false; seen.add(s.url); return true; });
+    }
     if (!sources.length) return;
 
     const clickedSrc = sources.find(s => s.url === clickedUrl) || sources[0];
@@ -492,4 +504,4 @@ function injectCitationChips(html, sources) {
   });
 
 }());
-     
+   

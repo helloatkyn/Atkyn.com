@@ -1,5 +1,10 @@
+/* ════════════════════════════════════════════════════════════════
+chatbar.css — Gemini-style premium chatbar
+Glass wrap · Clean pill · Smooth shimmer · Floating design
+════════════════════════════════════════════════════════════════ */
+
 /* ────────────────────────────────────────────────────────────────
-CHATBAR WRAPPER
+CHATBAR WRAPPER — Glassmorphism
 ──────────────────────────────────────────────────────────────── */
 .chatbar-wrap {
   flex-shrink: 0;
@@ -10,11 +15,22 @@ CHATBAR WRAPPER
   transform: translateZ(0);
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
-  background: transparent;
+
+  background: rgba(255, 255, 255, 0.65);
+  -webkit-backdrop-filter: blur(20px) saturate(1.6);
+  backdrop-filter: blur(20px) saturate(1.6);
+  border-top: 0.5px solid rgba(255, 255, 255, 0.80);
+}
+
+@media (prefers-color-scheme: dark) {
+  .chatbar-wrap {
+    background: rgba(18, 18, 18, 0.70);
+    border-top: 0.5px solid rgba(255, 255, 255, 0.08);
+  }
 }
 
 /* ────────────────────────────────────────────────────────────────
-PILL — narrower, no focus shadow
+PILL
 ──────────────────────────────────────────────────────────────── */
 .overlay-pill {
   width: 100%;
@@ -31,7 +47,6 @@ PILL — narrower, no focus shadow
 
 .overlay-pill:focus-within {
   border-color: var(--color-primary-dark);
-  /* NO box-shadow — clean */
 }
 
 @media (prefers-color-scheme: dark) {
@@ -42,7 +57,7 @@ PILL — narrower, no focus shadow
 }
 
 /* ────────────────────────────────────────────────────────────────
-PLUS BUTTON — left corner
+PLUS BUTTON
 ──────────────────────────────────────────────────────────────── */
 .ico-plus {
   flex-shrink: 0;
@@ -186,7 +201,7 @@ SHIMMER PLACEHOLDER
 }
 
 /* ────────────────────────────────────────────────────────────────
-CAMERA BUTTON — right corner
+CAMERA BUTTON
 ──────────────────────────────────────────────────────────────── */
 .ico-camera {
   flex-shrink: 0;
@@ -220,7 +235,7 @@ CAMERA BUTTON — right corner
 }
 
 /* ────────────────────────────────────────────────────────────────
-SEND BUTTON — right corner, replaces camera
+SEND BUTTON
 ──────────────────────────────────────────────────────────────── */
 .send-btn {
   flex-shrink: 0;
@@ -416,4 +431,4 @@ PLUS MENU ICON
   .pm-divider {
     background: rgba(255, 255, 255, 0.07);
   }
-}
+  }

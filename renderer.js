@@ -218,6 +218,7 @@ function renderMarkdown(text)     { return universalRender(text); }
 
 /* ══════════════════════════════════════════════════════════════
    CITATION CHIP RENDERER
+   Inline chips jo bot response ke andar [1][2] replace karte hain
 ══════════════════════════════════════════════════════════════ */
 const _chipRegistry = {};
 let   _chipCounter  = 0;
@@ -225,6 +226,7 @@ let   _chipCounter  = 0;
 /* Global sources — search.js mein set hota hai */
 window._atkynSources = [];
 
+/* Favicon img error → letter fallback */
 document.addEventListener('error', function(e) {
   const img = e.target;
   if (!img || img.tagName !== 'IMG' || !img.dataset.chipId) return;
@@ -293,9 +295,13 @@ function injectCitationChips(html, sources) {
 }
 
 /* ══════════════════════════════════════════════════════════════
-   SOURCE CHIP BOTTOM SHEET — web.js style cards + OG images
+   SOURCE CHIP BOTTOM SHEET
+   web.js ka _buildCard + _injectOgImage exactly port kiya —
+   wc-* classes use karta hai, web.css se style aata hai
 ══════════════════════════════════════════════════════════════ */
 (function () {
+
+  /* ── Sheet DOM inject ── */
   const sheet = document.createElement('div');
   sheet.id = 'chipSheet';
   sheet.innerHTML =
@@ -309,7 +315,19 @@ function injectCitationChips(html, sources) {
     '</div>';
   document.body.appendChild(sheet);
 
-  /* ── OG image fetch — same as web.js ── */
+  /* ── Helpers ── */
+  function _domain(url) {
+    try { return new URL(url).hostname.replace(/^www\./, ''); } catch (_) { return url; }
+  }
+
+  function _safeUrl(u) {
+    try {
+      const p = new URL(u);
+      return (p.protocol === 'https:' || p.protocol === 'http:') ? u : '#';
+    } catch (_) { return '#'; }
+  }
+
+  /* ── OG image fetch ── */
   function _fetchOg(url) {
     return fetch('/api/og?url=' + encodeURIComponent(url), {
       signal: AbortSignal.timeout(6000),
@@ -319,98 +337,112 @@ function injectCitationChips(html, sources) {
       .catch(() => null);
   }
 
-  /* ── Inject OG image into card — same layout logic as web.js ── */
+  /* ── Inject OG image — portrait → inline right, landscape → full width ── */
   function _injectOgImage(cardEl, image) {
     if (!image) return;
-    const title = cardEl.querySelector('.csi-title');
+
+    const title = cardEl.querySelector('.wc-title');
     const wrap  = document.createElement('div');
-    wrap.className = 'csi-thumb-wrap';
+    wrap.className = 'wc-thumb-full-wrap';
 
     const img = document.createElement('img');
-    img.className = 'csi-thumb';
+    img.className = 'wc-thumb-full';
     img.src       = image;
     img.loading   = 'lazy';
     img.decoding  = 'async';
     img.alt       = '';
-    wrap.appendChild(img);
 
-    if (title) title.after(wrap);
-    else cardEl.querySelector('.csi-body').appendChild(wrap);
+    wrap.appendChild(img);
+    if (title?.nextSibling) {
+      title.parentNode.insertBefore(wrap, title.nextSibling);
+    } else if (title) {
+      title.parentNode.appendChild(wrap);
+    }
 
     img.addEventListener('load', () => {
       const ratio = img.naturalWidth / img.naturalHeight;
       if (ratio < 1.3) {
-        /* portrait — inline right thumb */
+        /* Portrait — inline right thumb */
         wrap.remove();
-        wrap.className = 'csi-thumb-inline-wrap';
-        img.className  = 'csi-thumb-inline';
-        const snippet  = cardEl.querySelector('.csi-snippet');
-        const row      = document.createElement('div');
-        row.className  = 'csi-inline-row';
-        if (snippet) { snippet.before(row); row.appendChild(snippet); }
-        else cardEl.querySelector('.csi-body').appendChild(row);
-        row.appendChild(wrap);
+        img.className = 'wc-thumb-inline';
+
+        const thumbWrap = document.createElement('div');
+        thumbWrap.className = 'wc-thumb-inline-wrap';
+        thumbWrap.appendChild(img);
+
+        const snippet = cardEl.querySelector('.wc-snippet');
+        const row = document.createElement('div');
+        row.className = 'wc-inline-row';
+
+        if (snippet) {
+          snippet.parentNode.insertBefore(row, snippet);
+          row.appendChild(snippet);
+        }
+        row.appendChild(thumbWrap);
       }
     }, { once: true });
 
     img.addEventListener('error', () => wrap.remove(), { once: true });
   }
 
-  function _domain(url) {
-    try { return new URL(url).hostname.replace(/^www\./, ''); } catch (_) { return url; }
-  }
+  /* ── Build one source card — exact wc-card style ── */
+  function _buildCard(src, isActive) {
+    let host = '', path = '';
+    try {
+      const u = new URL(src.url);
+      host = u.hostname.replace(/^www\./, '');
+      path = (host + u.pathname).replace(/\/$/, '').substring(0, 60);
+    } catch (_) {
+      host = src.url;
+      path = src.url;
+    }
 
-  function _favicon(domain) {
-    return 'https://www.google.com/s2/favicons?domain=' + encodeURIComponent(domain) + '&sz=64';
-  }
-
-  /* ── Build one source card — web.js style ── */
-  function _buildItem(src, isActive) {
-    const domain  = _domain(src.url);
-    const favicon = _favicon(domain);
-    const title   = src.title || domain;
-    const path    = (() => {
-      try {
-        const u = new URL(src.url);
-        return (u.hostname.replace(/^www\./, '') + u.pathname).replace(/\/$/, '').substring(0, 55);
-      } catch (_) { return src.url; }
-    })();
+    const fav1    = 'https://www.google.com/s2/favicons?sz=64&domain=' + encodeURIComponent(host);
+    const fav2    = 'https://icons.duckduckgo.com/ip3/' + host + '.ico';
+    const snippet = src.snippet || src.content || src.description || src.summary || '';
 
     const a = document.createElement('a');
-    a.className = 'csi' + (isActive ? ' csi--active' : '');
-    a.href      = src.url;
+    a.className = 'wc-card' + (isActive ? ' wc-card--active' : '');
+    a.href      = _safeUrl(src.url);
     a.target    = '_blank';
     a.rel       = 'noopener noreferrer';
-
     a.innerHTML =
-      '<div class="csi-meta">' +
-        '<div class="csi-fav-wrap">' +
-          '<img class="csi-fav" src="' + _he(favicon) + '" width="16" height="16" loading="lazy" alt="">' +
+      '<div class="wc-meta">' +
+        '<div class="wc-fav-wrap">' +
+          '<img class="wc-fav" src="' + _he(fav1) + '" width="16" height="16" loading="lazy" decoding="async" alt="">' +
         '</div>' +
-        '<div class="csi-meta-text">' +
-          '<span class="csi-domain">' + _he(domain) + '</span>' +
-          '<span class="csi-path">' + _he(path) + '</span>' +
+        '<div class="wc-meta-text">' +
+          '<span class="wc-domain">' + _he(host) + '</span>' +
+          '<span class="wc-path">' + _he(path) + '</span>' +
         '</div>' +
-        '<svg class="csi-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>' +
+        '<span class="wc-dots" aria-hidden="true">' +
+          '<svg viewBox="0 0 4 16" xmlns="http://www.w3.org/2000/svg">' +
+            '<circle cx="2" cy="2" r="1.5"/>' +
+            '<circle cx="2" cy="8" r="1.5"/>' +
+            '<circle cx="2" cy="14" r="1.5"/>' +
+          '</svg>' +
+        '</span>' +
       '</div>' +
-      '<div class="csi-body">' +
-        '<div class="csi-title">' + _he(title) + '</div>' +
-      '</div>';
+      '<div class="wc-title">' + _he(src.title || host) + '</div>' +
+      (snippet ? '<div class="wc-snippet">' + _he(snippet) + '</div>' : '');
 
-    /* favicon fallback */
-    const favImg  = a.querySelector('.csi-fav');
-    const fav2    = 'https://icons.duckduckgo.com/ip3/' + domain + '.ico';
-    favImg.addEventListener('error', function() {
+    /* Favicon fallback: google → duckduckgo → hide */
+    a.querySelector('.wc-fav').addEventListener('error', function () {
       if (this.src !== fav2) { this.src = fav2; }
-      else { this.closest('.csi-fav-wrap').style.display = 'none'; }
+      else { this.closest('.wc-fav-wrap').style.display = 'none'; }
     }, { once: true, passive: true });
 
-    /* OG image async */
-    _fetchOg(src.url).then(img => _injectOgImage(a, img));
+    /* OG image — agar source mein image hai to seedha inject, warna fetch */
+    if (src.image) {
+      _injectOgImage(a, src.image);
+    } else {
+      _fetchOg(src.url).then(img => _injectOgImage(a, img));
+    }
 
     return a;
   }
 
+  /* ── Open sheet — clicked source pehle, baaki uske neeche ── */
   function openSheet(clickedUrl) {
     const sources = window._atkynSources || [];
     if (!sources.length) return;
@@ -420,26 +452,30 @@ function injectCitationChips(html, sources) {
 
     const list = document.getElementById('chipSheetList');
     list.innerHTML = '';
-    sorted.forEach((s, i) => list.appendChild(_buildItem(s, i === 0)));
+    sorted.forEach((s, i) => list.appendChild(_buildCard(s, i === 0)));
 
     sheet.classList.add('open');
   }
 
   function closeSheet() { sheet.classList.remove('open'); }
 
+  /* ── Backdrop click → close ── */
   document.getElementById('chipSheetBackdrop').addEventListener('click', closeSheet);
 
-  /* drag-to-close */
+  /* ── Drag-to-close ── */
   let _startY = 0, _dragging = false;
   const card = document.getElementById('chipSheetCard');
+
   card.addEventListener('touchstart', e => {
     _startY = e.touches[0].clientY; _dragging = true;
   }, { passive: true });
+
   card.addEventListener('touchmove', e => {
     if (!_dragging) return;
     const dy = e.touches[0].clientY - _startY;
     if (dy > 0) card.style.transform = 'translateY(' + dy + 'px)';
   }, { passive: true });
+
   card.addEventListener('touchend', e => {
     if (!_dragging) return; _dragging = false;
     const dy = e.changedTouches[0].clientY - _startY;
@@ -447,10 +483,13 @@ function injectCitationChips(html, sources) {
     if (dy > 100) closeSheet();
   }, { passive: true });
 
+  /* ── Chip click → open sheet ── */
   document.addEventListener('click', function (e) {
     const chip = e.target.closest('.source-chip[data-chip-url]');
     if (!chip) return;
     e.preventDefault();
     openSheet(chip.dataset.chipUrl);
   });
-})();
+
+}());
+     

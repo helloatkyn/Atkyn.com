@@ -222,8 +222,6 @@ function renderMarkdown(text)     { return universalRender(text); }
 const _chipRegistry = {};
 let   _chipCounter  = 0;
 
-/* Global sources — search.js mein set karo:
-   window._atkynSources = sourcesArray; */
 window._atkynSources = [];
 
 document.addEventListener('error', function(e) {
@@ -316,14 +314,19 @@ function injectCitationChips(html, sources) {
   }
 
   function buildItem(src, isActive) {
-    const domain  = _domain(src.url);
-    const favicon = _favicon(domain);
-    const title   = src.title || domain;
+    const domain   = _domain(src.url);
+    const favicon  = _favicon(domain);
+    const title    = src.title || domain;
     const shortUrl = src.url.length > 45 ? src.url.slice(0, 43) + '\u2026' : src.url;
+    const letter   = (domain[0] || '?').toUpperCase();
 
     return (
       '<a class="csi' + (isActive ? ' csi--active' : '') + '" href="' + _he(src.url) + '" target="_blank" rel="noopener">' +
-        '<img class="csi-favicon" src="' + _he(favicon) + '" width="28" height="28" alt="" onerror="this.style.visibility=\'hidden\'">' +
+        '<div class="csi-favicon-wrap">' +
+          '<img class="csi-favicon" src="' + _he(favicon) + '" width="16" height="16" alt="" ' +
+            'onerror="this.style.display=\'none\';this.parentNode.querySelector(\'.csi-fav-fb\').style.display=\'flex\'">' +
+          '<span class="csi-fav-fb chip-fallback" style="display:none">' + _he(letter) + '</span>' +
+        '</div>' +
         '<div class="csi-body">' +
           '<div class="csi-domain">' + _he(domain) + '</div>' +
           '<div class="csi-title">' + _he(title) + '</div>' +
@@ -338,7 +341,6 @@ function injectCitationChips(html, sources) {
     const sources = window._atkynSources || [];
     if (!sources.length) return;
 
-    /* Pill — clicked source highlight */
     const clickedDomain  = _domain(clickedUrl);
     const clickedFavicon = _favicon(clickedDomain);
     const clickedSrc     = sources.find(s => s.url === clickedUrl) || sources[0];
@@ -347,7 +349,6 @@ function injectCitationChips(html, sources) {
       '<img src="' + _he(clickedFavicon) + '" width="20" height="20" alt="" onerror="this.style.visibility=\'hidden\'">' +
       '<span>' + _he(clickedDomain) + '</span>';
 
-    /* List — all sources, clicked wala top pe */
     const sorted = [
       clickedSrc,
       ...sources.filter(s => s.url !== clickedSrc.url)

@@ -28,18 +28,18 @@ CHATBAR WRAPPER (Transparent for floating pill effect)
 PILL
 ──────────────────────────────────────────────────────────────── */
 .overlay-pill {
-  width: 100%;
+  width: calc(100% - 2px);
 
   display: flex;
   align-items: center;
 
   background: var(--color-bg);
 
-  border: 2px solid #0077B5;
+  border: 1.5px solid #0077B5;
   border-radius: 100px;
 
   padding: 0 18px 0 20px;
-  margin: 0;
+  margin: 0 auto;
 
   height: 56px;
   gap: 12px;
@@ -63,15 +63,22 @@ PLUS / ATTACH BUTTON
 ──────────────────────────────────────────────────────────────── */
 .ico-plus {
   flex-shrink: 0;
+
+  width: 32px;
+  height: 32px;
+
   display: flex;
   align-items: center;
+  justify-content: center;
 
   border: none;
   background: none;
 
   cursor: pointer;
 
-  padding: 4px;
+  padding: 0;
+  margin: 0;
+
   border-radius: 50%;
 
   color: var(--color-primary);
@@ -88,6 +95,7 @@ PLUS / ATTACH BUTTON
 .ico-plus svg {
   width: 24px;
   height: 24px;
+  display: block;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -215,6 +223,9 @@ CAMERA BUTTON
 .ico-camera {
   flex-shrink: 0;
 
+  width: 32px;
+  height: 32px;
+
   border: none;
   background: none;
 
@@ -222,8 +233,10 @@ CAMERA BUTTON
 
   display: flex;
   align-items: center;
+  justify-content: center;
 
-  padding: 4px;
+  padding: 0;
+  margin: 0;
 
   border-radius: 50%;
 
@@ -241,6 +254,7 @@ CAMERA BUTTON
 .ico-camera svg {
   width: 24px;
   height: 24px;
+  display: block;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -262,6 +276,9 @@ SEND BUTTON
 
   width: 40px;
   height: 40px;
+
+  margin: 0;
+  padding: 0;
 
   border-radius: 50%;
   border: none;
@@ -287,6 +304,7 @@ SEND BUTTON
 .send-btn svg {
   width: 17px;
   height: 17px;
+  display: block;
 }
 
 .overlay-pill.has-text .ico-camera {
@@ -307,8 +325,9 @@ CROSS MODE — NON-AI TABS
 .send-btn.cross-mode svg {
   stroke: rgba(0, 0, 0, 0.6);
 
-  width: 18px;
-  height: 18px;
+  width: 20px;
+  height: 20px;
+  display: block;
 }
 
 @media (prefers-color-scheme: dark) {

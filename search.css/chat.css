@@ -134,7 +134,7 @@
 }
 
 /* ────────────────────────────────────────────────────────────────
-   SOURCE CHIPS
+   SOURCE CHIPS (Inline in Chat)
 ──────────────────────────────────────────────────────────────── */
 .chip-group {
   display: inline-flex;
@@ -227,9 +227,10 @@
   .source-chip-overflow:hover { color: #9aa0a6; }
 }
 
-/* ────────────────────────────────────────────────────────────────
-   SOURCE CHIP BOTTOM SHEET
-──────────────────────────────────────────────────────────────── */
+/* ═══════════════════════════════════════════════════════════════
+   SOURCE CHIP BOTTOM SHEET — Full Replacement (Web Tab Exact)
+═══════════════════════════════════════════════════════════════ */
+
 #chipSheetBackdrop {
   position: fixed;
   inset: 0;
@@ -239,47 +240,63 @@
   transition: opacity 0.22s ease;
   z-index: 999;
 }
+
 #chipSheetCard {
   position: fixed;
-  bottom: 0; left: 0; right: 0;
-  background: #fff;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: #f0f2f4;
   border-radius: 20px 20px 0 0;
-  padding: 12px 0 36px;
+  padding: 0 0 36px;
   transform: translateY(100%);
   transition: transform 0.28s cubic-bezier(0.32, 0.72, 0, 1);
   z-index: 1000;
-  max-height: 72vh;
+  max-height: 78vh;
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
+
 #chipSheet.open #chipSheetBackdrop {
   opacity: 1;
   pointer-events: all;
 }
+
 #chipSheet.open #chipSheetCard {
   transform: translateY(0);
 }
 
-/* Pill header */
 #chipSheetPill {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 6px 16px 14px;
-  border-bottom: 1px solid #f1f3f4;
-  margin-bottom: 4px;
+  padding: 14px 16px 12px;
+  background: #f0f2f4;
+  position: sticky;
+  top: 0;
+  z-index: 2;
 }
+
 #chipSheetPill img {
-  width: 20px; height: 20px;
+  width: 20px;
+  height: 20px;
   border-radius: 4px;
   object-fit: contain;
 }
+
 #chipSheetPill span {
   font-size: 14px;
   font-weight: 600;
   color: #202124;
 }
 
-/* Source list items — exactly wc-card */
+.csi-list {
+  display: flex;
+  flex-direction: column;
+  padding: 2px 0 8px;
+  background: #f0f2f4;
+}
+
 .csi {
   display: block;
   text-decoration: none;
@@ -292,21 +309,167 @@
   -webkit-tap-highlight-color: transparent;
   box-shadow: 0 1px 2px rgba(0,0,0,0.06);
   transition: background 0.15s;
-  border: none;
 }
-.csi:last-child  { margin-bottom: 4px; }
-.csi:active      { background: #f5f5f5; }
-.csi--active     { background: #f0f4ff; }
-.csi--active:active { background: #e8eeff; }
 
-/* Dark mode */
+.csi:last-child {
+  margin-bottom: 4px;
+}
+
+.csi:active {
+  background: #f5f5f5;
+}
+
+.csi--active {
+  background: #f0f4ff;
+}
+
+.csi--active:active {
+  background: #e8eeff;
+}
+
+.csi-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.csi-fav-wrap {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #f1f1f1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.csi-favicon {
+  width: 16px;
+  height: 16px;
+  display: block;
+  object-fit: contain;
+}
+
+.csi-meta-text {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+
+.csi-domain {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #222;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.csi-url {
+  font-size: 0.7rem;
+  color: #999;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.csi-dots {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  padding-left: 4px;
+}
+
+.csi-dots svg {
+  width: 14px;
+  height: 14px;
+  fill: #bbb;
+}
+
+.csi-title {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #000080;
+  line-height: 1.4;
+  margin: 0 0 8px;
+  word-break: break-word;
+}
+
+.csi-snippet {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
+  font-size: 0.9rem;
+  color: #3a3a3a;
+  line-height: 1.55;
+  margin: 0;
+}
+
+/* ── Dark Mode for Bottom Sheet ── */
 @media (prefers-color-scheme: dark) {
-  #chipSheetCard       { background: #000; }
-  #chipSheetPill       { border-bottom-color: #2c2c2e; }
-  #chipSheetPill span  { color: #e8eaed; }
+  #chipSheetCard {
+    background: #000;
+  }
 
-  .csi                 { background: #1c1c1e; box-shadow: 0 1px 4px rgba(0,0,0,0.3); }
-  .csi:active          { background: #2a2a2c; }
-  .csi--active         { background: #1e2235; }
-  .csi--active:active  { background: #252840; }
-}
+  #chipSheetPill {
+    background: #000;
+  }
+
+  #chipSheetPill span {
+    color: #e8eaed;
+  }
+
+  .csi-list {
+    background: #000;
+  }
+
+  .csi {
+    background: #1c1c1e;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+  }
+
+  .csi:active {
+    background: #2a2a2c;
+  }
+
+  .csi--active {
+    background: #1e2235;
+  }
+
+  .csi--active:active {
+    background: #1a1e30;
+  }
+
+  .csi-fav-wrap {
+    background: #2c2c2e;
+  }
+
+  .csi-domain {
+    color: rgba(255,255,255,0.75);
+  }
+
+  .csi-url {
+    color: rgba(255,255,255,0.3);
+  }
+
+  .csi-dots svg {
+    fill: #555;
+  }
+
+  .csi-title {
+    color: #4BA8D8;
+  }
+
+  .csi-snippet {
+    color: #d4d4d6;
+  }
+   }

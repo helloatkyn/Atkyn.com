@@ -1,0 +1,293 @@
+/* ═══════════════════════════════════════════════════════════════
+   renderer.js — Atkyn Search
+   marked@13 + KaTeX (CDN) + highlight.js (CDN)
+
+   MATH POLICY:
+   • $price   → plain text, never math  (price protection)
+   • $...$    → NEVER math              (disabled — too many false positives)
+   • $$...$$  → display math            (marked block extension)
+   • \[...\]  → display math            (marked block extension)
+   • \(...\)  → inline math             (marked inline extension)
+═══════════════════════════════════════════════════════════════ */
+
+/* ── HTML entity escape ── */
+function _he(s) {
+  return String(s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+/* ── Cheap hash ── */
+function _cheapHash(str) {
+  let h = 5381;
+  for (let i = 0; i < str.length; i++) h = (((h << 5) + h) ^ str.charCodeAt(i)) >>> 0;
+  return h;
+}
+
+/* ── Normalize newlines ── */
+function _normalizeNewlines(str) {
+  let s = 0; while (s < str.length && str[s] === '\n') s++;
+  let e = str.length - 1; while (e >= s && str[e] === '\n') e--;
+  if (s > e) return '';
+  const out = []; let i = s;
+  while (i <= e) {
+    if (str[i] !== '\n') { out.push(str[i++]); }
+    else {
+      let run = 0; while (i <= e && str[i] === '\n') { run++; i++; }
+      out.push('\n'); if (run > 1) out.push('\n');
+    }
+  }
+  return out.join('');
+}
+
+/* ══════════════════════════════════════════════════════════════
+   KaTeX helper
+══════════════════════════════════════════════════════════════ */
+function _katex(tex, display) {
+  if (typeof katex === 'undefined')
+    return display ? '$$' + _he(tex) + '$$' : '\\(' + _he(tex) + '\\)';
+  try {
+    return katex.renderToString(tex, { displayMode: display, throwOnError: false, strict: false });
+  } catch (_) {
+    return display ? '$$' + _he(tex) + '$$' : '\\(' + _he(tex) + '\\)';
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════
+   MARKED EXTENSIONS
+   All three math delimiters handled here — no post-render pass needed.
+   marked-katex-extension CDN plugin is NOT used.
+   NOTE: marked natively protects fenced code blocks and inline code 
+   from these math extensions, so no pre-protection is needed.
+══════════════════════════════════════════════════════════════ */
+function _buildMarked() {
+
+  /* ── Block: $$...$$ ── */
+  const extBlockDollar = {
+    name: 'blockDollar', level: 'block',
+    start: src => src.indexOf('$$'),
+    tokenizer(src) {
+      const m = src.match(/^\$\$([\s\S]+?)\$\$/);
+      if (m) return { type: 'blockDollar', raw: m[0], tex: m[1].trim() };
+    },
+    renderer: t => '<div class="math-display">' + _katex(t.tex, true) + '</div>\n',
+  };
+
+  /* ── Block: \[...\] ── */
+  const extBlockBracket = {
+    name: 'blockBracket', level: 'block',
+    start: src => src.indexOf('\\['),
+    tokenizer(src) {
+      const m = src.match(/^\\\[([\s\S]+?)\\\]/);
+      if (m) return { type: 'blockBracket', raw: m[0], tex: m[1].trim() };
+    },
+    renderer: t => '<div class="math-display">' + _katex(t.tex, true) + '</div>\n',
+  };
+
+  /* ── Inline: \(...\) ── */
+  const extInlineParen = {
+    name: 'inlineParen', level: 'inline',
+    start: src => src.indexOf('\\('),
+    tokenizer(src) {
+      const m = src.match(/^\\\(([\s\S]+?)\\\)/);
+      if (m) return { type: 'inlineParen', raw: m[0], tex: m[1].trim() };
+    },
+    renderer: t => _katex(t.tex, false),
+  };
+
+  marked.use({ extensions: [extBlockDollar, extBlockBracket, extInlineParen] });
+
+  /* ── Custom renderer (code, table, hr) ── */
+  const renderer = new marked.Renderer();
+
+  renderer.code = function (codeOrToken, lang) {
+    let code, language;
+    if (codeOrToken && typeof codeOrToken === 'object') {
+      code = codeOrToken.text ?? codeOrToken.code ?? '';
+      language = (codeOrToken.lang || '').trim().toLowerCase();
+    } else { code = codeOrToken; language = (lang || '').trim().toLowerCase(); }
+
+    const id = 'cb' + Math.random().toString(36).slice(2, 8);
+    let hi = _he(code);
+    if (typeof hljs !== 'undefined') {
+      const valid = language && hljs.getLanguage(language);
+      // highlight.js automatically escapes HTML entities in the source code,
+      // making it safe from DOM injection while preserving syntax highlighting.
+      const highlighted = valid
+        ? hljs.highlight(code, { language, ignoreIllegals: true })
+        : hljs.highlightAuto(code);
+      hi = highlighted.value;
+    }
+    return (
+      '<div class="code-block" id="' + id + '">' +
+        '<button class="code-copy-btn" data-target="' + id + '" aria-label="Copy">' +
+          '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"' +
+          ' stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">' +
+            '<rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>' +
+            '<path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>' +
+          '</svg>' +
+        '</button>' +
+        '<pre><code class="hljs">' + hi + '</code></pre>' +
+      '</div>'
+    );
+  };
+
+  renderer.table = (h, b) =>
+    '<div class="table-wrap"><table><thead>' + h + '</thead><tbody>' + b + '</tbody></table></div>';
+
+  renderer.hr = () => '<hr class="md-hr">\n';
+
+  marked.use({ renderer, breaks: true, gfm: true });
+}
+
+_buildMarked();
+
+/* ══════════════════════════════════════════════════════════════
+   STREAMING GUARD — hold back unclosed $$ or \[ at buffer tail
+══════════════════════════════════════════════════════════════ */
+function _holdIncomplete(text) {
+  // Unclosed $$
+  const m1 = text.match(/((?:^|\n)\$\$(?![\s\S]*?\$\$)[\s\S]*)$/);
+  if (m1) return { safe: text.slice(0, text.lastIndexOf(m1[0])), held: m1[0] };
+  // Unclosed \[
+  const m2 = text.match(/(\\\[(?![\s\S]*?\\\])[\s\S]*)$/);
+  if (m2) return { safe: text.slice(0, text.lastIndexOf(m2[0])), held: m2[0] };
+  // Unclosed \(
+  const m3 = text.match(/(\\\((?![\s\S]*?\\\))[\s\S]{0,300})$/);
+  if (m3) return { safe: text.slice(0, text.lastIndexOf(m3[0])), held: m3[0] };
+  return { safe: text, held: '' };
+}
+
+/* ══════════════════════════════════════════════════════════════
+   PIPELINE
+   FIX: Removed _protect/restore. It was stripping code blocks and 
+   restoring them as raw, unescaped HTML, causing AI-generated code 
+   to execute as live DOM. marked natively protects code block 
+   content from math extensions, making _protect unnecessary.
+══════════════════════════════════════════════════════════════ */
+function _safePipeline(raw, isStreaming = false) {
+  if (!raw) return '';
+  let src = isStreaming ? _holdIncomplete(raw).safe : raw;
+  src = _normalizeNewlines(src);
+  if (!src) return '';
+  let html;
+  try { html = marked.parse(src); }
+  catch (_) { html = '<pre class="render-fallback">' + _he(raw) + '</pre>'; }
+  return html;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   UniversalMessageRenderer
+══════════════════════════════════════════════════════════════ */
+class UniversalMessageRenderer {
+  constructor() {
+    this.rawContent = ''; this.renderedContent = '';
+    this._hash = null; this._buf = ''; this._streaming = false;
+  }
+  render(content) {
+    this.rawContent = content;
+    const h = _cheapHash(content);
+    if (h === this._hash && this.renderedContent) return this.renderedContent;
+    this._hash = h;
+    return (this.renderedContent = _safePipeline(content, false));
+  }
+  startStream() {
+    this._buf = ''; this._streaming = true;
+    this.rawContent = ''; this.renderedContent = ''; this._hash = null;
+  }
+  pushChunk(chunk) {
+    if (!this._streaming) this.startStream();
+    this._buf += chunk; this.rawContent = this._buf;
+    this.renderedContent = _safePipeline(_holdIncomplete(this._buf).safe, true);
+    return this.renderedContent;
+  }
+  finishStream() {
+    this._streaming = false;
+    return (this.renderedContent = _safePipeline(this._buf, false));
+  }
+  getHTML() { return this.renderedContent; }
+  getRaw()  { return this.rawContent; }
+}
+
+/* ══════════════════════════════════════════════════════════════
+   STREAMING FACTORY
+══════════════════════════════════════════════════════════════ */
+function createStreamingRenderer(onUpdate, debounceMs = 40) {
+  const renderer = new UniversalMessageRenderer();
+  renderer.startStream();
+  let _timer = null, _done = false;
+  const _flush = final => {
+    clearTimeout(_timer); _timer = null;
+    if (typeof onUpdate === 'function')
+      onUpdate(final ? renderer.finishStream() : renderer.getHTML(), { final });
+  };
+  return {
+    push(chunk) {
+      if (_done) return;
+      renderer.pushChunk(chunk);
+      clearTimeout(_timer);
+      _timer = setTimeout(() => _flush(false), debounceMs);
+    },
+    finish() {
+      if (_done) return; _done = true;
+      clearTimeout(_timer); _flush(true);
+    },
+    getRenderer() { return renderer; },
+  };
+}
+
+/* ── Public API ── */
+function universalRender(content) { return new UniversalMessageRenderer().render(content); }
+function renderMarkdown(text)     { return universalRender(text); }
+
+/* ══════════════════════════════════════════════════════════════
+   CITATION CHIP RENDERER
+   Converts [1], [2], [1][2] patterns in rendered HTML into
+   inline source chips (favicon + site name) like Google AI Mode.
+   sources = [{ url, title }]
+══════════════════════════════════════════════════════════════ */
+function _buildChip(src) {
+  if (!src || !src.url) return '';
+  let domain = '';
+  try { domain = new URL(src.url).hostname.replace(/^www\./, ''); }
+  catch (_) { domain = src.url; }
+  const label = src.title
+    ? (src.title.length > 22 ? src.title.slice(0, 20) + '\u2026' : src.title)
+    : domain;
+  const faviconUrl = 'https://www.google.com/s2/favicons?domain=' + encodeURIComponent(domain) + '&sz=32';
+  const fallbackLetter = (domain[0] || '?').toUpperCase();
+  return (
+    '<a class="source-chip" href="' + _he(src.url) + '" target="_blank" rel="noopener">' +
+    '<img src="' + _he(faviconUrl) + '" width="13" height="13" ' +
+    'onerror="this.outerHTML=\'<span class=\\\'chip-fallback\\\'>' + _he(fallbackLetter) + '</span>\'" alt="">' +
+    _he(label) + '</a>'
+  );
+}
+
+function injectCitationChips(html, sources) {
+  if (!sources || !sources.length) return html;
+  /* Match one or more consecutive citation refs like [1][2][3] */
+  return html.replace(/(\[(\d+)\])+/g, function(match) {
+    const nums = [];
+    const re = /\[(\d+)\]/g;
+    let m;
+    while ((m = re.exec(match)) !== null) nums.push(parseInt(m[1], 10));
+
+    const MAX_SHOW = 2;
+    let chips = '';
+    const toShow   = nums.slice(0, MAX_SHOW);
+    const overflow = nums.length - MAX_SHOW;
+
+    for (const n of toShow) {
+      const src = sources[n - 1];
+      if (src) chips += _buildChip(src);
+    }
+    if (overflow > 0) {
+      chips +=
+        '<a class="source-chip source-chip-overflow" href="#sources">' +
+        '<span class="chip-fallback">+' + overflow + '</span></a>';
+    }
+    return chips || match;
+  });
+      }
+  

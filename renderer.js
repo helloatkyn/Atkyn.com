@@ -55,14 +55,9 @@ function _katex(tex, display) {
 
 /* ══════════════════════════════════════════════════════════════
    MARKED EXTENSIONS
-   All three math delimiters handled here — no post-render pass needed.
-   marked-katex-extension CDN plugin is NOT used.
-   NOTE: marked natively protects fenced code blocks and inline code 
-   from these math extensions, so no pre-protection is needed.
 ══════════════════════════════════════════════════════════════ */
 function _buildMarked() {
 
-  /* ── Block: $$...$$ ── */
   const extBlockDollar = {
     name: 'blockDollar', level: 'block',
     start: src => src.indexOf('$$'),
@@ -73,7 +68,6 @@ function _buildMarked() {
     renderer: t => '<div class="math-display">' + _katex(t.tex, true) + '</div>\n',
   };
 
-  /* ── Block: \[...\] ── */
   const extBlockBracket = {
     name: 'blockBracket', level: 'block',
     start: src => src.indexOf('\\['),
@@ -84,7 +78,6 @@ function _buildMarked() {
     renderer: t => '<div class="math-display">' + _katex(t.tex, true) + '</div>\n',
   };
 
-  /* ── Inline: \(...\) ── */
   const extInlineParen = {
     name: 'inlineParen', level: 'inline',
     start: src => src.indexOf('\\('),
@@ -97,7 +90,6 @@ function _buildMarked() {
 
   marked.use({ extensions: [extBlockDollar, extBlockBracket, extInlineParen] });
 
-  /* ── Custom renderer (code, table, hr) ── */
   const renderer = new marked.Renderer();
 
   renderer.code = function (codeOrToken, lang) {
@@ -111,8 +103,6 @@ function _buildMarked() {
     let hi = _he(code);
     if (typeof hljs !== 'undefined') {
       const valid = language && hljs.getLanguage(language);
-      // highlight.js automatically escapes HTML entities in the source code,
-      // making it safe from DOM injection while preserving syntax highlighting.
       const highlighted = valid
         ? hljs.highlight(code, { language, ignoreIllegals: true })
         : hljs.highlightAuto(code);
@@ -143,16 +133,13 @@ function _buildMarked() {
 _buildMarked();
 
 /* ══════════════════════════════════════════════════════════════
-   STREAMING GUARD — hold back unclosed $$ or \[ at buffer tail
+   STREAMING GUARD
 ══════════════════════════════════════════════════════════════ */
 function _holdIncomplete(text) {
-  // Unclosed $$
   const m1 = text.match(/((?:^|\n)\$\$(?![\s\S]*?\$\$)[\s\S]*)$/);
   if (m1) return { safe: text.slice(0, text.lastIndexOf(m1[0])), held: m1[0] };
-  // Unclosed \[
   const m2 = text.match(/(\\\[(?![\s\S]*?\\\])[\s\S]*)$/);
   if (m2) return { safe: text.slice(0, text.lastIndexOf(m2[0])), held: m2[0] };
-  // Unclosed \(
   const m3 = text.match(/(\\\((?![\s\S]*?\\\))[\s\S]{0,300})$/);
   if (m3) return { safe: text.slice(0, text.lastIndexOf(m3[0])), held: m3[0] };
   return { safe: text, held: '' };
@@ -160,10 +147,6 @@ function _holdIncomplete(text) {
 
 /* ══════════════════════════════════════════════════════════════
    PIPELINE
-   FIX: Removed _protect/restore. It was stripping code blocks and 
-   restoring them as raw, unescaped HTML, causing AI-generated code 
-   to execute as live DOM. marked natively protects code block 
-   content from math extensions, making _protect unnecessary.
 ══════════════════════════════════════════════════════════════ */
 function _safePipeline(raw, isStreaming = false) {
   if (!raw) return '';
@@ -242,8 +225,7 @@ function renderMarkdown(text)     { return universalRender(text); }
 
 /* ══════════════════════════════════════════════════════════════
    CITATION CHIP RENDERER
-   Converts [1], [2], [1][2] patterns in rendered HTML into
-   inline source chips (favicon + site name) like Google AI Mode.
+   Converts [1], [2], [1][2] in rendered HTML → inline source chips
    sources = [{ url, title }]
 ══════════════════════════════════════════════════════════════ */
 function _buildChip(src) {
@@ -251,43 +233,58 @@ function _buildChip(src) {
   let domain = '';
   try { domain = new URL(src.url).hostname.replace(/^www\./, ''); }
   catch (_) { domain = src.url; }
-  const label = src.title
-    ? (src.title.length > 22 ? src.title.slice(0, 20) + '\u2026' : src.title)
-    : domain;
-  const faviconUrl = 'https://www.google.com/s2/favicons?domain=' + encodeURIComponent(domain) + '&sz=32';
+
+  /* Label: site name from title (first part before ' - ' or ' | '), else domain */
+  let label = domain;
+  if (src.title) {
+    const parts = src.title.split(/\s[\-|–—]\s/);
+    const raw = (parts.length > 1 ? parts[parts.length - 1] : parts[0]).trim();
+    label = raw.length > 20 ? raw.slice(0, 18) + '\u2026' : raw;
+  }
+
+  const faviconUrl = 'https://www.google.com/s2/favicons?domain=' + encodeURIComponent(domain) + '&sz=64';
   const fallbackLetter = (domain[0] || '?').toUpperCase();
+  const fallbackHtml = '<span class=\\"chip-fallback\\">' + fallbackLetter + '</span>';
+
   return (
     '<a class="source-chip" href="' + _he(src.url) + '" target="_blank" rel="noopener">' +
-    '<img src="' + _he(faviconUrl) + '" width="13" height="13" ' +
-    'onerror="this.outerHTML=\'<span class=\\\'chip-fallback\\\'>' + _he(fallbackLetter) + '</span>\'" alt="">' +
-    _he(label) + '</a>'
+    '<img src="' + _he(faviconUrl) + '" width="16" height="16" ' +
+    'onerror="this.outerHTML=\'' + fallbackHtml + '\'" alt="">' +
+    _he(label) +
+    '</a>'
   );
 }
 
 function injectCitationChips(html, sources) {
   if (!sources || !sources.length) return html;
-  /* Match one or more consecutive citation refs like [1][2][3] */
-  return html.replace(/(\[(\d+)\])+/g, function(match) {
+
+  /* Match one or more consecutive [N] refs like [1][2][3] */
+  return html.replace(/(\[\d+\])+/g, function(match) {
     const nums = [];
     const re = /\[(\d+)\]/g;
     let m;
     while ((m = re.exec(match)) !== null) nums.push(parseInt(m[1], 10));
 
+    /* Deduplicate */
+    const unique = [...new Set(nums)];
     const MAX_SHOW = 2;
-    let chips = '';
-    const toShow   = nums.slice(0, MAX_SHOW);
-    const overflow = nums.length - MAX_SHOW;
+    const toShow   = unique.slice(0, MAX_SHOW);
+    const overflow = unique.length - MAX_SHOW;
 
+    let inner = '';
     for (const n of toShow) {
       const src = sources[n - 1];
-      if (src) chips += _buildChip(src);
+      if (src) inner += _buildChip(src);
     }
     if (overflow > 0) {
-      chips +=
-        '<a class="source-chip source-chip-overflow" href="#sources">' +
-        '<span class="chip-fallback">+' + overflow + '</span></a>';
+      inner +=
+        '<a class="source-chip source-chip-overflow" href="#sources" rel="noopener">' +
+        '+' + overflow +
+        '</a>';
     }
-    return chips || match;
+
+    /* Wrap in chip-group so they stay inline and wrap cleanly */
+    return inner ? '<span class="chip-group">' + inner + '</span>' : match;
   });
-      }
-  
+}
+   

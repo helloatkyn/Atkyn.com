@@ -1,29 +1,27 @@
 /* ════════════════════════════════════════════════════════════════
 chatbar.css — Minimal professional chatbar
-Professional soft gradient · Light Gray pill · No pill shadow
+Professional soft gradient · Light Gray pill · Floating design
 ════════════════════════════════════════════════════════════════ */
 
 /* ────────────────────────────────────────────────────────────────
-CHATBAR WRAPPER
+CHATBAR WRAPPER (Transparent for floating pill effect)
 ──────────────────────────────────────────────────────────────── */
 .chatbar-wrap {
 flex-shrink: 0;
 
-padding: 8px 16px calc(4px + env(safe-area-inset-bottom));
+padding: 10px 16px calc(12px + env(safe-area-inset-bottom));
 
 position: relative;
 z-index: 10;
 
+/* Maximum native smooth keyboard animation */
 will-change: transform;
 transform: translateZ(0);
+backface-visibility: hidden;
+-webkit-backface-visibility: hidden;
+perspective: 1000px;
 
-background: #ffffff;
-}
-
-@media (prefers-color-scheme: dark) {
-.chatbar-wrap {
-background: var(--color-bg-dark);
-}
+background: transparent;
 }
 
 /* ────────────────────────────────────────────────────────────────

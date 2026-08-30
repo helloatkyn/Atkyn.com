@@ -1,157 +1,140 @@
 /* ════════════════════════════════════════════════════════════════
-   chatbar.css — Atkyn Modern UI (Gemini Inspired Architecture)
-   Clean · Solid Adaptive Elevation · High Precision Micro-Interactions
-   ════════════════════════════════════════════════════════════════ */
+chatbar.css — Gemini-style premium chatbar
+No blur · Clean pill · Smooth shimmer · Floating design
+════════════════════════════════════════════════════════════════ */
 
-:root {
-  /* Light Theme Spec */
-  --atkyn-bg-surface: #f0f4f9;
-  --atkyn-bg-pill: #ffffff;
-  --atkyn-border: #e3e3e3;
-  --atkyn-border-hover: #c4c7c5;
-  --atkyn-text-main: #1f1f1f;
-  --atkyn-text-muted: #444746;
-  --atkyn-placeholder: #747775;
-  --atkyn-accent: #0b57d0;
-  --atkyn-accent-hover: #0842a0;
-  --atkyn-icon-idle: #444746;
-  --atkyn-icon-active: #1f1f1f;
-  --atkyn-press-bg: rgba(0, 0, 0, 0.06);
-  --atkyn-shadow-floating: 0 4px 16px rgba(0, 0, 0, 0.06), 0 1px 3px rgba(0, 0, 0, 0.04);
-  --atkyn-shadow-focus: 0 4px 20px rgba(11, 87, 208, 0.12);
+/* ────────────────────────────────────────────────────────────────
+CHATBAR WRAPPER
+──────────────────────────────────────────────────────────────── */
+.chatbar-wrap {
+  flex-shrink: 0;
+  padding: 10px 16px calc(8px + env(safe-area-inset-bottom));
+  position: relative;
+  z-index: 10;
+  will-change: transform;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  background: transparent;
+}
+
+/* ────────────────────────────────────────────────────────────────
+PILL
+──────────────────────────────────────────────────────────────── */
+.overlay-pill {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  background: var(--color-bg);
+  border: 2px solid var(--color-primary);
+  border-radius: 100px;
+  padding: 0 14px 0 16px;
+  height: 60px;
+  gap: 10px;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.overlay-pill:focus-within {
+  border-color: var(--color-primary-dark);
+  box-shadow: 0 0 0 3px rgba(0, 119, 181, 0.12);
 }
 
 @media (prefers-color-scheme: dark) {
-  :root {
-    /* Dark Theme Spec */
-    --atkyn-bg-surface: #131314;
-    --atkyn-bg-pill: #1e1e1f;
-    --atkyn-border: #2e2f31;
-    --atkyn-border-hover: #444746;
-    --atkyn-text-main: #e3e3e3;
-    --atkyn-text-muted: #c4c7c5;
-    --atkyn-placeholder: #8e918f;
-    --atkyn-accent: #a8c7fa;
-    --atkyn-accent-hover: #d3e3fd;
-    --atkyn-icon-idle: #c4c7c5;
-    --atkyn-icon-active: #e3e3e3;
-    --atkyn-press-bg: rgba(255, 255, 255, 0.08);
-    --atkyn-shadow-floating: 0 4px 20px rgba(0, 0, 0, 0.35);
-    --atkyn-shadow-focus: 0 4px 24px rgba(0, 0, 0, 0.5);
+  .overlay-pill {
+    background: var(--color-bg-alt-dark);
+    border-color: var(--color-primary);
+  }
+  .overlay-pill:focus-within {
+    box-shadow: 0 0 0 3px rgba(138, 180, 248, 0.15);
   }
 }
 
 /* ────────────────────────────────────────────────────────────────
-   CHATBAR CONTAINER & FLOATING WRAPPER
-   ──────────────────────────────────────────────────────────────── */
-.chatbar-wrap {
-  flex-shrink: 0;
-  width: 100%;
-  max-width: 832px;
-  margin: 0 auto;
-  padding: 8px 16px calc(14px + env(safe-area-inset-bottom));
-  position: relative;
-  z-index: 20;
-  background: transparent;
-  box-sizing: border-box;
-}
-
-.overlay-pill {
-  width: 100%;
-  display: flex;
-  align-items: flex-end; /* Multi-line input alignment */
-  background: var(--atkyn-bg-pill);
-  border: 1px solid var(--atkyn-border);
-  border-radius: 28px;
-  padding: 10px 14px 10px 16px;
-  gap: 8px;
-  box-shadow: var(--atkyn-shadow-floating);
-  transition: border-color 0.2s cubic-bezier(0.2, 0, 0, 1), 
-              box-shadow 0.2s cubic-bezier(0.2, 0, 0, 1),
-              background-color 0.2s ease;
-}
-
-.overlay-pill:hover {
-  border-color: var(--atkyn-border-hover);
-}
-
-.overlay-pill:focus-within {
-  border-color: var(--atkyn-accent);
-  box-shadow: var(--atkyn-shadow-focus);
-}
-
-/* ────────────────────────────────────────────────────────────────
-   ICON BUTTONS (PLUS, ATTACHMENT, CAMERA)
-   ──────────────────────────────────────────────────────────────── */
-.ico-btn {
+PLUS / ATTACH BUTTON
+──────────────────────────────────────────────────────────────── */
+.ico-plus {
   flex-shrink: 0;
   display: flex;
   align-items: center;
-  justify-content: center;
-  width: 40px;
-  height: 40px;
   border: none;
-  background: transparent;
+  background: none;
   cursor: pointer;
+  padding: 6px;
   border-radius: 50%;
-  color: var(--atkyn-icon-idle);
-  transition: background-color 0.15s ease, color 0.15s ease, transform 0.1s ease;
-  outline: none;
-  -webkit-tap-highlight-color: transparent;
+  color: var(--color-primary);
+  transition: background 0.12s;
 }
 
-.ico-btn:hover {
-  background: var(--atkyn-press-bg);
-  color: var(--atkyn-icon-active);
+.ico-plus:active {
+  background: rgba(0, 119, 181, 0.10);
 }
 
-.ico-btn:active {
-  transform: scale(0.92);
-}
-
-.ico-btn svg {
+.ico-plus svg {
   width: 22px;
   height: 22px;
-  fill: currentColor;
-  stroke-width: 0;
+}
+
+@media (prefers-color-scheme: dark) {
+  .ico-plus:active {
+    background: rgba(255, 255, 255, 0.08);
+  }
 }
 
 /* ────────────────────────────────────────────────────────────────
-   INPUT FIELD & SHIMMER PLACEHOLDER
-   ──────────────────────────────────────────────────────────────── */
+INPUT WRAPPER
+──────────────────────────────────────────────────────────────── */
 .overlay-input-wrap {
   flex: 1;
   position: relative;
-  min-height: 40px;
+  height: 100%;
   display: flex;
   align-items: center;
 }
 
-/* Switchable from input to multi-line textarea */
+/* ────────────────────────────────────────────────────────────────
+SEARCH INPUT
+──────────────────────────────────────────────────────────────── */
 .search-input {
+  position: absolute;
+  inset: 0;
   width: 100%;
-  min-height: 24px;
-  max-height: 200px;
+  height: 100%;
   border: none;
   outline: none;
   background: transparent;
-  font-family: inherit;
   font-size: 1rem;
-  line-height: 1.5;
   font-weight: 400;
-  color: var(--atkyn-text-main);
-  padding: 8px 0;
-  resize: none;
+  color: var(--color-text);
+  padding: 0;
   z-index: 2;
-  caret-color: var(--atkyn-accent);
-  letter-spacing: -0.01em;
+  caret-color: var(--color-primary);
+  letter-spacing: 0.01em;
 }
 
 .search-input::placeholder {
-  color: transparent; /* Shimmer component takes over */
+  color: transparent;
 }
 
-/* Clean Gemini Text Shimmer */
+.search-input::-webkit-search-cancel-button,
+.search-input::-webkit-search-decoration,
+.search-input::-webkit-search-results-button,
+.search-input::-webkit-search-results-decoration {
+  -webkit-appearance: none;
+  appearance: none;
+  display: none;
+}
+
+@media (prefers-color-scheme: dark) {
+  .search-input {
+    color: var(--color-text-dark-alt);
+  }
+}
+
+/* ────────────────────────────────────────────────────────────────
+SHIMMER PLACEHOLDER
+──────────────────────────────────────────────────────────────── */
 .shimmer-overlay {
   position: absolute;
   inset: 0;
@@ -160,150 +143,203 @@
   pointer-events: none;
   z-index: 1;
   overflow: hidden;
-  user-select: none;
 }
 
 .shimmer-overlay span {
   font-size: 1rem;
   white-space: nowrap;
-  letter-spacing: -0.01em;
+  letter-spacing: 0.01em;
   background: linear-gradient(
     90deg,
-    var(--atkyn-placeholder) 0%,
-    var(--atkyn-placeholder) 35%,
-    var(--atkyn-text-main) 50%,
-    var(--atkyn-placeholder) 65%,
-    var(--atkyn-placeholder) 100%
+    #9e9e9e 0%,
+    #9e9e9e 30%,
+    #c8c8c8 48%,
+    #ffffff 52%,
+    #9e9e9e 70%,
+    #9e9e9e 100%
   );
-  background-size: 200% 100%;
+  background-size: 300% auto;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
-  animation: gemini-sweep 3.2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  animation: sweep 3.5s 0.8s linear infinite;
 }
 
-@keyframes gemini-sweep {
-  0% { background-position: 200% 0; }
-  100% { background-position: -200% 0; }
+@media (prefers-color-scheme: dark) {
+  .shimmer-overlay span {
+    background: linear-gradient(
+      90deg,
+      #5f6368 0%,
+      #5f6368 30%,
+      #9aa0a6 48%,
+      #c8c8c8 52%,
+      #5f6368 70%,
+      #5f6368 100%
+    );
+    background-size: 300% auto;
+    -webkit-background-clip: text;
+    background-clip: text;
+  }
 }
 
-.search-input:not(:placeholder-shown) + .shimmer-overlay,
-.overlay-pill.has-text .shimmer-overlay {
+@keyframes sweep {
+  0%   { background-position:  150% center; }
+  100% { background-position: -150% center; }
+}
+
+.search-input:not(:placeholder-shown) + .shimmer-overlay {
   display: none;
 }
 
 /* ────────────────────────────────────────────────────────────────
-   ACTION CONTROLS & SEND BUTTON
-   ──────────────────────────────────────────────────────────────── */
-.action-controls {
+CAMERA BUTTON
+──────────────────────────────────────────────────────────────── */
+.ico-camera {
+  flex-shrink: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
   display: flex;
   align-items: center;
-  gap: 4px;
-  flex-shrink: 0;
+  padding: 6px;
+  border-radius: 50%;
+  color: var(--color-primary);
+  transition: background 0.12s;
 }
 
-.send-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  border: none;
-  background: var(--atkyn-accent);
-  color: #ffffff;
-  cursor: pointer;
-  opacity: 0;
-  transform: scale(0.7);
-  pointer-events: none;
-  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), 
-              opacity 0.15s ease, 
-              background-color 0.15s ease;
+.ico-camera:active {
+  background: rgba(0, 119, 181, 0.10);
+}
+
+.ico-camera svg {
+  width: 22px;
+  height: 22px;
 }
 
 @media (prefers-color-scheme: dark) {
-  .send-btn {
-    color: #000000;
+  .ico-camera:active {
+    background: rgba(255, 255, 255, 0.08);
   }
 }
 
-.overlay-pill.has-text .send-btn {
-  opacity: 1;
-  transform: scale(1);
-  pointer-events: auto;
+/* ────────────────────────────────────────────────────────────────
+SEND BUTTON
+──────────────────────────────────────────────────────────────── */
+.send-btn {
+  flex-shrink: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  border: none;
+  background: var(--color-primary);
+  cursor: pointer;
+  transition:
+    transform 0.15s ease,
+    opacity 0.15s ease;
+}
+
+.send-btn:active {
+  transform: scale(0.88);
+}
+
+.send-btn:hover {
+  opacity: 0.88;
+}
+
+.send-btn svg {
+  width: 16px;
+  height: 16px;
 }
 
 .overlay-pill.has-text .ico-camera {
   display: none;
 }
 
-.send-btn:hover {
-  background: var(--atkyn-accent-hover);
+.overlay-pill.has-text .send-btn {
+  display: flex;
 }
 
-.send-btn:active {
-  transform: scale(0.9);
+/* ────────────────────────────────────────────────────────────────
+CROSS MODE — NON-AI TABS
+──────────────────────────────────────────────────────────────── */
+.send-btn.cross-mode {
+  background: transparent;
 }
 
-.send-btn svg {
+.send-btn.cross-mode svg {
+  stroke: rgba(0, 0, 0, 0.6);
   width: 18px;
   height: 18px;
-  fill: currentColor;
+}
+
+@media (prefers-color-scheme: dark) {
+  .send-btn.cross-mode svg {
+    stroke: rgba(255, 255, 255, 0.7);
+  }
 }
 
 /* ────────────────────────────────────────────────────────────────
-   DISCLAIMER TEXT
-   ──────────────────────────────────────────────────────────────── */
+DISCLAIMER
+──────────────────────────────────────────────────────────────── */
 .atkyn-disclaimer {
   text-align: center;
-  font-size: 0.75rem;
-  line-height: 1.4;
-  color: var(--atkyn-placeholder);
-  margin-top: 10px;
-  font-weight: 400;
+  font-size: 0.72rem;
+  color: rgba(0, 0, 0, 0.50);
+  margin: 6px 0 0 0;
+  padding: 0;
+  letter-spacing: 0.01em;
+}
+
+@media (prefers-color-scheme: dark) {
+  .atkyn-disclaimer {
+    color: rgba(255, 255, 255, 0.45);
+  }
 }
 
 /* ────────────────────────────────────────────────────────────────
-   SOLID PLUS MENU (NO BLUR OVERLAY)
-   ──────────────────────────────────────────────────────────────── */
+PLUS MENU — No blur, Gemini-style flat sheet
+──────────────────────────────────────────────────────────────── */
 .plus-menu-backdrop {
   position: fixed;
   inset: 0;
   z-index: 100;
-  background: rgba(0, 0, 0, 0.2);
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.2s ease;
+  display: none;
 }
 
 .plus-menu-backdrop.open {
-  opacity: 1;
-  pointer-events: auto;
+  display: block;
 }
 
 .plus-menu {
   position: fixed;
-  left: calc(50% - 400px + 16px);
-  bottom: calc(96px + env(safe-area-inset-bottom));
+  left: 20px;
+  bottom: calc(82px + env(safe-area-inset-bottom));
   width: 240px;
-  background: var(--atkyn-bg-pill);
-  border: 1px solid var(--atkyn-border);
-  border-radius: 16px;
-  padding: 8px;
-  box-shadow: var(--atkyn-shadow-floating);
+
+  /* NO blur — Gemini uses flat opaque sheet */
+  background: #ffffff;
+
+  border-radius: 18px;
+  border: 0.5px solid rgba(0, 0, 0, 0.08);
+
+  box-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.08),
+    0 8px 24px rgba(0, 0, 0, 0.12);
+
+  overflow: hidden;
   z-index: 101;
-  transform: translateY(12px) scale(0.95);
+
+  transform: translateY(8px) scale(0.96);
   transform-origin: bottom left;
   opacity: 0;
   pointer-events: none;
-  transition: transform 0.2s cubic-bezier(0.2, 0, 0, 1), 
-              opacity 0.15s ease;
-}
 
-@media (max-width: 832px) {
-  .plus-menu {
-    left: 20px;
-  }
+  transition:
+    transform 0.22s cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 0.14s ease;
 }
 
 .plus-menu.open {
@@ -312,41 +348,78 @@
   pointer-events: auto;
 }
 
+@media (prefers-color-scheme: dark) {
+  .plus-menu {
+    background: #2d2e2f;
+    border-color: rgba(255, 255, 255, 0.08);
+    box-shadow:
+      0 1px 4px rgba(0, 0, 0, 0.20),
+      0 10px 32px rgba(0, 0, 0, 0.45);
+  }
+}
+
+/* ────────────────────────────────────────────────────────────────
+PLUS MENU ITEMS
+──────────────────────────────────────────────────────────────── */
 .pm-item {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 10px 14px;
+  gap: 14px;
+  padding: 13px 18px;
   cursor: pointer;
   border: none;
-  background: transparent;
+  background: none;
   width: 100%;
-  border-radius: 10px;
-  color: var(--atkyn-text-main);
-  font-size: 0.88rem;
+  text-align: left;
+  color: var(--color-text);
+  font-size: 0.9rem;
   font-weight: 500;
-  transition: background-color 0.12s ease;
+  letter-spacing: 0.01em;
+  transition: background 0.1s;
 }
 
+.pm-item:active,
 .pm-item:hover {
-  background: var(--atkyn-press-bg);
+  background: rgba(0, 0, 0, 0.05);
 }
 
-.pm-item:active {
-  transform: scale(0.98);
+@media (prefers-color-scheme: dark) {
+  .pm-item {
+    color: var(--color-text-dark);
+  }
+  .pm-item:active,
+  .pm-item:hover {
+    background: rgba(255, 255, 255, 0.06);
+  }
 }
 
+/* ────────────────────────────────────────────────────────────────
+PLUS MENU ICON — Gemini colored circle style
+──────────────────────────────────────────────────────────────── */
 .pm-icon {
-  width: 20px;
-  height: 20px;
+  flex-shrink: 0;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--atkyn-icon-idle);
 }
 
 .pm-icon svg {
   width: 20px;
   height: 20px;
-  fill: currentColor;
+}
+
+/* Divider between items */
+.pm-divider {
+  height: 0.5px;
+  background: rgba(0, 0, 0, 0.07);
+  margin: 0 16px;
+}
+
+@media (prefers-color-scheme: dark) {
+  .pm-divider {
+    background: rgba(255, 255, 255, 0.07);
+  }
 }

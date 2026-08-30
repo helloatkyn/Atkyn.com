@@ -134,7 +134,7 @@
 }
 
 /* ────────────────────────────────────────────────────────────────
-   SOURCE CHIPS
+   SOURCE CHIPS  (inline, bot response ke andar)
 ──────────────────────────────────────────────────────────────── */
 .chip-group {
   display: inline-flex;
@@ -226,7 +226,8 @@
 }
 
 /* ────────────────────────────────────────────────────────────────
-   SOURCE CHIP BOTTOM SHEET
+   SOURCE CHIP BOTTOM SHEET — chrome only
+   Card styles: web.css ke wc-* classes use hote hain
 ──────────────────────────────────────────────────────────────── */
 #chipSheetBackdrop {
   position: fixed;
@@ -257,7 +258,6 @@
   transform: translateY(0);
 }
 
-/* Drag bar */
 #chipSheetDragBar {
   width: 36px; height: 4px;
   background: #e0e0e0;
@@ -266,7 +266,6 @@
   flex-shrink: 0;
 }
 
-/* Header */
 #chipSheetHeader {
   padding: 10px 16px 12px;
   border-bottom: 1px solid #f1f3f4;
@@ -278,137 +277,29 @@
   color: #111;
 }
 
-/* Scrollable list */
 #chipSheetList {
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   flex: 1;
   padding-bottom: env(safe-area-inset-bottom, 16px);
+  /* wc-list background override — sheet ka bg match kare */
+  background: #f8f9fa;
 }
 
-/* ── Source card — web.js style ── */
-.csi {
-  display: block;
-  text-decoration: none;
-  color: inherit;
-  background: #fff;
-  border-radius: 16px;
-  padding: 13px 14px 14px;
-  margin: 6px 10px 0;
-  position: relative;
-  -webkit-tap-highlight-color: transparent;
-  box-shadow: 0 1px 2px rgba(0,0,0,0.06);
-  transition: background 0.15s;
+/* Active card highlight — clicked source pehle dikhta hai */
+.wc-card--active {
+  background: #f0f4ff !important;
 }
-.csi:last-child { margin-bottom: 8px; }
-.csi:active     { background: #f5f5f5; }
-.csi--active    { background: #f0f4ff; }
-.csi--active:active { background: #e8eeff; }
-
-/* meta row */
-.csi-meta {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 8px;
-}
-.csi-fav-wrap {
-  flex-shrink: 0;
-  width: 28px; height: 28px;
-  border-radius: 50%;
-  background: #f1f1f1;
-  display: flex; align-items: center; justify-content: center;
-  overflow: hidden;
-}
-.csi-fav { width: 16px; height: 16px; display: block; object-fit: contain; }
-.csi-meta-text { display: flex; flex-direction: column; flex: 1; min-width: 0; }
-.csi-domain {
-  font-size: 0.875rem; font-weight: 600; color: #222;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-}
-.csi-path {
-  font-size: 0.7rem; color: #999;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-}
-.csi-arrow { flex-shrink: 0; width: 14px; height: 14px; color: #bbb; }
-
-/* body */
-.csi-body { }
-.csi-title {
-  font-size: 1.02rem; font-weight: 700;
-  color: #000080; line-height: 1.4;
-  margin: 0 0 6px;
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  overflow: hidden;
-  word-break: break-word;
-}
-.csi-snippet {
-  font-size: 0.9rem; color: #3a3a3a;
-  line-height: 1.55; margin: 0;
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 3;
-  overflow: hidden;
+.wc-card--active:active {
+  background: #e8eeff !important;
 }
 
-/* full-width image */
-.csi-thumb-wrap {
-  width: 100%;
-  margin: 6px 0 2px;
-  border-radius: 12px;
-  overflow: hidden;
-  background: #f0f2f4;
-}
-.csi-thumb {
-  width: 100%; height: auto;
-  max-height: 180px;
-  object-fit: contain;
-  display: block;
-  border-radius: 12px;
-}
-
-/* inline portrait image */
-.csi-inline-row {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  margin-top: 0;
-}
-.csi-thumb-inline-wrap {
-  flex-shrink: 0;
-  width: 80px; min-height: 60px; max-height: 110px;
-  border-radius: 10px;
-  overflow: hidden;
-  background: #f0f2f4;
-  display: flex; align-items: center; justify-content: center;
-}
-.csi-thumb-inline {
-  width: 80px; height: auto;
-  max-height: 110px;
-  object-fit: contain;
-  display: block;
-  border-radius: 10px;
-}
-
-/* ── Dark mode ── */
 @media (prefers-color-scheme: dark) {
   #chipSheetCard        { background: #1c1c1e; }
   #chipSheetDragBar     { background: #3a3a3c; }
   #chipSheetHeader      { border-bottom-color: #2c2c2e; }
   #chipSheetHeading     { color: #f0f0f0; }
-
-  .csi                  { background: #1c1c1e; box-shadow: 0 1px 4px rgba(0,0,0,0.3); }
-  .csi:active           { background: #2a2a2c; }
-  .csi--active          { background: #1e2235; }
-  .csi--active:active   { background: #232540; }
-  .csi-domain           { color: rgba(255,255,255,0.75); }
-  .csi-path             { color: rgba(255,255,255,0.3); }
-  .csi-fav-wrap         { background: #2c2c2e; }
-  .csi-title            { color: #4BA8D8; }
-  .csi-snippet          { color: #d4d4d6; }
-  .csi-arrow            { color: #444; }
-  .csi-thumb-wrap       { background: #2c2c2e; }
-  .csi-thumb-inline-wrap { background: #2c2c2e; }
-   }
+  #chipSheetList        { background: #000; }
+  .wc-card--active      { background: #1e2235 !important; }
+  .wc-card--active:active { background: #232540 !important; }
+}

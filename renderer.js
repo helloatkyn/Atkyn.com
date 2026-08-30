@@ -318,15 +318,19 @@ function injectCitationChips(html, sources) {
     const favicon  = _favicon(domain);
     const favicon2 = 'https://icons.duckduckgo.com/ip3/' + domain + '.ico';
     const title    = src.title || domain;
-    const path     = (domain + new URL(src.url).pathname).replace(/\/$/, '').substring(0, 60);
     const letter   = (domain[0] || '?').toUpperCase();
+    let path = domain;
+    try {
+      const u = new URL(src.url);
+      path = (domain + u.pathname).replace(/\/$/, '').substring(0, 60);
+    } catch (_) {}
 
     return (
       '<a class="csi' + (isActive ? ' csi--active' : '') + '" href="' + _he(src.url) + '" target="_blank" rel="noopener">' +
         '<div class="wc-meta">' +
           '<div class="wc-fav-wrap">' +
             '<img class="wc-fav" src="' + _he(favicon) + '" width="16" height="16" alt="" ' +
-              'onerror="if(this.src!==\'' + _he(favicon2) + '\'){this.src=\'' + _he(favicon2) + '\'}else{this.closest(\'.wc-fav-wrap\').innerHTML=\'<span class=\\\'chip-fallback\\\'>' + _he(letter) + '</span>\'}">' +
+              'onerror="if(this.src.indexOf(\'duckduckgo\')===-1){this.src=\'' + _he(favicon2) + '\'}else{this.closest(\'.wc-fav-wrap\').innerHTML=\'<span style=\\\"width:16px;height:16px;border-radius:50%;background:#bdc1c6;color:#fff;font-size:9px;font-weight:700;display:inline-flex;align-items:center;justify-content:center\\\">' + _he(letter) + '</span>\'}">' +
           '</div>' +
           '<div class="wc-meta-text">' +
             '<span class="wc-domain">' + _he(domain) + '</span>' +

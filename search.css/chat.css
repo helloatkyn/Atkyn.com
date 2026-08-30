@@ -279,7 +279,7 @@
   color: #202124;
 }
 
-/* ── Source list items — exactly wc-card style ── */
+/* Source list items — exactly wc-card */
 .csi {
   display: block;
   text-decoration: none;
@@ -294,79 +294,19 @@
   transition: background 0.15s;
   border: none;
 }
-.csi:last-child { margin-bottom: 4px; }
-.csi:active     { background: #f5f5f5; }
-
-/* Meta row — exactly wc-meta */
-.csi-meta {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 8px;
-}
-
-/* Favicon wrap — exactly wc-fav-wrap */
-.csi-favicon-wrap {
-  flex-shrink: 0;
-  width: 28px; height: 28px;
-  border-radius: 50%;
-  background: #f1f1f1;
-  display: flex; align-items: center; justify-content: center;
-  overflow: hidden;
-}
-.csi-favicon {
-  width: 16px; height: 16px;
-  display: block;
-  object-fit: contain;
-}
-
-/* Domain + url — exactly wc-meta-text */
-.csi-body {
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  min-width: 0;
-}
-.csi-domain {
-  font-size: 0.875rem; font-weight: 600; color: #222;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-}
-.csi-url {
-  font-size: 0.7rem; color: #999;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-}
-
-/* Arrow — exactly wc-dots position */
-.csi-arrow {
-  flex-shrink: 0;
-  width: 14px; height: 14px;
-  stroke: #bbb;
-  padding-left: 4px;
-}
-
-/* Title — exactly wc-title */
-.csi-title {
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  overflow: hidden;
-  font-size: 1.05rem; font-weight: 700;
-  color: #000080; line-height: 1.4;
-  margin: 0;
-  word-break: break-word;
-}
+.csi:last-child  { margin-bottom: 4px; }
+.csi:active      { background: #f5f5f5; }
+.csi--active     { background: #f0f4ff; }
+.csi--active:active { background: #e8eeff; }
 
 /* Dark mode */
 @media (prefers-color-scheme: dark) {
-  #chipSheetCard          { background: #000; }
-  #chipSheetPill          { border-bottom-color: #2c2c2e; }
-  #chipSheetPill span     { color: #e8eaed; }
+  #chipSheetCard       { background: #000; }
+  #chipSheetPill       { border-bottom-color: #2c2c2e; }
+  #chipSheetPill span  { color: #e8eaed; }
 
-  .csi                    { background: #1c1c1e; box-shadow: 0 1px 4px rgba(0,0,0,0.3); }
-  .csi:active             { background: #2a2a2c; }
-  .csi-favicon-wrap       { background: #2c2c2e; }
-  .csi-domain             { color: rgba(255,255,255,0.75); }
-  .csi-url                { color: rgba(255,255,255,0.3); }
-  .csi-title              { color: #4BA8D8; }
-  .csi-arrow              { stroke: #444; }
-     }
+  .csi                 { background: #1c1c1e; box-shadow: 0 1px 4px rgba(0,0,0,0.3); }
+  .csi:active          { background: #2a2a2c; }
+  .csi--active         { background: #1e2235; }
+  .csi--active:active  { background: #252840; }
+}

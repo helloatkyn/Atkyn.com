@@ -50,6 +50,7 @@ function _katex(tex, display) {
    MARKED EXTENSIONS
 ══════════════════════════════════════════════════════════════ */
 function _buildMarked() {
+
   const extBlockDollar = {
     name: 'blockDollar', level: 'block',
     start: src => src.indexOf('$$'),
@@ -221,6 +222,8 @@ function renderMarkdown(text)     { return universalRender(text); }
 const _chipRegistry = {};
 let   _chipCounter  = 0;
 
+/* Global sources — search.js mein set karo:
+   window._atkynSources = sourcesArray; */
 window._atkynSources = [];
 
 document.addEventListener('error', function(e) {
@@ -291,7 +294,7 @@ function injectCitationChips(html, sources) {
 }
 
 /* ══════════════════════════════════════════════════════════════
-   SOURCE CHIP BOTTOM SHEET — exactly wc-card structure
+   SOURCE CHIP BOTTOM SHEET — all sources SERP style
 ══════════════════════════════════════════════════════════════ */
 (function () {
   const sheet = document.createElement('div');
@@ -300,7 +303,7 @@ function injectCitationChips(html, sources) {
     '<div id="chipSheetBackdrop"></div>' +
     '<div id="chipSheetCard">' +
       '<div id="chipSheetPill"></div>' +
-      '<div class="csi-list" id="chipSheetList"></div>' +
+      '<div id="chipSheetList"></div>' +
     '</div>';
   document.body.appendChild(sheet);
 
@@ -313,35 +316,20 @@ function injectCitationChips(html, sources) {
   }
 
   function buildItem(src, isActive) {
-    const domain   = _domain(src.url);
-    const favicon  = _favicon(domain);
-    const favicon2 = 'https://icons.duckduckgo.com/ip3/' + domain + '.ico';
-    const title    = src.title || domain;
-    const snippet  = src.snippet || '';
-    const letter   = (domain[0] || '?').toUpperCase();
-    let path = domain;
-    try {
-      const u = new URL(src.url);
-      path = (domain + u.pathname).replace(/\/$/, '').substring(0, 60);
-    } catch (_) {}
+    const domain  = _domain(src.url);
+    const favicon = _favicon(domain);
+    const title   = src.title || domain;
+    const shortUrl = src.url.length > 45 ? src.url.slice(0, 43) + '\u2026' : src.url;
 
     return (
       '<a class="csi' + (isActive ? ' csi--active' : '') + '" href="' + _he(src.url) + '" target="_blank" rel="noopener">' +
-        '<div class="csi-meta">' +
-          '<div class="csi-fav-wrap">' +
-            '<img class="csi-favicon" src="' + _he(favicon) + '" width="16" height="16" alt="" ' +
-              'onerror="if(this.src.indexOf(\'duckduckgo\')===-1){this.src=\'' + _he(favicon2) + '\'}else{this.closest(\'.csi-fav-wrap\').innerHTML=\'<span class=\\\'chip-fallback\\\'>\' + _he(letter) + \'</span>\'}">' +
-          '</div>' +
-          '<div class="csi-meta-text">' +
-            '<span class="csi-domain">' + _he(domain) + '</span>' +
-            '<span class="csi-url">' + _he(path) + '</span>' +
-          '</div>' +
-          '<div class="csi-dots">' +
-            '<svg viewBox="0 0 24 24"><circle cx="12" cy="5" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="19" r="1.5"/></svg>' +
-          '</div>' +
+        '<img class="csi-favicon" src="' + _he(favicon) + '" width="28" height="28" alt="" onerror="this.style.visibility=\'hidden\'">' +
+        '<div class="csi-body">' +
+          '<div class="csi-domain">' + _he(domain) + '</div>' +
+          '<div class="csi-title">' + _he(title) + '</div>' +
+          '<div class="csi-url">' + _he(shortUrl) + '</div>' +
         '</div>' +
-        '<div class="csi-title">' + _he(title) + '</div>' +
-        (snippet ? '<p class="csi-snippet">' + _he(snippet) + '</p>' : '') +
+        '<svg class="csi-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>' +
       '</a>'
     );
   }
@@ -350,6 +338,7 @@ function injectCitationChips(html, sources) {
     const sources = window._atkynSources || [];
     if (!sources.length) return;
 
+    /* Pill — clicked source highlight */
     const clickedDomain  = _domain(clickedUrl);
     const clickedFavicon = _favicon(clickedDomain);
     const clickedSrc     = sources.find(s => s.url === clickedUrl) || sources[0];
@@ -358,6 +347,7 @@ function injectCitationChips(html, sources) {
       '<img src="' + _he(clickedFavicon) + '" width="20" height="20" alt="" onerror="this.style.visibility=\'hidden\'">' +
       '<span>' + _he(clickedDomain) + '</span>';
 
+    /* List — all sources, clicked wala top pe */
     const sorted = [
       clickedSrc,
       ...sources.filter(s => s.url !== clickedSrc.url)

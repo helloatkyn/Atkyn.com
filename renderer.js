@@ -1,13 +1,6 @@
 /* ═══════════════════════════════════════════════════════════════
    renderer.js — Atkyn Search
    marked@13 + KaTeX (CDN) + highlight.js (CDN)
-
-   MATH POLICY:
-   • $price   → plain text, never math  (price protection)
-   • $...$    → NEVER math              (disabled — too many false positives)
-   • $$...$$  → display math            (marked block extension)
-   • \[...\]  → display math            (marked block extension)
-   • \(...\)  → inline math             (marked inline extension)
 ═══════════════════════════════════════════════════════════════ */
 
 /* ── HTML entity escape ── */
@@ -225,31 +218,48 @@ function renderMarkdown(text)     { return universalRender(text); }
 
 /* ══════════════════════════════════════════════════════════════
    CITATION CHIP RENDERER
-   Converts [1], [2], [1][2] in rendered HTML → inline source chips
+   DOM-based chip builder — no inline onerror escaping hell.
    sources = [{ url, title }]
 ══════════════════════════════════════════════════════════════ */
+
+/* Chip registry: data-chip-id → src, populated at inject time,
+   used by the delegated error handler below. */
+const _chipRegistry = {};
+let   _chipCounter  = 0;
+
+/* Delegated favicon error handler — attached once to document */
+document.addEventListener('error', function(e) {
+  const img = e.target;
+  if (!img || img.tagName !== 'IMG' || !img.dataset.chipId) return;
+  const id  = img.dataset.chipId;
+  const src = _chipRegistry[id];
+  if (!src) return;
+  let domain = '';
+  try { domain = new URL(src.url).hostname.replace(/^www\./, ''); } catch (_) {}
+  const letter = (domain[0] || '?').toUpperCase();
+  const span = document.createElement('span');
+  span.className   = 'chip-fallback';
+  span.textContent = letter;
+  img.replaceWith(span);
+}, true);
+
 function _buildChip(src) {
   if (!src || !src.url) return '';
   let domain = '';
   try { domain = new URL(src.url).hostname.replace(/^www\./, ''); }
   catch (_) { domain = src.url; }
 
-  /* Label: site name from title (first part before ' - ' or ' | '), else domain */
-  let label = domain;
-  if (src.title) {
-    const parts = src.title.split(/\s[\-|–—]\s/);
-    const raw = (parts.length > 1 ? parts[parts.length - 1] : parts[0]).trim();
-    label = raw.length > 20 ? raw.slice(0, 18) + '\u2026' : raw;
-  }
+  /* Always use domain as label — clean, short, no HTML artifacts */
+  const label = domain.length > 22 ? domain.slice(0, 20) + '\u2026' : domain;
+
+  const chipId     = 'chip' + (++_chipCounter);
+  _chipRegistry[chipId] = src;
 
   const faviconUrl = 'https://www.google.com/s2/favicons?domain=' + encodeURIComponent(domain) + '&sz=64';
-  const fallbackLetter = (domain[0] || '?').toUpperCase();
-  const fallbackHtml = '<span class=\\"chip-fallback\\">' + fallbackLetter + '</span>';
 
   return (
     '<a class="source-chip" href="' + _he(src.url) + '" target="_blank" rel="noopener">' +
-    '<img src="' + _he(faviconUrl) + '" width="16" height="16" ' +
-    'onerror="this.outerHTML=\'' + fallbackHtml + '\'" alt="">' +
+    '<img src="' + _he(faviconUrl) + '" width="16" height="16" data-chip-id="' + chipId + '" alt="">' +
     _he(label) +
     '</a>'
   );
@@ -258,7 +268,6 @@ function _buildChip(src) {
 function injectCitationChips(html, sources) {
   if (!sources || !sources.length) return html;
 
-  /* Match one or more consecutive [N] refs like [1][2][3] */
   return html.replace(/(\[\d+\])+/g, function(match) {
     const nums = [];
     const re = /\[(\d+)\]/g;
@@ -266,7 +275,7 @@ function injectCitationChips(html, sources) {
     while ((m = re.exec(match)) !== null) nums.push(parseInt(m[1], 10));
 
     /* Deduplicate */
-    const unique = [...new Set(nums)];
+    const unique   = [...new Set(nums)];
     const MAX_SHOW = 2;
     const toShow   = unique.slice(0, MAX_SHOW);
     const overflow = unique.length - MAX_SHOW;
@@ -278,13 +287,9 @@ function injectCitationChips(html, sources) {
     }
     if (overflow > 0) {
       inner +=
-        '<a class="source-chip source-chip-overflow" href="#sources" rel="noopener">' +
-        '+' + overflow +
-        '</a>';
+        '<a class="source-chip source-chip-overflow" href="#sources" rel="noopener">+' + overflow + '</a>';
     }
 
-    /* Wrap in chip-group so they stay inline and wrap cleanly */
     return inner ? '<span class="chip-group">' + inner + '</span>' : match;
   });
-}
-   
+       }

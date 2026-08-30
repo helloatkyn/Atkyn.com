@@ -1,14 +1,9 @@
-/* ════════════════════════════════════════════════════════════════
-chatbar.css — Gemini-style premium chatbar
-No blur · Clean pill · Smooth shimmer · Floating design
-════════════════════════════════════════════════════════════════ */
-
 /* ────────────────────────────────────────────────────────────────
 CHATBAR WRAPPER
 ──────────────────────────────────────────────────────────────── */
 .chatbar-wrap {
   flex-shrink: 0;
-  padding: 10px 16px calc(8px + env(safe-area-inset-bottom));
+  padding: 10px 24px calc(8px + env(safe-area-inset-bottom));
   position: relative;
   z-index: 10;
   will-change: transform;
@@ -19,7 +14,7 @@ CHATBAR WRAPPER
 }
 
 /* ────────────────────────────────────────────────────────────────
-PILL
+PILL — narrower, no focus shadow
 ──────────────────────────────────────────────────────────────── */
 .overlay-pill {
   width: 100%;
@@ -28,17 +23,15 @@ PILL
   background: var(--color-bg);
   border: 2px solid var(--color-primary);
   border-radius: 100px;
-  padding: 0 14px 0 16px;
-  height: 60px;
-  gap: 10px;
-  transition:
-    border-color 0.2s ease,
-    box-shadow 0.2s ease;
+  padding: 0 8px 0 12px;
+  height: 56px;
+  gap: 4px;
+  transition: border-color 0.2s ease;
 }
 
 .overlay-pill:focus-within {
   border-color: var(--color-primary-dark);
-  box-shadow: 0 0 0 3px rgba(0, 119, 181, 0.12);
+  /* NO box-shadow — clean */
 }
 
 @media (prefers-color-scheme: dark) {
@@ -46,22 +39,22 @@ PILL
     background: var(--color-bg-alt-dark);
     border-color: var(--color-primary);
   }
-  .overlay-pill:focus-within {
-    box-shadow: 0 0 0 3px rgba(138, 180, 248, 0.15);
-  }
 }
 
 /* ────────────────────────────────────────────────────────────────
-PLUS / ATTACH BUTTON
+PLUS BUTTON — left corner
 ──────────────────────────────────────────────────────────────── */
 .ico-plus {
   flex-shrink: 0;
   display: flex;
   align-items: center;
+  justify-content: center;
   border: none;
   background: none;
   cursor: pointer;
-  padding: 6px;
+  width: 36px;
+  height: 36px;
+  padding: 0;
   border-radius: 50%;
   color: var(--color-primary);
   transition: background 0.12s;
@@ -91,6 +84,7 @@ INPUT WRAPPER
   height: 100%;
   display: flex;
   align-items: center;
+  min-width: 0;
 }
 
 /* ────────────────────────────────────────────────────────────────
@@ -192,7 +186,7 @@ SHIMMER PLACEHOLDER
 }
 
 /* ────────────────────────────────────────────────────────────────
-CAMERA BUTTON
+CAMERA BUTTON — right corner
 ──────────────────────────────────────────────────────────────── */
 .ico-camera {
   flex-shrink: 0;
@@ -201,7 +195,10 @@ CAMERA BUTTON
   cursor: pointer;
   display: flex;
   align-items: center;
-  padding: 6px;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
   border-radius: 50%;
   color: var(--color-primary);
   transition: background 0.12s;
@@ -223,22 +220,20 @@ CAMERA BUTTON
 }
 
 /* ────────────────────────────────────────────────────────────────
-SEND BUTTON
+SEND BUTTON — right corner, replaces camera
 ──────────────────────────────────────────────────────────────── */
 .send-btn {
   flex-shrink: 0;
   display: none;
   align-items: center;
   justify-content: center;
-  width: 38px;
-  height: 38px;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
   border: none;
   background: var(--color-primary);
   cursor: pointer;
-  transition:
-    transform 0.15s ease,
-    opacity 0.15s ease;
+  transition: transform 0.15s ease, opacity 0.15s ease;
 }
 
 .send-btn:active {
@@ -250,8 +245,8 @@ SEND BUTTON
 }
 
 .send-btn svg {
-  width: 16px;
-  height: 16px;
+  width: 15px;
+  height: 15px;
 }
 
 .overlay-pill.has-text .ico-camera {
@@ -263,7 +258,7 @@ SEND BUTTON
 }
 
 /* ────────────────────────────────────────────────────────────────
-CROSS MODE — NON-AI TABS
+CROSS MODE
 ──────────────────────────────────────────────────────────────── */
 .send-btn.cross-mode {
   background: transparent;
@@ -300,7 +295,7 @@ DISCLAIMER
 }
 
 /* ────────────────────────────────────────────────────────────────
-PLUS MENU — No blur, Gemini-style flat sheet
+PLUS MENU
 ──────────────────────────────────────────────────────────────── */
 .plus-menu-backdrop {
   position: fixed;
@@ -315,28 +310,21 @@ PLUS MENU — No blur, Gemini-style flat sheet
 
 .plus-menu {
   position: fixed;
-  left: 20px;
-  bottom: calc(82px + env(safe-area-inset-bottom));
+  left: 24px;
+  bottom: calc(78px + env(safe-area-inset-bottom));
   width: 240px;
-
-  /* NO blur — Gemini uses flat opaque sheet */
   background: #ffffff;
-
   border-radius: 18px;
   border: 0.5px solid rgba(0, 0, 0, 0.08);
-
   box-shadow:
     0 1px 3px rgba(0, 0, 0, 0.08),
     0 8px 24px rgba(0, 0, 0, 0.12);
-
   overflow: hidden;
   z-index: 101;
-
   transform: translateY(8px) scale(0.96);
   transform-origin: bottom left;
   opacity: 0;
   pointer-events: none;
-
   transition:
     transform 0.22s cubic-bezier(0.22, 1, 0.36, 1),
     opacity 0.14s ease;
@@ -394,7 +382,7 @@ PLUS MENU ITEMS
 }
 
 /* ────────────────────────────────────────────────────────────────
-PLUS MENU ICON — Gemini colored circle style
+PLUS MENU ICON
 ──────────────────────────────────────────────────────────────── */
 .pm-icon {
   flex-shrink: 0;
@@ -409,9 +397,15 @@ PLUS MENU ICON — Gemini colored circle style
 .pm-icon svg {
   width: 20px;
   height: 20px;
+  stroke: var(--color-icon-stroke);
 }
 
-/* Divider between items */
+@media (prefers-color-scheme: dark) {
+  .pm-icon svg {
+    stroke: var(--color-icon-dark);
+  }
+}
+
 .pm-divider {
   height: 0.5px;
   background: rgba(0, 0, 0, 0.07);

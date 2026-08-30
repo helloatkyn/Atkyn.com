@@ -222,8 +222,7 @@ function renderMarkdown(text)     { return universalRender(text); }
 const _chipRegistry = {};
 let   _chipCounter  = 0;
 
-/* Global sources — search.js mein set karo:
-   window._atkynSources = sourcesArray; */
+/* Global sources — search.js mein set hota hai */
 window._atkynSources = [];
 
 document.addEventListener('error', function(e) {
@@ -294,7 +293,7 @@ function injectCitationChips(html, sources) {
 }
 
 /* ══════════════════════════════════════════════════════════════
-   SOURCE CHIP BOTTOM SHEET — all sources SERP style
+   SOURCE CHIP BOTTOM SHEET — web.js style cards + OG images
 ══════════════════════════════════════════════════════════════ */
 (function () {
   const sheet = document.createElement('div');
@@ -302,10 +301,60 @@ function injectCitationChips(html, sources) {
   sheet.innerHTML =
     '<div id="chipSheetBackdrop"></div>' +
     '<div id="chipSheetCard">' +
-      '<div id="chipSheetPill"></div>' +
+      '<div id="chipSheetDragBar"></div>' +
+      '<div id="chipSheetHeader">' +
+        '<span id="chipSheetHeading">Sources</span>' +
+      '</div>' +
       '<div id="chipSheetList"></div>' +
     '</div>';
   document.body.appendChild(sheet);
+
+  /* ── OG image fetch — same as web.js ── */
+  function _fetchOg(url) {
+    return fetch('/api/og?url=' + encodeURIComponent(url), {
+      signal: AbortSignal.timeout(6000),
+    })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => d?.image || null)
+      .catch(() => null);
+  }
+
+  /* ── Inject OG image into card — same layout logic as web.js ── */
+  function _injectOgImage(cardEl, image) {
+    if (!image) return;
+    const title = cardEl.querySelector('.csi-title');
+    const wrap  = document.createElement('div');
+    wrap.className = 'csi-thumb-wrap';
+
+    const img = document.createElement('img');
+    img.className = 'csi-thumb';
+    img.src       = image;
+    img.loading   = 'lazy';
+    img.decoding  = 'async';
+    img.alt       = '';
+    wrap.appendChild(img);
+
+    if (title) title.after(wrap);
+    else cardEl.querySelector('.csi-body').appendChild(wrap);
+
+    img.addEventListener('load', () => {
+      const ratio = img.naturalWidth / img.naturalHeight;
+      if (ratio < 1.3) {
+        /* portrait — inline right thumb */
+        wrap.remove();
+        wrap.className = 'csi-thumb-inline-wrap';
+        img.className  = 'csi-thumb-inline';
+        const snippet  = cardEl.querySelector('.csi-snippet');
+        const row      = document.createElement('div');
+        row.className  = 'csi-inline-row';
+        if (snippet) { snippet.before(row); row.appendChild(snippet); }
+        else cardEl.querySelector('.csi-body').appendChild(row);
+        row.appendChild(wrap);
+      }
+    }, { once: true });
+
+    img.addEventListener('error', () => wrap.remove(), { once: true });
+  }
 
   function _domain(url) {
     try { return new URL(url).hostname.replace(/^www\./, ''); } catch (_) { return url; }
@@ -315,46 +364,63 @@ function injectCitationChips(html, sources) {
     return 'https://www.google.com/s2/favicons?domain=' + encodeURIComponent(domain) + '&sz=64';
   }
 
-  function buildItem(src, isActive) {
+  /* ── Build one source card — web.js style ── */
+  function _buildItem(src, isActive) {
     const domain  = _domain(src.url);
     const favicon = _favicon(domain);
     const title   = src.title || domain;
-    const shortUrl = src.url.length > 45 ? src.url.slice(0, 43) + '\u2026' : src.url;
+    const path    = (() => {
+      try {
+        const u = new URL(src.url);
+        return (u.hostname.replace(/^www\./, '') + u.pathname).replace(/\/$/, '').substring(0, 55);
+      } catch (_) { return src.url; }
+    })();
 
-    return (
-      '<a class="csi' + (isActive ? ' csi--active' : '') + '" href="' + _he(src.url) + '" target="_blank" rel="noopener">' +
-        '<img class="csi-favicon" src="' + _he(favicon) + '" width="28" height="28" alt="" onerror="this.style.visibility=\'hidden\'">' +
-        '<div class="csi-body">' +
-          '<div class="csi-domain">' + _he(domain) + '</div>' +
-          '<div class="csi-title">' + _he(title) + '</div>' +
-          '<div class="csi-url">' + _he(shortUrl) + '</div>' +
+    const a = document.createElement('a');
+    a.className = 'csi' + (isActive ? ' csi--active' : '');
+    a.href      = src.url;
+    a.target    = '_blank';
+    a.rel       = 'noopener noreferrer';
+
+    a.innerHTML =
+      '<div class="csi-meta">' +
+        '<div class="csi-fav-wrap">' +
+          '<img class="csi-fav" src="' + _he(favicon) + '" width="16" height="16" loading="lazy" alt="">' +
         '</div>' +
-        '<svg class="csi-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>' +
-      '</a>'
-    );
+        '<div class="csi-meta-text">' +
+          '<span class="csi-domain">' + _he(domain) + '</span>' +
+          '<span class="csi-path">' + _he(path) + '</span>' +
+        '</div>' +
+        '<svg class="csi-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>' +
+      '</div>' +
+      '<div class="csi-body">' +
+        '<div class="csi-title">' + _he(title) + '</div>' +
+      '</div>';
+
+    /* favicon fallback */
+    const favImg  = a.querySelector('.csi-fav');
+    const fav2    = 'https://icons.duckduckgo.com/ip3/' + domain + '.ico';
+    favImg.addEventListener('error', function() {
+      if (this.src !== fav2) { this.src = fav2; }
+      else { this.closest('.csi-fav-wrap').style.display = 'none'; }
+    }, { once: true, passive: true });
+
+    /* OG image async */
+    _fetchOg(src.url).then(img => _injectOgImage(a, img));
+
+    return a;
   }
 
   function openSheet(clickedUrl) {
     const sources = window._atkynSources || [];
     if (!sources.length) return;
 
-    /* Pill — clicked source highlight */
-    const clickedDomain  = _domain(clickedUrl);
-    const clickedFavicon = _favicon(clickedDomain);
-    const clickedSrc     = sources.find(s => s.url === clickedUrl) || sources[0];
+    const clickedSrc = sources.find(s => s.url === clickedUrl) || sources[0];
+    const sorted     = [clickedSrc, ...sources.filter(s => s.url !== clickedSrc.url)];
 
-    document.getElementById('chipSheetPill').innerHTML =
-      '<img src="' + _he(clickedFavicon) + '" width="20" height="20" alt="" onerror="this.style.visibility=\'hidden\'">' +
-      '<span>' + _he(clickedDomain) + '</span>';
-
-    /* List — all sources, clicked wala top pe */
-    const sorted = [
-      clickedSrc,
-      ...sources.filter(s => s.url !== clickedSrc.url)
-    ];
-
-    document.getElementById('chipSheetList').innerHTML =
-      sorted.map((s, i) => buildItem(s, i === 0)).join('');
+    const list = document.getElementById('chipSheetList');
+    list.innerHTML = '';
+    sorted.forEach((s, i) => list.appendChild(_buildItem(s, i === 0)));
 
     sheet.classList.add('open');
   }
@@ -362,6 +428,24 @@ function injectCitationChips(html, sources) {
   function closeSheet() { sheet.classList.remove('open'); }
 
   document.getElementById('chipSheetBackdrop').addEventListener('click', closeSheet);
+
+  /* drag-to-close */
+  let _startY = 0, _dragging = false;
+  const card = document.getElementById('chipSheetCard');
+  card.addEventListener('touchstart', e => {
+    _startY = e.touches[0].clientY; _dragging = true;
+  }, { passive: true });
+  card.addEventListener('touchmove', e => {
+    if (!_dragging) return;
+    const dy = e.touches[0].clientY - _startY;
+    if (dy > 0) card.style.transform = 'translateY(' + dy + 'px)';
+  }, { passive: true });
+  card.addEventListener('touchend', e => {
+    if (!_dragging) return; _dragging = false;
+    const dy = e.changedTouches[0].clientY - _startY;
+    card.style.transform = '';
+    if (dy > 100) closeSheet();
+  }, { passive: true });
 
   document.addEventListener('click', function (e) {
     const chip = e.target.closest('.source-chip[data-chip-url]');

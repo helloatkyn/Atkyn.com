@@ -218,15 +218,14 @@ function renderMarkdown(text)     { return universalRender(text); }
 
 /* ══════════════════════════════════════════════════════════════
    CITATION CHIP RENDERER
-   Inline chips jo bot response ke andar [1][2] replace karte hain
 ══════════════════════════════════════════════════════════════ */
 const _chipRegistry = {};
 let   _chipCounter  = 0;
 
-/* Global sources — search.js mein set hota hai */
+/* Global sources — search.js mein set karo:
+   window._atkynSources = sourcesArray; */
 window._atkynSources = [];
 
-/* Favicon img error → letter fallback */
 document.addEventListener('error', function(e) {
   const img = e.target;
   if (!img || img.tagName !== 'IMG' || !img.dataset.chipId) return;
@@ -295,213 +294,79 @@ function injectCitationChips(html, sources) {
 }
 
 /* ══════════════════════════════════════════════════════════════
-   SOURCE CHIP BOTTOM SHEET
-   web.js ka _buildCard + _injectOgImage exactly port kiya —
-   wc-* classes use karta hai, web.css se style aata hai
+   SOURCE CHIP BOTTOM SHEET — all sources SERP style
 ══════════════════════════════════════════════════════════════ */
 (function () {
-
-  /* ── Sheet DOM inject ── */
   const sheet = document.createElement('div');
   sheet.id = 'chipSheet';
   sheet.innerHTML =
     '<div id="chipSheetBackdrop"></div>' +
     '<div id="chipSheetCard">' +
-      '<div id="chipSheetDragBar"></div>' +
-      '<div id="chipSheetHeader">' +
-        '<span id="chipSheetHeading">Sources</span>' +
-      '</div>' +
+      '<div id="chipSheetPill"></div>' +
       '<div id="chipSheetList"></div>' +
     '</div>';
   document.body.appendChild(sheet);
 
-  /* ── Helpers ── */
   function _domain(url) {
     try { return new URL(url).hostname.replace(/^www\./, ''); } catch (_) { return url; }
   }
 
-  function _safeUrl(u) {
-    try {
-      const p = new URL(u);
-      return (p.protocol === 'https:' || p.protocol === 'http:') ? u : '#';
-    } catch (_) { return '#'; }
+  function _favicon(domain) {
+    return 'https://www.google.com/s2/favicons?domain=' + encodeURIComponent(domain) + '&sz=64';
   }
 
-  /* ── OG image fetch ── */
-  function _fetchOg(url) {
-    return fetch('/api/og?url=' + encodeURIComponent(url), {
-      signal: AbortSignal.timeout(6000),
-    })
-      .then(r => r.ok ? r.json() : null)
-      .then(d => d?.image || null)
-      .catch(() => null);
-  }
+  function buildItem(src, isActive) {
+    const domain  = _domain(src.url);
+    const favicon = _favicon(domain);
+    const title   = src.title || domain;
+    const shortUrl = src.url.length > 45 ? src.url.slice(0, 43) + '\u2026' : src.url;
 
-  /* ── Inject OG image — portrait → inline right, landscape → full width ── */
-  function _injectOgImage(cardEl, image) {
-    if (!image) return;
-
-    const title = cardEl.querySelector('.wc-title');
-    const wrap  = document.createElement('div');
-    wrap.className = 'wc-thumb-full-wrap';
-
-    const img = document.createElement('img');
-    img.className = 'wc-thumb-full';
-    img.src       = image;
-    img.loading   = 'lazy';
-    img.decoding  = 'async';
-    img.alt       = '';
-
-    wrap.appendChild(img);
-    if (title?.nextSibling) {
-      title.parentNode.insertBefore(wrap, title.nextSibling);
-    } else if (title) {
-      title.parentNode.appendChild(wrap);
-    }
-
-    img.addEventListener('load', () => {
-      const ratio = img.naturalWidth / img.naturalHeight;
-      if (ratio < 1.3) {
-        /* Portrait — inline right thumb */
-        wrap.remove();
-        img.className = 'wc-thumb-inline';
-
-        const thumbWrap = document.createElement('div');
-        thumbWrap.className = 'wc-thumb-inline-wrap';
-        thumbWrap.appendChild(img);
-
-        const snippet = cardEl.querySelector('.wc-snippet');
-        const row = document.createElement('div');
-        row.className = 'wc-inline-row';
-
-        if (snippet) {
-          snippet.parentNode.insertBefore(row, snippet);
-          row.appendChild(snippet);
-        }
-        row.appendChild(thumbWrap);
-      }
-    }, { once: true });
-
-    img.addEventListener('error', () => wrap.remove(), { once: true });
-  }
-
-  /* ── Build one source card — exact wc-card style ── */
-  function _buildCard(src, isActive) {
-    let host = '', path = '';
-    try {
-      const u = new URL(src.url);
-      host = u.hostname.replace(/^www\./, '');
-      path = (host + u.pathname).replace(/\/$/, '').substring(0, 60);
-    } catch (_) {
-      host = src.url;
-      path = src.url;
-    }
-
-    const fav1    = 'https://www.google.com/s2/favicons?sz=64&domain=' + encodeURIComponent(host);
-    const fav2    = 'https://icons.duckduckgo.com/ip3/' + host + '.ico';
-    const snippet = src.snippet || src.content || src.description || src.summary || '';
-
-    const a = document.createElement('a');
-    a.className = 'wc-card' + (isActive ? ' wc-card--active' : '');
-    a.href      = _safeUrl(src.url);
-    a.target    = '_blank';
-    a.rel       = 'noopener noreferrer';
-    a.innerHTML =
-      '<div class="wc-meta">' +
-        '<div class="wc-fav-wrap" style="background:transparent">' +
-          '<img class="wc-fav" src="' + _he(fav1) + '" width="16" height="16" loading="lazy" decoding="async" alt="">' +
+    return (
+      '<a class="csi' + (isActive ? ' csi--active' : '') + '" href="' + _he(src.url) + '" target="_blank" rel="noopener">' +
+        '<img class="csi-favicon" src="' + _he(favicon) + '" width="28" height="28" alt="" onerror="this.style.visibility=\'hidden\'">' +
+        '<div class="csi-body">' +
+          '<div class="csi-domain">' + _he(domain) + '</div>' +
+          '<div class="csi-title">' + _he(title) + '</div>' +
+          '<div class="csi-url">' + _he(shortUrl) + '</div>' +
         '</div>' +
-        '<div class="wc-meta-text">' +
-          '<span class="wc-domain">' + _he(host) + '</span>' +
-          '<span class="wc-path">' + _he(path) + '</span>' +
-        '</div>' +
-        '<span class="wc-dots" aria-hidden="true">' +
-          '<svg viewBox="0 0 4 16" xmlns="http://www.w3.org/2000/svg">' +
-            '<circle cx="2" cy="2" r="1.5"/>' +
-            '<circle cx="2" cy="8" r="1.5"/>' +
-            '<circle cx="2" cy="14" r="1.5"/>' +
-          '</svg>' +
-        '</span>' +
-      '</div>' +
-      '<div class="wc-title">' + _he(src.title || host) + '</div>' +
-      (snippet ? '<div class="wc-snippet">' + _he(snippet) + '</div>' : '');
-
-    /* Favicon: load hone par bg restore, error par fallback chain */
-    const favEl = a.querySelector('.wc-fav');
-    favEl.addEventListener('load', function () {
-      this.closest('.wc-fav-wrap').style.background = '#f1f1f1';
-    }, { once: true, passive: true });
-    favEl.addEventListener('error', function () {
-      if (this.src !== fav2) { this.src = fav2; }
-      else { this.closest('.wc-fav-wrap').style.display = 'none'; }
-    }, { once: true, passive: true });
-
-    /* OG image — agar source mein image hai to seedha inject, warna fetch */
-    if (src.image) {
-      _injectOgImage(a, src.image);
-    } else {
-      _fetchOg(src.url).then(img => _injectOgImage(a, img));
-    }
-
-    return a;
+        '<svg class="csi-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>' +
+      '</a>'
+    );
   }
 
-  /* ── Open sheet — clicked source pehle, baaki uske neeche ── */
   function openSheet(clickedUrl) {
-    /* Primary: _atkynSources (search.js sets this)
-       Fallback: _chipRegistry (inline chips se reconstruct) */
-    let sources = window._atkynSources || [];
-    if (!sources.length) {
-      sources = Object.values(_chipRegistry).filter(s => s && s.url);
-      /* dedupe by url */
-      const seen = new Set();
-      sources = sources.filter(s => { if (seen.has(s.url)) return false; seen.add(s.url); return true; });
-    }
+    const sources = window._atkynSources || [];
     if (!sources.length) return;
 
-    const clickedSrc = sources.find(s => s.url === clickedUrl) || sources[0];
-    const sorted     = [clickedSrc, ...sources.filter(s => s.url !== clickedSrc.url)];
+    /* Pill — clicked source highlight */
+    const clickedDomain  = _domain(clickedUrl);
+    const clickedFavicon = _favicon(clickedDomain);
+    const clickedSrc     = sources.find(s => s.url === clickedUrl) || sources[0];
 
-    const list = document.getElementById('chipSheetList');
-    list.innerHTML = '';
-    sorted.forEach((s, i) => list.appendChild(_buildCard(s, i === 0)));
+    document.getElementById('chipSheetPill').innerHTML =
+      '<img src="' + _he(clickedFavicon) + '" width="20" height="20" alt="" onerror="this.style.visibility=\'hidden\'">' +
+      '<span>' + _he(clickedDomain) + '</span>';
+
+    /* List — all sources, clicked wala top pe */
+    const sorted = [
+      clickedSrc,
+      ...sources.filter(s => s.url !== clickedSrc.url)
+    ];
+
+    document.getElementById('chipSheetList').innerHTML =
+      sorted.map((s, i) => buildItem(s, i === 0)).join('');
 
     sheet.classList.add('open');
   }
 
   function closeSheet() { sheet.classList.remove('open'); }
 
-  /* ── Backdrop click → close ── */
   document.getElementById('chipSheetBackdrop').addEventListener('click', closeSheet);
 
-  /* ── Drag-to-close ── */
-  let _startY = 0, _dragging = false;
-  const card = document.getElementById('chipSheetCard');
-
-  card.addEventListener('touchstart', e => {
-    _startY = e.touches[0].clientY; _dragging = true;
-  }, { passive: true });
-
-  card.addEventListener('touchmove', e => {
-    if (!_dragging) return;
-    const dy = e.touches[0].clientY - _startY;
-    if (dy > 0) card.style.transform = 'translateY(' + dy + 'px)';
-  }, { passive: true });
-
-  card.addEventListener('touchend', e => {
-    if (!_dragging) return; _dragging = false;
-    const dy = e.changedTouches[0].clientY - _startY;
-    card.style.transform = '';
-    if (dy > 100) closeSheet();
-  }, { passive: true });
-
-  /* ── Chip click → open sheet ── */
   document.addEventListener('click', function (e) {
     const chip = e.target.closest('.source-chip[data-chip-url]');
     if (!chip) return;
     e.preventDefault();
     openSheet(chip.dataset.chipUrl);
   });
-
-}());
-   
+})();

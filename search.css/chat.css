@@ -286,6 +286,16 @@
   background: #f8f9fa;
 }
 
+/* ── Bottom sheet specific overrides ──
+   web.css mein yeh already hain but sheet ke scroll container
+   mein flex shrink correctly kaam kare isiliye explicit */
+#chipSheetList .wc-meta       { min-width: 0; }
+#chipSheetList .wc-meta-text  { min-width: 0; overflow: hidden; }
+#chipSheetList .wc-domain     { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
+#chipSheetList .wc-path       { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
+#chipSheetList .wc-card       { margin: 4px 8px 0; }
+#chipSheetList .wc-card:last-child { margin-bottom: 12px; }
+
 /* Active card highlight — clicked source pehle dikhta hai */
 .wc-card--active {
   background: #f0f4ff !important;
@@ -302,4 +312,5 @@
   #chipSheetList        { background: #000; }
   .wc-card--active      { background: #1e2235 !important; }
   .wc-card--active:active { background: #232540 !important; }
-}
+   }
+     

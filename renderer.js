@@ -1,6 +1,6 @@
 /* ═══════════════════════════════════════════════════════════════
    renderer.js — Atkyn Search
-   marked@13 + KaTeX (CDN)
+   marked@13 + V1 syntaxHighlight (custom tokenizer, no hljs)
 
    MATH POLICY:
    • $price   → plain text, never math  (price protection)
@@ -15,6 +15,14 @@ function _he(s) {
   return String(s)
     .replace(/&/g, '&amp;').replace(/</g, '&lt;')
     .replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+/* ── Lightweight escape for pre/code content ── */
+function _esc(s) {
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
 }
 
 /* ── Cheap hash ── */
@@ -65,6 +73,88 @@ function _protect(raw) {
 }
 
 /* ══════════════════════════════════════════════════════════════
+   V1 SYNTAX HIGHLIGHTER — custom tokenizer, zero CDN dependency
+══════════════════════════════════════════════════════════════ */
+const _RX = {
+  jsKw:        /\b(const|let|var|function|return|if|else|for|while|do|switch|case|break|continue|new|delete|typeof|instanceof|in|of|class|extends|super|import|export|default|from|async|await|try|catch|finally|throw|yield|static|get|set|this)\b/g,
+  dartKw:      /\b(void|final|late|required|abstract|implements|mixin|with|extension|typedef|enum|factory|operator|covariant|external|dynamic|const|var|return|if|else|for|while|do|switch|case|break|continue|new|class|extends|super|import|export|async|await|try|catch|finally|throw|yield|static|get|set|this|in|is|as|null|true|false)\b/g,
+  jsBool:      /\b(true|false|null|undefined|NaN|Infinity)\b/g,
+  pyKw:        /\b(def|class|return|if|elif|else|for|while|in|not|and|or|import|from|as|with|try|except|finally|raise|pass|break|continue|lambda|yield|global|nonlocal|del|assert|is|True|False|None)\b/g,
+  dqStr:       /"(?:[^"\\]|\\.)*"/g,
+  sqStr:       /'(?:[^'\\\n]|\\.){2,}'/g,
+  btStr:       /`(?:[^`\\]|\\.)*`/g,
+  lineComment: /\/\/.*/g,
+  hashComment: /#.*/g,
+  blockComment:/\/\*[\s\S]*?\*\//g,
+  numLit:      /\b\d+(\.\d+)?\b/g,
+  fnCall:      /\b([a-zA-Z_$][a-zA-Z0-9_$]*)(?=\s*\()/g,
+  clsName:     /\b([A-Z][a-zA-Z0-9_]*)\b/g,
+  propKey:     /([a-zA-Z_$][a-zA-Z0-9_$]*)(?=\s*:)/g,
+};
+
+function _resetRx() {
+  for (const r of Object.values(_RX)) r.lastIndex = 0;
+}
+
+function _tokenizeLine(line, lang) {
+  _resetRx();
+
+  const ph      = [];
+  const protect = html => { ph.push(html); return `\x01${ph.length - 1}\x01`; };
+  const span    = (cls, text) => protect(`<span class="${cls}">${_esc(text)}</span>`);
+
+  let s = line;
+
+  s = s.replace(_RX.blockComment, m => span('tk-cmt', m));
+
+  const hashLangs = ['python', 'py', 'bash', 'sh', 'yaml', 'yml', 'ruby', 'rb', 'r'];
+  if (hashLangs.includes(lang)) {
+    s = s.replace(_RX.hashComment, m => span('tk-cmt', m));
+  } else {
+    s = s.replace(_RX.lineComment, m => span('tk-cmt', m));
+  }
+
+  s = s.replace(_RX.btStr,  m => span('tk-str', m));
+  s = s.replace(_RX.dqStr,  m => span('tk-str', m));
+  s = s.replace(_RX.sqStr,  m => span('tk-str', m));
+
+  s = _esc(s);
+
+  s = s.replace(_RX.numLit,  m => protect(`<span class="tk-num">${m}</span>`));
+  s = s.replace(_RX.clsName, (_, p) => protect(`<span class="tk-cls">${p}</span>`));
+  s = s.replace(_RX.fnCall,  (_, p) => protect(`<span class="tk-fn">${p}</span>`));
+
+  if (lang === 'python' || lang === 'py') {
+    s = s.replace(_RX.pyKw,   m => protect(`<span class="tk-kw">${m}</span>`));
+  } else if (lang === 'dart') {
+    s = s.replace(_RX.dartKw, m => protect(`<span class="tk-kw">${m}</span>`));
+  } else {
+    s = s.replace(_RX.jsKw,   m => protect(`<span class="tk-kw">${m}</span>`));
+  }
+
+  s = s.replace(_RX.jsBool,  m => protect(`<span class="tk-bool">${m}</span>`));
+  s = s.replace(_RX.propKey, (_, p) => protect(`<span class="tk-prop">${p}</span>`));
+
+  s = s.replace(/\x01(\d+)\x01/g, (_, i) => ph[+i]);
+
+  return s || ' ';
+}
+
+function syntaxHighlight(code, lang) {
+  if (!code) return '<div class="code-lines"></div>';
+  const l     = (lang || '').toLowerCase();
+  const lines = code.split('\n');
+  let out     = '';
+
+  for (let i = 0; i < lines.length; i++) {
+    const content = _tokenizeLine(lines[i], l);
+    out += `<div class="code-line"><span class="code-line-num">${i + 1}</span><span class="code-line-content">${content}</span></div>`;
+  }
+
+  return `<div class="code-lines">${out}</div>`;
+}
+
+/* ══════════════════════════════════════════════════════════════
    KaTeX helper
 ══════════════════════════════════════════════════════════════ */
 function _katex(tex, display) {
@@ -79,8 +169,6 @@ function _katex(tex, display) {
 
 /* ══════════════════════════════════════════════════════════════
    MARKED EXTENSIONS
-   All three math delimiters handled here — no post-render pass needed.
-   marked-katex-extension CDN plugin is NOT used.
 ══════════════════════════════════════════════════════════════ */
 function _buildMarked() {
 
@@ -119,36 +207,36 @@ function _buildMarked() {
 
   marked.use({ extensions: [extBlockDollar, extBlockBracket, extInlineParen] });
 
-  /* ── Custom renderer (code, table, hr) ── */
+  /* ── Custom renderer ── */
   const renderer = new marked.Renderer();
 
-  renderer.code = function (token) {
-    // Handle both new marked v13+ (object) and old versions (string)
+  /* ── Code block — V1 structure + custom syntaxHighlight ── */
+  renderer.code = function (codeOrToken, lang) {
     let code, language;
-    
-    if (token && typeof token === 'object') {
-      // marked v13+ passes token object
-      code = token.text || token.code || '';
-      language = (token.lang || '').trim().toLowerCase();
+    if (codeOrToken && typeof codeOrToken === 'object') {
+      code     = codeOrToken.text ?? codeOrToken.code ?? '';
+      language = (codeOrToken.lang || '').trim().toLowerCase();
     } else {
-      // Old version passes string directly
-      code = token || '';
-      language = (language || '').trim().toLowerCase();
+      code     = codeOrToken;
+      language = (lang || '').trim().toLowerCase();
     }
 
-    const id = 'cb' + Math.random().toString(36).slice(2, 8);
-    const hi = _he(code);
+    const id          = 'cb' + Math.random().toString(36).slice(2, 8);
+    const langLabel   = language || 'code';
+    const highlighted = syntaxHighlight(code, language);
 
     return (
       '<div class="code-block" id="' + id + '">' +
-        '<button class="code-copy-btn" data-target="' + id + '" aria-label="Copy">' +
-          '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"' +
-          ' stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">' +
-            '<rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>' +
-            '<path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>' +
-          '</svg>' +
-        '</button>' +
-        '<pre><code class="hljs">' + hi + '</code></pre>' +
+        '<div class="code-block-header">' +
+          '<span class="code-block-lang">' + _he(langLabel) + '</span>' +
+          '<button class="code-copy-btn" data-target="' + id + '">' +
+            '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">' +
+              '<rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>' +
+              '<path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>' +
+            '</svg> Copy' +
+          '</button>' +
+        '</div>' +
+        '<pre>' + highlighted + '</pre>' +
       '</div>'
     );
   };
@@ -167,17 +255,10 @@ _buildMarked();
    STREAMING GUARD — hold back unclosed $$ or \[ at buffer tail
 ══════════════════════════════════════════════════════════════ */
 function _holdIncomplete(text) {
-  // Unclosed fenced code block — ``` without a closing ```
-  const m0 = text.match(/((?:^|\n)```[\s\S]*)$/);
-  if (m0 && !m0[1].slice(3).includes('```'))
-    return { safe: text.slice(0, text.lastIndexOf(m0[0])), held: m0[0] };
-  // Unclosed $$
   const m1 = text.match(/((?:^|\n)\$\$(?![\s\S]*?\$\$)[\s\S]*)$/);
   if (m1) return { safe: text.slice(0, text.lastIndexOf(m1[0])), held: m1[0] };
-  // Unclosed \[
   const m2 = text.match(/(\\\[(?![\s\S]*?\\\])[\s\S]*)$/);
   if (m2) return { safe: text.slice(0, text.lastIndexOf(m2[0])), held: m2[0] };
-  // Unclosed \(
   const m3 = text.match(/(\\\((?![\s\S]*?\\\))[\s\S]{0,300})$/);
   if (m3) return { safe: text.slice(0, text.lastIndexOf(m3[0])), held: m3[0] };
   return { safe: text, held: '' };
@@ -193,7 +274,10 @@ function _safePipeline(raw, isStreaming = false) {
   src = _normalizeNewlines(src);
   if (!src) return '';
   let html;
-  try { html = marked.parse(src); }
+  try {
+    if (typeof marked === 'undefined') throw new Error('marked not loaded');
+    html = marked.parse(src);
+  }
   catch (_) { html = '<pre class="render-fallback">' + _he(raw) + '</pre>'; }
   return restore(html);
 }
@@ -261,3 +345,4 @@ function createStreamingRenderer(onUpdate, debounceMs = 40) {
 /* ── Public API ── */
 function universalRender(content) { return new UniversalMessageRenderer().render(content); }
 function renderMarkdown(text)     { return universalRender(text); }
+         

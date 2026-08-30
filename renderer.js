@@ -50,7 +50,6 @@ function _katex(tex, display) {
    MARKED EXTENSIONS
 ══════════════════════════════════════════════════════════════ */
 function _buildMarked() {
-
   const extBlockDollar = {
     name: 'blockDollar', level: 'block',
     start: src => src.indexOf('$$'),
@@ -301,7 +300,7 @@ function injectCitationChips(html, sources) {
     '<div id="chipSheetBackdrop"></div>' +
     '<div id="chipSheetCard">' +
       '<div id="chipSheetPill"></div>' +
-      '<div id="chipSheetList"></div>' +
+      '<div class="csi-list" id="chipSheetList"></div>' +
     '</div>';
   document.body.appendChild(sheet);
 
@@ -318,6 +317,7 @@ function injectCitationChips(html, sources) {
     const favicon  = _favicon(domain);
     const favicon2 = 'https://icons.duckduckgo.com/ip3/' + domain + '.ico';
     const title    = src.title || domain;
+    const snippet  = src.snippet || '';
     const letter   = (domain[0] || '?').toUpperCase();
     let path = domain;
     try {
@@ -327,24 +327,21 @@ function injectCitationChips(html, sources) {
 
     return (
       '<a class="csi' + (isActive ? ' csi--active' : '') + '" href="' + _he(src.url) + '" target="_blank" rel="noopener">' +
-        '<div class="wc-meta">' +
-          '<div class="wc-fav-wrap">' +
-            '<img class="wc-fav" src="' + _he(favicon) + '" width="16" height="16" alt="" ' +
-              'onerror="if(this.src.indexOf(\'duckduckgo\')===-1){this.src=\'' + _he(favicon2) + '\'}else{this.closest(\'.wc-fav-wrap\').innerHTML=\'<span style=\\\"width:16px;height:16px;border-radius:50%;background:#bdc1c6;color:#fff;font-size:9px;font-weight:700;display:inline-flex;align-items:center;justify-content:center\\\">' + _he(letter) + '</span>\'}">' +
+        '<div class="csi-meta">' +
+          '<div class="csi-fav-wrap">' +
+            '<img class="csi-favicon" src="' + _he(favicon) + '" width="16" height="16" alt="" ' +
+              'onerror="if(this.src.indexOf(\'duckduckgo\')===-1){this.src=\'' + _he(favicon2) + '\'}else{this.closest(\'.csi-fav-wrap\').innerHTML=\'<span class=\\\'chip-fallback\\\'>\' + _he(letter) + \'</span>\'}">' +
           '</div>' +
-          '<div class="wc-meta-text">' +
-            '<span class="wc-domain">' + _he(domain) + '</span>' +
-            '<span class="wc-path">' + _he(path) + '</span>' +
+          '<div class="csi-meta-text">' +
+            '<span class="csi-domain">' + _he(domain) + '</span>' +
+            '<span class="csi-url">' + _he(path) + '</span>' +
           '</div>' +
-          '<span class="wc-dots" aria-hidden="true">' +
-            '<svg viewBox="0 0 4 16" xmlns="http://www.w3.org/2000/svg">' +
-              '<circle cx="2" cy="2" r="1.5"/>' +
-              '<circle cx="2" cy="8" r="1.5"/>' +
-              '<circle cx="2" cy="14" r="1.5"/>' +
-            '</svg>' +
-          '</span>' +
+          '<div class="csi-dots">' +
+            '<svg viewBox="0 0 24 24"><circle cx="12" cy="5" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="19" r="1.5"/></svg>' +
+          '</div>' +
         '</div>' +
-        '<div class="wc-title">' + _he(title) + '</div>' +
+        '<div class="csi-title">' + _he(title) + '</div>' +
+        (snippet ? '<p class="csi-snippet">' + _he(snippet) + '</p>' : '') +
       '</a>'
     );
   }

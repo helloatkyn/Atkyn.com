@@ -1,7 +1,16 @@
 /* ════════════════════════════════════════════════════════════════
 chatbar.css — Gemini-style premium chatbar
-Glass wrap · Clean pill · Smooth shimmer · Floating design
+Glass wrap · Animated gradient border on focus · Shimmer
 ════════════════════════════════════════════════════════════════ */
+
+/* ────────────────────────────────────────────────────────────────
+CSS CUSTOM PROPERTY FOR ANGLE (GPU smooth)
+──────────────────────────────────────────────────────────────── */
+@property --angle {
+  syntax: '<angle>';
+  initial-value: 0deg;
+  inherits: false;
+}
 
 /* ────────────────────────────────────────────────────────────────
 CHATBAR WRAPPER — Glassmorphism
@@ -30,29 +39,57 @@ CHATBAR WRAPPER — Glassmorphism
 }
 
 /* ────────────────────────────────────────────────────────────────
-PILL
+PILL WRAPPER — gradient border container
+──────────────────────────────────────────────────────────────── */
+.overlay-pill-wrap {
+  position: relative;
+  border-radius: 100px;
+  padding: 2px;
+
+  /* Default: solid single color border via background */
+  background: var(--color-primary, #0077B5);
+
+  transition: opacity 0.2s ease;
+}
+
+/* Focused state — animated gradient border */
+.overlay-pill-wrap.focused {
+  background: conic-gradient(
+    from var(--angle),
+    #4285f4,
+    #ea4335,
+    #fbbc05,
+    #34a853,
+    #4285f4
+  );
+  animation: rotate-border 2.5s linear infinite;
+}
+
+@keyframes rotate-border {
+  to {
+    --angle: 360deg;
+  }
+}
+
+/* ────────────────────────────────────────────────────────────────
+PILL — inner solid content
 ──────────────────────────────────────────────────────────────── */
 .overlay-pill {
   width: 100%;
   display: flex;
   align-items: center;
-  background: var(--color-bg);
-  border: 2px solid var(--color-primary);
-  border-radius: 100px;
+
+  background: var(--color-bg, #ffffff);
+  border-radius: 98px; /* outer radius minus 2px padding */
+
   padding: 0 8px 0 12px;
   height: 56px;
   gap: 4px;
-  transition: border-color 0.2s ease;
-}
-
-.overlay-pill:focus-within {
-  border-color: var(--color-primary-dark);
 }
 
 @media (prefers-color-scheme: dark) {
   .overlay-pill {
-    background: var(--color-bg-alt-dark);
-    border-color: var(--color-primary);
+    background: var(--color-bg-alt-dark, #1e1f20);
   }
 }
 
@@ -431,4 +468,4 @@ PLUS MENU ICON
   .pm-divider {
     background: rgba(255, 255, 255, 0.07);
   }
-  }
+}

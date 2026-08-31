@@ -5,6 +5,7 @@ import { SYSTEM_PROMPT } from './systemPrompt.js';
 const MISTRAL_MODEL    = 'mistral-small-2603';
 const MISTRAL_ENDPOINT = 'https://api.mistral.ai/v1/chat/completions';
 const FINNHUB_BASE     = 'https://finnhub.io/api/v1';
+const SERPER_ENDPOINT  = 'https://google.serper.dev/search';
 
 // ─── Tool Definitions ─────────────────────────────────────────────────────────
 
@@ -77,50 +78,29 @@ function validateToolArgs(toolName, rawArgs) {
 
 // ─── Tool Executors ───────────────────────────────────────────────────────────
 
-async function fetchPageText(url) {
+async function executeSerper(searchQuery, serperApiKey) {
   try {
-    const resp = await fetch(url, {
-      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; AtkynBot/1.0)' },
-      signal: AbortSignal.timeout(3000),
+    const resp = await fetch(SERPER_ENDPOINT, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-API-KEY':    serperApiKey,
+      },
+      body: JSON.stringify({ q: searchQuery, num: 8 }),
+      signal: AbortSignal.timeout(5000),
     });
-    if (!resp.ok || !resp.headers.get('content-type')?.includes('text/html')) {
-      return '';
-    }
-    const html = await resp.text();
-    return html
-      .replace(/<script[\s\S]*?<\/script>/gi, '')
-      .replace(/<style[\s\S]*?<\/style>/gi, '')
-      .replace(/<[^>]+>/g, ' ')
-      .replace(/\s+/g, ' ')
-      .trim()
-      .slice(0, 15000);
-  } catch {
-    return '';
-  }
-}
 
-async function executeSearXNG(searchQuery, searxngUrl) {
-  try {
-    const resp = await fetch(
-      `${searxngUrl}/search?q=${encodeURIComponent(searchQuery)}&format=json&categories=general&language=en`,
-      { headers: { 'Accept': 'application/json' }, signal: AbortSignal.timeout(5000) }
-    );
     if (!resp.ok) return [];
 
-    const data = await resp.json();
-    const raw = (data.results || []).slice(0, 8);
+    const data    = await resp.json();
+    const organic = data.organic || [];
 
-    const enriched = await Promise.all(
-      raw.map(async (r) => {
-        const pageText = await fetchPageText(r.url);
-        return {
-          title:   r.title || 'Untitled',
-          url:     r.url   || '#',
-          snippet: (pageText && pageText.length > 100) ? pageText : (r.content || 'No snippet available.'),
-        };
-      })
-    );
-    return enriched.filter((r) => r.url !== '#');
+    return organic.slice(0, 8).map((r) => ({
+      title:   r.title   || 'Untitled',
+      url:     r.link    || '#',
+      snippet: r.snippet || 'No snippet available.',
+    })).filter((r) => r.url !== '#');
+
   } catch {
     return [];
   }
@@ -130,8 +110,8 @@ async function executeStockData(symbol, finnhubApiKey) {
   const token = `token=${finnhubApiKey}`;
   try {
     const [quoteResp, profileResp, metricResp] = await Promise.all([
-      fetch(`${FINNHUB_BASE}/quote?symbol=${symbol}&${token}`,               { signal: AbortSignal.timeout(4000) }),
-      fetch(`${FINNHUB_BASE}/stock/profile2?symbol=${symbol}&${token}`,      { signal: AbortSignal.timeout(4000) }),
+      fetch(`${FINNHUB_BASE}/quote?symbol=${symbol}&${token}`,                { signal: AbortSignal.timeout(4000) }),
+      fetch(`${FINNHUB_BASE}/stock/profile2?symbol=${symbol}&${token}`,       { signal: AbortSignal.timeout(4000) }),
       fetch(`${FINNHUB_BASE}/stock/metric?symbol=${symbol}&metric=all&${token}`, { signal: AbortSignal.timeout(4000) }),
     ]);
 
@@ -141,7 +121,6 @@ async function executeStockData(symbol, finnhubApiKey) {
     const p = (await profileResp.json()) || {};
     const m = ((await metricResp.json()) || {}).metric || {};
 
-    // FIX: only reject if current price itself is zero (market closed zeros on d/dp are valid)
     if (!q.c) throw new Error(`No price data for '${symbol}'. Symbol may be invalid.`);
 
     const marketCapM = p.marketCapitalization || 0;
@@ -252,7 +231,7 @@ export async function onRequestPost(context) {
           tools:       TOOLS,
           tool_choice: 'auto',
           stream:      false,
-          max_tokens:  4000, // enough for direct answers; tool calls only need a few tokens
+          max_tokens:  4000,
           temperature: 0.1,
         }),
       });
@@ -261,15 +240,14 @@ export async function onRequestPost(context) {
         throw new Error(`Mistral Call 1 error: ${call1Resp.status} ${await call1Resp.text()}`);
       }
 
-      const call1Data      = await call1Resp.json();
-      const assistantMsg   = call1Data.choices?.[0]?.message;
-      const toolCalls      = assistantMsg?.tool_calls;
+      const call1Data    = await call1Resp.json();
+      const assistantMsg = call1Data.choices?.[0]?.message;
+      const toolCalls    = assistantMsg?.tool_calls;
 
       // ── No tool call → stream direct answer ──────────────────────────────
       if (!toolCalls || toolCalls.length === 0) {
         console.log(`[${requestId}] No tool call — streaming direct answer`);
         const answer = assistantMsg?.content ?? 'I could not process that request.';
-        // Stream in natural sentence-sized chunks, not arbitrary byte slices
         for (const chunk of answer.split(/(?<=\s)/)) {
           await writer.write(enc.encode(sseChunk(chunk)));
         }
@@ -311,7 +289,7 @@ export async function onRequestPost(context) {
       let frontendData      = null;
 
       if (functionName === 'web_search') {
-        const results = await executeSearXNG(validatedArgs.query, env.SEARXNG_URL);
+        const results = await executeSerper(validatedArgs.query, env.SERPER_API_KEY);
         toolResultContent = formatSearchResultsForLLM(results);
         if (results.length > 0) {
           frontendEvent = 'results';
@@ -356,7 +334,7 @@ export async function onRequestPost(context) {
             },
           ],
           stream:      true,
-          max_tokens:  4000, // high ceiling — model self-terminates when answer is complete
+          max_tokens:  4000,
           temperature: 0.6,
         }),
       });
@@ -389,9 +367,9 @@ export async function onRequestPost(context) {
 
   return new Response(readable, {
     headers: {
-      'Content-Type':     'text/event-stream',
-      'Cache-Control':    'no-cache, no-transform',
-      'Connection':       'keep-alive',
+      'Content-Type':      'text/event-stream',
+      'Cache-Control':     'no-cache, no-transform',
+      'Connection':        'keep-alive',
       'X-Accel-Buffering': 'no',
     },
   });
@@ -405,5 +383,5 @@ export async function onRequestOptions() {
       'Access-Control-Allow-Headers': 'Content-Type, Authorization',
     },
   });
-      }
-        
+        }
+  

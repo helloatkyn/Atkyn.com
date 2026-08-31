@@ -1,7 +1,7 @@
 /* ═══════════════════════════════════════════════════════════════════
 core.js — Atkyn shared UI logic
-UPDATED: synchronized keyboard viewport behavior
-Preserves floating chatbar, URL-bar behavior, header/tab animation
+UPDATED: restored header/tab hide-show behavior by binding it to the
+actual active scroll source, without changing original animation logic
 ════════════════════════════════════════════════════════════════════ */
 
 /* ── Reduced-motion flag ── */
@@ -31,8 +31,9 @@ const pill = document.getElementById('pill');
 const input = document.getElementById('cbInput');
 const sendBtn = document.getElementById('sendBtn');
 const pageContent = document.getElementById('pageContent');
+const _msgWrap = document.getElementById('msgWrap');
 
-/* ── Floating chatbar remains viewport-anchored ── */
+/* ── Floating chatbar remains viewport-level; this is intentional ── */
 if (chatbarWrap) {
   chatbarWrap.style.position = 'fixed';
   chatbarWrap.style.left = '0';
@@ -49,6 +50,7 @@ const SVG_CROSS = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" st
 let _rafPending = false;
 let _lastScrollY = 0;
 let _currentScrollY = 0;
+let _scrollSource = 'unknown'; /* host | window | unknown */
 let _accumDown = 0;
 let _accumUp = 0;
 let _keyboardOpen = false;
@@ -57,6 +59,8 @@ let _isTabHidden = false;
 let _isTabScrolled = false;
 let _scrollRafId = null;
 let _programmaticScroll = false;
+let _programmaticTimer = 0;
+let _kbProgrammaticUntil = 0;
 let _plusOpen = false;
 
 /* ── Velocity EMA ── */
@@ -77,8 +81,6 @@ let _preKbCaptured = false;
 let _preKbNearBottom = false;
 let _kbMode = 'none'; /* none | bottom | preserve */
 let _kbAutoScroll = false;
-let _kbProgrammaticUntil = 0;
-let _programmaticTimer = 0;
 
 /* ── Spacer guard ── */
 let _lastSpacerH = -1;
@@ -98,9 +100,6 @@ if (tabBar) {
 
 /* ── Module cache ── */
 const _moduleCache = {};
-
-/* ── msgWrap reference ── */
-const _msgWrap = document.getElementById('msgWrap');
 
 /* ════════════════════════════════
 HELPERS
@@ -138,7 +137,11 @@ function _getScrollMetrics() {
   const winY = window.scrollY || (doc ? doc.scrollTop : 0) || 0;
   const hostY = scrollHost ? scrollHost.scrollTop : 0;
 
-  const useHost = scrollHost && (hostY > 0 || hostH > docH + 1);
+  const useHost = scrollHost && (
+    _scrollSource === 'host' ||
+    hostY > 0 ||
+    hostH > docH + 1
+  );
 
   if (useHost) {
     return {
@@ -152,7 +155,7 @@ function _getScrollMetrics() {
   return {
     useHost: false,
     y: winY,
-    client: window.visualViewport ? window.visualViewport.height : window.innerHeight,
+    client: window.innerHeight,
     height: docH
   };
 }
@@ -167,8 +170,10 @@ function _setScrollY(y, behavior = 'auto') {
     } else {
       scrollHost.scrollTo({ top: val, behavior });
     }
+    _scrollSource = 'host';
   } else {
     window.scrollTo({ top: val, behavior });
+    _scrollSource = 'window';
   }
 
   _currentScrollY = val;
@@ -345,14 +350,12 @@ function _computeKeyboardHeight(vvp) {
   const closeMax = 64;
   const noise = 6;
 
-  /* Keyboard closed */
   if (_stableKbH === 0) {
     if (!_keyboardContext) return 0;
     if (raw >= openMin) return raw;
     return 0;
   }
 
-  /* Keyboard open */
   if (raw <= closeMax) return 0;
 
   if (Math.abs(raw - _stableKbH) <= noise) {
@@ -382,15 +385,11 @@ function _syncKeyboardScroll(oldKb, newKb) {
     _kbAutoScroll = _kbMode === 'bottom';
   }
 
-  if (newKb > 0 && _kbMode === 'bottom' && _kbAutoScroll && oldKb !== newKb) {
+  if (_kbMode === 'bottom' && _kbAutoScroll && oldKb !== newKb) {
     _adjustScrollForKeyboard(newKb - oldKb);
   }
 
   if (newKb === 0 && oldKb > 0) {
-    if (_kbMode === 'bottom' && _kbAutoScroll) {
-      _adjustScrollForKeyboard(oldKb - newKb);
-    }
-
     _kbMode = 'none';
     _kbAutoScroll = false;
     _preKbCaptured = false;
@@ -420,10 +419,6 @@ function _applyViewport(force = false) {
     _kbAnimFrame = null;
   }
 
-  /*
-    Keyboard movement must not be a separate CSS animation.
-    The chatbar follows the same visualViewport progression as the scroll change.
-  */
   chatbarWrap.style.transition = 'none';
   chatbarWrap.style.transform = kbHeight > 0
     ? `translateY(-${kbHeight}px) translateZ(0)`
@@ -436,12 +431,7 @@ function _applyViewport(force = false) {
 
   _cleanupRafId = requestAnimationFrame(() => {
     _cleanupRafId = 0;
-
     resetScrollAccum();
-
-    if (performance.now() >= _kbProgrammaticUntil) {
-      _programmaticScroll = false;
-    }
   });
 }
 
@@ -551,17 +541,17 @@ function updateHeader() {
   if (sy <= LOGO_THRESH) {
     resetScrollAccum();
 
-    if (_isLogoCollapsed) {
+    if (_isLogoCollapsed && logoHeader) {
       logoHeader.classList.remove('collapsed');
       _isLogoCollapsed = false;
     }
 
-    if (_isTabHidden) {
+    if (_isTabHidden && tabBar) {
       tabBar.classList.remove('hide');
       _isTabHidden = false;
     }
 
-    if (_isTabScrolled) {
+    if (_isTabScrolled && tabBar) {
       tabBar.classList.remove('scrolled');
       _isTabScrolled = false;
     }
@@ -569,12 +559,12 @@ function updateHeader() {
     return;
   }
 
-  if (!_isLogoCollapsed) {
+  if (!_isLogoCollapsed && logoHeader) {
     logoHeader.classList.add('collapsed');
     _isLogoCollapsed = true;
   }
 
-  if (!_isTabScrolled) {
+  if (!_isTabScrolled && tabBar) {
     tabBar.classList.add('scrolled');
     _isTabScrolled = true;
   }
@@ -583,7 +573,7 @@ function updateHeader() {
     _accumDown += delta;
     if (_accumUp > 0) _accumUp = 0;
 
-    if (!_isTabHidden && _accumDown >= HIDE_ACCUM) {
+    if (!_isTabHidden && _accumDown >= HIDE_ACCUM && tabBar) {
       tabBar.classList.add('hide');
       _isTabHidden = true;
       _accumDown = 0;
@@ -592,7 +582,7 @@ function updateHeader() {
     _accumUp += -delta;
     if (_accumDown > 0) _accumDown = 0;
 
-    if (_isTabHidden && _accumUp >= SHOW_ACCUM) {
+    if (_isTabHidden && _accumUp >= SHOW_ACCUM && tabBar) {
       tabBar.classList.remove('hide');
       _isTabHidden = false;
       _accumUp = 0;
@@ -602,13 +592,47 @@ function updateHeader() {
 
 const _scheduleHeaderUpdate = window.requestPostAnimationFrame || requestAnimationFrame;
 
-function _onScrollSource(y) {
+/*
+  Single capture-phase scroll listener.
+  This works for both #scrollHost scrolling and document/window scrolling,
+  without creating duplicate header systems.
+*/
+function _onMainScroll(e) {
+  const t = e.target;
+  if (!t) return;
+
+  const isMainScroller =
+    t === document ||
+    t === document.documentElement ||
+    t === document.body ||
+    (scrollHost && t === scrollHost);
+
+  if (!isMainScroller) return;
+
+  const source = (scrollHost && t === scrollHost) ? 'host' : 'window';
+  const y = source === 'host'
+    ? scrollHost.scrollTop
+    : (window.scrollY || document.documentElement.scrollTop || 0);
+
   if (
-    _stableKbH > 0 &&
+    _keyboardOpen &&
     !_programmaticScroll &&
     performance.now() > _kbProgrammaticUntil
   ) {
     _kbAutoScroll = false;
+  }
+
+  if (_scrollSource === 'unknown') {
+    _scrollSource = source;
+    _lastScrollY = y;
+  }
+
+  if (_scrollSource !== source) {
+    _scrollSource = source;
+    _currentScrollY = y;
+    _lastScrollY = y;
+    resetScrollAccum();
+    return;
   }
 
   if (y === _currentScrollY) return;
@@ -621,18 +645,19 @@ function _onScrollSource(y) {
   }
 }
 
-if (scrollHost) {
-  scrollHost.addEventListener('scroll', () => {
-    _onScrollSource(scrollHost.scrollTop);
-  }, { passive: true });
-}
-
-window.addEventListener('scroll', () => {
-  _onScrollSource(window.scrollY || document.documentElement.scrollTop || 0);
-}, { passive: true });
+document.addEventListener('scroll', _onMainScroll, {
+  capture: true,
+  passive: true
+});
 
 _currentScrollY = _getScrollY();
 _lastScrollY = _currentScrollY;
+
+if (scrollHost && scrollHost.scrollTop > 0) {
+  _scrollSource = 'host';
+} else if ((window.scrollY || document.documentElement.scrollTop || 0) > 0) {
+  _scrollSource = 'window';
+}
 
 /* ════════════════════════════════
 INPUT & PILL
@@ -873,17 +898,17 @@ if (tabBar) {
     _setScrollY(0, _prefersReducedMotion ? 'auto' : 'smooth');
     resetScrollAccum();
 
-    if (_isLogoCollapsed) {
+    if (_isLogoCollapsed && logoHeader) {
       logoHeader.classList.remove('collapsed');
       _isLogoCollapsed = false;
     }
 
-    if (_isTabHidden) {
+    if (_isTabHidden && tabBar) {
       tabBar.classList.remove('hide');
       _isTabHidden = false;
     }
 
-    if (_isTabScrolled) {
+    if (_isTabScrolled && tabBar) {
       tabBar.classList.remove('scrolled');
       _isTabScrolled = false;
     }

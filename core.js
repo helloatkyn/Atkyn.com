@@ -1,7 +1,7 @@
 /* ═══════════════════════════════════════════════════════════════════
-core.js — Atkyn shared UI logic
-UPDATED: restored header/tab hide-show behavior by binding it to the
-actual active scroll source, without changing original animation logic
+core.js — Atkyn shared UI logic [PRODUCTION · NATIVE-SMOOTH v4]
+scroll · header animation · keyboard positioning · theme freeze
+chatbar entrance · plus menu · tab navigation
 ════════════════════════════════════════════════════════════════════ */
 
 /* ── Reduced-motion flag ── */
@@ -31,16 +31,8 @@ const pill = document.getElementById('pill');
 const input = document.getElementById('cbInput');
 const sendBtn = document.getElementById('sendBtn');
 const pageContent = document.getElementById('pageContent');
+const chatArea = document.getElementById('chatArea');
 const _msgWrap = document.getElementById('msgWrap');
-
-/* ── Floating chatbar remains viewport-level; this is intentional ── */
-if (chatbarWrap) {
-  chatbarWrap.style.position = 'fixed';
-  chatbarWrap.style.left = '0';
-  chatbarWrap.style.right = '0';
-  chatbarWrap.style.bottom = '0';
-  chatbarWrap.style.width = '100%';
-}
 
 /* ── SVG constants ── */
 const SVG_SEND = '<svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="20" x2="12" y2="4"/><polyline points="5 11 12 4 19 11"/></svg>';
@@ -49,8 +41,6 @@ const SVG_CROSS = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" st
 /* ── Scroll / header state ── */
 let _rafPending = false;
 let _lastScrollY = 0;
-let _currentScrollY = 0;
-let _scrollSource = 'unknown'; /* host | window | unknown */
 let _accumDown = 0;
 let _accumUp = 0;
 let _keyboardOpen = false;
@@ -59,8 +49,6 @@ let _isTabHidden = false;
 let _isTabScrolled = false;
 let _scrollRafId = null;
 let _programmaticScroll = false;
-let _programmaticTimer = 0;
-let _kbProgrammaticUntil = 0;
 let _plusOpen = false;
 
 /* ── Velocity EMA ── */
@@ -74,13 +62,7 @@ let _stableKbH = 0;
 let _kbAnimFrame = null;
 let _vvpDebounce = 0;
 let _barHeight = chatbarWrap ? chatbarWrap.offsetHeight : 0;
-
-/* ── Keyboard context / synchronization state ── */
-let _keyboardContext = false;
-let _preKbCaptured = false;
-let _preKbNearBottom = false;
-let _kbMode = 'none'; /* none | bottom | preserve */
-let _kbAutoScroll = false;
+let _lastChatbarTransform = '';
 
 /* ── Spacer guard ── */
 let _lastSpacerH = -1;
@@ -92,11 +74,11 @@ let _themeFreezeUntil = 0;
 window._lastUserMsgEl = null;
 
 /* ── Current active tab key ── */
-let _currentTabKey = 'ai';
-if (tabBar) {
-  const _active = tabBar.querySelector('.tab.active');
-  _currentTabKey = _active ? _active.getAttribute('data-tab') : 'ai';
-}
+let _currentTabKey = (() => {
+  if (!tabBar) return 'ai';
+  const a = tabBar.querySelector('.tab.active');
+  return a ? a.getAttribute('data-tab') : 'ai';
+})();
 
 /* ── Module cache ── */
 const _moduleCache = {};
@@ -110,125 +92,6 @@ function resetScrollAccum() {
   _velocityEMA = 0;
   _lastScrollTime = 0;
 }
-
-function _markProgrammatic(ms) {
-  _programmaticScroll = true;
-  _kbProgrammaticUntil = performance.now() + ms;
-
-  clearTimeout(_programmaticTimer);
-  _programmaticTimer = setTimeout(() => {
-    _programmaticScroll = false;
-  }, ms);
-}
-
-function _getScrollY() {
-  const winY = window.scrollY || document.documentElement.scrollTop || document.body.scrollTop || 0;
-  const hostY = scrollHost ? scrollHost.scrollTop : 0;
-  return Math.max(winY, hostY);
-}
-
-function _getScrollMetrics() {
-  const doc = document.documentElement;
-  const body = document.body;
-
-  const docH = Math.max(doc ? doc.scrollHeight : 0, body ? body.scrollHeight : 0);
-  const hostH = scrollHost ? scrollHost.scrollHeight : 0;
-
-  const winY = window.scrollY || (doc ? doc.scrollTop : 0) || 0;
-  const hostY = scrollHost ? scrollHost.scrollTop : 0;
-
-  const useHost = scrollHost && (
-    _scrollSource === 'host' ||
-    hostY > 0 ||
-    hostH > docH + 1
-  );
-
-  if (useHost) {
-    return {
-      useHost: true,
-      y: hostY,
-      client: scrollHost.clientHeight,
-      height: hostH
-    };
-  }
-
-  return {
-    useHost: false,
-    y: winY,
-    client: window.innerHeight,
-    height: docH
-  };
-}
-
-function _setScrollY(y, behavior = 'auto') {
-  const val = Math.max(0, Math.round(y));
-  const m = _getScrollMetrics();
-
-  if (m.useHost && scrollHost) {
-    if (behavior === 'auto' || _prefersReducedMotion) {
-      scrollHost.scrollTop = val;
-    } else {
-      scrollHost.scrollTo({ top: val, behavior });
-    }
-    _scrollSource = 'host';
-  } else {
-    window.scrollTo({ top: val, behavior });
-    _scrollSource = 'window';
-  }
-
-  _currentScrollY = val;
-}
-
-function _isEditable(el) {
-  if (!el || el.nodeType !== 1) return false;
-
-  const tag = el.tagName;
-
-  return (
-    tag === 'INPUT' ||
-    tag === 'TEXTAREA' ||
-    tag === 'SELECT' ||
-    el.isContentEditable === true
-  );
-}
-
-function _capturePreKeyboard() {
-  if (_preKbCaptured || _stableKbH > 0) return;
-
-  const m = _getScrollMetrics();
-  const bottomDist = Math.max(0, m.height - m.y - m.client);
-
-  _preKbNearBottom = bottomDist < Math.max(220, Math.round(m.client * 0.35));
-  _preKbCaptured = true;
-}
-
-/* ════════════════════════════════
-KEYBOARD CONTEXT
-════════════════════════════════ */
-_keyboardContext = _isEditable(document.activeElement);
-
-document.addEventListener('focusin', (e) => {
-  if (_isEditable(e.target)) {
-    _keyboardContext = true;
-
-    if (_stableKbH === 0) {
-      _capturePreKeyboard();
-    }
-  }
-}, true);
-
-document.addEventListener('focusout', (e) => {
-  const next = e.relatedTarget;
-
-  if (!_isEditable(next)) {
-    _keyboardContext = false;
-
-    if (_stableKbH === 0) {
-      _preKbCaptured = false;
-      _preKbNearBottom = false;
-    }
-  }
-}, true);
 
 /* ════════════════════════════════
 SEND BUTTON MODE
@@ -254,7 +117,7 @@ if (sendBtn) {
   sendBtn.addEventListener('click', () => {
     if (pill && pill.classList.contains('non-ai-tab')) {
       if (input) input.value = '';
-      if (pill) pill.classList.remove('has-text');
+      pill.classList.remove('has-text');
       _setSendMode('send');
     }
   });
@@ -264,24 +127,29 @@ if (sendBtn) {
 SCROLL TO MSG
 ════════════════════════════════ */
 function scrollToMsg(el) {
-  if (!el) return;
+  if (!el || !scrollHost) return;
 
   if (_scrollRafId !== null) cancelAnimationFrame(_scrollRafId);
 
   _scrollRafId = requestAnimationFrame(() => {
     _scrollRafId = null;
+    _programmaticScroll = true;
 
-    const tabBarH = tabBar ? tabBar.offsetHeight : 0;
-    const top = Math.max(
-      0,
-      el.getBoundingClientRect().top + _getScrollY() - tabBarH - 8
-    );
+    const target = Math.max(0, el.offsetTop - (tabBar ? tabBar.offsetHeight : 0) - 8);
 
-    _lastScrollY = top;
-    resetScrollAccum();
-
-    _markProgrammatic(_prefersReducedMotion ? 180 : 450);
-    _setScrollY(top, _prefersReducedMotion ? 'auto' : 'smooth');
+    if (_prefersReducedMotion) {
+      scrollHost.scrollTop = target;
+      _lastScrollY = target;
+      resetScrollAccum();
+      _programmaticScroll = false;
+    } else {
+      scrollHost.scrollTo({ top: target, behavior: 'smooth' });
+      _lastScrollY = target;
+      resetScrollAccum();
+      setTimeout(() => {
+        _programmaticScroll = false;
+      }, 420);
+    }
   });
 }
 
@@ -318,11 +186,7 @@ if (chatbarWrap) {
 (function _chatbarEntrance() {
   if (!chatbarWrap || _prefersReducedMotion) return;
 
-  chatbarWrap.style.willChange = 'transform,opacity';
-  chatbarWrap.style.transition = 'none';
-  chatbarWrap.style.transform = 'translateY(24px) translateZ(0)';
-  chatbarWrap.style.opacity = '0';
-
+  chatbarWrap.style.cssText = 'will-change:transform,opacity;transition:none;transform:translateY(24px) translateZ(0);opacity:0';
   chatbarWrap.getBoundingClientRect();
 
   requestAnimationFrame(() => {
@@ -333,105 +197,89 @@ if (chatbarWrap) {
     chatbarWrap.addEventListener('transitionend', function _onEntry(e) {
       if (e.propertyName !== 'transform') return;
       chatbarWrap.removeEventListener('transitionend', _onEntry);
-
-      chatbarWrap.style.willChange = '';
-      chatbarWrap.style.transition = '';
-      chatbarWrap.style.transform = '';
-      chatbarWrap.style.opacity = '';
+      chatbarWrap.style.cssText = '';
     });
   });
 })();
 
-/* ── Keyboard height state machine ── */
-function _computeKeyboardHeight(vvp) {
-  const raw = Math.max(0, Math.round(window.innerHeight - vvp.height - vvp.offsetTop));
-
-  const openMin = Math.max(120, Math.round(window.innerHeight * 0.14));
-  const closeMax = 64;
-  const noise = 6;
-
-  if (_stableKbH === 0) {
-    if (!_keyboardContext) return 0;
-    if (raw >= openMin) return raw;
-    return 0;
-  }
-
-  if (raw <= closeMax) return 0;
-
-  if (Math.abs(raw - _stableKbH) <= noise) {
-    return _stableKbH;
-  }
-
-  return raw;
-}
-
-/* ── Keyboard scroll synchronization ── */
-function _adjustScrollForKeyboard(delta) {
-  if (!delta) return;
-
-  const y = _getScrollY();
-
-  _markProgrammatic(180);
-  _setScrollY(y + delta, 'auto');
-}
-
-function _syncKeyboardScroll(oldKb, newKb) {
-  if (oldKb === 0 && newKb > 0) {
-    if (!_preKbCaptured) {
-      _capturePreKeyboard();
-    }
-
-    _kbMode = _preKbNearBottom ? 'bottom' : 'preserve';
-    _kbAutoScroll = _kbMode === 'bottom';
-  }
-
-  if (_kbMode === 'bottom' && _kbAutoScroll && oldKb !== newKb) {
-    _adjustScrollForKeyboard(newKb - oldKb);
-  }
-
-  if (newKb === 0 && oldKb > 0) {
-    _kbMode = 'none';
-    _kbAutoScroll = false;
-    _preKbCaptured = false;
-    _preKbNearBottom = false;
-  }
-}
-
 /* ── Keyboard / VisualViewport positioning ── */
 function _applyViewport(force = false) {
-  _vvpDebounce = 0;
-
   if (!window.visualViewport || !chatbarWrap) return;
   if (!force && performance.now() < _themeFreezeUntil) return;
 
   const vvp = window.visualViewport;
-  const kbHeight = _computeKeyboardHeight(vvp);
+  const rawKb = Math.max(0, window.innerHeight - vvp.height - vvp.offsetTop);
+  const kbHeight = rawKb > 50 ? Math.round(rawKb) : 0;
 
   if (!force && kbHeight === _stableKbH) return;
 
-  const oldKb = _stableKbH;
-
+  const wasOpen = _stableKbH > 0;
   _stableKbH = kbHeight;
   _keyboardOpen = kbHeight > 0;
 
-  if (_kbAnimFrame) {
-    cancelAnimationFrame(_kbAnimFrame);
-    _kbAnimFrame = null;
-  }
-
-  chatbarWrap.style.transition = 'none';
-  chatbarWrap.style.transform = kbHeight > 0
+  const transform = kbHeight > 0
     ? `translateY(-${kbHeight}px) translateZ(0)`
     : 'translateZ(0)';
 
+  if (force || transform !== _lastChatbarTransform) {
+    if (_kbAnimFrame) {
+      cancelAnimationFrame(_kbAnimFrame);
+      _kbAnimFrame = null;
+    }
+
+    if (force || _prefersReducedMotion) {
+      chatbarWrap.style.transition = 'none';
+      chatbarWrap.style.transform = transform;
+
+      requestAnimationFrame(() => {
+        if (_stableKbH === kbHeight) {
+          chatbarWrap.style.transition = '';
+        }
+      });
+    } else {
+      const dur = kbHeight > 0 ? '0.35s' : '0.28s';
+      const ease = kbHeight > 0 ? EASE.keyboardUp : EASE.keyboardDown;
+
+      chatbarWrap.style.transition = `transform ${dur} ${ease}`;
+      chatbarWrap.style.transform = transform;
+
+      const capturedKbH = kbHeight;
+
+      _kbAnimFrame = requestAnimationFrame(() => {
+        _kbAnimFrame = null;
+        setTimeout(() => {
+          if (_stableKbH === capturedKbH) {
+            chatbarWrap.style.transition = '';
+          }
+        }, 380);
+      });
+    }
+
+    _lastChatbarTransform = transform;
+  }
+
   _setSpacerHeight(_barHeight + kbHeight);
-  _syncKeyboardScroll(oldKb, kbHeight);
+
+  if (!wasOpen && kbHeight > 0 && scrollHost) {
+    const chatVisible = !chatArea || chatArea.style.display !== 'none';
+
+    if (chatVisible) {
+      _programmaticScroll = true;
+      const anchor = window._lastUserMsgEl;
+
+      scrollHost.scrollTop = anchor
+        ? Math.max(0, anchor.offsetTop - 16)
+        : scrollHost.scrollHeight;
+    }
+  }
 
   cancelAnimationFrame(_cleanupRafId);
 
   _cleanupRafId = requestAnimationFrame(() => {
     _cleanupRafId = 0;
+    if (scrollHost) _lastScrollY = scrollHost.scrollTop;
     resetScrollAccum();
+    _programmaticScroll = false;
   });
 }
 
@@ -447,12 +295,7 @@ function fixViewport() {
 
 if (window.visualViewport) {
   window.visualViewport.addEventListener('resize', fixViewport, { passive: true });
-
-  window.visualViewport.addEventListener('scroll', () => {
-    if (_keyboardContext || _stableKbH > 0) {
-      fixViewport();
-    }
-  }, { passive: true });
+  window.visualViewport.addEventListener('scroll', fixViewport, { passive: true });
 
   _setSpacerHeight(_barHeight);
   _applyViewport(true);
@@ -493,7 +336,6 @@ if (window.matchMedia) {
         if (chatbarWrap) {
           _barHeight = chatbarWrap.offsetHeight;
         }
-
         _setSpacerHeight(_barHeight + _stableKbH);
         _applyViewport(true);
       });
@@ -517,15 +359,17 @@ const LOGO_THRESH = 10;
 function updateHeader() {
   _rafPending = false;
 
-  const sy = _currentScrollY;
+  if (!scrollHost || !logoHeader || !tabBar) return;
 
-  if (_programmaticScroll || performance.now() < _kbProgrammaticUntil) {
-    _lastScrollY = sy;
+  if (_programmaticScroll) {
+    _lastScrollY = scrollHost.scrollTop;
     resetScrollAccum();
     return;
   }
 
+  const sy = scrollHost.scrollTop;
   const delta = sy - _lastScrollY;
+
   if (delta === 0) return;
 
   const now = performance.now();
@@ -541,17 +385,17 @@ function updateHeader() {
   if (sy <= LOGO_THRESH) {
     resetScrollAccum();
 
-    if (_isLogoCollapsed && logoHeader) {
+    if (_isLogoCollapsed) {
       logoHeader.classList.remove('collapsed');
       _isLogoCollapsed = false;
     }
 
-    if (_isTabHidden && tabBar) {
+    if (_isTabHidden) {
       tabBar.classList.remove('hide');
       _isTabHidden = false;
     }
 
-    if (_isTabScrolled && tabBar) {
+    if (_isTabScrolled) {
       tabBar.classList.remove('scrolled');
       _isTabScrolled = false;
     }
@@ -559,12 +403,12 @@ function updateHeader() {
     return;
   }
 
-  if (!_isLogoCollapsed && logoHeader) {
+  if (!_isLogoCollapsed) {
     logoHeader.classList.add('collapsed');
     _isLogoCollapsed = true;
   }
 
-  if (!_isTabScrolled && tabBar) {
+  if (!_isTabScrolled) {
     tabBar.classList.add('scrolled');
     _isTabScrolled = true;
   }
@@ -573,7 +417,7 @@ function updateHeader() {
     _accumDown += delta;
     if (_accumUp > 0) _accumUp = 0;
 
-    if (!_isTabHidden && _accumDown >= HIDE_ACCUM && tabBar) {
+    if (!_isTabHidden && _accumDown >= HIDE_ACCUM) {
       tabBar.classList.add('hide');
       _isTabHidden = true;
       _accumDown = 0;
@@ -582,7 +426,7 @@ function updateHeader() {
     _accumUp += -delta;
     if (_accumDown > 0) _accumDown = 0;
 
-    if (_isTabHidden && _accumUp >= SHOW_ACCUM && tabBar) {
+    if (_isTabHidden && _accumUp >= SHOW_ACCUM) {
       tabBar.classList.remove('hide');
       _isTabHidden = false;
       _accumUp = 0;
@@ -592,71 +436,13 @@ function updateHeader() {
 
 const _scheduleHeaderUpdate = window.requestPostAnimationFrame || requestAnimationFrame;
 
-/*
-  Single capture-phase scroll listener.
-  This works for both #scrollHost scrolling and document/window scrolling,
-  without creating duplicate header systems.
-*/
-function _onMainScroll(e) {
-  const t = e.target;
-  if (!t) return;
-
-  const isMainScroller =
-    t === document ||
-    t === document.documentElement ||
-    t === document.body ||
-    (scrollHost && t === scrollHost);
-
-  if (!isMainScroller) return;
-
-  const source = (scrollHost && t === scrollHost) ? 'host' : 'window';
-  const y = source === 'host'
-    ? scrollHost.scrollTop
-    : (window.scrollY || document.documentElement.scrollTop || 0);
-
-  if (
-    _keyboardOpen &&
-    !_programmaticScroll &&
-    performance.now() > _kbProgrammaticUntil
-  ) {
-    _kbAutoScroll = false;
-  }
-
-  if (_scrollSource === 'unknown') {
-    _scrollSource = source;
-    _lastScrollY = y;
-  }
-
-  if (_scrollSource !== source) {
-    _scrollSource = source;
-    _currentScrollY = y;
-    _lastScrollY = y;
-    resetScrollAccum();
-    return;
-  }
-
-  if (y === _currentScrollY) return;
-
-  _currentScrollY = y;
-
-  if (!_rafPending) {
-    _rafPending = true;
-    _scheduleHeaderUpdate(updateHeader);
-  }
-}
-
-document.addEventListener('scroll', _onMainScroll, {
-  capture: true,
-  passive: true
-});
-
-_currentScrollY = _getScrollY();
-_lastScrollY = _currentScrollY;
-
-if (scrollHost && scrollHost.scrollTop > 0) {
-  _scrollSource = 'host';
-} else if ((window.scrollY || document.documentElement.scrollTop || 0) > 0) {
-  _scrollSource = 'window';
+if (scrollHost) {
+  scrollHost.addEventListener('scroll', () => {
+    if (!_rafPending) {
+      _rafPending = true;
+      _scheduleHeaderUpdate(updateHeader);
+    }
+  }, { passive: true });
 }
 
 /* ════════════════════════════════
@@ -675,7 +461,6 @@ if (pill && input) {
     if (document.activeElement === input || _keyboardOpen) return;
 
     e.preventDefault();
-
     requestAnimationFrame(() => {
       input.focus();
     });
@@ -774,16 +559,16 @@ if (plusBackdrop) {
 TAB BAR — instant content swap
 ════════════════════════════════ */
 async function _loadTab(key) {
-  const chatArea = document.getElementById('chatArea');
+  if (!pageContent) return;
 
   if (key === 'ai') {
     if (chatArea) chatArea.style.display = '';
-    if (pageContent) pageContent.style.display = 'none';
+    pageContent.style.display = 'none';
     return;
   }
 
   if (chatArea) chatArea.style.display = 'none';
-  if (pageContent) pageContent.style.display = '';
+  pageContent.style.display = '';
 
   if (_moduleCache[key]) {
     const initFn = window['_atkynInit_' + key];
@@ -791,23 +576,19 @@ async function _loadTab(key) {
     return;
   }
 
-  if (pageContent) {
-    pageContent.innerHTML =
-      '<div class="tab-skeleton">' +
-        '<div class="sk-line"></div>' +
-        '<div class="sk-line sk-short"></div>' +
-        '<div class="sk-line"></div>' +
-      '</div>';
-  }
+  pageContent.innerHTML =
+    '<div class="tab-skeleton">' +
+      '<div class="sk-line"></div>' +
+      '<div class="sk-line sk-short"></div>' +
+      '<div class="sk-line"></div>' +
+    '</div>';
 
   try {
     _loadModuleCSS(key);
     await _loadScript(`modules/${key}/${key}.js`);
     _moduleCache[key] = true;
   } catch (_) {
-    if (pageContent) {
-      pageContent.innerHTML = '<div class="tab-empty"><p>Coming soon</p></div>';
-    }
+    pageContent.innerHTML = '<div class="tab-empty"><p>Coming soon</p></div>';
   }
 }
 
@@ -860,7 +641,7 @@ if (tabBar) {
     if (_currentTabKey === 'ai' && _msgWrap) {
       try {
         sessionStorage.setItem('atkyn_chat_html', _msgWrap.innerHTML);
-        sessionStorage.setItem('atkyn_chat_scroll', String(_getScrollY()));
+        sessionStorage.setItem('atkyn_chat_scroll', String(scrollHost ? scrollHost.scrollTop : 0));
       } catch (_) {}
     }
 
@@ -894,21 +675,25 @@ if (tabBar) {
       }
     }
 
-    _markProgrammatic(_prefersReducedMotion ? 180 : 420);
-    _setScrollY(0, _prefersReducedMotion ? 'auto' : 'smooth');
-    resetScrollAccum();
+    if (scrollHost) {
+      scrollHost.scrollTo({
+        top: 0,
+        behavior: _prefersReducedMotion ? 'auto' : 'smooth'
+      });
+      resetScrollAccum();
+    }
 
-    if (_isLogoCollapsed && logoHeader) {
+    if (logoHeader && _isLogoCollapsed) {
       logoHeader.classList.remove('collapsed');
       _isLogoCollapsed = false;
     }
 
-    if (_isTabHidden && tabBar) {
+    if (tabBar && _isTabHidden) {
       tabBar.classList.remove('hide');
       _isTabHidden = false;
     }
 
-    if (_isTabScrolled && tabBar) {
+    if (tabBar && _isTabScrolled) {
       tabBar.classList.remove('scrolled');
       _isTabScrolled = false;
     }
@@ -923,5 +708,3 @@ window._atkynModuleCache = _moduleCache;
 window._atkynPageContent = pageContent;
 window._atkynAnimateIn = _animateContentIn;
 window._atkynLoadTab = _loadTab;
-window._atkynGetScrollY = _getScrollY;
-window._atkynSetScrollY = _setScrollY;

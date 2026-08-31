@@ -247,12 +247,9 @@ function _buildChip(src) {
   try { domain = new URL(src.url).hostname.replace(/^www\./, ''); }
   catch (_) { domain = src.url; }
 
-  /* Proper site name: first segment of title before separator, else domain */
-  let siteName = domain;
-  if (src.title) {
-    const seg = src.title.split(/\s*[\u2013\u2014|\-\xB7:]\s*/)[0].trim();
-    if (seg && seg.length <= 28) siteName = seg;
-  }
+  /* Proper site name: domain root capitalised (e.g. "Instagram", "Reddit") */
+  const domainRoot = domain.split('.')[0];
+  const siteName = domainRoot.charAt(0).toUpperCase() + domainRoot.slice(1);
   const label = siteName.length > 22 ? siteName.slice(0, 20) + '\u2026' : siteName;
 
   const chipId     = 'chip' + (++_chipCounter);
@@ -262,7 +259,7 @@ function _buildChip(src) {
   return (
     '<a class="source-chip"' +
     ' href="' + _he(src.url) + '"' +
-    ' style="color:inherit"' +
+    ' style="color:inherit;text-decoration:none"' +
     ' data-chip-url="' + _he(src.url) + '"' +
     ' data-chip-domain="' + _he(domain) + '"' +
     ' data-chip-title="' + _he(src.title || domain) + '"' +
@@ -276,8 +273,8 @@ function _buildChip(src) {
 function injectCitationChips(html, sources) {
   if (!sources || !sources.length) return html;
 
-  /* Capture optional trailing punctuation so it lands OUTSIDE the chip span */
-  return html.replace(/((?:\[\d+\])+)([.,;:!?\s]*(?=\s|<|$))/g, function(_, refs, punct) {
+  /* Capture trailing punctuation so it lands OUTSIDE the chip span */
+  return html.replace(/((?:\[\d+\])+)([.,;:!?]*)/g, function(_, refs, punct) {
     const nums = [];
     const re = /\[(\d+)\]/g;
     let m;
@@ -386,4 +383,3 @@ function injectCitationChips(html, sources) {
     openSheet(chip.dataset.chipUrl);
   });
 })();
-                      

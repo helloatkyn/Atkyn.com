@@ -338,7 +338,7 @@
   text-overflow: ellipsis;
 }
 
-/* Title — wc-title clone */
+/* Title — wc-title exact clone, 2-line clamp */
 .csi-title {
   display: -webkit-box;
   -webkit-box-orient: vertical;
@@ -348,11 +348,11 @@
   font-weight: 700;
   color: #000080;
   line-height: 1.4;
-  margin: 0 0 8px;
+  margin: 0 0 6px;
   word-break: break-word;
 }
 
-/* Snippet — wc-snippet clone */
+/* Snippet — wc-snippet exact clone, 3-line clamp */
 .csi-snippet {
   display: -webkit-box;
   -webkit-box-orient: vertical;
@@ -362,6 +362,7 @@
   color: #3a3a3a;
   line-height: 1.55;
   margin: 0;
+  word-break: break-word;
 }
 
 /* unused legacy helpers */
@@ -381,4 +382,4 @@
   .csi-url          { color: rgba(255,255,255,0.3); }
   .csi-title        { color: #4BA8D8; }
   .csi-snippet      { color: #d4d4d6; }
-}
+   }

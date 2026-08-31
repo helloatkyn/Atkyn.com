@@ -326,16 +326,16 @@ function injectCitationChips(html, sources) {
     }
   }
 
-  /* Strip trailing ellipsis variants from snippet only */
-  function _cleanSnippet(s) {
+  /* Strip trailing ellipsis variants from title and snippet */
+  function _cleanTrail(s) {
     return s.replace(/[\s\u00a0]*(\u2026|\.{2,3})$/, '').trimEnd();
   }
 
   function buildItem(src) {
     const domain  = _domain(src.url);
     const favicon = _favicon(domain);
-    const title   = src.title   || domain;
-    const snippet = src.snippet ? _cleanSnippet(src.snippet) : '';
+    const title   = _cleanTrail(src.title || domain);
+    const snippet = src.snippet ? _cleanTrail(src.snippet) : '';
 
     return (
       '<a class="csi" href="' + _he(src.url) + '" target="_blank" rel="noopener">' +
@@ -386,4 +386,4 @@ function injectCitationChips(html, sources) {
     openSheet(chip.dataset.chipUrl);
   });
 })();
-      
+   

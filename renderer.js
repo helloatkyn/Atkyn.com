@@ -140,16 +140,16 @@ function _holdIncomplete(text) {
 
 /* ══════════════════════════════════════════════════════════════
    PIPELINE
-   • streaming=false  → render raw as-is (no holdIncomplete)
-   • streaming=true   → caller already passed safe text via
-                        _holdIncomplete; skip second call here
 ══════════════════════════════════════════════════════════════ */
-function _safePipeline(src, skipNormalize = false) {
+function _safePipeline(raw, isStreaming = false) {
+  if (!raw) return '';
+  let src = isStreaming ? _holdIncomplete(raw).safe : raw;
+  src = _normalizeNewlines(src);
   if (!src) return '';
-  const text = skipNormalize ? src : _normalizeNewlines(src);
-  if (!text) return '';
-  try { return marked.parse(text); }
-  catch (_) { return '<pre class="render-fallback">' + _he(src) + '</pre>'; }
+  let html;
+  try { html = marked.parse(src); }
+  catch (_) { html = '<pre class="render-fallback">' + _he(raw) + '</pre>'; }
+  return html;
 }
 
 /* ══════════════════════════════════════════════════════════════
@@ -160,38 +160,27 @@ class UniversalMessageRenderer {
     this.rawContent = ''; this.renderedContent = '';
     this._hash = null; this._buf = ''; this._streaming = false;
   }
-
   render(content) {
     this.rawContent = content;
     const h = _cheapHash(content);
     if (h === this._hash && this.renderedContent) return this.renderedContent;
     this._hash = h;
-    const normalized = _normalizeNewlines(content);
-    return (this.renderedContent = normalized ? _safePipeline(normalized, true) : '');
+    return (this.renderedContent = _safePipeline(content, false));
   }
-
   startStream() {
     this._buf = ''; this._streaming = true;
     this.rawContent = ''; this.renderedContent = ''; this._hash = null;
   }
-
   pushChunk(chunk) {
     if (!this._streaming) this.startStream();
-    this._buf += chunk;
-    this.rawContent = this._buf;
-    /* Extract safe portion once, pass directly — no double-call */
-    const safe = _holdIncomplete(this._buf).safe;
-    const normalized = _normalizeNewlines(safe);
-    this.renderedContent = normalized ? _safePipeline(normalized, true) : '';
+    this._buf += chunk; this.rawContent = this._buf;
+    this.renderedContent = _safePipeline(_holdIncomplete(this._buf).safe, true);
     return this.renderedContent;
   }
-
   finishStream() {
     this._streaming = false;
-    const normalized = _normalizeNewlines(this._buf);
-    return (this.renderedContent = normalized ? _safePipeline(normalized, true) : '');
+    return (this.renderedContent = _safePipeline(this._buf, false));
   }
-
   getHTML() { return this.renderedContent; }
   getRaw()  { return this.rawContent; }
 }
@@ -203,13 +192,11 @@ function createStreamingRenderer(onUpdate, debounceMs = 40) {
   const renderer = new UniversalMessageRenderer();
   renderer.startStream();
   let _timer = null, _done = false;
-
   const _flush = final => {
     clearTimeout(_timer); _timer = null;
     if (typeof onUpdate === 'function')
       onUpdate(final ? renderer.finishStream() : renderer.getHTML(), { final });
   };
-
   return {
     push(chunk) {
       if (_done) return;
@@ -227,6 +214,7 @@ function createStreamingRenderer(onUpdate, debounceMs = 40) {
 
 /* ── Public API ── */
 function universalRender(content) { return new UniversalMessageRenderer().render(content); }
+function renderMarkdown(text)     { return universalRender(text); }
 
 /* ══════════════════════════════════════════════════════════════
    CITATION CHIP RENDERER
@@ -338,7 +326,7 @@ function injectCitationChips(html, sources) {
     }
   }
 
-  function buildItem(src) {
+  function buildItem(src, isActive) {
     const domain  = _domain(src.url);
     const favicon = _favicon(domain);
     const title   = src.title   || domain;
@@ -346,6 +334,7 @@ function injectCitationChips(html, sources) {
 
     return (
       '<a class="csi" href="' + _he(src.url) + '" target="_blank" rel="noopener">' +
+        /* Meta row: favicon wrap + domain/url stack */
         '<div class="csi-top">' +
           '<div class="csi-favicon-wrap">' +
             '<img class="csi-favicon" src="' + _he(favicon) + '" width="16" height="16" alt="" onerror="this.style.visibility=\'hidden\'">' +
@@ -355,7 +344,9 @@ function injectCitationChips(html, sources) {
             '<div class="csi-url">' + _he(_shortUrl(src.url)) + '</div>' +
           '</div>' +
         '</div>' +
+        /* Title */
         '<div class="csi-title">' + _he(title) + '</div>' +
+        /* Snippet */
         (snippet ? '<div class="csi-snippet">' + _he(snippet) + '</div>' : '') +
       '</a>'
     );
@@ -373,7 +364,9 @@ function injectCitationChips(html, sources) {
       ...sources.filter(s => s.url !== clickedSrc.url),
     ];
 
-    document.getElementById('chipSheetList').innerHTML = sorted.map(buildItem).join('');
+    document.getElementById('chipSheetList').innerHTML =
+      sorted.map((s, i) => buildItem(s, i === 0)).join('');
+
     sheet.classList.add('open');
   }
 
@@ -388,4 +381,3 @@ function injectCitationChips(html, sources) {
     openSheet(chip.dataset.chipUrl);
   });
 })();
-     

@@ -228,7 +228,7 @@
 }
 
 /* ────────────────────────────────────────────────────────────────
-   SOURCE CHIP BOTTOM SHEET — wc-card style (Web tab 1:1 copy)
+   SOURCE CHIP BOTTOM SHEET — wc-card style
 ──────────────────────────────────────────────────────────────── */
 #chipSheetBackdrop {
   position: fixed;
@@ -274,7 +274,7 @@
   margin: 10px auto 8px;
 }
 
-/* ── Each result — exact wc-card clone ── */
+/* ── Each result ── */
 .csi {
   display: block;
   text-decoration: none;
@@ -288,11 +288,10 @@
   box-shadow: 0 1px 2px rgba(0,0,0,0.06);
   transition: background 0.15s;
 }
-.csi:active   { background: #f5f5f5; }
-.csi--active  { background: #fff; }
-.csi:last-child { margin-bottom: 0; }
+.csi:active      { background: #f5f5f5; }
+.csi:last-child  { margin-bottom: 0; }
 
-/* Meta row — wc-meta clone */
+/* Meta row */
 .csi-top {
   display: flex;
   align-items: center;
@@ -300,7 +299,7 @@
   margin-bottom: 8px;
 }
 
-/* Favicon wrap — wc-fav-wrap clone */
+/* Favicon wrap */
 .csi-favicon-wrap {
   flex-shrink: 0;
   width: 28px; height: 28px;
@@ -315,7 +314,7 @@
   object-fit: contain;
 }
 
-/* Domain + path stack — wc-meta-text clone */
+/* Domain + path stack */
 .csi-site {
   display: flex;
   flex-direction: column;
@@ -338,7 +337,7 @@
   text-overflow: ellipsis;
 }
 
-/* Title — wc-title exact clone, 2-line clamp */
+/* Title — 2-line clamp, no suffix */
 .csi-title {
   display: -webkit-box;
   -webkit-box-orient: vertical;
@@ -352,7 +351,7 @@
   word-break: break-word;
 }
 
-/* Snippet — wc-snippet exact clone, 3-line clamp */
+/* Snippet — 3-line clamp */
 .csi-snippet {
   display: -webkit-box;
   -webkit-box-orient: vertical;
@@ -365,21 +364,16 @@
   word-break: break-word;
 }
 
-/* unused legacy helpers */
-.csi-body  { display: contents; }
-.csi-arrow { display: none; }
-
 @media (prefers-color-scheme: dark) {
   #chipSheetCard         { background: #000000; }
   #chipSheetCard::before { background: #3a3a3c; }
 
   .csi          { background: #1c1c1e; box-shadow: 0 1px 4px rgba(0,0,0,0.3); }
   .csi:active   { background: #2a2a2c; }
-  .csi--active  { background: #1c1c1e; }
 
   .csi-favicon-wrap { background: #2c2c2e; }
   .csi-domain       { color: rgba(255,255,255,0.75); }
   .csi-url          { color: rgba(255,255,255,0.3); }
   .csi-title        { color: #4BA8D8; }
   .csi-snippet      { color: #d4d4d6; }
-   }
+}

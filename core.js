@@ -1,7 +1,7 @@
 /* ═══════════════════════════════════════════════════════════════════
-core.js — Atkyn shared UI logic [PRODUCTION · NATIVE-SMOOTH v4]
-scroll · header animation · keyboard positioning · theme freeze
-chatbar entrance · plus menu · tab navigation
+core.js — Atkyn shared UI logic
+UPDATED: document-level scroll architecture
+Preserves keyboard behavior, chatbar stability, theme freeze, tabs
 ════════════════════════════════════════════════════════════════════ */
 
 /* ── Reduced-motion flag ── */
@@ -33,6 +33,15 @@ const sendBtn = document.getElementById('sendBtn');
 const pageContent = document.getElementById('pageContent');
 const chatArea = document.getElementById('chatArea');
 const _msgWrap = document.getElementById('msgWrap');
+
+/* ── Chatbar must be viewport-anchored when the document scrolls ── */
+if (chatbarWrap) {
+  chatbarWrap.style.position = 'fixed';
+  chatbarWrap.style.left = '0';
+  chatbarWrap.style.right = '0';
+  chatbarWrap.style.bottom = '0';
+  chatbarWrap.style.width = '100%';
+}
 
 /* ── SVG constants ── */
 const SVG_SEND = '<svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="20" x2="12" y2="4"/><polyline points="5 11 12 4 19 11"/></svg>';
@@ -74,18 +83,43 @@ let _themeFreezeUntil = 0;
 window._lastUserMsgEl = null;
 
 /* ── Current active tab key ── */
-let _currentTabKey = (() => {
-  if (!tabBar) return 'ai';
-  const a = tabBar.querySelector('.tab.active');
-  return a ? a.getAttribute('data-tab') : 'ai';
-})();
+let _currentTabKey = 'ai';
+if (tabBar) {
+  const _active = tabBar.querySelector('.tab.active');
+  _currentTabKey = _active ? _active.getAttribute('data-tab') : 'ai';
+}
 
 /* ── Module cache ── */
 const _moduleCache = {};
 
 /* ════════════════════════════════
-HELPERS
+DOCUMENT SCROLL HELPERS
 ════════════════════════════════ */
+function _getScrollY() {
+  return window.scrollY || document.documentElement.scrollTop || document.body.scrollTop || 0;
+}
+
+function _setScrollY(y, behavior = 'auto') {
+  window.scrollTo({
+    top: Math.max(0, Math.round(y)),
+    behavior
+  });
+}
+
+function _getScrollHeight() {
+  return Math.max(
+    document.documentElement.scrollHeight,
+    document.body ? document.body.scrollHeight : 0,
+    scrollHost ? scrollHost.scrollHeight : 0
+  );
+}
+
+function _getOffsetTop(el) {
+  if (!el) return 0;
+  const rect = el.getBoundingClientRect();
+  return rect.top + _getScrollY();
+}
+
 function resetScrollAccum() {
   _accumDown = 0;
   _accumUp = 0;
@@ -127,7 +161,7 @@ if (sendBtn) {
 SCROLL TO MSG
 ════════════════════════════════ */
 function scrollToMsg(el) {
-  if (!el || !scrollHost) return;
+  if (!el) return;
 
   if (_scrollRafId !== null) cancelAnimationFrame(_scrollRafId);
 
@@ -135,17 +169,17 @@ function scrollToMsg(el) {
     _scrollRafId = null;
     _programmaticScroll = true;
 
-    const target = Math.max(0, el.offsetTop - (tabBar ? tabBar.offsetHeight : 0) - 8);
+    const tabBarH = tabBar ? tabBar.offsetHeight : 0;
+    const target = Math.max(0, _getOffsetTop(el) - tabBarH - 8);
+
+    _lastScrollY = target;
+    resetScrollAccum();
 
     if (_prefersReducedMotion) {
-      scrollHost.scrollTop = target;
-      _lastScrollY = target;
-      resetScrollAccum();
+      _setScrollY(target, 'auto');
       _programmaticScroll = false;
     } else {
-      scrollHost.scrollTo({ top: target, behavior: 'smooth' });
-      _lastScrollY = target;
-      resetScrollAccum();
+      _setScrollY(target, 'smooth');
       setTimeout(() => {
         _programmaticScroll = false;
       }, 420);
@@ -186,7 +220,11 @@ if (chatbarWrap) {
 (function _chatbarEntrance() {
   if (!chatbarWrap || _prefersReducedMotion) return;
 
-  chatbarWrap.style.cssText = 'will-change:transform,opacity;transition:none;transform:translateY(24px) translateZ(0);opacity:0';
+  chatbarWrap.style.willChange = 'transform,opacity';
+  chatbarWrap.style.transition = 'none';
+  chatbarWrap.style.transform = 'translateY(24px) translateZ(0)';
+  chatbarWrap.style.opacity = '0';
+
   chatbarWrap.getBoundingClientRect();
 
   requestAnimationFrame(() => {
@@ -197,7 +235,11 @@ if (chatbarWrap) {
     chatbarWrap.addEventListener('transitionend', function _onEntry(e) {
       if (e.propertyName !== 'transform') return;
       chatbarWrap.removeEventListener('transitionend', _onEntry);
-      chatbarWrap.style.cssText = '';
+
+      chatbarWrap.style.willChange = '';
+      chatbarWrap.style.transition = '';
+      chatbarWrap.style.transform = '';
+      chatbarWrap.style.opacity = '';
     });
   });
 })();
@@ -214,6 +256,7 @@ function _applyViewport(force = false) {
   if (!force && kbHeight === _stableKbH) return;
 
   const wasOpen = _stableKbH > 0;
+
   _stableKbH = kbHeight;
   _keyboardOpen = kbHeight > 0;
 
@@ -260,24 +303,22 @@ function _applyViewport(force = false) {
 
   _setSpacerHeight(_barHeight + kbHeight);
 
-  if (!wasOpen && kbHeight > 0 && scrollHost) {
-    const chatVisible = !chatArea || chatArea.style.display !== 'none';
+  if (!wasOpen && kbHeight > 0) {
+    _programmaticScroll = true;
 
-    if (chatVisible) {
-      _programmaticScroll = true;
-      const anchor = window._lastUserMsgEl;
+    const anchor = window._lastUserMsgEl;
+    const target = anchor
+      ? Math.max(0, _getOffsetTop(anchor) - 16)
+      : _getScrollHeight();
 
-      scrollHost.scrollTop = anchor
-        ? Math.max(0, anchor.offsetTop - 16)
-        : scrollHost.scrollHeight;
-    }
+    _setScrollY(target, 'auto');
   }
 
   cancelAnimationFrame(_cleanupRafId);
 
   _cleanupRafId = requestAnimationFrame(() => {
     _cleanupRafId = 0;
-    if (scrollHost) _lastScrollY = scrollHost.scrollTop;
+    _lastScrollY = _getScrollY();
     resetScrollAccum();
     _programmaticScroll = false;
   });
@@ -336,6 +377,7 @@ if (window.matchMedia) {
         if (chatbarWrap) {
           _barHeight = chatbarWrap.offsetHeight;
         }
+
         _setSpacerHeight(_barHeight + _stableKbH);
         _applyViewport(true);
       });
@@ -359,17 +401,15 @@ const LOGO_THRESH = 10;
 function updateHeader() {
   _rafPending = false;
 
-  if (!scrollHost || !logoHeader || !tabBar) return;
+  const sy = _getScrollY();
 
   if (_programmaticScroll) {
-    _lastScrollY = scrollHost.scrollTop;
+    _lastScrollY = sy;
     resetScrollAccum();
     return;
   }
 
-  const sy = scrollHost.scrollTop;
   const delta = sy - _lastScrollY;
-
   if (delta === 0) return;
 
   const now = performance.now();
@@ -436,14 +476,14 @@ function updateHeader() {
 
 const _scheduleHeaderUpdate = window.requestPostAnimationFrame || requestAnimationFrame;
 
-if (scrollHost) {
-  scrollHost.addEventListener('scroll', () => {
-    if (!_rafPending) {
-      _rafPending = true;
-      _scheduleHeaderUpdate(updateHeader);
-    }
-  }, { passive: true });
-}
+window.addEventListener('scroll', () => {
+  if (!_rafPending) {
+    _rafPending = true;
+    _scheduleHeaderUpdate(updateHeader);
+  }
+}, { passive: true });
+
+_lastScrollY = _getScrollY();
 
 /* ════════════════════════════════
 INPUT & PILL
@@ -461,6 +501,7 @@ if (pill && input) {
     if (document.activeElement === input || _keyboardOpen) return;
 
     e.preventDefault();
+
     requestAnimationFrame(() => {
       input.focus();
     });
@@ -641,7 +682,7 @@ if (tabBar) {
     if (_currentTabKey === 'ai' && _msgWrap) {
       try {
         sessionStorage.setItem('atkyn_chat_html', _msgWrap.innerHTML);
-        sessionStorage.setItem('atkyn_chat_scroll', String(scrollHost ? scrollHost.scrollTop : 0));
+        sessionStorage.setItem('atkyn_chat_scroll', String(_getScrollY()));
       } catch (_) {}
     }
 
@@ -675,13 +716,13 @@ if (tabBar) {
       }
     }
 
-    if (scrollHost) {
-      scrollHost.scrollTo({
-        top: 0,
-        behavior: _prefersReducedMotion ? 'auto' : 'smooth'
-      });
-      resetScrollAccum();
-    }
+    _programmaticScroll = true;
+    _setScrollY(0, _prefersReducedMotion ? 'auto' : 'smooth');
+    resetScrollAccum();
+
+    setTimeout(() => {
+      _programmaticScroll = false;
+    }, _prefersReducedMotion ? 0 : 420);
 
     if (logoHeader && _isLogoCollapsed) {
       logoHeader.classList.remove('collapsed');
@@ -708,3 +749,5 @@ window._atkynModuleCache = _moduleCache;
 window._atkynPageContent = pageContent;
 window._atkynAnimateIn = _animateContentIn;
 window._atkynLoadTab = _loadTab;
+window._atkynGetScrollY = _getScrollY;
+window._atkynSetScrollY = _setScrollY;

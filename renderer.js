@@ -222,9 +222,11 @@ function renderMarkdown(text)     { return universalRender(text); }
 const _chipRegistry = {};
 let   _chipCounter  = 0;
 
+/* Global sources — search.js mein set karo:
+   window._atkynSources = sourcesArray; */
 window._atkynSources = [];
 
-document.addEventListener('error', function (e) {
+document.addEventListener('error', function(e) {
   const img = e.target;
   if (!img || img.tagName !== 'IMG' || !img.dataset.chipId) return;
   const id  = img.dataset.chipId;
@@ -244,10 +246,12 @@ function _buildChip(src) {
   let domain = '';
   try { domain = new URL(src.url).hostname.replace(/^www\./, ''); }
   catch (_) { domain = src.url; }
+
   const label      = domain.length > 22 ? domain.slice(0, 20) + '\u2026' : domain;
   const chipId     = 'chip' + (++_chipCounter);
   _chipRegistry[chipId] = src;
   const faviconUrl = 'https://www.google.com/s2/favicons?domain=' + encodeURIComponent(domain) + '&sz=64';
+
   return (
     '<a class="source-chip"' +
     ' href="' + _he(src.url) + '"' +
@@ -263,29 +267,34 @@ function _buildChip(src) {
 
 function injectCitationChips(html, sources) {
   if (!sources || !sources.length) return html;
-  return html.replace(/(\[\d+\])+/g, function (match) {
+
+  return html.replace(/(\[\d+\])+/g, function(match) {
     const nums = [];
     const re = /\[(\d+)\]/g;
     let m;
     while ((m = re.exec(match)) !== null) nums.push(parseInt(m[1], 10));
+
     const unique   = [...new Set(nums)];
     const MAX_SHOW = 2;
     const toShow   = unique.slice(0, MAX_SHOW);
     const overflow = unique.length - MAX_SHOW;
+
     let inner = '';
     for (const n of toShow) {
       const src = sources[n - 1];
       if (src) inner += _buildChip(src);
     }
     if (overflow > 0) {
-      inner += '<a class="source-chip source-chip-overflow" href="#sources" rel="noopener">+' + overflow + '</a>';
+      inner +=
+        '<a class="source-chip source-chip-overflow" href="#sources" rel="noopener">+' + overflow + '</a>';
     }
+
     return inner ? '<span class="chip-group">' + inner + '</span>' : match;
   });
 }
 
 /* ══════════════════════════════════════════════════════════════
-   SOURCE CHIP BOTTOM SHEET
+   SOURCE CHIP BOTTOM SHEET — Google Web Results Style
 ══════════════════════════════════════════════════════════════ */
 (function () {
   const sheet = document.createElement('div');
@@ -293,24 +302,21 @@ function injectCitationChips(html, sources) {
   sheet.innerHTML =
     '<div id="chipSheetBackdrop"></div>' +
     '<div id="chipSheetCard">' +
-      '<div id="chipSheetHandle"></div>' +
       '<div id="chipSheetList"></div>' +
     '</div>';
   document.body.appendChild(sheet);
 
-  const backdrop = document.getElementById('chipSheetBackdrop');
-  const card     = document.getElementById('chipSheetCard');
-  const list     = document.getElementById('chipSheetList');
-
   function _domain(url) {
     try { return new URL(url).hostname.replace(/^www\./, ''); } catch (_) { return url; }
   }
+
   function _favicon(domain) {
     return 'https://www.google.com/s2/favicons?domain=' + encodeURIComponent(domain) + '&sz=64';
   }
+
   function _shortUrl(url) {
     try {
-      const u    = new URL(url);
+      const u = new URL(url);
       const path = u.pathname.length > 1
         ? u.hostname.replace(/^www\./, '') + u.pathname
         : u.hostname.replace(/^www\./, '');
@@ -319,60 +325,54 @@ function injectCitationChips(html, sources) {
       return url.length > 48 ? url.slice(0, 46) + '\u2026' : url;
     }
   }
-  function _clean(str) {
-    if (!str) return '';
-    return str.replace(/\s*\.{2,}\s*$|\s*\u2026\s*$/, '').trim();
-  }
 
-  function buildItem(src) {
+  function buildItem(src, isActive) {
     const domain  = _domain(src.url);
     const favicon = _favicon(domain);
-    const title   = _clean(src.title || domain);
-    const snippet = _clean(src.snippet || src.content || src.description || src.summary || '');
+    const title   = src.title   || domain;
+    const snippet = src.snippet || '';
+
     return (
-      '<a class="csi" href="' + _he(src.url) + '" target="_blank" rel="noopener noreferrer">' +
+      '<a class="csi" href="' + _he(src.url) + '" target="_blank" rel="noopener">' +
+        /* Meta row: favicon wrap + domain/url stack */
         '<div class="csi-top">' +
           '<div class="csi-favicon-wrap">' +
-            '<img class="csi-favicon" src="' + _he(favicon) + '" width="16" height="16" alt=""' +
-            ' onerror="this.style.visibility=\'hidden\'">' +
+            '<img class="csi-favicon" src="' + _he(favicon) + '" width="16" height="16" alt="" onerror="this.style.visibility=\'hidden\'">' +
           '</div>' +
           '<div class="csi-site">' +
-            '<div class="csi-domain">' + _he(domain)             + '</div>' +
-            '<div class="csi-url">'    + _he(_shortUrl(src.url)) + '</div>' +
+            '<div class="csi-domain">' + _he(domain) + '</div>' +
+            '<div class="csi-url">' + _he(_shortUrl(src.url)) + '</div>' +
           '</div>' +
         '</div>' +
+        /* Title */
         '<div class="csi-title">' + _he(title) + '</div>' +
+        /* Snippet */
         (snippet ? '<div class="csi-snippet">' + _he(snippet) + '</div>' : '') +
       '</a>'
     );
   }
 
-  let _isOpen = false;
-
   function openSheet(clickedUrl) {
     const sources = window._atkynSources || [];
     if (!sources.length) return;
-    const clicked = sources.find(s => s.url === clickedUrl) || sources[0];
-    const sorted  = [clicked, ...sources.filter(s => s.url !== clicked.url)];
-    list.innerHTML = sorted.map(buildItem).join('');
-    card.scrollTop = 0;
+
+    const clickedSrc = sources.find(s => s.url === clickedUrl) || sources[0];
+
+    /* clicked wala top, baaki neeche */
+    const sorted = [
+      clickedSrc,
+      ...sources.filter(s => s.url !== clickedSrc.url),
+    ];
+
+    document.getElementById('chipSheetList').innerHTML =
+      sorted.map((s, i) => buildItem(s, i === 0)).join('');
+
     sheet.classList.add('open');
-    _isOpen = true;
-    document.body.style.overflow = 'hidden';
   }
 
-  function closeSheet() {
-    if (!_isOpen) return;
-    sheet.classList.remove('open');
-    _isOpen = false;
-    document.body.style.overflow = '';
-  }
+  function closeSheet() { sheet.classList.remove('open'); }
 
-  backdrop.addEventListener('click', closeSheet);
-
-  document.addEventListener('keydown', function (e) {
-    if (e.key === 'Escape') closeSheet();
-  });
+  document.getElementById('chipSheetBackdrop').addEventListener('click', closeSheet);
 
   document.addEventListener('click', function (e) {
     const chip = e.target.closest('.source-chip[data-chip-url]');

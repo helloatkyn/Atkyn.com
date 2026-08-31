@@ -294,7 +294,7 @@ function injectCitationChips(html, sources) {
 }
 
 /* ══════════════════════════════════════════════════════════════
-   SOURCE CHIP BOTTOM SHEET — all sources SERP style
+   SOURCE CHIP BOTTOM SHEET — Google Web Results Style
 ══════════════════════════════════════════════════════════════ */
 (function () {
   const sheet = document.createElement('div');
@@ -302,7 +302,6 @@ function injectCitationChips(html, sources) {
   sheet.innerHTML =
     '<div id="chipSheetBackdrop"></div>' +
     '<div id="chipSheetCard">' +
-      '<div id="chipSheetPill"></div>' +
       '<div id="chipSheetList"></div>' +
     '</div>';
   document.body.appendChild(sheet);
@@ -315,21 +314,38 @@ function injectCitationChips(html, sources) {
     return 'https://www.google.com/s2/favicons?domain=' + encodeURIComponent(domain) + '&sz=64';
   }
 
+  function _shortUrl(url) {
+    try {
+      const u = new URL(url);
+      const path = u.pathname.length > 1
+        ? u.hostname.replace(/^www\./, '') + u.pathname
+        : u.hostname.replace(/^www\./, '');
+      return path.length > 48 ? path.slice(0, 46) + '\u2026' : path;
+    } catch (_) {
+      return url.length > 48 ? url.slice(0, 46) + '\u2026' : url;
+    }
+  }
+
   function buildItem(src, isActive) {
     const domain  = _domain(src.url);
     const favicon = _favicon(domain);
-    const title   = src.title || domain;
-    const shortUrl = src.url.length > 45 ? src.url.slice(0, 43) + '\u2026' : src.url;
+    const title   = src.title   || domain;
+    const snippet = src.snippet || '';
 
     return (
       '<a class="csi' + (isActive ? ' csi--active' : '') + '" href="' + _he(src.url) + '" target="_blank" rel="noopener">' +
-        '<img class="csi-favicon" src="' + _he(favicon) + '" width="28" height="28" alt="" onerror="this.style.visibility=\'hidden\'">' +
-        '<div class="csi-body">' +
-          '<div class="csi-domain">' + _he(domain) + '</div>' +
-          '<div class="csi-title">' + _he(title) + '</div>' +
-          '<div class="csi-url">' + _he(shortUrl) + '</div>' +
+        /* Top row: favicon circle + domain + url path */
+        '<div class="csi-top">' +
+          '<img class="csi-favicon" src="' + _he(favicon) + '" width="26" height="26" alt="" onerror="this.style.visibility=\'hidden\'">' +
+          '<div class="csi-site">' +
+            '<div class="csi-domain">' + _he(domain) + '</div>' +
+            '<div class="csi-url">' + _he(_shortUrl(src.url)) + '</div>' +
+          '</div>' +
         '</div>' +
-        '<svg class="csi-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>' +
+        /* Blue title */
+        '<div class="csi-title">' + _he(title) + '</div>' +
+        /* Black snippet */
+        (snippet ? '<div class="csi-snippet">' + _he(snippet) + '</div>' : '') +
       '</a>'
     );
   }
@@ -338,19 +354,12 @@ function injectCitationChips(html, sources) {
     const sources = window._atkynSources || [];
     if (!sources.length) return;
 
-    /* Pill — clicked source highlight */
-    const clickedDomain  = _domain(clickedUrl);
-    const clickedFavicon = _favicon(clickedDomain);
-    const clickedSrc     = sources.find(s => s.url === clickedUrl) || sources[0];
+    const clickedSrc = sources.find(s => s.url === clickedUrl) || sources[0];
 
-    document.getElementById('chipSheetPill').innerHTML =
-      '<img src="' + _he(clickedFavicon) + '" width="20" height="20" alt="" onerror="this.style.visibility=\'hidden\'">' +
-      '<span>' + _he(clickedDomain) + '</span>';
-
-    /* List — all sources, clicked wala top pe */
+    /* clicked wala top, baaki neeche */
     const sorted = [
       clickedSrc,
-      ...sources.filter(s => s.url !== clickedSrc.url)
+      ...sources.filter(s => s.url !== clickedSrc.url),
     ];
 
     document.getElementById('chipSheetList').innerHTML =
@@ -370,3 +379,4 @@ function injectCitationChips(html, sources) {
     openSheet(chip.dataset.chipUrl);
   });
 })();
+         

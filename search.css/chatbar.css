@@ -1,123 +1,148 @@
-/* ════════════════════════════════════════════════════════════════
-   chatbar.css — Premium Glass / Copilot-style Chatbar
-   Visual-only redesign • Existing functionality preserved
-   ════════════════════════════════════════════════════════════════ */
+/* ═══════════════════════════════════════════════════════════════
+   ATKYN CHATBAR — PREMIUM WARM GLASS
+   Reference-matched visual redesign
+   FUNCTIONALITY / HTML / JS PRESERVED
+   ═══════════════════════════════════════════════════════════════ */
 
 
-/* ────────────────────────────────────────────────────────────────
+/* ───────────────────────────────────────────────────────────────
    CHATBAR WRAPPER
-   ──────────────────────────────────────────────────────────────── */
+   ─────────────────────────────────────────────────────────────── */
 
 .chatbar-wrap {
   flex-shrink: 0;
-
-  padding:
-    12px
-    16px
-    calc(14px + env(safe-area-inset-bottom));
-
   position: relative;
   z-index: 10;
 
+  padding:
+    10px
+    16px
+    calc(12px + env(safe-area-inset-bottom));
+
   background: transparent;
 
-  will-change: transform;
   transform: translateZ(0);
-
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
-
   perspective: 1000px;
 }
 
 
-/* ────────────────────────────────────────────────────────────────
-   MAIN GLASS PILL
-   ──────────────────────────────────────────────────────────────── */
+/* ───────────────────────────────────────────────────────────────
+   MAIN PILL
+   ─────────────────────────────────────────────────────────────── */
 
 .overlay-pill {
+  position: relative;
+
   width: 100%;
-  height: 76px;
+
+  /* Reference se slightly shorter */
+  height: 60px;
 
   display: flex;
   align-items: center;
 
-  gap: 11px;
+  gap: 10px;
 
-  padding: 0 18px 0 20px;
+  padding: 0 17px 0 18px;
   margin: 0;
 
   border-radius: 999px;
 
   /*
-    Warm off-white glass exactly like the reference:
-    very soft cream/gray center instead of blue.
+    Warm glass body.
+    No blue.
+    No dark shadow.
   */
   background:
     linear-gradient(
       180deg,
-      rgba(255, 255, 255, 0.88) 0%,
-      rgba(251, 250, 247, 0.96) 48%,
-      rgba(248, 247, 244, 0.98) 100%
+      rgba(253, 252, 249, 0.97) 0%,
+      rgba(250, 249, 246, 0.97) 46%,
+      rgba(247, 246, 242, 0.98) 100%
     );
 
   /*
-    Thin white glass edge.
+    Main glass edge.
   */
-  border: 1px solid rgba(255, 255, 255, 0.96);
+  border: 1px solid rgba(255, 255, 255, 0.98);
 
   /*
-    Double floating ring:
-    1) very light gray structural ring
-    2) white outer glass halo
-    3) soft downward shadow
-    4) subtle inner highlights
+    IMPORTANT:
+    These are rings only.
+    No blurred/drop shadow around the pill.
   */
   box-shadow:
-    0 0 0 2px rgba(237, 236, 232, 0.95),
-    0 0 0 5px rgba(255, 255, 255, 0.72),
-    0 10px 26px rgba(0, 0, 0, 0.075),
-    0 2px 5px rgba(0, 0, 0, 0.035),
     inset 0 1px 0 rgba(255, 255, 255, 0.98),
-    inset 0 -1px 0 rgba(216, 215, 210, 0.34);
+    inset 0 -1px 0 rgba(225, 224, 219, 0.34);
 
-  /*
-    Glass feel without making the pill transparent-looking.
-  */
-  -webkit-backdrop-filter: blur(24px) saturate(1.12);
-  backdrop-filter: blur(24px) saturate(1.12);
+  -webkit-backdrop-filter:
+    blur(24px) saturate(1.06);
+
+  backdrop-filter:
+    blur(24px) saturate(1.06);
 
   transition:
-    box-shadow 0.18s ease,
-    border-color 0.18s ease,
-    background 0.18s ease;
+    background 0.18s ease,
+    border-color 0.18s ease;
 }
 
 
-/* Focus — stays neutral, no blue outline */
+/* ───────────────────────────────────────────────────────────────
+   OUTER GLASS RINGS
+   No shadow — pure border rings
+   ─────────────────────────────────────────────────────────────── */
 
-.overlay-pill:focus-within {
-  border-color: rgba(255, 255, 255, 1);
+.overlay-pill::before {
+  content: "";
 
-  box-shadow:
-    0 0 0 2px rgba(237, 236, 232, 0.98),
-    0 0 0 5px rgba(255, 255, 255, 0.78),
-    0 10px 28px rgba(0, 0, 0, 0.085),
-    0 2px 5px rgba(0, 0, 0, 0.035),
-    inset 0 1px 0 rgba(255, 255, 255, 1),
-    inset 0 -1px 0 rgba(216, 215, 210, 0.32);
+  position: absolute;
+
+  inset: -3px;
+
+  border-radius: inherit;
+
+  /*
+    Very subtle warm-gray ring exactly where reference
+    gets its visible depth.
+  */
+  border: 1px solid rgba(234, 233, 228, 0.96);
+
+  pointer-events: none;
+
+  z-index: -1;
 }
 
 
-/* ────────────────────────────────────────────────────────────────
-   PLUS / ATTACH BUTTON
-   ──────────────────────────────────────────────────────────────── */
+/* Outer-most extremely soft white glass ring */
+
+.overlay-pill::after {
+  content: "";
+
+  position: absolute;
+
+  inset: -5px;
+
+  border-radius: inherit;
+
+  border: 1px solid rgba(255, 255, 255, 0.88);
+
+  pointer-events: none;
+
+  z-index: -2;
+}
+
+
+/* ───────────────────────────────────────────────────────────────
+   PLUS BUTTON
+   ─────────────────────────────────────────────────────────────── */
 
 .ico-plus {
   flex-shrink: 0;
 
-  width: 42px;
-  height: 42px;
+  width: 38px;
+  height: 38px;
 
   display: flex;
   align-items: center;
@@ -126,26 +151,28 @@
   padding: 0;
 
   border: none;
+  outline: none;
+
   background: transparent;
 
-  color: #666460;
+  color: #65635f;
 
   cursor: pointer;
 
   border-radius: 50%;
 
   transition:
-    background 0.14s ease,
-    color 0.14s ease,
-    transform 0.12s ease;
+    background 0.12s ease,
+    transform 0.12s ease,
+    color 0.12s ease;
 }
 
 .ico-plus:hover {
-  background: rgba(0, 0, 0, 0.035);
+  background: rgba(0, 0, 0, 0.025);
 }
 
 .ico-plus:active {
-  background: rgba(0, 0, 0, 0.065);
+  background: rgba(0, 0, 0, 0.055);
   transform: scale(0.94);
 }
 
@@ -154,13 +181,15 @@
   height: 25px;
 
   stroke: currentColor;
-  stroke-width: 1.7;
+  stroke-width: 1.55;
+
+  fill: none;
 }
 
 
-/* ────────────────────────────────────────────────────────────────
+/* ───────────────────────────────────────────────────────────────
    INPUT WRAPPER
-   ──────────────────────────────────────────────────────────────── */
+   ─────────────────────────────────────────────────────────────── */
 
 .overlay-input-wrap {
   flex: 1;
@@ -175,9 +204,9 @@
 }
 
 
-/* ────────────────────────────────────────────────────────────────
+/* ───────────────────────────────────────────────────────────────
    SEARCH INPUT
-   ──────────────────────────────────────────────────────────────── */
+   ─────────────────────────────────────────────────────────────── */
 
 .search-input {
   position: absolute;
@@ -197,21 +226,23 @@
   font-family:
     -apple-system,
     BlinkMacSystemFont,
-    "SF Pro Display",
     "SF Pro Text",
+    "SF Pro Display",
     "Inter",
     system-ui,
     sans-serif;
 
-  font-size: 17px;
-  line-height: 1.2;
+  font-size: 16px;
+
   font-weight: 400;
 
-  letter-spacing: 0.005em;
+  line-height: 1.2;
 
-  color: #343330;
+  letter-spacing: 0;
 
-  caret-color: #65635f;
+  color: #44433f;
+
+  caret-color: #686662;
 
   z-index: 2;
 }
@@ -221,23 +252,19 @@
   opacity: 0;
 }
 
-
-/* Remove browser search decoration */
-
 .search-input::-webkit-search-cancel-button,
 .search-input::-webkit-search-decoration,
 .search-input::-webkit-search-results-button,
 .search-input::-webkit-search-results-decoration {
   -webkit-appearance: none;
   appearance: none;
-
   display: none;
 }
 
 
-/* ────────────────────────────────────────────────────────────────
+/* ───────────────────────────────────────────────────────────────
    SHIMMER PLACEHOLDER
-   ──────────────────────────────────────────────────────────────── */
+   ─────────────────────────────────────────────────────────────── */
 
 .shimmer-overlay {
   position: absolute;
@@ -257,45 +284,47 @@
   font-family:
     -apple-system,
     BlinkMacSystemFont,
-    "SF Pro Display",
     "SF Pro Text",
+    "SF Pro Display",
     "Inter",
     system-ui,
     sans-serif;
 
-  font-size: 17px;
-  line-height: 1.2;
+  font-size: 16px;
 
   font-weight: 400;
 
+  line-height: 1.2;
+
+  letter-spacing: 0;
+
   white-space: nowrap;
 
-  letter-spacing: 0.005em;
-
   /*
-    Reference-style soft graphite text with a
-    very subtle bright sweep.
+    Soft graphite text with a very restrained
+    glass-style highlight sweep.
   */
   background:
     linear-gradient(
       90deg,
-      #696763 0%,
-      #696763 30%,
-      #777570 40%,
-      #f8f7f4 50%,
-      #777570 60%,
-      #696763 70%,
-      #696763 100%
+      #66645f 0%,
+      #66645f 34%,
+      #777570 43%,
+      #f4f2ed 50%,
+      #777570 57%,
+      #66645f 66%,
+      #66645f 100%
     );
 
-  background-size: 320% auto;
+  background-size: 300% 100%;
 
   -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
   background-clip: text;
 
+  -webkit-text-fill-color: transparent;
+
   animation:
-    sweep 3.8s 0.8s linear infinite;
+    sweep 3.8s 1s linear infinite;
 }
 
 @keyframes sweep {
@@ -313,15 +342,15 @@
 }
 
 
-/* ────────────────────────────────────────────────────────────────
-   CAMERA BUTTON
-   ──────────────────────────────────────────────────────────────── */
+/* ───────────────────────────────────────────────────────────────
+   CAMERA
+   ─────────────────────────────────────────────────────────────── */
 
 .ico-camera {
   flex-shrink: 0;
 
-  width: 42px;
-  height: 42px;
+  width: 38px;
+  height: 38px;
 
   display: flex;
   align-items: center;
@@ -330,6 +359,8 @@
   padding: 0;
 
   border: none;
+  outline: none;
+
   background: transparent;
 
   color: #65635f;
@@ -339,32 +370,34 @@
   border-radius: 50%;
 
   transition:
-    background 0.14s ease,
-    color 0.14s ease,
-    transform 0.12s ease;
+    background 0.12s ease,
+    transform 0.12s ease,
+    color 0.12s ease;
 }
 
 .ico-camera:hover {
-  background: rgba(0, 0, 0, 0.035);
+  background: rgba(0, 0, 0, 0.025);
 }
 
 .ico-camera:active {
-  background: rgba(0, 0, 0, 0.065);
+  background: rgba(0, 0, 0, 0.055);
   transform: scale(0.94);
 }
 
 .ico-camera svg {
-  width: 24px;
-  height: 24px;
+  width: 25px;
+  height: 25px;
 
   stroke: currentColor;
-  stroke-width: 1.7;
+  stroke-width: 1.55;
+
+  fill: none;
 }
 
 
-/* ────────────────────────────────────────────────────────────────
+/* ───────────────────────────────────────────────────────────────
    SEND BUTTON
-   ──────────────────────────────────────────────────────────────── */
+   ─────────────────────────────────────────────────────────────── */
 
 .send-btn {
   flex-shrink: 0;
@@ -374,16 +407,17 @@
   align-items: center;
   justify-content: center;
 
-  width: 42px;
-  height: 42px;
+  width: 38px;
+  height: 38px;
 
-  border-radius: 50%;
+  padding: 0;
 
   border: none;
+  border-radius: 50%;
 
-  background: #3e3d39;
+  background: #45443f;
 
-  color: #ffffff;
+  color: #fff;
 
   cursor: pointer;
 
@@ -398,18 +432,16 @@
 }
 
 .send-btn:hover {
-  opacity: 0.9;
+  opacity: 0.88;
 }
 
 .send-btn svg {
   width: 17px;
   height: 17px;
-
-  stroke: currentColor;
 }
 
 
-/* Existing behavior preserved */
+/* EXISTING FUNCTIONAL STATE */
 
 .overlay-pill.has-text .ico-camera {
   display: none;
@@ -420,9 +452,9 @@
 }
 
 
-/* ────────────────────────────────────────────────────────────────
-   CROSS MODE — NON-AI TABS
-   ──────────────────────────────────────────────────────────────── */
+/* ───────────────────────────────────────────────────────────────
+   CROSS MODE
+   ─────────────────────────────────────────────────────────────── */
 
 .send-btn.cross-mode {
   background: transparent;
@@ -434,13 +466,13 @@
   height: 19px;
 
   stroke: currentColor;
-  stroke-width: 1.8;
+  stroke-width: 1.7;
 }
 
 
-/* ────────────────────────────────────────────────────────────────
-   PLUS MENU — GLASS SHEET
-   ──────────────────────────────────────────────────────────────── */
+/* ───────────────────────────────────────────────────────────────
+   PLUS MENU
+   ─────────────────────────────────────────────────────────────── */
 
 .plus-menu-backdrop {
   position: fixed;
@@ -462,30 +494,30 @@
 
   bottom:
     calc(
-      94px + env(safe-area-inset-bottom)
+      90px + env(safe-area-inset-bottom)
     );
 
   width: 220px;
 
-  border-radius: 19px;
-
   background:
-    linear-gradient(
-      180deg,
-      rgba(255, 255, 255, 0.82),
-      rgba(247, 246, 243, 0.92)
-    );
+    rgba(249, 248, 245, 0.94);
 
-  border: 1px solid rgba(255, 255, 255, 0.85);
+  -webkit-backdrop-filter:
+    blur(30px) saturate(1.12);
 
-  -webkit-backdrop-filter: blur(30px) saturate(1.3);
-  backdrop-filter: blur(30px) saturate(1.3);
+  backdrop-filter:
+    blur(30px) saturate(1.12);
 
+  border-radius: 18px;
+
+  border: 1px solid rgba(255, 255, 255, 0.9);
+
+  /*
+    Menu can have a tiny floating depth;
+    this does NOT affect the pill.
+  */
   box-shadow:
-    0 0 0 1px rgba(233, 232, 228, 0.75),
-    0 5px 14px rgba(0, 0, 0, 0.06),
-    0 18px 42px rgba(0, 0, 0, 0.11),
-    inset 0 1px 0 rgba(255, 255, 255, 0.85);
+    0 8px 24px rgba(0, 0, 0, 0.07);
 
   overflow: hidden;
 
@@ -515,9 +547,9 @@
 }
 
 
-/* ────────────────────────────────────────────────────────────────
-   PLUS MENU ITEMS
-   ──────────────────────────────────────────────────────────────── */
+/* ───────────────────────────────────────────────────────────────
+   MENU ITEMS
+   ─────────────────────────────────────────────────────────────── */
 
 .pm-item {
   display: flex;
@@ -525,16 +557,17 @@
 
   gap: 12px;
 
-  width: 100%;
-
   padding: 14px 18px;
 
+  width: 100%;
+
   border: none;
+
   background: transparent;
 
   text-align: left;
 
-  color: #383733;
+  color: #3f3e3a;
 
   font-family:
     -apple-system,
@@ -564,9 +597,9 @@
 }
 
 
-/* ────────────────────────────────────────────────────────────────
-   PLUS MENU ICON
-   ──────────────────────────────────────────────────────────────── */
+/* ───────────────────────────────────────────────────────────────
+   MENU ICON
+   ─────────────────────────────────────────────────────────────── */
 
 .pm-icon {
   flex-shrink: 0;
@@ -583,14 +616,14 @@
   width: 18px;
   height: 18px;
 
-  stroke: #66635f;
-  stroke-width: 1.7;
+  stroke: #686662;
+  stroke-width: 1.65;
 }
 
 
-/* ────────────────────────────────────────────────────────────────
+/* ═══════════════════════════════════════════════════════════════
    DARK MODE
-   ──────────────────────────────────────────────────────────────── */
+   ═══════════════════════════════════════════════════════════════ */
 
 @media (prefers-color-scheme: dark) {
 
@@ -598,47 +631,45 @@
     background:
       linear-gradient(
         180deg,
-        rgba(54, 54, 53, 0.96),
-        rgba(45, 45, 44, 0.98)
+        rgba(58, 58, 57, 0.97) 0%,
+        rgba(53, 53, 52, 0.98) 50%,
+        rgba(49, 49, 48, 0.98) 100%
       );
 
-    border-color: rgba(255, 255, 255, 0.10);
+    border-color: rgba(255, 255, 255, 0.11);
 
     box-shadow:
-      0 0 0 2px rgba(30, 30, 30, 0.88),
-      0 0 0 5px rgba(255, 255, 255, 0.035),
-      0 12px 30px rgba(0, 0, 0, 0.38),
       inset 0 1px 0 rgba(255, 255, 255, 0.055),
       inset 0 -1px 0 rgba(0, 0, 0, 0.22);
   }
 
-  .overlay-pill:focus-within {
-    border-color: rgba(255, 255, 255, 0.13);
+  .overlay-pill::before {
+    border-color: rgba(255, 255, 255, 0.07);
+  }
 
-    box-shadow:
-      0 0 0 2px rgba(30, 30, 30, 0.9),
-      0 0 0 5px rgba(255, 255, 255, 0.04),
-      0 12px 30px rgba(0, 0, 0, 0.40),
-      inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  .overlay-pill::after {
+    border-color: rgba(255, 255, 255, 0.035);
   }
 
   .search-input {
-    color: #efeeeb;
-    caret-color: #d8d6d1;
+    color: #eeece8;
+    caret-color: #d4d2cd;
   }
 
   .shimmer-overlay span {
     background:
       linear-gradient(
         90deg,
-        #a8a6a1 0%,
-        #a8a6a1 30%,
-        #f1f0ed 50%,
-        #a8a6a1 70%,
-        #a8a6a1 100%
+        #a9a7a2 0%,
+        #a9a7a2 34%,
+        #bbb9b4 43%,
+        #f2f0ec 50%,
+        #bbb9b4 57%,
+        #a9a7a2 66%,
+        #a9a7a2 100%
       );
 
-    background-size: 320% auto;
+    background-size: 300% 100%;
 
     -webkit-background-clip: text;
     background-clip: text;
@@ -646,48 +677,30 @@
 
   .ico-plus,
   .ico-camera {
-    color: #d0cec9;
-  }
-
-  .ico-plus:hover,
-  .ico-camera:hover {
-    background: rgba(255, 255, 255, 0.05);
-  }
-
-  .ico-plus:active,
-  .ico-camera:active {
-    background: rgba(255, 255, 255, 0.08);
+    color: #cfcdc8;
   }
 
   .send-btn {
-    background: #ecebe8;
-    color: #30302e;
+    background: #eceae6;
+    color: #34332f;
   }
 
   .send-btn.cross-mode {
     background: transparent;
-    color: #d0cec9;
+    color: #cfcdc8;
   }
 
   .plus-menu {
-    background:
-      linear-gradient(
-        180deg,
-        rgba(54, 54, 53, 0.96),
-        rgba(48, 48, 47, 0.97)
-      );
+    background: rgba(52, 52, 51, 0.96);
 
-    border-color: rgba(255, 255, 255, 0.09);
+    border-color: rgba(255, 255, 255, 0.08);
 
     box-shadow:
-      0 0 0 1px rgba(255, 255, 255, 0.04),
-      0 8px 20px rgba(0, 0, 0, 0.20),
-      0 18px 44px rgba(0, 0, 0, 0.42),
-      inset 0 1px 0 rgba(255, 255, 255, 0.05);
+      0 10px 30px rgba(0, 0, 0, 0.30);
   }
 
   .pm-item {
-    color: #e4e2de;
+    color: #e5e3de;
   }
 
   .pm-item:hover {
@@ -699,66 +712,60 @@
   }
 
   .pm-icon svg {
-    stroke: #c3c0bb;
+    stroke: #c5c2bd;
   }
 }
 
 
-/* ────────────────────────────────────────────────────────────────
-   MOBILE FINE TUNING
-   ──────────────────────────────────────────────────────────────── */
+/* ───────────────────────────────────────────────────────────────
+   MOBILE
+   ─────────────────────────────────────────────────────────────── */
 
 @media (max-width: 480px) {
 
   .chatbar-wrap {
-    padding-left: 16px;
-    padding-right: 16px;
-
-    padding-top: 11px;
-    padding-bottom:
-      calc(13px + env(safe-area-inset-bottom));
+    padding:
+      10px
+      16px
+      calc(12px + env(safe-area-inset-bottom));
   }
 
   .overlay-pill {
-    height: 76px;
+    height: 60px;
 
-    padding-left: 18px;
+    padding-left: 17px;
     padding-right: 16px;
 
-    gap: 9px;
-
-    border-radius: 999px;
+    gap: 8px;
   }
 
-  .search-input {
-    font-size: 17px;
-  }
-
+  .search-input,
   .shimmer-overlay span {
-    font-size: 17px;
+    font-size: 16px;
   }
 
   .ico-plus,
   .ico-camera,
   .send-btn {
-    width: 42px;
-    height: 42px;
+    width: 38px;
+    height: 38px;
   }
 }
 
 
-/* ────────────────────────────────────────────────────────────────
+/* ───────────────────────────────────────────────────────────────
    REDUCED MOTION
-   ──────────────────────────────────────────────────────────────── */
+   ─────────────────────────────────────────────────────────────── */
 
 @media (prefers-reduced-motion: reduce) {
 
   .shimmer-overlay span {
     animation: none;
+
     background: none;
 
-    -webkit-text-fill-color: #696763;
-    color: #696763;
+    -webkit-text-fill-color: #66645f;
+    color: #66645f;
   }
 
   .overlay-pill,
@@ -768,4 +775,4 @@
   .plus-menu {
     transition: none;
   }
-  }
+}

@@ -1,6 +1,7 @@
 /* ═══════════════════════════════════════════════════════════════
-   ATKYN — PREMIUM GLASS CHATBAR
-   Reference-matched / functionality preserved
+   ATKYN — REFERENCE GLASS CHATBAR
+   Premium translucent pill / zero drop-shadow / ring-based glass
+   Geometry tuned against supplied reference image
    ═══════════════════════════════════════════════════════════════ */
 
 
@@ -13,10 +14,13 @@
   position: relative;
   z-index: 10;
 
+  width: 100%;
+  box-sizing: border-box;
+
   padding:
     10px
-    18px
-    calc(12px + env(safe-area-inset-bottom));
+    24px
+    calc(13px + env(safe-area-inset-bottom));
 
   background: transparent;
 
@@ -24,60 +28,71 @@
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
   perspective: 1000px;
+
+  isolation: isolate;
 }
 
 
-/* ───────────────────────────────────────────────────────────────
-   MAIN GLASS PILL
-   ─────────────────────────────────────────────────────────────── */
+/* ═══════════════════════════════════════════════════════════════
+   MAIN PILL
+   ═══════════════════════════════════════════════════════════════ */
 
 .overlay-pill {
   position: relative;
   isolation: isolate;
 
   width: 100%;
-  height: 58px;
+  height: 92px;
+  min-height: 92px;
 
   display: flex;
   align-items: center;
 
-  gap: 9px;
+  box-sizing: border-box;
 
-  padding: 0 15px 0 17px;
+  padding: 0 18px 0 20px;
   margin: 0;
+
+  gap: 11px;
 
   border-radius: 999px;
 
   /*
-    Reference body:
-    almost white + slightest warm gray.
+    Reference:
+    warm translucent white / extremely subtle cream tint.
   */
   background:
     linear-gradient(
       180deg,
-      #fdfcf9 0%,
-      #fbfaf7 44%,
-      #f8f7f3 100%
+      rgba(255, 255, 255, 0.94) 0%,
+      rgba(252, 250, 247, 0.91) 42%,
+      rgba(247, 246, 242, 0.88) 100%
     );
 
   /*
-    Ultra-thin inner glass edge.
+    Clean glass edge.
+    No external shadow.
   */
   border: 1px solid rgba(255, 255, 255, 0.98);
 
   /*
-    NO blurred/drop shadow.
-    Only clean inset glass edges.
+    Only INTERNAL glass definition.
+    No drop-shadow.
   */
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 1),
-    inset 0 -1px 0 rgba(225, 224, 220, 0.38);
+    inset 0 1px 0 rgba(255, 255, 255, 0.98),
+    inset 0 2px 0 rgba(255, 255, 255, 0.30),
+    inset 0 -1px 0 rgba(216, 214, 209, 0.28);
 
   -webkit-backdrop-filter:
-    blur(22px) saturate(1.02);
+    blur(28px) saturate(1.04);
 
   backdrop-filter:
-    blur(22px) saturate(1.02);
+    blur(28px) saturate(1.04);
+
+  -webkit-tap-highlight-color: transparent;
+
+  overflow: visible;
 
   transition:
     background 0.18s ease,
@@ -86,7 +101,7 @@
 
 
 /* ───────────────────────────────────────────────────────────────
-   OUTER RING 1 — WARM LIGHT GRAY
+   OUTER GLASS RING — INNER
    ─────────────────────────────────────────────────────────────── */
 
 .overlay-pill::before {
@@ -97,7 +112,18 @@
 
   border-radius: inherit;
 
-  border: 1px solid rgba(232, 231, 226, 0.96);
+  box-sizing: border-box;
+
+  /*
+    First visible warm-gray ring from reference.
+  */
+  border: 1px solid rgba(226, 225, 220, 0.96);
+
+  /*
+    Extremely subtle translucent fill so the ring feels
+    physically separated from the body.
+  */
+  background: transparent;
 
   pointer-events: none;
 
@@ -106,18 +132,23 @@
 
 
 /* ───────────────────────────────────────────────────────────────
-   OUTER RING 2 — WHITE GLASS HIGHLIGHT
+   OUTER GLASS RING — OUTER HIGHLIGHT
    ─────────────────────────────────────────────────────────────── */
 
 .overlay-pill::after {
   content: "";
 
   position: absolute;
-  inset: -5px;
+  inset: -6px;
 
   border-radius: inherit;
 
-  border: 1px solid rgba(255, 255, 255, 0.86);
+  box-sizing: border-box;
+
+  /*
+    Bright white outer glass contour.
+  */
+  border: 1px solid rgba(255, 255, 255, 0.94);
 
   pointer-events: none;
 
@@ -127,44 +158,50 @@
 
 /* ───────────────────────────────────────────────────────────────
    FOCUS
-   NO BLUE GLOW
+   Reference has no blue/colored focus glow.
    ─────────────────────────────────────────────────────────────── */
 
 .overlay-pill:focus-within {
   border-color: rgba(255, 255, 255, 1);
 
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 1),
-    inset 0 -1px 0 rgba(225, 224, 220, 0.38);
+    inset 0 1px 0 rgba(255, 255, 255, 0.98),
+    inset 0 2px 0 rgba(255, 255, 255, 0.30),
+    inset 0 -1px 0 rgba(216, 214, 209, 0.28);
 }
 
 
-/* ───────────────────────────────────────────────────────────────
-   PLUS
-   ─────────────────────────────────────────────────────────────── */
+/* ═══════════════════════════════════════════════════════════════
+   PLUS BUTTON
+   ═══════════════════════════════════════════════════════════════ */
 
 .ico-plus {
-  flex: 0 0 38px;
+  flex: 0 0 46px;
 
-  width: 38px;
-  height: 38px;
+  width: 46px;
+  height: 46px;
 
   display: flex;
   align-items: center;
   justify-content: center;
 
+  box-sizing: border-box;
+
   padding: 0;
+  margin: 0;
 
   border: 0;
   outline: 0;
 
   background: transparent;
 
-  color: #666560;
+  color: #5f5e5a;
 
   border-radius: 50%;
 
   cursor: pointer;
+
+  -webkit-tap-highlight-color: transparent;
 
   transition:
     background 0.12s ease,
@@ -173,28 +210,35 @@
 }
 
 .ico-plus:hover {
-  background: rgba(80, 79, 76, 0.028);
+  background: rgba(70, 69, 66, 0.022);
 }
 
 .ico-plus:active {
-  background: rgba(80, 79, 76, 0.055);
-  transform: scale(0.94);
+  background: rgba(70, 69, 66, 0.045);
+  transform: scale(0.95);
 }
 
 .ico-plus svg {
-  width: 24px;
-  height: 24px;
+  width: 28px;
+  height: 28px;
+
+  display: block;
 
   stroke: currentColor;
-  stroke-width: 1.55;
+  stroke-width: 1.45;
+
+  stroke-linecap: round;
+  stroke-linejoin: round;
 
   fill: none;
+
+  vector-effect: non-scaling-stroke;
 }
 
 
-/* ───────────────────────────────────────────────────────────────
+/* ═══════════════════════════════════════════════════════════════
    INPUT WRAPPER
-   ─────────────────────────────────────────────────────────────── */
+   ═══════════════════════════════════════════════════════════════ */
 
 .overlay-input-wrap {
   flex: 1;
@@ -209,9 +253,9 @@
 }
 
 
-/* ───────────────────────────────────────────────────────────────
+/* ═══════════════════════════════════════════════════════════════
    INPUT
-   ─────────────────────────────────────────────────────────────── */
+   ═══════════════════════════════════════════════════════════════ */
 
 .search-input {
   position: absolute;
@@ -219,6 +263,8 @@
 
   width: 100%;
   height: 100%;
+
+  box-sizing: border-box;
 
   padding: 0;
   margin: 0;
@@ -241,13 +287,18 @@
   font-weight: 400;
 
   line-height: 1.2;
-  letter-spacing: 0;
+  letter-spacing: -0.012em;
 
   color: #454440;
 
-  caret-color: #64625e;
+  caret-color: #62615d;
 
   z-index: 2;
+
+  -webkit-appearance: none;
+  appearance: none;
+
+  -webkit-tap-highlight-color: transparent;
 }
 
 .search-input::placeholder {
@@ -265,9 +316,9 @@
 }
 
 
-/* ───────────────────────────────────────────────────────────────
+/* ═══════════════════════════════════════════════════════════════
    SHIMMER PLACEHOLDER
-   ─────────────────────────────────────────────────────────────── */
+   ═══════════════════════════════════════════════════════════════ */
 
 .shimmer-overlay {
   position: absolute;
@@ -297,23 +348,24 @@
   font-weight: 400;
 
   line-height: 1.2;
-  letter-spacing: 0;
+  letter-spacing: -0.012em;
 
   white-space: nowrap;
 
   background:
     linear-gradient(
       90deg,
-      #696762 0%,
-      #696762 36%,
-      #7a7873 44%,
-      #f1efea 50%,
-      #7a7873 56%,
-      #696762 64%,
-      #696762 100%
+      #696863 0%,
+      #696863 34%,
+      #7b7973 43%,
+      #f4f2ed 50%,
+      #7b7973 57%,
+      #696863 66%,
+      #696863 100%
     );
 
-  background-size: 300% 100%;
+  background-size: 320% 100%;
+  background-position: 150% center;
 
   -webkit-background-clip: text;
   background-clip: text;
@@ -339,32 +391,37 @@
 }
 
 
-/* ───────────────────────────────────────────────────────────────
-   CAMERA
-   ─────────────────────────────────────────────────────────────── */
+/* ═══════════════════════════════════════════════════════════════
+   CAMERA BUTTON
+   ═══════════════════════════════════════════════════════════════ */
 
 .ico-camera {
-  flex: 0 0 38px;
+  flex: 0 0 46px;
 
-  width: 38px;
-  height: 38px;
+  width: 46px;
+  height: 46px;
 
   display: flex;
   align-items: center;
   justify-content: center;
 
+  box-sizing: border-box;
+
   padding: 0;
+  margin: 0;
 
   border: 0;
   outline: 0;
 
   background: transparent;
 
-  color: #666560;
+  color: #63625e;
 
   border-radius: 50%;
 
   cursor: pointer;
+
+  -webkit-tap-highlight-color: transparent;
 
   transition:
     background 0.12s ease,
@@ -373,63 +430,75 @@
 }
 
 .ico-camera:hover {
-  background: rgba(80, 79, 76, 0.028);
+  background: rgba(70, 69, 66, 0.022);
 }
 
 .ico-camera:active {
-  background: rgba(80, 79, 76, 0.055);
-  transform: scale(0.94);
+  background: rgba(70, 69, 66, 0.045);
+  transform: scale(0.95);
 }
 
 .ico-camera svg {
-  width: 24px;
-  height: 24px;
+  width: 27px;
+  height: 27px;
+
+  display: block;
 
   stroke: currentColor;
-  stroke-width: 1.55;
+  stroke-width: 1.45;
+
+  stroke-linecap: round;
+  stroke-linejoin: round;
 
   fill: none;
+
+  vector-effect: non-scaling-stroke;
 }
 
 
-/* ───────────────────────────────────────────────────────────────
+/* ═══════════════════════════════════════════════════════════════
    SEND BUTTON
-   ─────────────────────────────────────────────────────────────── */
+   ═══════════════════════════════════════════════════════════════ */
 
 .send-btn {
-  flex: 0 0 38px;
+  flex: 0 0 46px;
 
-  width: 38px;
-  height: 38px;
+  width: 46px;
+  height: 46px;
 
   display: none;
 
   align-items: center;
   justify-content: center;
 
+  box-sizing: border-box;
+
   padding: 0;
+  margin: 0;
 
   border: 0;
   border-radius: 50%;
 
-  /*
-    Light neutral glass button,
-    not harsh black.
-  */
   background:
     linear-gradient(
       180deg,
-      #eeedea 0%,
-      #e5e4e0 100%
+      rgba(239, 238, 235, 0.97) 0%,
+      rgba(226, 225, 221, 0.97) 100%
     );
 
-  color: #686762;
+  color: #65635f;
 
   cursor: pointer;
 
+  -webkit-tap-highlight-color: transparent;
+
+  /*
+    Still NO external shadow.
+    Only internal glass separation.
+  */
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.9),
-    inset 0 -1px 0 rgba(210, 209, 205, 0.35);
+    inset 0 1px 0 rgba(255, 255, 255, 0.94),
+    inset 0 -1px 0 rgba(207, 206, 202, 0.30);
 
   transition:
     transform 0.15s ease,
@@ -438,22 +507,32 @@
 }
 
 .send-btn:active {
-  transform: scale(0.88);
+  transform: scale(0.90);
 }
 
 .send-btn:hover {
-  opacity: 0.9;
+  opacity: 0.92;
 }
 
 .send-btn svg {
-  width: 17px;
-  height: 17px;
+  width: 19px;
+  height: 19px;
+
+  display: block;
 
   stroke: currentColor;
+  stroke-width: 1.65;
+
+  stroke-linecap: round;
+  stroke-linejoin: round;
+
+  fill: none;
 }
 
 
-/* Existing functionality */
+/* ───────────────────────────────────────────────────────────────
+   EXISTING STATE FUNCTIONALITY
+   ─────────────────────────────────────────────────────────────── */
 
 .overlay-pill.has-text .ico-camera {
   display: none;
@@ -464,29 +543,34 @@
 }
 
 
-/* ───────────────────────────────────────────────────────────────
+/* ═══════════════════════════════════════════════════════════════
    CROSS MODE
-   ─────────────────────────────────────────────────────────────── */
+   ═══════════════════════════════════════════════════════════════ */
 
 .send-btn.cross-mode {
   background: transparent;
-  color: #666560;
+
+  color: #64625e;
 
   box-shadow: none;
 }
 
 .send-btn.cross-mode svg {
-  width: 19px;
-  height: 19px;
+  width: 22px;
+  height: 22px;
 
   stroke: currentColor;
-  stroke-width: 1.7;
+  stroke-width: 1.55;
+
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 
-/* ───────────────────────────────────────────────────────────────
+/* ═══════════════════════════════════════════════════════════════
    PLUS MENU
-   ─────────────────────────────────────────────────────────────── */
+   Functionality preserved — glass treatment only.
+   ═══════════════════════════════════════════════════════════════ */
 
 .plus-menu-backdrop {
   position: fixed;
@@ -504,15 +588,17 @@
 .plus-menu {
   position: fixed;
 
-  left: 20px;
+  left: 24px;
 
   bottom:
-    calc(88px + env(safe-area-inset-bottom));
+    calc(111px + env(safe-area-inset-bottom));
 
   width: 220px;
 
+  box-sizing: border-box;
+
   background:
-    rgba(250, 249, 246, 0.95);
+    rgba(250, 249, 246, 0.94);
 
   -webkit-backdrop-filter:
     blur(30px) saturate(1.08);
@@ -520,13 +606,17 @@
   backdrop-filter:
     blur(30px) saturate(1.08);
 
-  border-radius: 18px;
+  border-radius: 20px;
 
-  border: 1px solid rgba(255, 255, 255, 0.90);
+  border: 1px solid rgba(255, 255, 255, 0.92);
 
+  /*
+    Very restrained depth.
+    No hard shadow.
+  */
   box-shadow:
-    0 0 0 1px rgba(234, 233, 229, 0.55),
-    0 8px 25px rgba(0, 0, 0, 0.065);
+    inset 0 1px 0 rgba(255, 255, 255, 0.85),
+    inset 0 -1px 0 rgba(220, 219, 215, 0.22);
 
   overflow: hidden;
 
@@ -556,9 +646,9 @@
 }
 
 
-/* ───────────────────────────────────────────────────────────────
+/* ═══════════════════════════════════════════════════════════════
    MENU ITEMS
-   ─────────────────────────────────────────────────────────────── */
+   ═══════════════════════════════════════════════════════════════ */
 
 .pm-item {
   display: flex;
@@ -568,6 +658,8 @@
 
   width: 100%;
 
+  box-sizing: border-box;
+
   padding: 14px 18px;
 
   border: 0;
@@ -576,12 +668,13 @@
 
   text-align: left;
 
-  color: #42413d;
+  color: #42413e;
 
   font-family:
     -apple-system,
     BlinkMacSystemFont,
     "SF Pro Text",
+    "SF Pro Display",
     "Inter",
     system-ui,
     sans-serif;
@@ -593,21 +686,24 @@
 
   cursor: pointer;
 
-  transition: background 0.1s ease;
+  -webkit-tap-highlight-color: transparent;
+
+  transition:
+    background 0.1s ease;
 }
 
 .pm-item:hover {
-  background: rgba(0, 0, 0, 0.024);
+  background: rgba(0, 0, 0, 0.022);
 }
 
 .pm-item:active {
-  background: rgba(0, 0, 0, 0.05);
+  background: rgba(0, 0, 0, 0.045);
 }
 
 
-/* ───────────────────────────────────────────────────────────────
+/* ═══════════════════════════════════════════════════════════════
    MENU ICON
-   ─────────────────────────────────────────────────────────────── */
+   ═══════════════════════════════════════════════════════════════ */
 
 .pm-icon {
   flex-shrink: 0;
@@ -624,8 +720,13 @@
   width: 18px;
   height: 18px;
 
-  stroke: #6b6964;
-  stroke-width: 1.65;
+  stroke: #686660;
+  stroke-width: 1.6;
+
+  stroke-linecap: round;
+  stroke-linejoin: round;
+
+  fill: none;
 }
 
 
@@ -639,24 +740,27 @@
     background:
       linear-gradient(
         180deg,
-        #3c3c3b 0%,
-        #373736 48%,
-        #343433 100%
+        rgba(63, 63, 62, 0.95) 0%,
+        rgba(57, 57, 56, 0.94) 46%,
+        rgba(52, 52, 51, 0.94) 100%
       );
 
-    border-color: rgba(255, 255, 255, 0.10);
+    border-color:
+      rgba(255, 255, 255, 0.10);
 
     box-shadow:
       inset 0 1px 0 rgba(255, 255, 255, 0.055),
-      inset 0 -1px 0 rgba(0, 0, 0, 0.22);
+      inset 0 -1px 0 rgba(0, 0, 0, 0.24);
   }
 
   .overlay-pill::before {
-    border-color: rgba(255, 255, 255, 0.075);
+    border-color:
+      rgba(255, 255, 255, 0.075);
   }
 
   .overlay-pill::after {
-    border-color: rgba(255, 255, 255, 0.035);
+    border-color:
+      rgba(255, 255, 255, 0.035);
   }
 
   .search-input {
@@ -669,15 +773,15 @@
       linear-gradient(
         90deg,
         #aaa8a2 0%,
-        #aaa8a2 36%,
-        #bbb9b4 44%,
-        #f0efeb 50%,
-        #bbb9b4 56%,
-        #aaa8a2 64%,
+        #aaa8a2 34%,
+        #bbb9b4 43%,
+        #f1f0ec 50%,
+        #bbb9b4 57%,
+        #aaa8a2 66%,
         #aaa8a2 100%
       );
 
-    background-size: 300% 100%;
+    background-size: 320% 100%;
 
     -webkit-background-clip: text;
     background-clip: text;
@@ -692,30 +796,35 @@
     background:
       linear-gradient(
         180deg,
-        #eceae7 0%,
-        #dfddda 100%
+        rgba(237, 235, 232, 0.97) 0%,
+        rgba(222, 220, 217, 0.97) 100%
       );
 
     color: #393835;
 
     box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.7),
+      inset 0 1px 0 rgba(255, 255, 255, 0.72),
       inset 0 -1px 0 rgba(0, 0, 0, 0.15);
   }
 
   .send-btn.cross-mode {
     background: transparent;
+
     color: #d0cec9;
+
     box-shadow: none;
   }
 
   .plus-menu {
-    background: rgba(52, 52, 51, 0.96);
+    background:
+      rgba(52, 52, 51, 0.96);
 
-    border-color: rgba(255, 255, 255, 0.08);
+    border-color:
+      rgba(255, 255, 255, 0.08);
 
     box-shadow:
-      0 10px 30px rgba(0, 0, 0, 0.30);
+      inset 0 1px 0 rgba(255, 255, 255, 0.05),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.24);
   }
 
   .pm-item {
@@ -723,11 +832,13 @@
   }
 
   .pm-item:hover {
-    background: rgba(255, 255, 255, 0.035);
+    background:
+      rgba(255, 255, 255, 0.035);
   }
 
   .pm-item:active {
-    background: rgba(255, 255, 255, 0.07);
+    background:
+      rgba(255, 255, 255, 0.07);
   }
 
   .pm-icon svg {
@@ -736,28 +847,29 @@
 }
 
 
-/* ───────────────────────────────────────────────────────────────
+/* ═══════════════════════════════════════════════════════════════
    MOBILE
-   ─────────────────────────────────────────────────────────────── */
+   ═══════════════════════════════════════════════════════════════ */
 
 @media (max-width: 480px) {
 
   .chatbar-wrap {
-    padding-left: 18px;
-    padding-right: 18px;
+    padding-left: 24px;
+    padding-right: 24px;
 
     padding-top: 10px;
     padding-bottom:
-      calc(12px + env(safe-area-inset-bottom));
+      calc(13px + env(safe-area-inset-bottom));
   }
 
   .overlay-pill {
-    height: 58px;
+    height: 92px;
+    min-height: 92px;
 
-    padding-left: 16px;
-    padding-right: 14px;
+    padding-left: 20px;
+    padding-right: 18px;
 
-    gap: 8px;
+    gap: 10px;
   }
 
   .search-input,
@@ -768,17 +880,43 @@
   .ico-plus,
   .ico-camera,
   .send-btn {
-    flex-basis: 38px;
+    flex-basis: 46px;
 
-    width: 38px;
-    height: 38px;
+    width: 46px;
+    height: 46px;
+  }
+
+  .ico-plus svg,
+  .ico-camera svg {
+    width: 27px;
+    height: 27px;
   }
 }
 
 
-/* ───────────────────────────────────────────────────────────────
+/* ═══════════════════════════════════════════════════════════════
+   VERY SMALL DEVICES
+   ═══════════════════════════════════════════════════════════════ */
+
+@media (max-width: 360px) {
+
+  .chatbar-wrap {
+    padding-left: 18px;
+    padding-right: 18px;
+  }
+
+  .overlay-pill {
+    padding-left: 16px;
+    padding-right: 14px;
+
+    gap: 8px;
+  }
+}
+
+
+/* ═══════════════════════════════════════════════════════════════
    REDUCED MOTION
-   ─────────────────────────────────────────────────────────────── */
+   ═══════════════════════════════════════════════════════════════ */
 
 @media (prefers-reduced-motion: reduce) {
 
@@ -798,4 +936,4 @@
   .plus-menu {
     transition: none;
   }
-   }
+             }

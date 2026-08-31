@@ -1,6 +1,5 @@
 /* ════════════════════════════════════════════════════════════════
    base.css — Reset · Body · Scroll host
-   UPDATED: removed transform override from header/tab sticky shim
 ════════════════════════════════════════════════════════════════ */
 
 *, *::before, *::after {
@@ -12,19 +11,15 @@
 }
 
 html {
-  height: auto;
+  height: 100%;
 }
 
 body {
-  position: static;
-  inset: auto;
-  height: auto;
-
-  min-height: 100vh;
-  min-height: 100svh;
-
-  overflow: visible;
-  overscroll-behavior-y: auto;
+  position: fixed;
+  inset: 0;
+  height: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
 
   background: var(--color-bg);
   color: var(--color-text);
@@ -51,39 +46,22 @@ body {
 }
 
 /* ────────────────────────────────────────────────────────────────
-   APP SHELL STABILITY
-   IMPORTANT:
-   Do NOT set transform here.
-   The original hide/show animation relies on component CSS
-   applying transform via classes such as .hide / .collapsed.
-──────────────────────────────────────────────────────────────── */
-
-.logo-header,
-#tabBar {
-  position: sticky;
-  top: 0;
-  z-index: 20;
-}
-
-/* ────────────────────────────────────────────────────────────────
    SCROLL HOST
 ──────────────────────────────────────────────────────────────── */
 
-.scroll-host,
-#scrollHost {
-  flex: 1 0 auto;
+.scroll-host {
+  flex: 1;
   min-height: 0;
 
-  overflow: visible;
+  overflow-y: auto;
   overflow-x: hidden;
 
   -webkit-overflow-scrolling: touch;
-  overscroll-behavior-y: auto;
+  overscroll-behavior-y: none;
 
   scroll-behavior: auto;
 }
 
-.scroll-host::-webkit-scrollbar,
-#scrollHost::-webkit-scrollbar {
+.scroll-host::-webkit-scrollbar {
   display: none;
 }

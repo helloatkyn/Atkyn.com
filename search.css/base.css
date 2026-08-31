@@ -1,5 +1,6 @@
 /* ════════════════════════════════════════════════════════════════
    base.css — Reset · Body · Scroll host
+   UPDATED: document-level scrolling enabled for native URL-bar collapse
 ════════════════════════════════════════════════════════════════ */
 
 *, *::before, *::after {
@@ -11,15 +12,24 @@
 }
 
 html {
-  height: 100%;
+  height: auto;
 }
 
 body {
-  position: fixed;
-  inset: 0;
-  height: 100%;
-  overflow: hidden;
-  overscroll-behavior: none;
+  position: static;
+  inset: auto;
+  height: auto;
+
+  /*
+    Use svh where supported so the initial layout is based on the
+    smallest stable browser viewport. This avoids keyboard-induced
+    height feedback loops while still allowing native chrome collapse.
+  */
+  min-height: 100vh;
+  min-height: 100svh;
+
+  overflow: visible;
+  overscroll-behavior-y: auto;
 
   background: var(--color-bg);
   color: var(--color-text);
@@ -46,22 +56,43 @@ body {
 }
 
 /* ────────────────────────────────────────────────────────────────
-   SCROLL HOST
+   APP SHELL STABILITY
+   These rules keep the header/tab bar attached to the top when the
+   document itself scrolls. They are intentionally low-specificity so
+   existing component CSS can override them if it already defines a
+   more specific positioning model.
 ──────────────────────────────────────────────────────────────── */
 
-.scroll-host {
-  flex: 1;
+.logo-header,
+#tabBar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  transform: translateZ(0);
+}
+
+/* ────────────────────────────────────────────────────────────────
+   SCROLL HOST
+   This is no longer a nested scroll container.
+   It remains the main content wrapper, but scrolling is delegated
+   to the document so mobile browsers can collapse their native UI.
+──────────────────────────────────────────────────────────────── */
+
+.scroll-host,
+#scrollHost {
+  flex: 1 0 auto;
   min-height: 0;
 
-  overflow-y: auto;
+  overflow: visible;
   overflow-x: hidden;
 
   -webkit-overflow-scrolling: touch;
-  overscroll-behavior-y: none;
+  overscroll-behavior-y: auto;
 
   scroll-behavior: auto;
 }
 
-.scroll-host::-webkit-scrollbar {
+.scroll-host::-webkit-scrollbar,
+#scrollHost::-webkit-scrollbar {
   display: none;
 }

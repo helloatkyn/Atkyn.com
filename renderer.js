@@ -330,7 +330,7 @@ function injectCitationChips(html, sources) {
     const domain  = _domain(src.url);
     const favicon = _favicon(domain);
     const title   = src.title   || domain;
-    const snippet = src.snippet || '';
+    const snippet = src.snippet || src.content || src.description || src.summary || '';
 
     return (
       '<a class="csi" href="' + _he(src.url) + '" target="_blank" rel="noopener">' +

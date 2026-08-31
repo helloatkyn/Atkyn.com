@@ -165,9 +165,7 @@
   cursor: pointer;
   line-height: 1;
   -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
   transition: background 0.15s;
-  box-shadow: none;
   appearance: none;
   -webkit-appearance: none;
 }
@@ -217,43 +215,46 @@
 .source-chip-overflow:focus { outline: none; }
 
 @media (prefers-color-scheme: dark) {
-  .source-chip              { background: #303134; color: #e8eaed; }
-  .source-chip:hover        { background: #3c4043; color: #e8eaed; }
-  .source-chip:active       { background: #444749; color: #e8eaed; }
-  .source-chip:focus        { outline: none; color: #e8eaed; }
-  .source-chip:any-link     { color: #e8eaed; }
-  .chip-fallback            { background: #5f6368; }
-  .source-chip-overflow     { color: #9aa0a6; }
+  .source-chip           { background: #303134; color: #e8eaed; }
+  .source-chip:hover     { background: #3c4043; color: #e8eaed; }
+  .source-chip:active    { background: #444749; color: #e8eaed; }
+  .source-chip:focus     { outline: none; color: #e8eaed; }
+  .source-chip:any-link  { color: #e8eaed; }
+  .chip-fallback         { background: #5f6368; }
+  .source-chip-overflow  { color: #9aa0a6; }
   .source-chip-overflow:hover { color: #9aa0a6; }
 }
 
 /* ────────────────────────────────────────────────────────────────
-   SOURCE CHIP BOTTOM SHEET — wc-card style (Web tab 1:1 copy)
+   SOURCE CHIP BOTTOM SHEET
 ──────────────────────────────────────────────────────────────── */
 #chipSheetBackdrop {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.4);
+  background: rgba(0, 0, 0, 0.45);
   opacity: 0;
   pointer-events: none;
-  transition: opacity 0.22s ease;
+  transition: opacity 0.3s cubic-bezier(0.32, 0.72, 0, 1);
   z-index: 999;
 }
 
 #chipSheetCard {
   position: fixed;
-  bottom: 0; left: 0; right: 0;
-  background: #ffffff;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: #f2f2f7;
   border-radius: 20px 20px 0 0;
-  padding: 0 0 40px;
+  padding: 0 0 env(safe-area-inset-bottom, 24px);
   transform: translateY(100%);
-  transition: transform 0.28s cubic-bezier(0.32, 0.72, 0, 1);
+  transition: transform 0.38s cubic-bezier(0.32, 0.72, 0, 1);
   z-index: 1000;
   max-height: 92vh;
-  height: 92vh;
   overflow-y: auto;
+  overflow-x: hidden;
   -webkit-overflow-scrolling: touch;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  overscroll-behavior: contain;
+  will-change: transform;
 }
 
 #chipSheet.open #chipSheetBackdrop {
@@ -264,59 +265,64 @@
   transform: translateY(0);
 }
 
-/* Drag handle */
-#chipSheetCard::before {
+#chipSheetHandle {
+  display: flex;
+  justify-content: center;
+  padding: 10px 0 6px;
+  position: sticky;
+  top: 0;
+  background: #f2f2f7;
+  z-index: 1;
+}
+#chipSheetHandle::after {
   content: '';
   display: block;
   width: 36px;
   height: 4px;
   border-radius: 2px;
-  background: #dadce0;
-  margin: 10px auto 8px;
+  background: #c7c7cc;
 }
 
-/* ── Each result — exact wc-card clone ── */
 .csi {
   display: block;
   text-decoration: none;
   color: inherit;
-  background: #fff;
+  background: #ffffff;
   border-radius: 16px;
-  padding: 13px 14px 15px;
-  margin: 4px 8px 0;
-  position: relative;
+  padding: 14px 16px;
+  margin: 4px 12px 0;
   -webkit-tap-highlight-color: transparent;
-  box-shadow: 0 1px 2px rgba(0,0,0,0.06);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
   transition: background 0.15s;
 }
-.csi:active   { background: #f5f5f5; }
-.csi--active  { background: #fff; }
-.csi:last-child { margin-bottom: 0; }
+.csi:last-child { margin-bottom: 12px; }
+.csi:active     { background: #f5f5f5; }
 
-/* Meta row — wc-meta clone */
 .csi-top {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 8px;
+  gap: 10px;
+  margin-bottom: 10px;
 }
 
-/* Favicon wrap — wc-fav-wrap clone */
 .csi-favicon-wrap {
   flex-shrink: 0;
-  width: 28px; height: 28px;
+  width: 28px;
+  height: 28px;
   border-radius: 50%;
   background: #f1f1f1;
-  display: flex; align-items: center; justify-content: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   overflow: hidden;
 }
 .csi-favicon {
-  width: 16px; height: 16px;
+  width: 16px;
+  height: 16px;
   display: block;
   object-fit: contain;
 }
 
-/* Domain + path stack — wc-meta-text clone */
 .csi-site {
   display: flex;
   flex-direction: column;
@@ -326,63 +332,55 @@
 .csi-domain {
   font-size: 0.875rem;
   font-weight: 600;
-  color: #222;
+  color: #1a1a1a;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 .csi-url {
   font-size: 0.7rem;
-  color: #999;
+  color: #8e8e93;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-/* Title — wc-title exact clone, 2-line clamp */
 .csi-title {
   display: -webkit-box;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
   overflow: hidden;
-  font-size: 1.05rem;
+  font-size: 1rem;
   font-weight: 700;
-  color: #000080;
+  color: #1558d6;
   line-height: 1.4;
   margin: 0 0 6px;
   word-break: break-word;
-  text-overflow: ellipsis;
 }
 
-/* Snippet — wc-snippet exact clone, 3-line clamp */
 .csi-snippet {
   display: -webkit-box;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 3;
   overflow: hidden;
-  font-size: 0.9rem;
-  color: #3a3a3a;
+  font-size: 0.875rem;
+  color: #3c3c43;
   line-height: 1.55;
   margin: 0;
   word-break: break-word;
-  text-overflow: ellipsis;
 }
 
-/* unused legacy helpers */
-.csi-body  { display: contents; }
-.csi-arrow { display: none; }
-
 @media (prefers-color-scheme: dark) {
-  #chipSheetCard         { background: #000000; }
-  #chipSheetCard::before { background: #3a3a3c; }
+  #chipSheetHandle        { background: #1c1c1e; }
+  #chipSheetHandle::after { background: #48484a; }
+  #chipSheetCard          { background: #1c1c1e; }
 
-  .csi          { background: #1c1c1e; box-shadow: 0 1px 4px rgba(0,0,0,0.3); }
-  .csi:active   { background: #2a2a2c; }
-  .csi--active  { background: #1c1c1e; }
+  .csi          { background: #2c2c2e; box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35); }
+  .csi:active   { background: #3a3a3c; }
 
-  .csi-favicon-wrap { background: #2c2c2e; }
-  .csi-domain       { color: rgba(255,255,255,0.75); }
-  .csi-url          { color: rgba(255,255,255,0.3); }
-  .csi-title        { color: #4BA8D8; }
-  .csi-snippet      { color: #d4d4d6; }
+  .csi-favicon-wrap { background: #3a3a3c; }
+  .csi-domain       { color: rgba(255, 255, 255, 0.85); }
+  .csi-url          { color: rgba(255, 255, 255, 0.35); }
+  .csi-title        { color: #4da3e8; }
+  .csi-snippet      { color: #ebebf0; }
 }

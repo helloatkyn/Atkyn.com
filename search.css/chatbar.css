@@ -1,12 +1,11 @@
 /* ═══════════════════════════════════════════════════════════════
-   ATKYN CHATBAR — PREMIUM WARM GLASS
-   Reference-matched visual redesign
-   FUNCTIONALITY / HTML / JS PRESERVED
+   ATKYN — PREMIUM GLASS CHATBAR
+   Reference-matched / functionality preserved
    ═══════════════════════════════════════════════════════════════ */
 
 
 /* ───────────────────────────────────────────────────────────────
-   CHATBAR WRAPPER
+   WRAPPER
    ─────────────────────────────────────────────────────────────── */
 
 .chatbar-wrap {
@@ -16,7 +15,7 @@
 
   padding:
     10px
-    16px
+    18px
     calc(12px + env(safe-area-inset-bottom));
 
   background: transparent;
@@ -29,59 +28,56 @@
 
 
 /* ───────────────────────────────────────────────────────────────
-   MAIN PILL
+   MAIN GLASS PILL
    ─────────────────────────────────────────────────────────────── */
 
 .overlay-pill {
   position: relative;
+  isolation: isolate;
 
   width: 100%;
-
-  /* Reference se slightly shorter */
-  height: 60px;
+  height: 58px;
 
   display: flex;
   align-items: center;
 
-  gap: 10px;
+  gap: 9px;
 
-  padding: 0 17px 0 18px;
+  padding: 0 15px 0 17px;
   margin: 0;
 
   border-radius: 999px;
 
   /*
-    Warm glass body.
-    No blue.
-    No dark shadow.
+    Reference body:
+    almost white + slightest warm gray.
   */
   background:
     linear-gradient(
       180deg,
-      rgba(253, 252, 249, 0.97) 0%,
-      rgba(250, 249, 246, 0.97) 46%,
-      rgba(247, 246, 242, 0.98) 100%
+      #fdfcf9 0%,
+      #fbfaf7 44%,
+      #f8f7f3 100%
     );
 
   /*
-    Main glass edge.
+    Ultra-thin inner glass edge.
   */
   border: 1px solid rgba(255, 255, 255, 0.98);
 
   /*
-    IMPORTANT:
-    These are rings only.
-    No blurred/drop shadow around the pill.
+    NO blurred/drop shadow.
+    Only clean inset glass edges.
   */
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.98),
-    inset 0 -1px 0 rgba(225, 224, 219, 0.34);
+    inset 0 1px 0 rgba(255, 255, 255, 1),
+    inset 0 -1px 0 rgba(225, 224, 220, 0.38);
 
   -webkit-backdrop-filter:
-    blur(24px) saturate(1.06);
+    blur(22px) saturate(1.02);
 
   backdrop-filter:
-    blur(24px) saturate(1.06);
+    blur(22px) saturate(1.02);
 
   transition:
     background 0.18s ease,
@@ -90,24 +86,18 @@
 
 
 /* ───────────────────────────────────────────────────────────────
-   OUTER GLASS RINGS
-   No shadow — pure border rings
+   OUTER RING 1 — WARM LIGHT GRAY
    ─────────────────────────────────────────────────────────────── */
 
 .overlay-pill::before {
   content: "";
 
   position: absolute;
-
   inset: -3px;
 
   border-radius: inherit;
 
-  /*
-    Very subtle warm-gray ring exactly where reference
-    gets its visible depth.
-  */
-  border: 1px solid rgba(234, 233, 228, 0.96);
+  border: 1px solid rgba(232, 231, 226, 0.96);
 
   pointer-events: none;
 
@@ -115,18 +105,19 @@
 }
 
 
-/* Outer-most extremely soft white glass ring */
+/* ───────────────────────────────────────────────────────────────
+   OUTER RING 2 — WHITE GLASS HIGHLIGHT
+   ─────────────────────────────────────────────────────────────── */
 
 .overlay-pill::after {
   content: "";
 
   position: absolute;
-
   inset: -5px;
 
   border-radius: inherit;
 
-  border: 1px solid rgba(255, 255, 255, 0.88);
+  border: 1px solid rgba(255, 255, 255, 0.86);
 
   pointer-events: none;
 
@@ -135,11 +126,25 @@
 
 
 /* ───────────────────────────────────────────────────────────────
-   PLUS BUTTON
+   FOCUS
+   NO BLUE GLOW
+   ─────────────────────────────────────────────────────────────── */
+
+.overlay-pill:focus-within {
+  border-color: rgba(255, 255, 255, 1);
+
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 1),
+    inset 0 -1px 0 rgba(225, 224, 220, 0.38);
+}
+
+
+/* ───────────────────────────────────────────────────────────────
+   PLUS
    ─────────────────────────────────────────────────────────────── */
 
 .ico-plus {
-  flex-shrink: 0;
+  flex: 0 0 38px;
 
   width: 38px;
   height: 38px;
@@ -150,16 +155,16 @@
 
   padding: 0;
 
-  border: none;
-  outline: none;
+  border: 0;
+  outline: 0;
 
   background: transparent;
 
-  color: #65635f;
-
-  cursor: pointer;
+  color: #666560;
 
   border-radius: 50%;
+
+  cursor: pointer;
 
   transition:
     background 0.12s ease,
@@ -168,17 +173,17 @@
 }
 
 .ico-plus:hover {
-  background: rgba(0, 0, 0, 0.025);
+  background: rgba(80, 79, 76, 0.028);
 }
 
 .ico-plus:active {
-  background: rgba(0, 0, 0, 0.055);
+  background: rgba(80, 79, 76, 0.055);
   transform: scale(0.94);
 }
 
 .ico-plus svg {
-  width: 25px;
-  height: 25px;
+  width: 24px;
+  height: 24px;
 
   stroke: currentColor;
   stroke-width: 1.55;
@@ -205,7 +210,7 @@
 
 
 /* ───────────────────────────────────────────────────────────────
-   SEARCH INPUT
+   INPUT
    ─────────────────────────────────────────────────────────────── */
 
 .search-input {
@@ -218,8 +223,8 @@
   padding: 0;
   margin: 0;
 
-  border: none;
-  outline: none;
+  border: 0;
+  outline: 0;
 
   background: transparent;
 
@@ -233,16 +238,14 @@
     sans-serif;
 
   font-size: 16px;
-
   font-weight: 400;
 
   line-height: 1.2;
-
   letter-spacing: 0;
 
-  color: #44433f;
+  color: #454440;
 
-  caret-color: #686662;
+  caret-color: #64625e;
 
   z-index: 2;
 }
@@ -291,29 +294,23 @@
     sans-serif;
 
   font-size: 16px;
-
   font-weight: 400;
 
   line-height: 1.2;
-
   letter-spacing: 0;
 
   white-space: nowrap;
 
-  /*
-    Soft graphite text with a very restrained
-    glass-style highlight sweep.
-  */
   background:
     linear-gradient(
       90deg,
-      #66645f 0%,
-      #66645f 34%,
-      #777570 43%,
-      #f4f2ed 50%,
-      #777570 57%,
-      #66645f 66%,
-      #66645f 100%
+      #696762 0%,
+      #696762 36%,
+      #7a7873 44%,
+      #f1efea 50%,
+      #7a7873 56%,
+      #696762 64%,
+      #696762 100%
     );
 
   background-size: 300% 100%;
@@ -347,7 +344,7 @@
    ─────────────────────────────────────────────────────────────── */
 
 .ico-camera {
-  flex-shrink: 0;
+  flex: 0 0 38px;
 
   width: 38px;
   height: 38px;
@@ -358,16 +355,16 @@
 
   padding: 0;
 
-  border: none;
-  outline: none;
+  border: 0;
+  outline: 0;
 
   background: transparent;
 
-  color: #65635f;
-
-  cursor: pointer;
+  color: #666560;
 
   border-radius: 50%;
+
+  cursor: pointer;
 
   transition:
     background 0.12s ease,
@@ -376,17 +373,17 @@
 }
 
 .ico-camera:hover {
-  background: rgba(0, 0, 0, 0.025);
+  background: rgba(80, 79, 76, 0.028);
 }
 
 .ico-camera:active {
-  background: rgba(0, 0, 0, 0.055);
+  background: rgba(80, 79, 76, 0.055);
   transform: scale(0.94);
 }
 
 .ico-camera svg {
-  width: 25px;
-  height: 25px;
+  width: 24px;
+  height: 24px;
 
   stroke: currentColor;
   stroke-width: 1.55;
@@ -400,26 +397,39 @@
    ─────────────────────────────────────────────────────────────── */
 
 .send-btn {
-  flex-shrink: 0;
+  flex: 0 0 38px;
+
+  width: 38px;
+  height: 38px;
 
   display: none;
 
   align-items: center;
   justify-content: center;
 
-  width: 38px;
-  height: 38px;
-
   padding: 0;
 
-  border: none;
+  border: 0;
   border-radius: 50%;
 
-  background: #45443f;
+  /*
+    Light neutral glass button,
+    not harsh black.
+  */
+  background:
+    linear-gradient(
+      180deg,
+      #eeedea 0%,
+      #e5e4e0 100%
+    );
 
-  color: #fff;
+  color: #686762;
 
   cursor: pointer;
+
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    inset 0 -1px 0 rgba(210, 209, 205, 0.35);
 
   transition:
     transform 0.15s ease,
@@ -432,16 +442,18 @@
 }
 
 .send-btn:hover {
-  opacity: 0.88;
+  opacity: 0.9;
 }
 
 .send-btn svg {
   width: 17px;
   height: 17px;
+
+  stroke: currentColor;
 }
 
 
-/* EXISTING FUNCTIONAL STATE */
+/* Existing functionality */
 
 .overlay-pill.has-text .ico-camera {
   display: none;
@@ -458,7 +470,9 @@
 
 .send-btn.cross-mode {
   background: transparent;
-  color: #65635f;
+  color: #666560;
+
+  box-shadow: none;
 }
 
 .send-btn.cross-mode svg {
@@ -493,31 +507,26 @@
   left: 20px;
 
   bottom:
-    calc(
-      90px + env(safe-area-inset-bottom)
-    );
+    calc(88px + env(safe-area-inset-bottom));
 
   width: 220px;
 
   background:
-    rgba(249, 248, 245, 0.94);
+    rgba(250, 249, 246, 0.95);
 
   -webkit-backdrop-filter:
-    blur(30px) saturate(1.12);
+    blur(30px) saturate(1.08);
 
   backdrop-filter:
-    blur(30px) saturate(1.12);
+    blur(30px) saturate(1.08);
 
   border-radius: 18px;
 
-  border: 1px solid rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.90);
 
-  /*
-    Menu can have a tiny floating depth;
-    this does NOT affect the pill.
-  */
   box-shadow:
-    0 8px 24px rgba(0, 0, 0, 0.07);
+    0 0 0 1px rgba(234, 233, 229, 0.55),
+    0 8px 25px rgba(0, 0, 0, 0.065);
 
   overflow: hidden;
 
@@ -557,17 +566,17 @@
 
   gap: 12px;
 
-  padding: 14px 18px;
-
   width: 100%;
 
-  border: none;
+  padding: 14px 18px;
+
+  border: 0;
 
   background: transparent;
 
   text-align: left;
 
-  color: #3f3e3a;
+  color: #42413d;
 
   font-family:
     -apple-system,
@@ -584,16 +593,15 @@
 
   cursor: pointer;
 
-  transition:
-    background 0.1s ease;
+  transition: background 0.1s ease;
 }
 
 .pm-item:hover {
-  background: rgba(0, 0, 0, 0.025);
+  background: rgba(0, 0, 0, 0.024);
 }
 
 .pm-item:active {
-  background: rgba(0, 0, 0, 0.055);
+  background: rgba(0, 0, 0, 0.05);
 }
 
 
@@ -616,7 +624,7 @@
   width: 18px;
   height: 18px;
 
-  stroke: #686662;
+  stroke: #6b6964;
   stroke-width: 1.65;
 }
 
@@ -631,12 +639,12 @@
     background:
       linear-gradient(
         180deg,
-        rgba(58, 58, 57, 0.97) 0%,
-        rgba(53, 53, 52, 0.98) 50%,
-        rgba(49, 49, 48, 0.98) 100%
+        #3c3c3b 0%,
+        #373736 48%,
+        #343433 100%
       );
 
-    border-color: rgba(255, 255, 255, 0.11);
+    border-color: rgba(255, 255, 255, 0.10);
 
     box-shadow:
       inset 0 1px 0 rgba(255, 255, 255, 0.055),
@@ -644,7 +652,7 @@
   }
 
   .overlay-pill::before {
-    border-color: rgba(255, 255, 255, 0.07);
+    border-color: rgba(255, 255, 255, 0.075);
   }
 
   .overlay-pill::after {
@@ -652,21 +660,21 @@
   }
 
   .search-input {
-    color: #eeece8;
-    caret-color: #d4d2cd;
+    color: #efeeeb;
+    caret-color: #d7d5d0;
   }
 
   .shimmer-overlay span {
     background:
       linear-gradient(
         90deg,
-        #a9a7a2 0%,
-        #a9a7a2 34%,
-        #bbb9b4 43%,
-        #f2f0ec 50%,
-        #bbb9b4 57%,
-        #a9a7a2 66%,
-        #a9a7a2 100%
+        #aaa8a2 0%,
+        #aaa8a2 36%,
+        #bbb9b4 44%,
+        #f0efeb 50%,
+        #bbb9b4 56%,
+        #aaa8a2 64%,
+        #aaa8a2 100%
       );
 
     background-size: 300% 100%;
@@ -677,17 +685,28 @@
 
   .ico-plus,
   .ico-camera {
-    color: #cfcdc8;
+    color: #d0cec9;
   }
 
   .send-btn {
-    background: #eceae6;
-    color: #34332f;
+    background:
+      linear-gradient(
+        180deg,
+        #eceae7 0%,
+        #dfddda 100%
+      );
+
+    color: #393835;
+
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.7),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.15);
   }
 
   .send-btn.cross-mode {
     background: transparent;
-    color: #cfcdc8;
+    color: #d0cec9;
+    box-shadow: none;
   }
 
   .plus-menu {
@@ -712,7 +731,7 @@
   }
 
   .pm-icon svg {
-    stroke: #c5c2bd;
+    stroke: #c6c3be;
   }
 }
 
@@ -724,17 +743,19 @@
 @media (max-width: 480px) {
 
   .chatbar-wrap {
-    padding:
-      10px
-      16px
+    padding-left: 18px;
+    padding-right: 18px;
+
+    padding-top: 10px;
+    padding-bottom:
       calc(12px + env(safe-area-inset-bottom));
   }
 
   .overlay-pill {
-    height: 60px;
+    height: 58px;
 
-    padding-left: 17px;
-    padding-right: 16px;
+    padding-left: 16px;
+    padding-right: 14px;
 
     gap: 8px;
   }
@@ -747,6 +768,8 @@
   .ico-plus,
   .ico-camera,
   .send-btn {
+    flex-basis: 38px;
+
     width: 38px;
     height: 38px;
   }
@@ -764,8 +787,8 @@
 
     background: none;
 
-    -webkit-text-fill-color: #66645f;
-    color: #66645f;
+    -webkit-text-fill-color: #696762;
+    color: #696762;
   }
 
   .overlay-pill,
@@ -775,4 +798,4 @@
   .plus-menu {
     transition: none;
   }
-}
+   }

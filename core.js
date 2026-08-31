@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════════════
-core.js — Atkyn shared UI logic [PRODUCTION · NATIVE-SMOOTH v4]
+core.js — Atkyn shared UI logic [PRODUCTION · NATIVE-SMOOTH v5]
 scroll · header animation · keyboard positioning · theme freeze
 chatbar entrance · plus menu · tab navigation
 ════════════════════════════════════════════════════════════════════ */
@@ -33,6 +33,11 @@ const sendBtn = document.getElementById('sendBtn');
 const pageContent = document.getElementById('pageContent');
 const chatArea = document.getElementById('chatArea');
 const _msgWrap = document.getElementById('msgWrap');
+const chatSpacer = document.getElementById('chatSpacer');
+
+/* ── Cached layout metrics ── */
+const _tabBarHeight = tabBar ? tabBar.offsetHeight : 0;
+const vvp = window.visualViewport;
 
 /* ── SVG constants ── */
 const SVG_SEND = '<svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="20" x2="12" y2="4"/><polyline points="5 11 12 4 19 11"/></svg>';
@@ -135,7 +140,7 @@ function scrollToMsg(el) {
     _scrollRafId = null;
     _programmaticScroll = true;
 
-    const target = Math.max(0, el.offsetTop - (tabBar ? tabBar.offsetHeight : 0) - 8);
+    const target = Math.max(0, el.offsetTop - _tabBarHeight - 8);
 
     if (_prefersReducedMotion) {
       scrollHost.scrollTop = target;
@@ -159,11 +164,9 @@ window.scrollToMsg = scrollToMsg;
 CHATBAR / KEYBOARD POSITIONING
 ════════════════════════════════ */
 function _setSpacerHeight(h) {
-  if (h === _lastSpacerH) return;
+  if (h === _lastSpacerH || !chatSpacer) return;
   _lastSpacerH = h;
-
-  const spacer = document.getElementById('chatSpacer');
-  if (spacer) spacer.style.height = h + 'px';
+  chatSpacer.style.height = h + 'px';
 }
 
 if (chatbarWrap) {
@@ -180,6 +183,13 @@ if (chatbarWrap) {
   });
 
   _barResizeObserver.observe(chatbarWrap);
+
+  // Clear transition exactly when animation completes to avoid setTimeout drift
+  chatbarWrap.addEventListener('transitionend', (e) => {
+    if (e.propertyName === 'transform') {
+      chatbarWrap.style.transition = '';
+    }
+  });
 }
 
 /* ── Chatbar entrance animation ── */
@@ -204,10 +214,9 @@ if (chatbarWrap) {
 
 /* ── Keyboard / VisualViewport positioning ── */
 function _applyViewport(force = false) {
-  if (!window.visualViewport || !chatbarWrap) return;
+  if (!vvp || !chatbarWrap) return;
   if (!force && performance.now() < _themeFreezeUntil) return;
 
-  const vvp = window.visualViewport;
   const rawKb = Math.max(0, window.innerHeight - vvp.height - vvp.offsetTop);
   const kbHeight = rawKb > 50 ? Math.round(rawKb) : 0;
 
@@ -231,7 +240,8 @@ function _applyViewport(force = false) {
       chatbarWrap.style.transition = 'none';
       chatbarWrap.style.transform = transform;
 
-      requestAnimationFrame(() => {
+      _kbAnimFrame = requestAnimationFrame(() => {
+        _kbAnimFrame = null;
         if (_stableKbH === kbHeight) {
           chatbarWrap.style.transition = '';
         }
@@ -242,17 +252,7 @@ function _applyViewport(force = false) {
 
       chatbarWrap.style.transition = `transform ${dur} ${ease}`;
       chatbarWrap.style.transform = transform;
-
-      const capturedKbH = kbHeight;
-
-      _kbAnimFrame = requestAnimationFrame(() => {
-        _kbAnimFrame = null;
-        setTimeout(() => {
-          if (_stableKbH === capturedKbH) {
-            chatbarWrap.style.transition = '';
-          }
-        }, 380);
-      });
+      // transitionend listener will clear the transition automatically
     }
 
     _lastChatbarTransform = transform;
@@ -293,9 +293,9 @@ function fixViewport() {
   });
 }
 
-if (window.visualViewport) {
-  window.visualViewport.addEventListener('resize', fixViewport, { passive: true });
-  window.visualViewport.addEventListener('scroll', fixViewport, { passive: true });
+if (vvp) {
+  vvp.addEventListener('resize', fixViewport, { passive: true });
+  vvp.addEventListener('scroll', fixViewport, { passive: true });
 
   _setSpacerHeight(_barHeight);
   _applyViewport(true);
@@ -356,7 +356,7 @@ const HIDE_ACCUM = 40;
 const SHOW_ACCUM = 55;
 const LOGO_THRESH = 10;
 
-function updateHeader() {
+function updateHeader(now) {
   _rafPending = false;
 
   if (!scrollHost || !logoHeader || !tabBar) return;
@@ -372,7 +372,7 @@ function updateHeader() {
 
   if (delta === 0) return;
 
-  const now = performance.now();
+  now = now || performance.now();
   const dt = Math.max(1, now - _lastScrollTime);
 
   _velocityEMA = _velocityEMA === 0
@@ -483,7 +483,6 @@ function openPlusMenu() {
   if (!plusBtn || !plusMenu || !plusBackdrop) return;
 
   const rect = plusBtn.getBoundingClientRect();
-  const vvp = window.visualViewport;
   const viewH = vvp ? vvp.height : window.innerHeight;
   const bottom = (viewH - rect.top + 8) + 'px';
 

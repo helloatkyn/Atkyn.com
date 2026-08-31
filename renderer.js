@@ -333,18 +333,20 @@ function injectCitationChips(html, sources) {
     const snippet = src.snippet || '';
 
     return (
-      '<a class="csi' + (isActive ? ' csi--active' : '') + '" href="' + _he(src.url) + '" target="_blank" rel="noopener">' +
-        /* Top row: favicon circle + domain + url path */
+      '<a class="csi" href="' + _he(src.url) + '" target="_blank" rel="noopener">' +
+        /* Meta row: favicon wrap + domain/url stack */
         '<div class="csi-top">' +
-          '<img class="csi-favicon" src="' + _he(favicon) + '" width="26" height="26" alt="" onerror="this.style.visibility=\'hidden\'">' +
+          '<div class="csi-favicon-wrap">' +
+            '<img class="csi-favicon" src="' + _he(favicon) + '" width="16" height="16" alt="" onerror="this.style.visibility=\'hidden\'">' +
+          '</div>' +
           '<div class="csi-site">' +
             '<div class="csi-domain">' + _he(domain) + '</div>' +
             '<div class="csi-url">' + _he(_shortUrl(src.url)) + '</div>' +
           '</div>' +
         '</div>' +
-        /* Blue title */
+        /* Title */
         '<div class="csi-title">' + _he(title) + '</div>' +
-        /* Black snippet */
+        /* Snippet */
         (snippet ? '<div class="csi-snippet">' + _he(snippet) + '</div>' : '') +
       '</a>'
     );
@@ -379,4 +381,3 @@ function injectCitationChips(html, sources) {
     openSheet(chip.dataset.chipUrl);
   });
 })();
-         

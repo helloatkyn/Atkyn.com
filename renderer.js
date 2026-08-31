@@ -33,6 +33,11 @@ function _normalizeNewlines(str) {
   return out.join('');
 }
 
+/* ── Strip trailing ellipsis variants from title ── */
+function _cleanTitle(str) {
+  return str.replace(/[\s\u2026.]*\.{2,}$/, '').replace(/\s*\u2026$/, '').trim();
+}
+
 /* ══════════════════════════════════════════════════════════════
    KaTeX helper
 ══════════════════════════════════════════════════════════════ */
@@ -222,8 +227,6 @@ function renderMarkdown(text)     { return universalRender(text); }
 const _chipRegistry = {};
 let   _chipCounter  = 0;
 
-/* Global sources — search.js mein set karo:
-   window._atkynSources = sourcesArray; */
 window._atkynSources = [];
 
 document.addEventListener('error', function(e) {
@@ -294,7 +297,7 @@ function injectCitationChips(html, sources) {
 }
 
 /* ══════════════════════════════════════════════════════════════
-   SOURCE CHIP BOTTOM SHEET — Google Web Results Style
+   SOURCE CHIP BOTTOM SHEET
 ══════════════════════════════════════════════════════════════ */
 (function () {
   const sheet = document.createElement('div');
@@ -326,15 +329,14 @@ function injectCitationChips(html, sources) {
     }
   }
 
-  function buildItem(src, isActive) {
+  function buildItem(src) {
     const domain  = _domain(src.url);
     const favicon = _favicon(domain);
-    const title   = src.title   || domain;
+    const title   = _cleanTitle(src.title || domain);
     const snippet = src.snippet || '';
 
     return (
       '<a class="csi" href="' + _he(src.url) + '" target="_blank" rel="noopener">' +
-        /* Meta row: favicon wrap + domain/url stack */
         '<div class="csi-top">' +
           '<div class="csi-favicon-wrap">' +
             '<img class="csi-favicon" src="' + _he(favicon) + '" width="16" height="16" alt="" onerror="this.style.visibility=\'hidden\'">' +
@@ -344,9 +346,7 @@ function injectCitationChips(html, sources) {
             '<div class="csi-url">' + _he(_shortUrl(src.url)) + '</div>' +
           '</div>' +
         '</div>' +
-        /* Title */
         '<div class="csi-title">' + _he(title) + '</div>' +
-        /* Snippet */
         (snippet ? '<div class="csi-snippet">' + _he(snippet) + '</div>' : '') +
       '</a>'
     );
@@ -357,16 +357,9 @@ function injectCitationChips(html, sources) {
     if (!sources.length) return;
 
     const clickedSrc = sources.find(s => s.url === clickedUrl) || sources[0];
+    const sorted = [clickedSrc, ...sources.filter(s => s.url !== clickedSrc.url)];
 
-    /* clicked wala top, baaki neeche */
-    const sorted = [
-      clickedSrc,
-      ...sources.filter(s => s.url !== clickedSrc.url),
-    ];
-
-    document.getElementById('chipSheetList').innerHTML =
-      sorted.map((s, i) => buildItem(s, i === 0)).join('');
-
+    document.getElementById('chipSheetList').innerHTML = sorted.map(buildItem).join('');
     sheet.classList.add('open');
   }
 
@@ -381,3 +374,4 @@ function injectCitationChips(html, sources) {
     openSheet(chip.dataset.chipUrl);
   });
 })();
+                     

@@ -264,10 +264,13 @@
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
 }
 
-.wc-empty-icon {
-  width: 96px;
-  height: 96px;
-  margin-bottom: 28px;
+.wc-empty-balloon {
+  width: 160px;
+  height: 160px;
+  object-fit: contain;
+  margin-bottom: 20px;
+  user-select: none;
+  -webkit-user-drag: none;
 }
 
 .wc-empty-title {
@@ -372,4 +375,4 @@
     background: #2a2a2c;
   }
   }
-            
+  

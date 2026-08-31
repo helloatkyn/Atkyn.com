@@ -328,6 +328,61 @@ function injectCitationChips(html, sources) {
     return s.replace(/[\s\u00a0]*(\u2026|\.{2,3})$/, '').trimEnd();
   }
 
+  /* Fetch OG image — same worker endpoint as web tab */
+  function _fetchOg(url) {
+    return fetch('/api/og?url=' + encodeURIComponent(url), {
+      signal: AbortSignal.timeout(6000),
+    })
+      .then(function(r) { return r.ok ? r.json() : null; })
+      .then(function(d) { return (d && d.image) ? d.image : null; })
+      .catch(function() { return null; });
+  }
+
+  /* Inject OG image into a rendered .csi card — same ratio logic as web tab */
+  function _injectOg(cardEl, image) {
+    if (!image) return;
+    var titleEl = cardEl.querySelector('.csi-title');
+    if (!titleEl) return;
+
+    var img = document.createElement('img');
+    img.src      = image;
+    img.loading  = 'lazy';
+    img.decoding = 'async';
+    img.alt      = '';
+
+    img.addEventListener('load', function() {
+      var ratio = img.naturalWidth / img.naturalHeight;
+      if (ratio >= 1.3) {
+        /* Landscape → full-width banner below title */
+        img.className = 'csi-og-full';
+        var wrap = document.createElement('div');
+        wrap.className = 'csi-og-full-wrap';
+        wrap.appendChild(img);
+        if (titleEl.nextSibling) {
+          titleEl.parentNode.insertBefore(wrap, titleEl.nextSibling);
+        } else {
+          titleEl.parentNode.appendChild(wrap);
+        }
+      } else {
+        /* Portrait/square → inline thumbnail beside snippet */
+        img.className = 'csi-og-thumb';
+        var snippetEl = cardEl.querySelector('.csi-snippet');
+        var thumbWrap = document.createElement('div');
+        thumbWrap.className = 'csi-og-thumb-wrap';
+        thumbWrap.appendChild(img);
+        var row = document.createElement('div');
+        row.className = 'csi-og-inline-row';
+        if (snippetEl) {
+          snippetEl.parentNode.insertBefore(row, snippetEl);
+          row.appendChild(snippetEl);
+        }
+        row.appendChild(thumbWrap);
+      }
+    }, { once: true });
+
+    img.addEventListener('error', function() { img.remove(); }, { once: true });
+  }
+
   function buildItem(src) {
     const domain  = _domain(src.url);
     const favicon = _favicon(domain);
@@ -366,8 +421,16 @@ function injectCitationChips(html, sources) {
       ...sources.filter(s => s.url !== clickedSrc.url),
     ];
 
-    document.getElementById('chipSheetList').innerHTML =
-      sorted.map((s, i) => buildItem(s, i === 0)).join('');
+    const list = document.getElementById('chipSheetList');
+    list.innerHTML = sorted.map(function(s) { return buildItem(s); }).join('');
+
+    /* OG images inject — per card async, after DOM is set */
+    var cards = list.querySelectorAll('.csi');
+    sorted.forEach(function(src, i) {
+      var cardEl = cards[i];
+      if (!cardEl) return;
+      _fetchOg(src.url).then(function(img) { _injectOg(cardEl, img); });
+    });
 
     sheet.classList.add('open');
   }
@@ -383,3 +446,4 @@ function injectCitationChips(html, sources) {
     openSheet(chip.dataset.chipUrl);
   });
 })();
+       

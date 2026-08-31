@@ -1,6 +1,6 @@
 /* ════════════════════════════════════════════════════════════════
    base.css — Reset · Body · Scroll host
-   UPDATED: document-level scrolling enabled for native URL-bar collapse
+   UPDATED: removed transform override from header/tab sticky shim
 ════════════════════════════════════════════════════════════════ */
 
 *, *::before, *::after {
@@ -20,11 +20,6 @@ body {
   inset: auto;
   height: auto;
 
-  /*
-    Use svh where supported so the initial layout is based on the
-    smallest stable browser viewport. This avoids keyboard-induced
-    height feedback loops while still allowing native chrome collapse.
-  */
   min-height: 100vh;
   min-height: 100svh;
 
@@ -57,10 +52,10 @@ body {
 
 /* ────────────────────────────────────────────────────────────────
    APP SHELL STABILITY
-   These rules keep the header/tab bar attached to the top when the
-   document itself scrolls. They are intentionally low-specificity so
-   existing component CSS can override them if it already defines a
-   more specific positioning model.
+   IMPORTANT:
+   Do NOT set transform here.
+   The original hide/show animation relies on component CSS
+   applying transform via classes such as .hide / .collapsed.
 ──────────────────────────────────────────────────────────────── */
 
 .logo-header,
@@ -68,14 +63,10 @@ body {
   position: sticky;
   top: 0;
   z-index: 20;
-  transform: translateZ(0);
 }
 
 /* ────────────────────────────────────────────────────────────────
    SCROLL HOST
-   This is no longer a nested scroll container.
-   It remains the main content wrapper, but scrolling is delegated
-   to the document so mobile browsers can collapse their native UI.
 ──────────────────────────────────────────────────────────────── */
 
 .scroll-host,

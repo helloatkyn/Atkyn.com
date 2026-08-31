@@ -1,7 +1,7 @@
 /* ═══════════════════════════════════════════════════════════════════
 core.js — Atkyn shared UI logic
-UPDATED: document-level scroll architecture
-Preserves keyboard behavior, chatbar stability, theme freeze, tabs
+UPDATED: keyboard / URL-bar separation
+Preserves document-level scroll, keyboard stability, chatbar anchoring
 ════════════════════════════════════════════════════════════════════ */
 
 /* ── Reduced-motion flag ── */
@@ -34,7 +34,7 @@ const pageContent = document.getElementById('pageContent');
 const chatArea = document.getElementById('chatArea');
 const _msgWrap = document.getElementById('msgWrap');
 
-/* ── Chatbar must be viewport-anchored when the document scrolls ── */
+/* ── Chatbar must remain viewport-anchored during document scroll ── */
 if (chatbarWrap) {
   chatbarWrap.style.position = 'fixed';
   chatbarWrap.style.left = '0';
@@ -72,6 +72,9 @@ let _kbAnimFrame = null;
 let _vvpDebounce = 0;
 let _barHeight = chatbarWrap ? chatbarWrap.offsetHeight : 0;
 let _lastChatbarTransform = '';
+
+/* ── Keyboard context ── */
+let _keyboardContext = false;
 
 /* ── Spacer guard ── */
 let _lastSpacerH = -1;
@@ -126,6 +129,38 @@ function resetScrollAccum() {
   _velocityEMA = 0;
   _lastScrollTime = 0;
 }
+
+/* ════════════════════════════════
+KEYBOARD CONTEXT HELPERS
+════════════════════════════════ */
+function _isEditable(el) {
+  if (!el || el.nodeType !== 1) return false;
+
+  const tag = el.tagName;
+
+  return (
+    tag === 'INPUT' ||
+    tag === 'TEXTAREA' ||
+    tag === 'SELECT' ||
+    el.isContentEditable === true
+  );
+}
+
+_keyboardContext = _isEditable(document.activeElement);
+
+document.addEventListener('focusin', (e) => {
+  if (_isEditable(e.target)) {
+    _keyboardContext = true;
+  }
+}, true);
+
+document.addEventListener('focusout', (e) => {
+  const next = e.relatedTarget;
+
+  if (!_isEditable(next)) {
+    _keyboardContext = false;
+  }
+}, true);
 
 /* ════════════════════════════════
 SEND BUTTON MODE
@@ -244,14 +279,54 @@ if (chatbarWrap) {
   });
 })();
 
+/* ── Keyboard height state machine ── */
+function _computeKeyboardHeight(vvp) {
+  const raw = Math.max(0, Math.round(window.innerHeight - vvp.height - vvp.offsetTop));
+
+  /*
+    These thresholds intentionally ignore small browser-toolbar deltas.
+    URL-bar animation usually produces relatively small height changes.
+    Real keyboards normally produce much larger visual viewport changes.
+  */
+  const openMin = Math.max(140, Math.round(window.innerHeight * 0.16));
+  const closeMax = 80;
+  const updateMin = 72;
+
+  /* Keyboard is currently closed. */
+  if (_stableKbH === 0) {
+    if (!_keyboardContext) return 0;
+    if (raw >= openMin) return raw;
+    return 0;
+  }
+
+  /* Keyboard is currently open. */
+  if (raw <= closeMax) return 0;
+
+  /*
+    If focus is gone but the viewport has not yet collapsed,
+    hold the current keyboard offset until the browser actually settles.
+    This avoids a premature drop that would momentarily hide the chatbar.
+  */
+  if (!_keyboardContext) return _stableKbH;
+
+  /*
+    Ignore small changes while the keyboard is already open.
+    This prevents URL-bar or browser-chrome noise from moving the bar.
+  */
+  if (Math.abs(raw - _stableKbH) < updateMin) return _stableKbH;
+
+  if (raw >= openMin) return raw;
+
+  return _stableKbH;
+}
+
 /* ── Keyboard / VisualViewport positioning ── */
 function _applyViewport(force = false) {
   if (!window.visualViewport || !chatbarWrap) return;
   if (!force && performance.now() < _themeFreezeUntil) return;
 
   const vvp = window.visualViewport;
-  const rawKb = Math.max(0, window.innerHeight - vvp.height - vvp.offsetTop);
-  const kbHeight = rawKb > 50 ? Math.round(rawKb) : 0;
+  const kbHeight = _computeKeyboardHeight(vvp);
 
   if (!force && kbHeight === _stableKbH) return;
 
@@ -336,7 +411,16 @@ function fixViewport() {
 
 if (window.visualViewport) {
   window.visualViewport.addEventListener('resize', fixViewport, { passive: true });
-  window.visualViewport.addEventListener('scroll', fixViewport, { passive: true });
+
+  /*
+    visualViewport scroll is only useful while keyboard positioning is active.
+    Ignoring it during normal scroll removes unnecessary viewport churn.
+  */
+  window.visualViewport.addEventListener('scroll', () => {
+    if (_keyboardContext || _stableKbH > 0) {
+      fixViewport();
+    }
+  }, { passive: true });
 
   _setSpacerHeight(_barHeight);
   _applyViewport(true);
@@ -400,6 +484,8 @@ const LOGO_THRESH = 10;
 
 function updateHeader() {
   _rafPending = false;
+
+  if (!logoHeader || !tabBar) return;
 
   const sy = _getScrollY();
 

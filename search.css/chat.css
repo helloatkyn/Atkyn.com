@@ -443,12 +443,14 @@
 .ai-disclaimer {
   display: flex;
   align-items: center;
-  align-self: flex-start;
-  gap: 7px;
-  padding: 6px 0 2px;
-  opacity: 0.45;
+  justify-content: flex-end;
+  align-self: stretch;
+  gap: 6px;
+  padding: 7px 2px 2px;
+  opacity: 0.65;
   font-size: 11.5px;
   line-height: 1.45;
+  text-align: right;
   color: var(--color-text, #1c1c1e);
 }
 
@@ -457,9 +459,6 @@
 }
 
 .ai-disclaimer-logo {
-  width: 16px;
-  height: 16px;
-  object-fit: contain;
-  flex-shrink: 0;
-  display: block;
-  }
+  display: none;
+   }
+   

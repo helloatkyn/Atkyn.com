@@ -1,4 +1,4 @@
-/* modules/images/images.css — v9 */
+/* modules/images/images.css — v10 */
 
 /* ── Reset & base ────────────────────────────────────────────── */
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -179,12 +179,12 @@
   letter-spacing: -0.2px;
 }
 
-/* ── Category chips — horizontal scroll ──────────────────────── */
+/* ── Category chips — matches tab sizing exactly ─────────────── */
 .img-es-cats {
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
-  padding: 0 12px;
+  padding: 0 14px;
 }
 .img-es-cats::-webkit-scrollbar { display: none; }
 .img-es-cats-row {
@@ -194,23 +194,25 @@
   padding-bottom: 4px;
 }
 .img-es-chip {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 7px 16px;
-  border-radius: 8px;
+  flex-shrink: 0;
+  height: 32px;
+  padding: 0 12px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #1a1a1a;
   background: #FFDDAA;
+  border-radius: 6px;
   border: none;
   outline: none;
   cursor: pointer;
   white-space: nowrap;
-  font-size: 13px;
-  font-weight: 400;
-  color: #1a1a1a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   font-family: inherit;
-  transition: opacity 0.12s, transform 0.1s;
+  transition: opacity 0.15s, background 0.15s;
 }
-.img-es-chip:active { opacity: 0.7; transform: scale(0.96); }
+.img-es-chip:active { opacity: 0.75; }
 
 /* ── Trending query cards grid ───────────────────────────────── */
 .img-es-qgrid {
@@ -294,25 +296,22 @@
 /* ── Dark mode ────────────────────────────────────────────────── */
 @media (prefers-color-scheme: dark) {
 
-  /* Empty state */
   .img-es { background: #111; }
   .img-es-sec-title { color: #f0f0f0; }
 
-  /* Chips — keep warm tone, darken slightly */
-  .img-es-chip { background: #8a5c1a; color: #fff; }
+  /* Chip: dark equivalent of #FFDDAA — warm amber tone */
+  .img-es-chip { background: #7a4e10; color: #ffe8c0; }
+  .img-es-chip:active { opacity: 0.75; }
 
-  /* Masonry */
   .img-es-mitem { background: #1e1e1e; }
   .img-es-mlabel { background: #1e1e1e; color: #f0f0f0; }
 
-  /* Tiles */
   .img-tile { background: #1e1e1e; }
   .img-tile-footer { background: #1e1e1e; }
   .img-tile-title { color: #f0f0f0; }
   .img-tile-dots { color: #aaa; }
   .img-tile-dots:active { background: #2a2a2a; }
 
-  /* Filler cards */
   .img-suggestion-card,
   .img-source-card { background: #1e1e1e; }
   .img-card-label { color: #6e6e73; }
@@ -322,10 +321,10 @@
   .img-source-title { color: #f0f0f0; }
   .img-source-url { color: #0A84FF; }
 
-  /* Skeleton */
   .sk-img {
     background: linear-gradient(90deg, #1e1e1e 25%, #2a2a2a 50%, #1e1e1e 75%);
     background-size: 200% 100%;
     animation: sk-shimmer 1.4s ease-in-out infinite;
   }
-}
+  }
+  

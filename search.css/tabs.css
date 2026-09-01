@@ -1,6 +1,6 @@
 /* ════════════════════════════════════════════════════════════════
-   tabs.css — Tab bar (Answer / Web / Images / Videos / News …)
-   Google-style · Bold active · No underline · Grey divider
+   tabs.css — Tab bar
+   Google-style · Bold active · No underline · No divider
 ════════════════════════════════════════════════════════════════ */
 
 /* ────────────────────────────────────────────────────────────────
@@ -35,8 +35,6 @@
   -webkit-backface-visibility: hidden;
 
   transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
-
-  border-bottom: 1.2px solid rgba(0, 0, 0, 0.12);
 }
 
 .tab-bar::-webkit-scrollbar {
@@ -60,7 +58,6 @@
 @media (prefers-color-scheme: dark) {
   .tab-bar {
     background: var(--color-tab-bar-bg-dark);
-    border-bottom-color: rgba(255, 255, 255, 0.12);
   }
 }
 
@@ -107,7 +104,7 @@
 }
 
 /* ────────────────────────────────────────────────────────────────
-   ACTIVE — Google style: sirf bold, koi underline/background nahi
+   ACTIVE — Google style: bold, no underline/background
 ──────────────────────────────────────────────────────────────── */
 .tab.active {
   font-weight: 700;
@@ -126,7 +123,6 @@
    DARK MODE — TAB STATES
 ──────────────────────────────────────────────────────────────── */
 @media (prefers-color-scheme: dark) {
-
   .tab {
     color: rgba(255, 255, 255, 0.48);
   }

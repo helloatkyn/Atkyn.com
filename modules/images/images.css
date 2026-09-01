@@ -1,4 +1,4 @@
-/* modules/images/images.css — v3 */
+/* modules/images/images.css — v4 */
 
 /* ── Grid layout ─────────────────────────────────────────────── */
 .images-grid {
@@ -7,7 +7,6 @@
   padding: 8px 8px 0;
   align-items: flex-start;
 }
-
 .img-col {
   flex: 1;
   display: flex;
@@ -25,12 +24,7 @@
   -webkit-tap-highlight-color: transparent;
   transition: opacity 0.12s ease, transform 0.12s ease;
 }
-
-.img-tile:active {
-  opacity: 0.82;
-  transform: scale(0.97);
-}
-
+.img-tile:active { opacity: 0.82; transform: scale(0.97); }
 .img-tile img {
   display: block;
   width: 100%;
@@ -49,8 +43,6 @@
   padding: 10px 10px 2px;
   overflow: hidden;
 }
-
-/* Bing-style section label */
 .img-card-label {
   font-size: 11px;
   font-weight: 600;
@@ -62,11 +54,7 @@
 }
 
 /* ── Related searches ────────────────────────────────────────── */
-.img-suggestion-list {
-  display: flex;
-  flex-direction: column;
-}
-
+.img-suggestion-list { display: flex; flex-direction: column; }
 .img-suggestion-chip {
   display: flex;
   align-items: center;
@@ -83,29 +71,21 @@
   gap: 6px;
   -webkit-tap-highlight-color: transparent;
 }
-
 .img-suggestion-chip::after {
   content: '';
   display: inline-block;
-  width: 6px;
-  height: 6px;
+  width: 6px; height: 6px;
   border-right: 1.5px solid #8a8a8e;
   border-top:   1.5px solid #8a8a8e;
   transform: rotate(45deg);
   flex-shrink: 0;
   margin-right: 2px;
 }
-
-.img-suggestion-chip:last-child {
-  border-bottom: none;
-  padding-bottom: 6px;
-}
-
+.img-suggestion-chip:last-child { border-bottom: none; padding-bottom: 6px; }
 .img-suggestion-chip:active { opacity: 0.55; }
 
-/* ── Top sources card ────────────────────────────────────────── */
+/* ── Top sources ─────────────────────────────────────────────── */
 .img-source-card { margin-top: 0; }
-
 .img-source-row {
   display: flex;
   align-items: flex-start;
@@ -115,64 +95,28 @@
   text-decoration: none;
   -webkit-tap-highlight-color: transparent;
 }
-
-.img-source-row:last-child {
-  border-bottom: none;
-  padding-bottom: 4px;
-}
-
+.img-source-row:last-child { border-bottom: none; padding-bottom: 4px; }
 .img-source-row:active { opacity: 0.55; }
-
-.img-source-info {
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-}
-
+.img-source-info { min-width: 0; display: flex; flex-direction: column; gap: 1px; }
 .img-source-title {
   display: block;
-  font-size: 12.5px;
-  font-weight: 600;
-  color: #1a1a1a;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  font-size: 12.5px; font-weight: 600; color: #1a1a1a;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   line-height: 1.35;
 }
-
 .img-source-url {
   display: block;
-  font-size: 11px;
-  color: #007AFF;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  margin-top: 1px;
-  line-height: 1.3;
+  font-size: 11px; color: #007AFF;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  margin-top: 1px; line-height: 1.3;
 }
 
 /* ── Sentinel ─────────────────────────────────────────────────── */
-.img-sentinel {
-  height: 1px;
-  width: 100%;
-  pointer-events: none;
-}
+.img-sentinel { height: 1px; width: 100%; pointer-events: none; }
 
 /* ── Skeleton shimmer ─────────────────────────────────────────── */
-.tab-skeleton.grid {
-  display: flex;
-  gap: 5px;
-  padding: 8px 8px 0;
-}
-
-.sk-col {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-}
-
+.tab-skeleton.grid { display: flex; gap: 5px; padding: 8px 8px 0; }
+.sk-col { flex: 1; display: flex; flex-direction: column; gap: 5px; }
 .sk-img {
   border-radius: 10px;
   aspect-ratio: 3 / 4;
@@ -180,92 +124,83 @@
   background-size: 200% 100%;
   animation: sk-shimmer 1.2s ease-in-out infinite;
 }
-
 .sk-img--sm { aspect-ratio: 4 / 3; }
-
 @keyframes sk-shimmer {
   0%   { background-position: 200% 0; }
   100% { background-position: -200% 0; }
 }
 
 /* ══════════════════════════════════════════════════
-   EMPTY STATE — Atkyn Images
+   EMPTY STATE — Bing style
 ══════════════════════════════════════════════════ */
 .img-es-root {
   display: flex;
   flex-direction: column;
-  padding: 0 0 40px;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  padding-bottom: 32px;
 }
 
+/* Hero — camera + tagline */
 .img-es-hero {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 40px 24px 20px;
+  padding: 36px 24px 18px;
   text-align: center;
 }
-
-.img-es-balloon {
-  width: 140px;
-  height: 140px;
-  object-fit: contain;
-  margin-bottom: 14px;
-  user-select: none;
-  -webkit-user-drag: none;
+.img-es-cam {
+  margin-bottom: 12px;
+  line-height: 0;
 }
-
-.img-es-title {
-  font-size: 1.5rem;
-  font-weight: 800;
-  color: #0072B1;
-  margin: 0 0 6px;
-  letter-spacing: -0.02em;
-}
-
 .img-es-sub {
-  font-size: 0.875rem;
+  font-size: 0.92rem;
   color: #999;
   margin: 0;
   line-height: 1.5;
 }
 
-.img-es-section-label {
-  font-size: 0.72rem;
+/* Section header */
+.img-es-section {
+  display: flex;
+  align-items: center;
+  padding: 4px 12px 8px;
+}
+.img-es-section-title {
+  font-size: 0.78rem;
   font-weight: 700;
   color: #aaa;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
-  margin: 0 0 10px;
-  padding: 0 10px;
+  letter-spacing: 0.07em;
 }
 
-/* ── Suggestion grid — 2 cols, image cards ── */
-.img-es-grid {
+/* ── Category grid — Bing exact: 2 col, image fill, label bottom ── */
+.img-es-cats {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 6px;
+  gap: 5px;
   padding: 0 8px;
 }
 
-.img-es-chip {
-  position: relative;
+.img-es-cat {
   display: block;
+  text-decoration: none;
   border-radius: 12px;
   overflow: hidden;
-  text-decoration: none;
   -webkit-tap-highlight-color: transparent;
-  aspect-ratio: 4 / 3;
-  background: #f0f2f4;
   transition: transform 0.12s ease, opacity 0.12s ease;
 }
+.img-es-cat:active { transform: scale(0.96); opacity: 0.85; }
 
-.img-es-chip:active {
-  transform: scale(0.96);
-  opacity: 0.85;
+.img-es-cat-wrap {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  background: #e8e8e8;
+  border-radius: 12px;
+  overflow: hidden;
 }
 
-.img-es-chip-img {
+.img-es-cat-img {
   width: 100%;
   height: 100%;
   object-fit: cover;
@@ -273,46 +208,36 @@
   border-radius: 12px;
 }
 
-.img-es-chip-label {
+.img-es-cat-label {
   position: absolute;
   bottom: 0;
   left: 0;
   right: 0;
-  padding: 18px 10px 8px;
-  background: linear-gradient(to top, rgba(0,0,0,0.62) 0%, transparent 100%);
-  font-size: 0.82rem;
+  padding: 22px 10px 9px;
+  background: linear-gradient(to top, rgba(0,0,0,0.65) 0%, transparent 100%);
+  font-size: 0.88rem;
   font-weight: 700;
   color: #fff;
-  border-radius: 0 0 12px 12px;
   letter-spacing: 0.01em;
+  border-radius: 0 0 12px 12px;
 }
 
 /* ── Dark mode ───────────────────────────────────────────────── */
 @media (prefers-color-scheme: dark) {
   .img-suggestion-card,
-  .img-source-card      { background: #2c2c2e; }
-
-  .img-card-label       { color: #8a8a8e; }
-
-  .img-suggestion-chip  {
-    color: #f0f0f0;
-    border-color: #3a3a3c;
-  }
-  .img-suggestion-chip::after {
-    border-color: #636366;
-  }
-
-  .img-source-row       { border-color: #3a3a3c; }
-  .img-source-title     { color: #f0f0f0; }
-  .img-source-url       { color: #0A84FF; }
-
+  .img-source-card    { background: #2c2c2e; }
+  .img-card-label     { color: #8a8a8e; }
+  .img-suggestion-chip { color: #f0f0f0; border-color: #3a3a3c; }
+  .img-suggestion-chip::after { border-color: #636366; }
+  .img-source-row     { border-color: #3a3a3c; }
+  .img-source-title   { color: #f0f0f0; }
+  .img-source-url     { color: #0A84FF; }
   .sk-img {
     background: linear-gradient(90deg, #2c2c2e 25%, #3a3a3c 50%, #2c2c2e 75%);
     background-size: 200% 100%;
     animation: sk-shimmer 1.2s ease-in-out infinite;
   }
-
-  .img-es-sub  { color: #555; }
-  .img-es-section-label { color: #555; }
-  .img-es-chip { background: #2c2c2e; }
-      }
+  .img-es-sub          { color: #555; }
+  .img-es-section-title { color: #555; }
+  .img-es-cat-wrap     { background: #2c2c2e; }
+                    }

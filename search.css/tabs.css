@@ -36,7 +36,7 @@
 
   transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
 
-  border-bottom: 1px solid rgba(0, 0, 0, 0.10);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.18);
 }
 
 /* ────────────────────────────────────────────────────────────────
@@ -45,7 +45,7 @@
 @media (prefers-color-scheme: dark) {
   .tab-bar {
     background: var(--color-tab-bar-bg-dark);
-    border-bottom-color: rgba(255, 255, 255, 0.10);
+    border-bottom-color: rgba(255, 255, 255, 0.16);
   }
 }
 

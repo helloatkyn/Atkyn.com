@@ -2,7 +2,7 @@ import { SYSTEM_PROMPT } from './systemPrompt.js';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const GROQ_MODEL    = 'qwen/qwen3.6-27b';
+const GROQ_MODEL    = 'qwen/qwen3.8-27b';
 const GROQ_ENDPOINT = 'https://api.groq.com/openai/v1/chat/completions';
 const FINNHUB_BASE  = 'https://finnhub.io/api/v1';
 const SERPER_ENDPOINT = 'https://google.serper.dev/search';
@@ -385,5 +385,4 @@ export async function onRequestOptions() {
       'Access-Control-Allow-Headers': 'Content-Type, Authorization',
     },
   });
-      }
-  
+}

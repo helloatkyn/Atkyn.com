@@ -532,7 +532,7 @@
 
   box-sizing: border-box;
 
-  background: #e8e8e8;
+  background: #f0f0f0;
 
   border-radius: 14px;
 
@@ -849,4 +849,4 @@
   .plus-menu {
     transition: none;
   }
-     }
+   }

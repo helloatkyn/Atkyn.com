@@ -1,6 +1,6 @@
 /* ════════════════════════════════════════════════════════════════
    tabs.css — Tab bar
-   Google-style · Bold active · No underline · No divider
+   Google-style · Bold active · Crisp neutral divider
 ════════════════════════════════════════════════════════════════ */
 
 /* ────────────────────────────────────────────────────────────────
@@ -35,21 +35,8 @@
   -webkit-backface-visibility: hidden;
 
   transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
-}
 
-.tab-bar::-webkit-scrollbar {
-  display: none;
-}
-
-/* Last tab clip fix — pseudo-element spacer */
-.tab-bar::after {
-  content: '';
-  flex-shrink: 0;
-  width: 12px;
-}
-
-.tab-bar.hide {
-  transform: translateY(-100%) translateZ(0);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.10);
 }
 
 /* ────────────────────────────────────────────────────────────────
@@ -58,7 +45,31 @@
 @media (prefers-color-scheme: dark) {
   .tab-bar {
     background: var(--color-tab-bar-bg-dark);
+    border-bottom-color: rgba(255, 255, 255, 0.10);
   }
+}
+
+/* ────────────────────────────────────────────────────────────────
+   SCROLLBAR
+──────────────────────────────────────────────────────────────── */
+.tab-bar::-webkit-scrollbar {
+  display: none;
+}
+
+/* ────────────────────────────────────────────────────────────────
+   LAST TAB CLIP FIX
+──────────────────────────────────────────────────────────────── */
+.tab-bar::after {
+  content: '';
+  flex-shrink: 0;
+  width: 12px;
+}
+
+/* ────────────────────────────────────────────────────────────────
+   HIDDEN STATE
+──────────────────────────────────────────────────────────────── */
+.tab-bar.hide {
+  transform: translateY(-100%) translateZ(0);
 }
 
 /* ────────────────────────────────────────────────────────────────
@@ -104,7 +115,8 @@
 }
 
 /* ────────────────────────────────────────────────────────────────
-   ACTIVE — Google style: bold, no underline/background
+   ACTIVE
+   Bold only — no underline or background
 ──────────────────────────────────────────────────────────────── */
 .tab.active {
   font-weight: 700;

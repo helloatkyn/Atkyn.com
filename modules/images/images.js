@@ -1,5 +1,5 @@
 /* modules/images/images.js — Images tab
-   v5: Bing-exact layout · HD Picsum idle state · GSAP camera animation
+   v6: Pixabay-style empty state · horizontal scroll cats · masonry gallery · full-res Unsplash
 */
 (function () {
 
@@ -17,136 +17,129 @@
   let _queue      = [];
   let _batchTimer = null;
 
-  /* ── Picsum HD categories — id-based, 800px wide ── */
+  /* ── Categories with emoji + Unsplash full-res (800px, unique IDs) ── */
   const CATS = [
-    { label: 'Nature',       id: 15  },
-    { label: 'Architecture', id: 164 },
-    { label: 'Animals',      id: 237 },
-    { label: 'Travel',       id: 338 },
-    { label: 'Technology',   id: 180 },
-    { label: 'People',       id: 453 },
-    { label: 'Food',         id: 292 },
-    { label: 'Abstract',     id: 103 },
-    { label: 'Cars',         id: 111 },
-    { label: 'Fashion',      id: 325 },
-    { label: 'Space',        id: 29  },
-    { label: 'Mountains',    id: 377 },
-    { label: 'Ocean',        id: 314 },
-    { label: 'City',         id: 230 },
-    { label: 'Forest',       id: 399 },
-    { label: 'Sport',        id: 152 },
+    { label: 'Nature',       emoji: '🌿', unsplashId: 'photo-1470770903676-69b98201ea1c' },
+    { label: 'Architecture', emoji: '🏛️', unsplashId: 'photo-1486325212027-8081e485255e' },
+    { label: 'Animals',      emoji: '🐾', unsplashId: 'photo-1474511320723-9a56873867b5' },
+    { label: 'Travel',       emoji: '✈️', unsplashId: 'photo-1488646953014-85cb44e25828' },
+    { label: 'Technology',   emoji: '💻', unsplashId: 'photo-1518770660439-4636190af475' },
+    { label: 'People',       emoji: '👥', unsplashId: 'photo-1529156069898-49953e39b3ac' },
+    { label: 'Food',         emoji: '🍜', unsplashId: 'photo-1504674900247-0877df9cc836' },
+    { label: 'Abstract',     emoji: '🎨', unsplashId: 'photo-1541701494587-cb58502866ab' },
+    { label: 'Cars',         emoji: '🚗', unsplashId: 'photo-1494976388531-d1058494cdd8' },
+    { label: 'Fashion',      emoji: '👗', unsplashId: 'photo-1469334031218-e382a71b716b' },
+    { label: 'Space',        emoji: '🚀', unsplashId: 'photo-1462331940025-496dfbfc7564' },
+    { label: 'Mountains',    emoji: '⛰️', unsplashId: 'photo-1464822759023-fed622ff2c3b' },
+    { label: 'Ocean',        emoji: '🌊', unsplashId: 'photo-1505118380757-91f5f5632de0' },
+    { label: 'City',         emoji: '🌆', unsplashId: 'photo-1477959858617-67f85cf4f1df' },
+    { label: 'Forest',       emoji: '🌲', unsplashId: 'photo-1448375240586-882707db888b' },
+    { label: 'Sport',        emoji: '⚽', unsplashId: 'photo-1461896836934-ffe607ba8211' },
+    { label: 'Music',        emoji: '🎵', unsplashId: 'photo-1511671782779-c97d3d27a1d4' },
+    { label: 'Flowers',      emoji: '🌸', unsplashId: 'photo-1490750967868-88df5691cc42' },
   ];
 
-  /* ── Camera SVG (GSAP animated) ── */
-  const CAMERA_SVG = `
-    <svg id="img-cam-svg" viewBox="0 0 120 90" fill="none" xmlns="http://www.w3.org/2000/svg" width="120" height="90">
-      <!-- body -->
-      <rect id="cam-body" x="8" y="28" width="104" height="54" rx="10" fill="#0072B1" opacity="0"/>
-      <!-- viewfinder bump -->
-      <rect id="cam-bump" x="38" y="18" width="44" height="16" rx="6" fill="#0072B1" opacity="0"/>
-      <!-- lens outer -->
-      <circle id="cam-lens-o" cx="60" cy="56" r="20" fill="#fff" opacity="0"/>
-      <!-- lens mid -->
-      <circle id="cam-lens-m" cx="60" cy="56" r="14" fill="#0072B1" opacity="0"/>
-      <!-- lens inner -->
-      <circle id="cam-lens-i" cx="60" cy="56" r="8" fill="#fff" opacity="0"/>
-      <!-- shutter dot -->
-      <circle id="cam-shutter" cx="60" cy="56" r="3" fill="#0072B1" opacity="0"/>
-      <!-- flash -->
-      <rect id="cam-flash" x="16" y="36" width="14" height="9" rx="3" fill="#FFD60A" opacity="0"/>
-    </svg>`;
+  /* ── Masonry gallery items — varied aspect ratios for real masonry feel ── */
+  const GALLERY = [
+    { unsplashId: 'photo-1506905925346-21bda4d32df4', label: 'Swiss Alps',       w: 1200, h: 800  },
+    { unsplashId: 'photo-1518020382113-a7e8fc38eac9', label: 'Golden Retriever',  w: 800,  h: 1067 },
+    { unsplashId: 'photo-1501854140801-50d01698950b', label: 'Aerial Forest',     w: 1200, h: 675  },
+    { unsplashId: 'photo-1534528741775-53994a69daeb', label: 'Portrait',          w: 800,  h: 1200 },
+    { unsplashId: 'photo-1558618666-fcd25c85cd64', label: 'Abstract Colors',     w: 1200, h: 900  },
+    { unsplashId: 'photo-1494976388531-d1058494cdd8', label: 'Classic Car',       w: 1200, h: 800  },
+    { unsplashId: 'photo-1540189549336-e6e99c3679fe', label: 'Food Bowl',         w: 800,  h: 1000 },
+    { unsplashId: 'photo-1477959858617-67f85cf4f1df', label: 'City Lights',       w: 1200, h: 750  },
+    { unsplashId: 'photo-1505118380757-91f5f5632de0', label: 'Ocean Wave',        w: 1200, h: 800  },
+    { unsplashId: 'photo-1462331940025-496dfbfc7564', label: 'Galaxy',            w: 1200, h: 900  },
+    { unsplashId: 'photo-1511671782779-c97d3d27a1d4', label: 'Music Studio',      w: 1200, h: 800  },
+    { unsplashId: 'photo-1490750967868-88df5691cc42', label: 'Cherry Blossoms',   w: 800,  h: 1067 },
+    { unsplashId: 'photo-1441974231531-c6227db76b6e', label: 'Forest Path',       w: 1200, h: 800  },
+    { unsplashId: 'photo-1488646953014-85cb44e25828', label: 'Travel Map',        w: 800,  h: 1067 },
+    { unsplashId: 'photo-1518770660439-4636190af475', label: 'Circuit Board',     w: 1200, h: 800  },
+    { unsplashId: 'photo-1464822759023-fed622ff2c3b', label: 'Mountain Peak',     w: 1200, h: 800  },
+    { unsplashId: 'photo-1486325212027-8081e485255e', label: 'Modern Building',   w: 800,  h: 1200 },
+    { unsplashId: 'photo-1469334031218-e382a71b716b', label: 'Fashion Walk',      w: 800,  h: 1067 },
+    { unsplashId: 'photo-1461896836934-ffe607ba8211', label: 'Stadium',           w: 1200, h: 750  },
+    { unsplashId: 'photo-1529156069898-49953e39b3ac', label: 'Friends',           w: 1200, h: 800  },
+  ];
 
-  /* ── Empty state — Bing style with GSAP camera ── */
+  /* ── Unsplash full-res URL (800px wide, no crop, actual image) ── */
+  function _unsplashUrl(id, w) {
+    return `https://images.unsplash.com/${id}?auto=format&fit=max&w=${w || 800}&q=85`;
+  }
+
+  /* ── Empty state — Pixabay / Studio style ── */
   function _showEmptyState(pc) {
+
+    /* Category chips — horizontal scroll */
     const chips = CATS.map(c => `
-      <a class="img-es-cat" href="/?q=${encodeURIComponent(c.label)}&tab=images">
-        <div class="img-es-cat-wrap">
+      <a class="img-es-cat-chip" href="/?q=${encodeURIComponent(c.label)}&tab=images">
+        <span class="img-es-cat-emoji">${c.emoji}</span>
+        <span class="img-es-cat-name">${c.label}</span>
+      </a>`).join('');
+
+    /* Masonry gallery items */
+    const galItems = GALLERY.map(g => {
+      const aspectStyle = `aspect-ratio:${g.w}/${g.h}`;
+      const src = _unsplashUrl(g.unsplashId, 600);
+      return `
+        <a class="img-es-gitem" href="/?q=${encodeURIComponent(g.label)}&tab=images">
           <img
-            class="img-es-cat-img"
-            src="https://picsum.photos/id/${c.id}/320/240"
-            alt="${c.label}"
+            class="img-es-gimg"
+            src="${src}"
+            alt="${g.label}"
             loading="lazy"
             decoding="async"
+            style="${aspectStyle}"
           >
-          <span class="img-es-cat-label">${c.label}</span>
-        </div>
-      </a>`).join('');
+          <span class="img-es-gitem-label">${g.label}</span>
+        </a>`;
+    }).join('');
 
     pc.innerHTML = `
       <div class="img-es-root" id="img-es-root">
+
+        <!-- Glass hero -->
         <div class="img-es-hero">
-          <div class="img-es-cam">${CAMERA_SVG}</div>
-          <p class="img-es-sub">Search for any image</p>
+          <div class="img-es-hero-bg"></div>
+          <div class="img-es-hero-glass">
+            <svg class="img-es-hero-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <rect x="2" y="7" width="20" height="14" rx="3" fill="white" opacity="0.95"/>
+              <path d="M8 7V5.5C8 4.12 9.12 3 10.5 3h3C14.88 3 16 4.12 16 5.5V7" stroke="white" stroke-width="1.6" stroke-linecap="round"/>
+              <circle cx="12" cy="14" r="3.2" fill="#0077B5"/>
+              <circle cx="12" cy="14" r="1.4" fill="white"/>
+            </svg>
+          </div>
+          <h2 class="img-es-hero-title">Discover Images</h2>
+          <p class="img-es-hero-sub">Search millions of high-quality photos</p>
         </div>
+
+        <!-- CTA button -->
+        <div class="img-es-cta-wrap">
+          <a class="img-es-cta" href="#" onclick="document.querySelector('.search-input, #searchInput, input[type=search]')?.focus(); return false;">
+            <svg class="img-es-cta-icon" viewBox="0 0 24 24" fill="none">
+              <circle cx="11" cy="11" r="7" stroke="white" stroke-width="2"/>
+              <path d="M16.5 16.5L21 21" stroke="white" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+            Search Images
+          </a>
+        </div>
+
+        <!-- Categories -->
         <div class="img-es-section">
-          <span class="img-es-section-title">Explore topics</span>
+          <span class="img-es-section-title">Browse Categories</span>
         </div>
-        <div class="img-es-cats">${chips}</div>
+        <div class="img-es-cats-wrap">
+          <div class="img-es-cats-row">${chips}</div>
+        </div>
+
+        <!-- Masonry gallery -->
+        <div class="img-es-gallery-section">
+          <span class="img-es-gallery-title">Popular Photos</span>
+        </div>
+        <div class="img-es-gallery">${galItems}</div>
+
       </div>`;
-
-    _animateCamera();
-  }
-
-  function _animateCamera() {
-    function run() {
-      if (!window.gsap) { setTimeout(run, 80); return; }
-      const gsap = window.gsap;
-      const root = document.getElementById('img-es-root');
-      if (!root) return;
-
-      const tl = gsap.timeline({ defaults: { ease: 'power3.out' } });
-
-      tl.fromTo('#cam-body',    { opacity: 0, scaleY: 0, transformOrigin: 'bottom center' },
-                                { opacity: 1, scaleY: 1, duration: 0.35 })
-        .fromTo('#cam-bump',    { opacity: 0, scaleY: 0, transformOrigin: 'bottom center' },
-                                { opacity: 1, scaleY: 1, duration: 0.25 }, '-=0.1')
-        .fromTo('#cam-flash',   { opacity: 0 }, { opacity: 1, duration: 0.2 }, '-=0.05')
-        .fromTo('#cam-lens-o',  { opacity: 0, scale: 0, transformOrigin: 'center' },
-                                { opacity: 1, scale: 1, duration: 0.3, ease: 'back.out(2)' }, '-=0.05')
-        .fromTo('#cam-lens-m',  { opacity: 0, scale: 0, transformOrigin: 'center' },
-                                { opacity: 1, scale: 1, duration: 0.25, ease: 'back.out(2)' }, '-=0.15')
-        .fromTo('#cam-lens-i',  { opacity: 0, scale: 0, transformOrigin: 'center' },
-                                { opacity: 1, scale: 1, duration: 0.2, ease: 'back.out(2)' }, '-=0.1')
-        .fromTo('#cam-shutter', { opacity: 0, scale: 0, transformOrigin: 'center' },
-                                { opacity: 1, scale: 1, duration: 0.18 }, '-=0.05');
-
-      /* shutter blink loop */
-      gsap.delayedCall(tl.duration() + 0.3, () => {
-        gsap.to('#cam-shutter', {
-          scale: 1.6, opacity: 0.3,
-          yoyo: true, repeat: -1,
-          duration: 1.1, ease: 'sine.inOut',
-          transformOrigin: 'center'
-        });
-        /* subtle camera bob */
-        gsap.to('#img-cam-svg', {
-          y: -4, duration: 1.8,
-          ease: 'sine.inOut', yoyo: true, repeat: -1
-        });
-      });
-
-      /* section + chips stagger */
-      const section = root.querySelector('.img-es-section');
-      const cats    = root.querySelectorAll('.img-es-cat');
-      gsap.fromTo(section,
-        { opacity: 0, y: 10 },
-        { opacity: 1, y: 0, duration: 0.3, delay: tl.duration() + 0.1 }
-      );
-      gsap.fromTo(cats,
-        { opacity: 0, y: 16, scale: 0.94 },
-        { opacity: 1, y: 0, scale: 1, duration: 0.32, ease: 'power2.out',
-          delay: tl.duration() + 0.18, stagger: 0.035 }
-      );
-    }
-
-    if (!window.gsap) {
-      const s = document.createElement('script');
-      s.src = 'https://cdn.jsdelivr.net/npm/gsap@3.15/dist/gsap.min.js';
-      s.onload = run;
-      document.head.appendChild(s);
-    } else {
-      run();
-    }
   }
 
   // ── Column helpers ────────────────────────────────────────────
@@ -428,19 +421,9 @@
         if (!entry.isIntersecting) return;
         const el = entry.target;
         obs.unobserve(el);
-        const thumbSrc = el.dataset.thumb || el.dataset.src;
-        const fullSrc  = el.dataset.src;
-        if (thumbSrc) el.src = thumbSrc;
-        if (fullSrc && fullSrc !== thumbSrc) {
-          const full    = new Image();
-          full.decoding = 'async';
-          full.onload   = () => {
-            if (!el.isConnected) return;
-            el.style.opacity = '0';
-            requestAnimationFrame(() => { el.src = fullSrc; });
-          };
-          full.src = fullSrc;
-        }
+        /* Load full-res directly — no blur thumbnail swap */
+        const fullSrc = el.dataset.src;
+        if (fullSrc) el.src = fullSrc;
       });
     }, { rootMargin: '1200px' });
   }
@@ -484,4 +467,4 @@
 
   window._atkynInit_images();
 }());
-                        
+     

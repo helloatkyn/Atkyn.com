@@ -49,6 +49,7 @@ function _animateEmpty(type) {
     if (!root || !balloon) return;
 
     const gsap = window.gsap;
+    let floatTween = null;
 
     /* container fade in */
     gsap.fromTo(root,
@@ -77,7 +78,7 @@ function _animateEmpty(type) {
 
     /* gentle float loop on balloon */
     gsap.delayedCall(0.8, () => {
-      gsap.to(balloon, {
+      floatTween = gsap.to(balloon, {
         y: -10,
         duration: 2.2,
         ease: 'sine.inOut',
@@ -85,6 +86,37 @@ function _animateEmpty(type) {
         repeat: -1
       });
     });
+
+    /* ── Keyboard smooth fix ──
+       Core.js chatArea visibility check (line 264) skips scroll
+       anchor on web tab. We fix by snapping scrollHost to 0 on
+       input focus so keyboard open feels smooth — no jump. */
+    const cbInput    = document.getElementById('cbInput');
+    const scrollHost = document.getElementById('scrollHost');
+
+    function _onFocus() {
+      if (floatTween) floatTween.pause();
+      if (scrollHost) scrollHost.scrollTop = 0;
+    }
+
+    function _onBlur() {
+      setTimeout(() => {
+        if (floatTween) floatTween.resume();
+      }, 320);
+    }
+
+    if (cbInput) {
+      cbInput.addEventListener('focus', _onFocus, { passive: true });
+      cbInput.addEventListener('blur',  _onBlur,  { passive: true });
+
+      const tabBar = document.getElementById('tabBar');
+      if (tabBar) {
+        tabBar.addEventListener('click', () => {
+          cbInput.removeEventListener('focus', _onFocus);
+          cbInput.removeEventListener('blur',  _onBlur);
+        }, { once: true, passive: true });
+      }
+    }
 
     /* retry button wiring */
     if (btn) {
@@ -422,3 +454,4 @@ window._atkynInit_web = _init;
 _init();
 
 }());
+                                       

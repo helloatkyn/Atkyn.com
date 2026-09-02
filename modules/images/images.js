@@ -1,17 +1,8 @@
 /* ══════════════════════════════════════════════════════════════
    modules/images/images.js
-   ATKYN — Production Image Gallery
-
-   Full-width hero + max 2-column masonry
-   Deterministic random gallery pattern
-   Direct high-resolution loading
-   Fast first paint
-   Aggressive ahead-of-viewport loading
-   Browser-cache friendly
-   Stable layout
-   No thumbnail swap
-   No Wikipedia
-   No sentinel
+   ATKYN — Production Google-Style Images
+   ONE API CALL • MAX RESULTS • HIGH-RES • FAST PAINT
+   Stable masonry • Fast scrolling • No Wikipedia
 ══════════════════════════════════════════════════════════════ */
 
 (function () {
@@ -19,10 +10,11 @@
 
 
   /* ═══════════════════════════════════════════════════════════
-     CACHE
+     MEMORY CACHE
+     Kept across image-tab reinitializations.
   ═══════════════════════════════════════════════════════════ */
 
-  const _preloaded = new Set();
+  const _imageCache = new Map();
 
 
   /* ═══════════════════════════════════════════════════════════
@@ -33,11 +25,9 @@
 
   let _gallery = null;
 
-  let _lazyIo = null;
+  let _observer = null;
 
-  let _q = '';
-
-  let _columnHeights = [0, 0];
+  let _query = '';
 
   let _warmQueue = [];
 
@@ -45,65 +35,31 @@
 
 
   /* ═══════════════════════════════════════════════════════════
-     SEEDED RANDOM
-     Same query = same professional layout.
+     TITLE CLEANER
+     Removes trailing dots / ellipsis from actual source titles.
   ═══════════════════════════════════════════════════════════ */
 
-  function _seedFromString(value) {
-    let hash = 2166136261;
+  function _cleanTitle(value) {
+    if (!value) return '';
 
-    for (
-      let i = 0;
-      i < value.length;
-      i++
-    ) {
-      hash ^= value.charCodeAt(i);
-      hash =
-        Math.imul(
-          hash,
-          16777619
-        );
-    }
-
-    return hash >>> 0;
-  }
-
-
-  function _random(seed) {
-    let x =
-      seed + 0x6D2B79F5;
-
-    return function () {
-      x =
-        Math.imul(
-          x ^ (x >>> 15),
-          x | 1
-        );
-
-      x ^=
-        x +
-        Math.imul(
-          x ^ (x >>> 7),
-          x | 61
-        );
-
-      return (
-        ((x ^ (x >>> 14)) >>> 0)
-        / 4294967296
-      );
-    };
+    return value
+      .replace(/\u2026+/g, '')
+      .replace(/\.{2,}$/g, '')
+      .replace(/\s*[-–—:|]\s*$/g, '')
+      .trim();
   }
 
 
   /* ═══════════════════════════════════════════════════════════
-     TITLE
+     SHORT TITLE
   ═══════════════════════════════════════════════════════════ */
 
   function _shortTitle(raw) {
-    if (!raw) return '';
+    const clean = _cleanTitle(raw);
 
-    return raw
-      .trim()
+    if (!clean) return '';
+
+    return clean
       .split(/\s+/)
       .slice(0, 3)
       .join(' ');
@@ -111,42 +67,168 @@
 
 
   /* ═══════════════════════════════════════════════════════════
-     IMAGE PRELOAD
+     SOURCE NORMALIZER
+     Supports:
+       Serper: imageUrl / imageWidth / imageHeight / link
+       Atkyn: img_src / width / height / url
   ═══════════════════════════════════════════════════════════ */
 
-  function _preload(src) {
-    if (
-      !src ||
-      _preloaded.has(src)
-    ) {
-      return;
+  function _normalize(item) {
+    if (!item || typeof item !== 'object') {
+      return null;
     }
 
-    _preloaded.add(src);
+    const src =
+      item.img_src ||
+      item.imageUrl ||
+      item.image_url ||
+      item.thumbnail_src ||
+      item.thumbnailUrl ||
+      '';
 
-    const image =
-      new Image();
+    if (!src) {
+      return null;
+    }
 
-    image.decoding =
-      'async';
+    const thumb =
+      item.thumbnail_src ||
+      item.thumbnailUrl ||
+      '';
 
-    image.src =
-      src;
+    return {
+      title:
+        item.title ||
+        '',
+
+      url:
+        item.url ||
+        item.link ||
+        src,
+
+      img_src:
+        src,
+
+      thumbnail_src:
+        thumb,
+
+      width:
+        Number(
+          item.width ||
+          item.imageWidth ||
+          item.thumbnailWidth ||
+          0
+        ),
+
+      height:
+        Number(
+          item.height ||
+          item.imageHeight ||
+          item.thumbnailHeight ||
+          0
+        )
+    };
   }
 
 
   /* ═══════════════════════════════════════════════════════════
-     LOAD ACTUAL TILE IMAGE
+     PRELOAD
+     Browser cache + decoded image object.
   ═══════════════════════════════════════════════════════════ */
 
-  function _loadImage(image) {
-    if (!image) {
-      return;
+  function _preload(src) {
+    if (!src) {
+      return Promise.resolve(null);
     }
 
+    const existing =
+      _imageCache.get(src);
+
+    if (existing) {
+      return existing;
+    }
+
+
+    const promise =
+      new Promise(function (resolve, reject) {
+
+        const image =
+          new Image();
+
+        image.decoding =
+          'async';
+
+
+        image.onload =
+          function () {
+
+            const finish =
+              function () {
+
+                _imageCache.set(
+                  src,
+                  Promise.resolve(image)
+                );
+
+                resolve(image);
+              };
+
+
+            if (
+              typeof image.decode ===
+              'function'
+            ) {
+
+              image.decode()
+                .catch(function () {})
+                .finally(
+                  finish
+                );
+
+            } else {
+              finish();
+            }
+          };
+
+
+        image.onerror =
+          function () {
+
+            _imageCache.delete(
+              src
+            );
+
+            reject(
+              new Error(
+                'Image failed'
+              )
+            );
+          };
+
+
+        image.src =
+          src;
+      });
+
+
+    _imageCache.set(
+      src,
+      promise
+    );
+
+    return promise;
+  }
+
+
+  /* ═══════════════════════════════════════════════════════════
+     LOAD TILE
+  ═══════════════════════════════════════════════════════════ */
+
+  function _loadTile(image) {
+    if (!image) return;
+
     if (
-      image.dataset.loaded === '1' ||
-      image.dataset.loading === '1'
+      image.dataset.loading === '1' ||
+      image.dataset.loaded === '1'
     ) {
       return;
     }
@@ -154,47 +236,70 @@
     const src =
       image.dataset.src;
 
-    if (!src) {
-      return;
-    }
+    if (!src) return;
 
     image.dataset.loading =
       '1';
 
-    /*
-      Direct high-resolution source.
-      There is no low-res thumbnail stage.
-    */
+
+    const cached =
+      _imageCache.get(src);
+
+
+    if (cached) {
+
+      cached
+        .then(function () {
+
+          if (!image.isConnected) {
+            return;
+          }
+
+          image.src =
+            src;
+
+          image.dataset.loaded =
+            '1';
+
+          requestAnimationFrame(
+            function () {
+              if (
+                image.isConnected
+              ) {
+                image.classList.add(
+                  'img-loaded'
+                );
+              }
+            }
+          );
+        })
+        .catch(function () {
+          image.dataset.failed =
+            '1';
+        });
+
+      return;
+    }
+
 
     image.src =
       src;
-
-    /*
-      Cache warm marker.
-      Browser itself handles actual HTTP caching.
-    */
-
-    _preloaded.add(src);
   }
 
 
   /* ═══════════════════════════════════════════════════════════
-     TILE
+     TILE BUILDER
   ═══════════════════════════════════════════════════════════ */
 
   function _buildTile(data) {
 
     const src =
-      data.img_src ||
-      data.thumbnail_src ||
-      '';
+      data.img_src;
 
     if (!src) {
       return null;
     }
 
-
-    /* Stable ratio */
 
     const aspect =
       data.width &&
@@ -206,8 +311,6 @@
           ).toFixed(2) + '%'
         : '133.33%';
 
-
-    /* Tile */
 
     const tile =
       document.createElement('a');
@@ -225,7 +328,7 @@
       'noopener noreferrer';
 
 
-    /* Reserved space */
+    /* Stable geometry */
 
     const spacer =
       document.createElement('div');
@@ -237,7 +340,7 @@
       aspect;
 
 
-    /* Actual image */
+    /* Image */
 
     const image =
       document.createElement('img');
@@ -246,7 +349,7 @@
       'img-lazy';
 
     image.alt =
-      data.title || '';
+      _cleanTitle(data.title);
 
     image.decoding =
       'async';
@@ -262,11 +365,12 @@
           '1';
 
         requestAnimationFrame(
-          () => {
+          function () {
+
             if (
-              this.isConnected
+              image.isConnected
             ) {
-              this.classList.add(
+              image.classList.add(
                 'img-loaded'
               );
             }
@@ -275,15 +379,19 @@
       };
 
 
-    /*
-      Never remove tile on failure.
-      Its reserved space remains stable.
-    */
-
     image.onerror =
       function () {
+
+        /*
+          Keep the reserved tile.
+          Never collapse masonry geometry.
+        */
+
         this.dataset.failed =
           '1';
+
+        this.dataset.loading =
+          '0';
       };
 
 
@@ -296,12 +404,12 @@
     );
 
 
-    /* ─────────────────────────────────────────────────────────
-       OVERLAY
-    ───────────────────────────────────────────────────────── */
+    /* Overlay */
 
     const overlay =
-      document.createElement('div');
+      document.createElement(
+        'div'
+      );
 
     overlay.className =
       'img-tile__overlay';
@@ -311,6 +419,7 @@
       _shortTitle(
         data.title
       );
+
 
     if (title) {
 
@@ -394,35 +503,23 @@
     );
 
 
-    /*
-      Store metadata for the
-      layout/preload engine.
-    */
-
-    tile.dataset.imageSrc =
-      src;
-
-
-    tile._imageData =
-      data;
-
-
     return tile;
   }
 
 
   /* ═══════════════════════════════════════════════════════════
-     OBSERVER
+     INTERSECTION OBSERVER
+     Very large preload window.
   ═══════════════════════════════════════════════════════════ */
 
   function _initObserver() {
 
-    if (_lazyIo) {
-      _lazyIo.disconnect();
+    if (_observer) {
+      _observer.disconnect();
     }
 
 
-    _lazyIo =
+    _observer =
       new IntersectionObserver(
         function (
           entries,
@@ -449,17 +546,12 @@
             );
 
 
-            _loadImage(
+            _loadTile(
               image
             );
           }
         },
         {
-          /*
-            Very large ahead-of-viewport
-            buffer for fast finger flings.
-          */
-
           rootMargin:
             '3000px 0px'
         }
@@ -468,86 +560,57 @@
 
 
   /* ═══════════════════════════════════════════════════════════
-     OBSERVE TILE
+     OBSERVE
   ═══════════════════════════════════════════════════════════ */
 
   function _observeTile(tile) {
-
-    if (
-      !_lazyIo ||
-      !tile
-    ) {
-      return;
-    }
-
 
     const image =
       tile.querySelector(
         '.img-lazy'
       );
 
-    if (!image) {
+    if (
+      !image ||
+      !_observer
+    ) {
       return;
     }
 
 
-    _lazyIo.observe(
+    _observer.observe(
       image
     );
   }
 
 
   /* ═══════════════════════════════════════════════════════════
-     SHORTEST COLUMN
+     RENDER GRID
+     Max 2 columns.
   ═══════════════════════════════════════════════════════════ */
 
-  function _shortestColumn() {
-    return (
-      _columnHeights[0] <=
-      _columnHeights[1]
-        ? 0
-        : 1
-    );
-  }
+  function _renderResults(results) {
+
+    const fragment =
+      document.createDocumentFragment();
 
 
-  /* ═══════════════════════════════════════════════════════════
-     CREATE 2-COLUMN SECTION
-  ═══════════════════════════════════════════════════════════ */
-
-  function _buildGridSection(
-    items
-  ) {
-
-    const section =
+    const colA =
       document.createElement(
         'div'
       );
 
-    section.className =
-      'gallery-grid';
-
-
-    const columns = [
+    const colB =
       document.createElement(
         'div'
-      ),
-      document.createElement(
-        'div'
-      )
-    ];
+      );
 
 
-    columns.forEach(
-      function (column) {
-        column.className =
-          'gallery-col';
+    colA.className =
+      'gallery-col';
 
-        section.appendChild(
-          column
-        );
-      }
-    );
+    colB.className =
+      'gallery-col';
 
 
     const heights =
@@ -555,7 +618,7 @@
 
 
     for (
-      const data of items
+      const data of results
     ) {
 
       const tile =
@@ -566,23 +629,25 @@
       }
 
 
-      const column =
-        heights[0] <= heights[1]
-          ? 0
-          : 1;
-
-
-      columns[column].appendChild(
-        tile
-      );
-
-
       const ratio =
         data.width &&
         data.height
           ? data.height /
             data.width
           : 1.33;
+
+
+      const column =
+        heights[0] <= heights[1]
+          ? 0
+          : 1;
+
+
+      if (column === 0) {
+        colA.appendChild(tile);
+      } else {
+        colB.appendChild(tile);
+      }
 
 
       heights[column] +=
@@ -595,178 +660,42 @@
     }
 
 
-    return section;
-  }
+    fragment.appendChild(
+      colA
+    );
+
+    fragment.appendChild(
+      colB
+    );
 
 
-  /* ═══════════════════════════════════════════════════════════
-     CREATE FULL-WIDTH HERO
-  ═══════════════════════════════════════════════════════════ */
-
-  function _buildHero(
-    data
-  ) {
-
-    const section =
+    const grid =
       document.createElement(
         'div'
       );
 
-    section.className =
-      'gallery-hero';
+    grid.className =
+      'gallery-grid';
 
+    grid.appendChild(
+      fragment
+    );
 
-    const tile =
-      _buildTile(data);
-
-    if (tile) {
-      section.appendChild(
-        tile
-      );
-
-      _observeTile(
-        tile
-      );
-    }
-
-
-    return section;
-  }
-
-
-  /* ═══════════════════════════════════════════════════════════
-     RENDER GALLERY
-  ═══════════════════════════════════════════════════════════ */
-
-  function _renderGallery(
-    results
-  ) {
-
-    const fragment =
-      document.createDocumentFragment();
-
-
-    const random =
-      _random(
-        _seedFromString(
-          _q
-        )
-      );
-
-
-    let index = 0;
-
-    let sectionNumber = 0;
-
-
-    while (
-      index < results.length
-    ) {
-
-      const remaining =
-        results.length -
-        index;
-
-
-      /*
-        Hero-heavy editorial pattern.
-
-        First item:
-        ALWAYS hero.
-
-        Afterwards:
-        ~65% hero
-        ~35% 2-column section
-      */
-
-      const forceHero =
-        sectionNumber === 0;
-
-
-      const useHero =
-        remaining === 1 ||
-        forceHero ||
-        random() < 0.65;
-
-
-      if (useHero) {
-
-        const hero =
-          _buildHero(
-            results[index]
-          );
-
-        fragment.appendChild(
-          hero
-        );
-
-        index += 1;
-
-      } else {
-
-        /*
-          A grid section contains
-          2–4 images.
-          Never more than 2 columns.
-        */
-
-        const count =
-          remaining >= 4 &&
-          random() < 0.45
-            ? 4
-            : Math.min(
-                2,
-                remaining
-              );
-
-
-        const items =
-          results.slice(
-            index,
-            index + count
-          );
-
-
-        const grid =
-          _buildGridSection(
-            items
-          );
-
-        fragment.appendChild(
-          grid
-        );
-
-        index +=
-          items.length;
-      }
-
-
-      sectionNumber++;
-    }
-
-
-    /*
-      Single DOM insertion.
-      Gallery skeleton is replaced atomically.
-    */
 
     _gallery.replaceChildren(
-      fragment
+      grid
     );
   }
 
 
   /* ═══════════════════════════════════════════════════════════
-     BACKGROUND PRELOAD
+     CACHE WARMING
   ═══════════════════════════════════════════════════════════ */
 
   function _warmCache() {
 
-    if (_warmRunning) {
-      return;
-    }
-
     if (
+      _warmRunning ||
       !_warmQueue.length
     ) {
       return;
@@ -797,20 +726,16 @@
 
         if (
           src &&
-          !_preloaded.has(src)
+          !_imageCache.has(src)
         ) {
 
           _preload(
             src
+          ).catch(
+            function () {}
           );
         }
 
-
-        /*
-          Yield frequently.
-          Image decoding/network work must
-          never block touch scrolling.
-        */
 
         if (
           typeof requestIdleCallback ===
@@ -838,23 +763,85 @@
 
 
   /* ═══════════════════════════════════════════════════════════
-     FETCH RESULTS
+     NORMALIZE API RESPONSE
+  ═══════════════════════════════════════════════════════════ */
+
+  function _extractResults(data) {
+
+    const raw =
+      Array.isArray(data?.images)
+        ? data.images
+        : Array.isArray(data?.results)
+          ? data.results
+          : [];
+
+
+    const output = [];
+
+
+    for (
+      const item of raw
+    ) {
+
+      const normalized =
+        _normalize(item);
+
+      if (!normalized) {
+        continue;
+      }
+
+
+      const key =
+        normalized.img_src;
+
+
+      if (
+        _seen.has(key)
+      ) {
+        continue;
+      }
+
+
+      _seen.add(key);
+
+      output.push(
+        normalized
+      );
+    }
+
+
+    return output;
+  }
+
+
+  /* ═══════════════════════════════════════════════════════════
+     ONE AND ONLY ONE NETWORK CALL
   ═══════════════════════════════════════════════════════════ */
 
   function _fetchImages() {
 
-    fetch(
+    const endpoint =
       '/api/images?q=' +
       encodeURIComponent(
-        _q
-      )
+        _query
+      ) +
+      '&num=100';
+
+
+    fetch(
+      endpoint,
+      {
+        method: 'GET',
+        cache: 'default',
+        credentials: 'same-origin'
+      }
     )
       .then(
         function (response) {
 
           if (!response.ok) {
             throw new Error(
-              'Image request failed'
+              'Images request failed'
             );
           }
 
@@ -865,121 +852,78 @@
         function (data) {
 
           const results =
-            Array.isArray(
-              data.results
-            )
-              ? data.results
-              : [];
+            _extractResults(
+              data
+            );
 
 
           if (
             !results.length
           ) {
 
-            const page =
-              document.getElementById(
-                'pageContent'
+            const empty =
+              document.createElement(
+                'div'
               );
 
-            if (page) {
+            empty.className =
+              'tab-empty';
 
-              page.innerHTML =
-                '<div class="tab-empty"><p>No images found</p></div>';
-            }
+            empty.innerHTML =
+              '<p>No images found</p>';
+
+            _gallery.replaceChildren(
+              empty
+            );
 
             return;
           }
 
 
           /*
-            Deduplicate.
+            FIRST 12:
+            Start warming immediately so
+            first-screen content arrives ASAP.
           */
 
-          const fresh = [];
-
-
-          for (
-            const item of results
-          ) {
-
-            const key =
-              item.img_src ||
-              item.thumbnail_src ||
-              '';
-
-
-            if (
-              !key ||
-              _seen.has(key)
-            ) {
-              continue;
-            }
-
-
-            _seen.add(key);
-
-            fresh.push(item);
-          }
-
-
-          if (
-            !fresh.length
-          ) {
-            return;
-          }
-
-
-          /*
-            First images are immediate.
-            This gives the fastest possible
-            first viewport.
-          */
-
-          fresh
-            .slice(0, 6)
+          results
+            .slice(0, 12)
             .forEach(
               function (item) {
 
-                const src =
-                  item.img_src ||
-                  item.thumbnail_src ||
-                  '';
-
                 _preload(
-                  src
+                  item.img_src
+                ).catch(
+                  function () {}
                 );
               }
             );
 
 
           /*
-            Remaining images warm gradually
-            in browser cache.
+            Remaining images:
+            warm gradually without
+            stealing the scroll thread.
           */
 
           _warmQueue =
-            fresh
-              .slice(6)
+            results
+              .slice(12)
               .map(
                 function (item) {
-                  return (
-                    item.img_src ||
-                    item.thumbnail_src ||
-                    ''
-                  );
+                  return item.img_src;
                 }
               );
 
 
-          _renderGallery(
-            fresh
+          /*
+            Build complete geometry immediately.
+          */
+
+          _renderResults(
+            results
           );
 
-
-          /*
-            Start cache warming after
-            the first visible content is built.
-          */
 
           _warmCache();
         }
@@ -987,16 +931,24 @@
       .catch(
         function () {
 
-          const page =
-            document.getElementById(
-              'pageContent'
+          if (!_gallery) {
+            return;
+          }
+
+          const error =
+            document.createElement(
+              'div'
             );
 
-          if (page) {
+          error.className =
+            'tab-empty';
 
-            page.innerHTML =
-              '<div class="tab-empty"><p>Could not load images</p></div>';
-          }
+          error.innerHTML =
+            '<p>Could not load images</p>';
+
+          _gallery.replaceChildren(
+            error
+          );
         }
       );
   }
@@ -1009,32 +961,23 @@
   window._atkynInit_images =
     function () {
 
-      if (_lazyIo) {
-
-        _lazyIo.disconnect();
-
-        _lazyIo =
-          null;
+      if (_observer) {
+        _observer.disconnect();
+        _observer = null;
       }
 
 
       _seen =
         new Set();
 
-
-      _columnHeights =
-        [0, 0];
-
-
       _warmQueue =
         [];
-
 
       _warmRunning =
         false;
 
 
-      _q =
+      _query =
         sessionStorage.getItem(
           'atkyn_last_query'
         ) || '';
@@ -1051,7 +994,7 @@
       }
 
 
-      if (!_q) {
+      if (!_query) {
 
         page.innerHTML =
           '<div class="tab-empty"><p>Search something to see images</p></div>';
@@ -1060,9 +1003,7 @@
       }
 
 
-      /* ───────────────────────────────────────────────────────
-         Initial sharp placeholders
-      ─────────────────────────────────────────────────────── */
+      /* Sharp static loading skeleton */
 
       page.innerHTML = `
         <div class="tab-skeleton grid">
@@ -1071,7 +1012,12 @@
 
             <div
               class="sk-img"
-              style="padding-bottom:72%"
+              style="padding-bottom:110%"
+            ></div>
+
+            <div
+              class="sk-img"
+              style="padding-bottom:78%"
             ></div>
 
             <div
@@ -1079,19 +1025,9 @@
               style="padding-bottom:125%"
             ></div>
 
-            <div
-              class="sk-img"
-              style="padding-bottom:82%"
-            ></div>
-
           </div>
 
           <div class="sk-col">
-
-            <div
-              class="sk-img"
-              style="padding-bottom:110%"
-            ></div>
 
             <div
               class="sk-img"
@@ -1103,16 +1039,16 @@
               style="padding-bottom:118%"
             ></div>
 
+            <div
+              class="sk-img"
+              style="padding-bottom:88%"
+            ></div>
+
           </div>
 
         </div>
       `;
 
-
-      /*
-        Create final gallery container
-        before fetching images.
-      */
 
       _gallery =
         document.createElement(
@@ -1128,25 +1064,16 @@
       );
 
 
-      /*
-        Large preload window protects
-        high-speed scrolling.
-      */
-
       _initObserver();
 
 
       /*
-        One API only.
+        ONE API REQUEST.
       */
 
       _fetchImages();
     };
 
-
-  /* ═══════════════════════════════════════════════════════════
-     INITIAL RUN
-  ═══════════════════════════════════════════════════════════ */
 
   window._atkynInit_images();
 

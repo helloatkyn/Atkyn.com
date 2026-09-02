@@ -1,32 +1,40 @@
 /* modules/images/images.js
-   Atkyn Images Masonry
-   Clean • No Wikipedia • No Sentinel • No Dead Wikipedia Code
-   Smooth incremental rendering • Stable layout
+   ATKYN IMAGES
+   Premium masonry renderer
+   Direct high-resolution loading
+   Zero layout bounce • Smooth incremental rendering
+   No Wikipedia • No thumbnail swapping • No dead code
 */
 
 (function () {
   'use strict';
 
   let _seen = new Set();
+
   let _cols = [null, null];
   let _colH = [0, 0];
 
   let _grid = null;
   let _lazyIo = null;
 
-  let _q = '';
   let _queue = [];
-  let _batchTimer = null;
+  let _renderFrame = 0;
+
+  let _q = '';
 
 
-  /* ── Shortest column ──────────────────────────────────────── */
+  /* ────────────────────────────────────────────────────────────
+     SHORTEST COLUMN
+  ──────────────────────────────────────────────────────────── */
 
   function _shortCol() {
     return _colH[0] <= _colH[1] ? 0 : 1;
   }
 
 
-  /* ── Compact title ────────────────────────────────────────── */
+  /* ────────────────────────────────────────────────────────────
+     TITLE
+  ──────────────────────────────────────────────────────────── */
 
   function _shortTitle(raw) {
     if (!raw) return '';
@@ -39,318 +47,431 @@
   }
 
 
-  /* ── Tile builder ─────────────────────────────────────────── */
+  /* ────────────────────────────────────────────────────────────
+     TILE BUILDER
+  ──────────────────────────────────────────────────────────── */
 
-  function _buildTile(img) {
-    const src =
-      img.img_src ||
-      img.thumbnail_src ||
+  function _buildTile(data) {
+    const highRes =
+      data.img_src ||
+      data.thumbnail_src ||
       '';
 
-    const thumb =
-      img.thumbnail_src ||
-      img.img_src ||
-      '';
+    const fallback =
+      data.thumbnail_src &&
+      data.thumbnail_src !== highRes
+        ? data.thumbnail_src
+        : '';
 
-    if (!src) return null;
+    if (!highRes) {
+      return null;
+    }
 
 
-    /* Stable aspect ratio prevents layout movement */
+    /* Stable aspect ratio */
 
     const aspect =
-      img.width && img.height
-        ? ((img.height / img.width) * 100).toFixed(2) + '%'
+      data.width && data.height
+        ? ((data.height / data.width) * 100).toFixed(2) + '%'
         : '133.33%';
 
 
     /* Tile */
 
-    const a = document.createElement('a');
+    const tile =
+      document.createElement('a');
 
-    a.className = 'img-tile';
-    a.href = img.url || src;
-    a.target = '_blank';
-    a.rel = 'noopener noreferrer';
+    tile.className = 'img-tile';
+
+    tile.href =
+      data.url || highRes;
+
+    tile.target = '_blank';
+
+    tile.rel =
+      'noopener noreferrer';
 
 
-    /* Aspect-ratio spacer */
+    /* Image reservation */
 
-    const spacer = document.createElement('div');
+    const spacer =
+      document.createElement('div');
 
-    spacer.className = 'img-tile__spacer';
-    spacer.style.paddingBottom = aspect;
+    spacer.className =
+      'img-tile__spacer';
+
+    spacer.style.paddingBottom =
+      aspect;
 
 
     /* Image */
 
-    const imgEl = document.createElement('img');
+    const image =
+      document.createElement('img');
 
-    imgEl.alt = img.title || '';
-    imgEl.decoding = 'async';
+    image.className =
+      'img-lazy';
 
-    imgEl.dataset.src = src;
-    imgEl.dataset.thumb = thumb;
-    imgEl.className = 'img-lazy';
+    image.alt =
+      data.title || '';
 
+    image.decoding =
+      'async';
 
-    /* Image loaded */
+    image.loading =
+      'lazy';
 
-    imgEl.onload = function () {
-      this.classList.add('img-loaded');
-    };
+    image.dataset.src =
+      highRes;
 
-
-    /* Thumbnail fallback */
-
-    imgEl.onerror = function () {
-      if (
-        this.dataset.triedThumb !== '1' &&
-        thumb &&
-        thumb !== this.src
-      ) {
-        this.dataset.triedThumb = '1';
-        this.src = thumb;
-        return;
-      }
-
-      a.remove();
-    };
-
-
-    spacer.appendChild(imgEl);
-    a.appendChild(spacer);
-
-
-    /* Overlay */
-
-    const title = _shortTitle(img.title);
-
-    if (title) {
-      const overlay = document.createElement('div');
-
-      overlay.className = 'img-tile__overlay';
-
-
-      /* Title */
-
-      const titleEl = document.createElement('span');
-
-      titleEl.className = 'img-tile__title';
-      titleEl.textContent = title;
-
-
-      /* Menu */
-
-      const menu = document.createElement('button');
-
-      menu.className = 'img-tile__menu';
-      menu.type = 'button';
-      menu.setAttribute('aria-label', 'More options');
-
-      menu.innerHTML = `
-        <svg
-          width="16"
-          height="4"
-          viewBox="0 0 16 4"
-          fill="none"
-          xmlns="http://www.w3.org/2000/svg"
-          aria-hidden="true"
-        >
-          <circle cx="2" cy="2" r="1.5" fill="currentColor"/>
-          <circle cx="8" cy="2" r="1.5" fill="currentColor"/>
-          <circle cx="14" cy="2" r="1.5" fill="currentColor"/>
-        </svg>
-      `;
-
-
-      menu.addEventListener('click', function (e) {
-        e.preventDefault();
-        e.stopPropagation();
-
-        a.dispatchEvent(
-          new CustomEvent('img-menu', {
-            bubbles: true,
-            detail: img
-          })
-        );
-      });
-
-
-      overlay.appendChild(titleEl);
-      overlay.appendChild(menu);
-
-      a.appendChild(overlay);
+    if (fallback) {
+      image.dataset.fallback =
+        fallback;
     }
 
 
-    return a;
+    /* Only the actual final source is assigned.
+       No thumbnail → full image visual swap. */
+
+    image.onload =
+      function () {
+        this.classList.add(
+          'img-loaded'
+        );
+      };
+
+
+    image.onerror =
+      function () {
+        const backup =
+          this.dataset.fallback;
+
+        if (
+          backup &&
+          this.dataset.fallbackTried !== '1'
+        ) {
+          this.dataset.fallbackTried =
+            '1';
+
+          this.src =
+            backup;
+
+          return;
+        }
+
+        tile.remove();
+      };
+
+
+    spacer.appendChild(image);
+
+    tile.appendChild(spacer);
+
+
+    /* ─────────────────────────────────────────────────────────
+       OVERLAY
+       Always creates the menu so tile structure stays consistent.
+    ───────────────────────────────────────────────────────── */
+
+    const overlay =
+      document.createElement('div');
+
+    overlay.className =
+      'img-tile__overlay';
+
+
+    const title =
+      _shortTitle(data.title);
+
+    if (title) {
+      const titleEl =
+        document.createElement('span');
+
+      titleEl.className =
+        'img-tile__title';
+
+      titleEl.textContent =
+        title;
+
+      overlay.appendChild(titleEl);
+    }
+
+
+    /* Three-dot menu */
+
+    const menu =
+      document.createElement('button');
+
+    menu.className =
+      'img-tile__menu';
+
+    menu.type =
+      'button';
+
+    menu.setAttribute(
+      'aria-label',
+      'More options'
+    );
+
+    menu.innerHTML = `
+      <svg
+        width="16"
+        height="4"
+        viewBox="0 0 16 4"
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+        aria-hidden="true"
+      >
+        <circle
+          cx="2"
+          cy="2"
+          r="1.5"
+          fill="currentColor"
+        />
+        <circle
+          cx="8"
+          cy="2"
+          r="1.5"
+          fill="currentColor"
+        />
+        <circle
+          cx="14"
+          cy="2"
+          r="1.5"
+          fill="currentColor"
+        />
+      </svg>
+    `;
+
+
+    menu.addEventListener(
+      'click',
+      function (event) {
+        event.preventDefault();
+        event.stopPropagation();
+
+        tile.dispatchEvent(
+          new CustomEvent(
+            'img-menu',
+            {
+              bubbles: true,
+              detail: data
+            }
+          )
+        );
+      }
+    );
+
+
+    overlay.appendChild(menu);
+
+    tile.appendChild(overlay);
+
+
+    return tile;
   }
 
 
-  /* ── Lazy loader ───────────────────────────────────────────── */
+  /* ────────────────────────────────────────────────────────────
+     LAZY LOADER
+     Loads images BEFORE they enter the viewport.
+  ──────────────────────────────────────────────────────────── */
 
-  function _initLazyIo() {
+  function _initLazyObserver() {
     if (_lazyIo) {
       _lazyIo.disconnect();
     }
 
 
-    _lazyIo = new IntersectionObserver(
-      function (entries, observer) {
-        entries.forEach(function (entry) {
-          if (!entry.isIntersecting) return;
-
-          const el = entry.target;
-
-          observer.unobserve(el);
-
-
-          const thumbSrc =
-            el.dataset.thumb ||
-            el.dataset.src ||
-            '';
-
-          const fullSrc =
-            el.dataset.src ||
-            '';
-
-
-          /* Fast first paint */
-
-          if (thumbSrc) {
-            el.src = thumbSrc;
-          }
-
-
-          /* Full-resolution preload */
-
-          if (
-            fullSrc &&
-            fullSrc !== thumbSrc
+    _lazyIo =
+      new IntersectionObserver(
+        function (entries, observer) {
+          for (
+            const entry of entries
           ) {
-            const full = new Image();
+            if (!entry.isIntersecting) {
+              continue;
+            }
 
-            full.decoding = 'async';
 
-            full.onload = function () {
-              if (!el.isConnected) return;
+            const image =
+              entry.target;
 
-              el.src = fullSrc;
-            };
+            observer.unobserve(image);
 
-            full.src = fullSrc;
+
+            const source =
+              image.dataset.src;
+
+            if (!source) {
+              continue;
+            }
+
+
+            /*
+              Important:
+              The high-resolution source is loaded directly.
+              There is NO low-resolution thumbnail phase.
+            */
+
+            image.src =
+              source;
           }
-        });
-      },
-      {
-        rootMargin: '1000px 0px'
-      }
-    );
+        },
+        {
+          rootMargin:
+            '1200px 0px'
+        }
+      );
   }
 
 
-  /* ── Observe one image ────────────────────────────────────── */
+  /* ────────────────────────────────────────────────────────────
+     OBSERVE ONE IMAGE
+  ──────────────────────────────────────────────────────────── */
 
-  function _observeImage(tile) {
-    if (!_lazyIo || !tile) return;
+  function _observeTile(tile) {
+    if (!_lazyIo || !tile) {
+      return;
+    }
 
-    const imgEl =
-      tile.querySelector('.img-lazy');
+    const image =
+      tile.querySelector(
+        '.img-lazy'
+      );
 
-    if (!imgEl) return;
+    if (!image) {
+      return;
+    }
 
-    _lazyIo.observe(imgEl);
+    _lazyIo.observe(image);
   }
 
 
-  /* ── Incremental renderer ─────────────────────────────────── */
+  /* ────────────────────────────────────────────────────────────
+     RENDER QUEUE
+     requestAnimationFrame keeps DOM work aligned with frames.
+  ──────────────────────────────────────────────────────────── */
 
-  function _drip() {
+  function _renderQueue() {
+    _renderFrame = 0;
+
+
     if (!_queue.length) {
-      _batchTimer = null;
       return;
     }
 
 
     /*
-      Small batches keep the main thread responsive.
-      Six tiles per frame group is enough for fast visual fill
-      without creating one huge synchronous DOM operation.
+      Small controlled batch.
+      Prevents one huge synchronous DOM operation.
     */
 
-    const batch = _queue.splice(0, 6);
+    const batch =
+      _queue.splice(0, 5);
 
 
-    batch.forEach(function (img) {
-      const tile = _buildTile(img);
+    for (
+      const data of batch
+    ) {
+      const tile =
+        _buildTile(data);
 
-      if (!tile) return;
+      if (!tile) {
+        continue;
+      }
 
 
-      const column = _shortCol();
+      const column =
+        _shortCol();
 
-      _cols[column].appendChild(tile);
 
+      _cols[column].appendChild(
+        tile
+      );
+
+
+      /*
+        Because column widths are identical,
+        aspect ratio gives a stable height estimate
+        before image decoding completes.
+      */
 
       const aspect =
-        img.width && img.height
-          ? img.height / img.width
+        data.width &&
+        data.height
+          ? data.height / data.width
           : 1.33;
 
-      _colH[column] += aspect;
+
+      _colH[column] +=
+        aspect;
 
 
-      /* Direct observation — no full-grid querySelectorAll */
-
-      _observeImage(tile);
-    });
+      _observeTile(tile);
+    }
 
 
-    _batchTimer = setTimeout(_drip, 60);
+    if (_queue.length) {
+      _renderFrame =
+        requestAnimationFrame(
+          _renderQueue
+        );
+    }
   }
 
 
-  /* ── Append fresh results ─────────────────────────────────── */
+  /* ────────────────────────────────────────────────────────────
+     APPEND RESULTS
+  ──────────────────────────────────────────────────────────── */
 
   function _appendResults(results) {
-    if (!Array.isArray(results) || !results.length) {
+    if (
+      !Array.isArray(results) ||
+      !results.length
+    ) {
       return;
     }
 
 
-    const fresh = [];
-
-
-    results.forEach(function (item) {
+    for (
+      const item of results
+    ) {
       const key =
         item.img_src ||
         item.thumbnail_src ||
         '';
 
 
-      if (!key || _seen.has(key)) {
-        return;
+      if (
+        !key ||
+        _seen.has(key)
+      ) {
+        continue;
       }
 
 
       _seen.add(key);
-      fresh.push(item);
-    });
+
+      _queue.push(item);
+    }
 
 
-    if (!fresh.length) return;
-
-
-    _queue.push(...fresh);
-
-
-    if (!_batchTimer) {
-      _drip();
+    if (
+      _queue.length &&
+      !_renderFrame
+    ) {
+      _renderFrame =
+        requestAnimationFrame(
+          _renderQueue
+        );
     }
   }
 
 
-  /* ── Fetch images from Atkyn API ──────────────────────────── */
+  /* ────────────────────────────────────────────────────────────
+     API FETCH
+  ──────────────────────────────────────────────────────────── */
 
   function _fetchImages() {
     fetch(
@@ -359,7 +480,9 @@
     )
       .then(function (response) {
         if (!response.ok) {
-          throw new Error('Image request failed');
+          throw new Error(
+            'Image request failed'
+          );
         }
 
         return response.json();
@@ -372,11 +495,13 @@
 
 
         if (!results.length) {
-          const pc =
-            document.getElementById('pageContent');
+          const page =
+            document.getElementById(
+              'pageContent'
+            );
 
-          if (pc) {
-            pc.innerHTML =
+          if (page) {
+            page.innerHTML =
               '<div class="tab-empty"><p>No images found</p></div>';
           }
 
@@ -387,122 +512,181 @@
         _appendResults(results);
       })
       .catch(function () {
-        const pc =
-          document.getElementById('pageContent');
+        const page =
+          document.getElementById(
+            'pageContent'
+          );
 
-        if (pc) {
-          pc.innerHTML =
+        if (page) {
+          page.innerHTML =
             '<div class="tab-empty"><p>Could not load images</p></div>';
         }
       });
   }
 
 
-  /* ── Init ─────────────────────────────────────────────────── */
+  /* ────────────────────────────────────────────────────────────
+     INITIALIZATION
+  ──────────────────────────────────────────────────────────── */
 
-  window._atkynInit_images = function () {
+  window._atkynInit_images =
+    function () {
 
-    /* Reset previous state */
+      /* Cancel previous render */
 
-    _seen = new Set();
-    _cols = [null, null];
-    _colH = [0, 0];
+      if (_renderFrame) {
+        cancelAnimationFrame(
+          _renderFrame
+        );
 
-    _grid = null;
-    _q = '';
-    _queue = [];
-
-
-    if (_batchTimer) {
-      clearTimeout(_batchTimer);
-      _batchTimer = null;
-    }
+        _renderFrame = 0;
+      }
 
 
-    if (_lazyIo) {
-      _lazyIo.disconnect();
-      _lazyIo = null;
-    }
+      /* Disconnect previous observer */
+
+      if (_lazyIo) {
+        _lazyIo.disconnect();
+        _lazyIo = null;
+      }
 
 
-    /* Current search */
+      /* Reset state */
 
-    _q =
-      sessionStorage.getItem(
-        'atkyn_last_query'
-      ) || '';
+      _seen = new Set();
 
+      _cols = [null, null];
 
-    const pc =
-      document.getElementById('pageContent');
+      _colH = [0, 0];
 
+      _grid = null;
 
-    if (!pc) return;
+      _queue = [];
 
-
-    if (!_q) {
-      pc.innerHTML =
-        '<div class="tab-empty"><p>Search something to see images</p></div>';
-
-      return;
-    }
+      _q =
+        sessionStorage.getItem(
+          'atkyn_last_query'
+        ) || '';
 
 
-    /* ── Sharp static skeleton ─────────────────────────────── */
+      const page =
+        document.getElementById(
+          'pageContent'
+        );
 
-    pc.innerHTML = `
-      <div class="tab-skeleton grid">
-        <div class="sk-col">
-          <div class="sk-img" style="padding-bottom:133%"></div>
-          <div class="sk-img" style="padding-bottom:75%"></div>
-          <div class="sk-img" style="padding-bottom:110%"></div>
+      if (!page) {
+        return;
+      }
+
+
+      /* No query */
+
+      if (!_q) {
+        page.innerHTML =
+          '<div class="tab-empty"><p>Search something to see images</p></div>';
+
+        return;
+      }
+
+
+      /* ───────────────────────────────────────────────────────
+         STATIC SHARP PLACEHOLDER
+      ─────────────────────────────────────────────────────── */
+
+      page.innerHTML = `
+        <div class="tab-skeleton grid">
+
+          <div class="sk-col">
+            <div
+              class="sk-img"
+              style="padding-bottom:133%"
+            ></div>
+
+            <div
+              class="sk-img"
+              style="padding-bottom:75%"
+            ></div>
+
+            <div
+              class="sk-img"
+              style="padding-bottom:110%"
+            ></div>
+          </div>
+
+          <div class="sk-col">
+            <div
+              class="sk-img"
+              style="padding-bottom:80%"
+            ></div>
+
+            <div
+              class="sk-img"
+              style="padding-bottom:130%"
+            ></div>
+
+            <div
+              class="sk-img"
+              style="padding-bottom:90%"
+            ></div>
+          </div>
+
         </div>
-
-        <div class="sk-col">
-          <div class="sk-img" style="padding-bottom:80%"></div>
-          <div class="sk-img" style="padding-bottom:130%"></div>
-          <div class="sk-img" style="padding-bottom:90%"></div>
-        </div>
-      </div>
-    `;
+      `;
 
 
-    /* Lazy observer */
+      /* Lazy observer */
 
-    _initLazyIo();
-
-
-    /* Masonry grid */
-
-    _grid =
-      document.createElement('div');
-
-    _grid.className = 'images-grid';
+      _initLazyObserver();
 
 
-    for (let i = 0; i < 2; i++) {
-      const col =
-        document.createElement('div');
+      /* Masonry */
 
-      col.className = 'img-col';
+      _grid =
+        document.createElement(
+          'div'
+        );
 
-      _grid.appendChild(col);
-      _cols[i] = col;
-    }
-
-
-    /* Replace skeleton once grid is ready */
-
-    pc.replaceChildren(_grid);
+      _grid.className =
+        'images-grid';
 
 
-    /* Only ONE network source: Atkyn API */
+      for (
+        let index = 0;
+        index < 2;
+        index++
+      ) {
+        const column =
+          document.createElement(
+            'div'
+          );
 
-    _fetchImages();
-  };
+        column.className =
+          'img-col';
+
+        _grid.appendChild(
+          column
+        );
+
+        _cols[index] =
+          column;
+      }
 
 
-  /* ── Initial execution ───────────────────────────────────── */
+      /*
+        Replace placeholder with the
+        already-created grid in ONE DOM operation.
+      */
+
+      page.replaceChildren(
+        _grid
+      );
+
+
+      /* One source only: Atkyn image API */
+
+      _fetchImages();
+    };
+
 
   window._atkynInit_images();
 

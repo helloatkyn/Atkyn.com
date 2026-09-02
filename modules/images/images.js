@@ -1,36 +1,45 @@
-/* modules/images/images.js — Images tab
-   v3: Bing-style cards · 64px favicons · Wikipedia inline (scroll lazy, once)
-*/
+/* modules/images/images.js — Pinterest-style masonry grid */
 (function () {
 
   let _seen      = new Set();
-  let _cols      = [null, null];
-  let _colH      = [0, 0];
+  let _cols      = [null, null, null];
+  let _colH      = [0, 0, 0];
   let _grid      = null;
   let _lazyIo    = null;
   let _scrollIo  = null;
   let _sentinel  = null;
-  let _loading   = false;
   let _wikiDone  = false;
   let _q         = '';
-
-  let _queue      = [];
+  let _queue     = [];
   let _batchTimer = null;
 
   // ── Column helpers ────────────────────────────────────────────
-  function _shortCol() { return _colH[0] <= _colH[1] ? 0 : 1; }
+  function _shortCol() {
+    return _colH.indexOf(Math.min(..._colH));
+  }
 
-  // ── Tile builder ──────────────────────────────────────────────
+  // ── Short title: max 3 words, no ellipsis suffix ──────────────
+  function _shortTitle(raw) {
+    if (!raw) return '';
+    const words = raw.trim().split(/\s+/);
+    return words.slice(0, 3).join(' ');
+  }
+
+  // ── Tile builder (Pinterest style) ───────────────────────────
   function _buildTile(img) {
     const src   = img.img_src       || img.thumbnail_src || '';
     const thumb = img.thumbnail_src || img.img_src       || '';
     if (!src) return null;
 
+    const wrap       = document.createElement('div');
+    wrap.className   = 'img-tile';
+
+    // Image link
     const a       = document.createElement('a');
-    a.className   = 'img-tile';
     a.href        = img.url || src;
     a.target      = '_blank';
     a.rel         = 'noopener noreferrer';
+    a.className   = 'img-tile__link';
 
     const imgEl         = document.createElement('img');
     imgEl.alt           = img.title || '';
@@ -38,9 +47,6 @@
     imgEl.dataset.src   = src;
     imgEl.dataset.thumb = thumb;
     imgEl.classList.add('img-lazy');
-    imgEl.style.cssText =
-      'opacity:0;transition:opacity 0.2s ease;display:block;' +
-      'width:100%;height:auto;border-radius:10px;will-change:opacity;';
 
     imgEl.onload = function () {
       requestAnimationFrame(() => { this.style.opacity = '1'; });
@@ -51,172 +57,50 @@
         this.src = thumb;
         return;
       }
-      const tile = this.closest('.img-tile');
-      if (tile) { tile.style.display = 'none'; setTimeout(() => tile.remove(), 200); }
+      wrap.remove();
     };
 
     a.appendChild(imgEl);
-    return a;
-  }
+    wrap.appendChild(a);
 
-  // ── Favicon — 64px Google → DuckDuckGo → favicon.im → letter SVG ──
-  function _faviconEl(url) {
-    let host = '';
-    try { host = new URL(url).hostname.replace(/^www\./, ''); } catch { /* skip */ }
+    // Bottom row: title + 3-dot menu
+    const title = _shortTitle(img.title);
+    if (title) {
+      const footer       = document.createElement('div');
+      footer.className   = 'img-tile__footer';
 
-    const img         = document.createElement('img');
-    img.width         = 16;
-    img.height        = 16;
-    img.alt           = '';
-    img.style.cssText = 'border-radius:3px;flex-shrink:0;object-fit:contain;';
+      const titleEl      = document.createElement('span');
+      titleEl.className  = 'img-tile__title';
+      titleEl.textContent = title;
 
-    const services = [
-      `https://www.google.com/s2/favicons?sz=64&domain=${host}`,
-      `https://icons.duckduckgo.com/ip3/${host}.ico`,
-      `https://favicon.im/${host}`,
-    ];
-    let idx = 0;
+      const menu         = document.createElement('button');
+      menu.className     = 'img-tile__menu';
+      menu.setAttribute('aria-label', 'More options');
+      menu.innerHTML     = `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="8" cy="3" r="1.4" fill="currentColor"/>
+        <circle cx="8" cy="8" r="1.4" fill="currentColor"/>
+        <circle cx="8" cy="13" r="1.4" fill="currentColor"/>
+      </svg>`;
 
-    function tryNext() {
-      if (idx >= services.length) {
-        const letter = (host[0] || '?').toUpperCase();
-        const colors = ['#007AFF','#34C759','#FF9500','#FF3B30','#AF52DE','#5856D6'];
-        const bg     = colors[letter.charCodeAt(0) % colors.length];
-        img.src      = `data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16'><rect width='16' height='16' rx='3' fill='${encodeURIComponent(bg)}'/><text x='8' y='12' font-family='system-ui' font-size='10' font-weight='600' fill='white' text-anchor='middle'>${letter}</text></svg>`;
-        img.onerror  = null;
-        return;
-      }
-      img.src = services[idx++];
+      footer.appendChild(titleEl);
+      footer.appendChild(menu);
+      wrap.appendChild(footer);
     }
 
-    img.onerror = tryNext;
-    tryNext();
-    return img;
+    return wrap;
   }
 
-  // ── Related searches card (Bing style) ───────────────────────
-  function _buildSuggestionCard(suggestions) {
-    if (!suggestions?.length) return null;
-
-    const card        = document.createElement('div');
-    card.className    = 'img-suggestion-card';
-
-    const label       = document.createElement('p');
-    label.className   = 'img-card-label';
-    label.textContent = 'Related searches';
-    card.appendChild(label);
-
-    const list      = document.createElement('div');
-    list.className  = 'img-suggestion-list';
-
-    suggestions.slice(0, 6).forEach(s => {
-      const q        = s.query || s;
-      const chip     = document.createElement('a');
-      chip.className = 'img-suggestion-chip';
-      chip.href      = `/?q=${encodeURIComponent(q)}`;
-      chip.textContent = q;
-      list.appendChild(chip);
-    });
-
-    card.appendChild(list);
-    return card;
-  }
-
-  // ── Top sources card (Bing style) ────────────────────────────
-  function _buildSourceCard(results) {
-    if (!results?.length) return null;
-
-    const card        = document.createElement('div');
-    card.className    = 'img-source-card';
-
-    const label       = document.createElement('p');
-    label.className   = 'img-card-label';
-    label.textContent = 'Top sources';
-    card.appendChild(label);
-
-    const seen  = new Set();
-    const items = results.filter(r => {
-      if (!r.url) return false;
-      try {
-        const host = new URL(r.url).hostname.replace(/^www\./, '');
-        if (seen.has(host)) return false;
-        seen.add(host);
-        return true;
-      } catch { return false; }
-    }).slice(0, 4);
-
-    items.forEach(r => {
-      const row     = document.createElement('a');
-      row.className = 'img-source-row';
-      row.href      = r.url;
-      row.target    = '_blank';
-      row.rel       = 'noopener noreferrer';
-
-      const info        = document.createElement('div');
-      info.className    = 'img-source-info';
-
-      const t           = document.createElement('span');
-      t.className       = 'img-source-title';
-      t.textContent     = r.title || '';
-
-      const u           = document.createElement('span');
-      u.className       = 'img-source-url';
-      try { u.textContent = new URL(r.url).hostname.replace(/^www\./, ''); }
-      catch { u.textContent = r.url; }
-
-      info.appendChild(t);
-      info.appendChild(u);
-      row.appendChild(_faviconEl(r.url));
-      row.appendChild(info);
-      card.appendChild(row);
-    });
-
-    return card;
-  }
-
-  // ── Place filler cards in gap column ─────────────────────────
-  function _placeFiller(suggestions, sourceResults) {
-    const c     = _shortCol();
-    const other = 1 - c;
-    if (_colH[other] - _colH[c] < 1.5) return;
-
-    const sc = _buildSuggestionCard(suggestions);
-    if (sc) { _cols[c].appendChild(sc); _colH[c] += 2; }
-
-    if (_colH[c] < _colH[other] - 1) {
-      const src = _buildSourceCard(sourceResults);
-      if (src) { _cols[c].appendChild(src); _colH[c] += 2; }
-    }
-  }
-
-  // ── Sentinel — triggers Wikipedia fetch on scroll ─────────────
-  function _attachSentinel() {
-    if (_sentinel) _sentinel.remove();
-    _sentinel           = document.createElement('div');
-    _sentinel.className = 'img-sentinel';
-    _cols[_shortCol()].appendChild(_sentinel);
-
-    if (_scrollIo) _scrollIo.disconnect();
-    _scrollIo = new IntersectionObserver(entries => {
-      if (!entries[0].isIntersecting || _wikiDone) return;
-      _wikiDone = true;
-      _scrollIo.disconnect();
-      _fetchWiki();
-    }, { rootMargin: '400px' });
-    _scrollIo.observe(_sentinel);
-  }
-
-  // ── Drip renderer: 4 tiles every 80ms ────────────────────────
+  // ── Drip renderer: 6 tiles every 80ms ────────────────────────
   function _drip() {
     if (!_queue.length) { _batchTimer = null; return; }
 
-    const batch = _queue.splice(0, 4);
+    const batch = _queue.splice(0, 6);
     batch.forEach(img => {
       const tile = _buildTile(img);
       if (!tile) return;
       const c    = _shortCol();
       _cols[c].appendChild(tile);
-      const aspect = (img.width && img.height) ? img.height / img.width : 0.75;
+      const aspect = (img.width && img.height) ? img.height / img.width : 1.2;
       _colH[c] += aspect;
     });
 
@@ -240,57 +124,55 @@
     if (!_batchTimer) _drip();
   }
 
-  // ── Fetch #1 — Serper (upfront, max 100) ─────────────────────
-  function _fetchSerper() {
-    if (_loading) return;
-    _loading = true;
+  // ── Sentinel — triggers Wikipedia fetch on scroll ─────────────
+  function _attachSentinel() {
+    if (_sentinel) _sentinel.remove();
+    _sentinel           = document.createElement('div');
+    _sentinel.className = 'img-sentinel';
+    _cols[_shortCol()].appendChild(_sentinel);
 
+    if (_scrollIo) _scrollIo.disconnect();
+    _scrollIo = new IntersectionObserver(entries => {
+      if (!entries[0].isIntersecting || _wikiDone) return;
+      _wikiDone = true;
+      _scrollIo.disconnect();
+      _fetchWiki();
+    }, { rootMargin: '400px' });
+    _scrollIo.observe(_sentinel);
+  }
+
+  // ── Fetch #1 — Serper ─────────────────────────────────────────
+  function _fetchSerper() {
     fetch(`/api/images?q=${encodeURIComponent(_q)}`)
       .then(r => r.ok ? r.json() : Promise.reject())
       .then(data => {
-        _loading = false;
-        const results       = data.results       || [];
-        const suggestions   = data.suggestions   || [];
-        const sourceResults = data.sourceResults || [];
-
+        const results = data.results || [];
         if (!results.length) {
           document.getElementById('pageContent').innerHTML =
             '<div class="tab-empty"><p>No images found</p></div>';
           return;
         }
-
         _appendResults(results);
-
-        const delay = Math.ceil(results.length / 4) * 80 + 300;
-        setTimeout(() => {
-          _placeFiller(suggestions, sourceResults);
-          _attachSentinel();
-        }, delay);
+        const delay = Math.ceil(results.length / 6) * 80 + 300;
+        setTimeout(_attachSentinel, delay);
       })
-      .catch(() => { _loading = false; });
+      .catch(() => {
+        document.getElementById('pageContent').innerHTML =
+          '<div class="tab-empty"><p>Could not load images</p></div>';
+      });
   }
 
-  // ── Fetch #2 — Wikipedia Commons (on scroll, 4 parallel pages) ─
-  // gsrlimit=50 per call, offsets 0/50/100/150 → up to ~200 results.
-  // All 4 fired in parallel with Promise.all — free API, no key.
+  // ── Fetch #2 — Wikipedia Commons (on scroll) ──────────────────
   function _fetchWiki() {
-    const LIMIT   = 50;
-    const PAGES   = 4;
-    const BASE    = {
-      action:       'query',
-      format:       'json',
-      origin:       '*',
-      generator:    'search',
-      gsrnamespace: '6',
-      gsrsearch:    _q,
-      gsrlimit:     String(LIMIT),
-      prop:         'imageinfo|info',
-      iiprop:       'url|dimensions|mime',
-      iiurlwidth:   '800',
-      redirects:    '1',
+    const LIMIT = 50;
+    const BASE  = {
+      action: 'query', format: 'json', origin: '*',
+      generator: 'search', gsrnamespace: '6', gsrsearch: _q,
+      gsrlimit: String(LIMIT), prop: 'imageinfo|info',
+      iiprop: 'url|dimensions|mime', iiurlwidth: '800', redirects: '1',
     };
 
-    const calls = Array.from({ length: PAGES }, (_, i) => {
+    const calls = Array.from({ length: 4 }, (_, i) => {
       const p = new URLSearchParams({ ...BASE, gsroffset: String(i * LIMIT) });
       return fetch(`https://commons.wikimedia.org/w/api.php?${p}`)
         .then(r => r.ok ? r.json() : {})
@@ -298,32 +180,23 @@
     });
 
     Promise.all(calls).then(responses => {
-      const allPages = responses.flatMap(data =>
-        Object.values(data?.query?.pages || {})
-      );
-
+      const allPages = responses.flatMap(d => Object.values(d?.query?.pages || {}));
       const results = allPages
         .filter(p => {
           const ii   = p.imageinfo?.[0];
           if (!ii) return false;
           const mime = ii.mime || '';
-          return mime.startsWith('image/jpeg') ||
-                 mime.startsWith('image/png')  ||
-                 mime.startsWith('image/webp') ||
-                 mime.startsWith('image/gif');
+          return /^image\/(jpeg|png|webp|gif)/.test(mime);
         })
         .map(p => {
-          const ii       = p.imageinfo[0];
-          const thumbUrl = ii.thumburl || ii.url || '';
-          const fullUrl  = ii.url      || thumbUrl;
+          const ii = p.imageinfo[0];
           return {
             title:         (p.title || '').replace(/^File:/, ''),
-            url:           p.fullurl || ii.descriptionurl || fullUrl,
-            img_src:       fullUrl,
-            thumbnail_src: thumbUrl,
+            url:           p.fullurl || ii.descriptionurl || ii.url || '',
+            img_src:       ii.url || '',
+            thumbnail_src: ii.thumburl || ii.url || '',
             width:         ii.thumbwidth  || ii.width  || 0,
             height:        ii.thumbheight || ii.height || 0,
-            source:        'wikipedia',
           };
         })
         .filter(img => img.width >= 100 && img.height >= 100);
@@ -343,7 +216,6 @@
 
         const thumbSrc = el.dataset.thumb || el.dataset.src;
         const fullSrc  = el.dataset.src;
-
         if (thumbSrc) el.src = thumbSrc;
 
         if (fullSrc && fullSrc !== thumbSrc) {
@@ -362,13 +234,12 @@
 
   // ── Init ──────────────────────────────────────────────────────
   window._atkynInit_images = function () {
-    _seen     = new Set();
-    _cols     = [null, null];
-    _colH     = [0, 0];
-    _grid     = null;
-    _loading  = false;
-    _wikiDone = false;
-    _queue    = [];
+    _seen      = new Set();
+    _cols      = [null, null, null];
+    _colH      = [0, 0, 0];
+    _grid      = null;
+    _wikiDone  = false;
+    _queue     = [];
     if (_batchTimer) { clearTimeout(_batchTimer); _batchTimer = null; }
     if (_scrollIo)   { _scrollIo.disconnect();    _scrollIo   = null; }
     if (_sentinel)   { _sentinel.remove();         _sentinel   = null; }
@@ -384,23 +255,19 @@
 
     pc.innerHTML = `
       <div class="tab-skeleton grid">
-        <div class="sk-col">
-          <div class="sk-img"></div>
-          <div class="sk-img sk-img--sm"></div>
-          <div class="sk-img"></div>
-        </div>
-        <div class="sk-col">
-          <div class="sk-img sk-img--sm"></div>
-          <div class="sk-img"></div>
-          <div class="sk-img sk-img--sm"></div>
-        </div>
+        ${[0,1,2].map(() => `
+          <div class="sk-col">
+            <div class="sk-img" style="aspect-ratio:3/4"></div>
+            <div class="sk-img" style="aspect-ratio:4/3"></div>
+            <div class="sk-img" style="aspect-ratio:1/1"></div>
+          </div>`).join('')}
       </div>`;
 
     _initLazyIo();
 
     _grid = document.createElement('div');
     _grid.className = 'images-grid';
-    for (let i = 0; i < 2; i++) {
+    for (let i = 0; i < 3; i++) {
       const col = document.createElement('div');
       col.className = 'img-col';
       _grid.appendChild(col);
@@ -415,4 +282,4 @@
 
   window._atkynInit_images();
 }());
-         
+          

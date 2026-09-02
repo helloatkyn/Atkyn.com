@@ -1,88 +1,214 @@
-/* functions/api/images.js — Cloudflare Pages Function
-   Two parallel Serper calls:
-   1. /images  → up to 100 image results
-   2. /search  → relatedSearches + organic (for suggestion + source cards)
-   Both fired with Promise.all — no extra latency.
+/* functions/api/images.js
+   Cloudflare Pages Function
+
+   ONE upstream API call
+   Maximum Serper Images results (100)
+   Minimal production response
+   No secondary web-search request
+   No dead suggestion/source-card logic
 */
 
-export async function onRequestGet(context) {
-  const { request, env } = context;
-
+export async function onRequestGet({ request, env }) {
   const url = new URL(request.url);
-  const q   = url.searchParams.get('q')?.trim();
+  const q = url.searchParams.get('q')?.trim();
 
   if (!q) {
-    return new Response(JSON.stringify({ error: 'Empty query' }), {
-      status: 400,
-      headers: corsHeaders({ 'Content-Type': 'application/json' }),
-    });
+    return json(
+      { error: 'Empty query' },
+      400
+    );
   }
 
-  const headers = {
-    'X-API-KEY':    env.SERPER_API_KEY,
-    'Content-Type': 'application/json',
-  };
+  if (!env.SERPER_API_KEY) {
+    return json(
+      { error: 'SERPER_API_KEY is not configured' },
+      500
+    );
+  }
+
+  const controller = new AbortController();
+
+  /*
+    Protect the worker from hanging indefinitely.
+    Serper normally returns quickly, but a hard timeout
+    keeps the request lifecycle production-safe.
+  */
+  const timeout = setTimeout(
+    () => controller.abort(),
+    15000
+  );
 
   try {
-    /* ── Two parallel Serper calls ─────────────────────────────── */
-    const [imgRes, searchRes] = await Promise.all([
-      fetch('https://google.serper.dev/images', {
+    /*
+      ONE AND ONLY ONE upstream request.
+
+      Serper Images supports 1–100 results per request.
+      100 is therefore the maximum requested page size.
+    */
+    const response = await fetch(
+      'https://google.serper.dev/images',
+      {
         method: 'POST',
-        headers,
-        body: JSON.stringify({ q, num: 100, gl: 'us' }),
-      }),
-      fetch('https://google.serper.dev/search', {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({ q, num: 10, gl: 'us' }),
-      }),
-    ]);
 
-    const imgData    = imgRes.ok    ? await imgRes.json()    : {};
-    const searchData = searchRes.ok ? await searchRes.json() : {};
+        headers: {
+          'X-API-KEY': env.SERPER_API_KEY,
+          'Content-Type': 'application/json'
+        },
 
-    /* ── Image results ─────────────────────────────────────────── */
-    const results = (imgData.images || []).map(img => ({
-      title:         img.title        || '',
-      url:           img.link         || '',
-      img_src:       img.imageUrl     || '',
-      thumbnail_src: img.thumbnailUrl || img.imageUrl || '',
-      width:         img.imageWidth   || 0,
-      height:        img.imageHeight  || 0,
-    }));
+        body: JSON.stringify({
+          q,
+          num: 100,
 
-    /* ── Related searches (from /search) ───────────────────────── */
-    const suggestions = (searchData.relatedSearches || []).map(s => ({
-      query: s.query || s,
-    }));
+          /*
+            India-focused results for Atkyn.
+            Keep both locale signals explicit.
+          */
+          gl: 'in',
+          hl: 'en',
 
-    /* ── Top sources (from /search organic) ────────────────────── */
-    const sourceResults = (searchData.organic || []).slice(0, 4).map(r => ({
-      title: r.title || '',
-      url:   r.link  || '',
-    }));
+          autocorrect: true
+        }),
 
-    return new Response(JSON.stringify({ results, suggestions, sourceResults }), {
-      headers: corsHeaders({ 'Content-Type': 'application/json' }),
+        signal: controller.signal
+      }
+    );
+
+
+    if (!response.ok) {
+      const message =
+        await response.text().catch(
+          () => ''
+        );
+
+      return json(
+        {
+          error:
+            message ||
+            `Serper request failed (${response.status})`
+        },
+        502
+      );
+    }
+
+
+    const data =
+      await response.json();
+
+
+    /*
+      Serper Images returns its image collection
+      under `images`.
+    */
+    const images =
+      Array.isArray(data.images)
+        ? data.images
+        : [];
+
+
+    /*
+      Normalize only the fields Atkyn actually needs.
+      This keeps the response smaller and faster.
+    */
+    const results = images
+      .map((img) => ({
+        title:
+          typeof img.title === 'string'
+            ? img.title
+            : '',
+
+        url:
+          typeof img.link === 'string'
+            ? img.link
+            : '',
+
+        img_src:
+          typeof img.imageUrl === 'string'
+            ? img.imageUrl
+            : '',
+
+        thumbnail_src:
+          typeof img.thumbnailUrl === 'string'
+            ? img.thumbnailUrl
+            : '',
+
+        width:
+          Number.isFinite(img.imageWidth)
+            ? img.imageWidth
+            : 0,
+
+        height:
+          Number.isFinite(img.imageHeight)
+            ? img.imageHeight
+            : 0
+      }))
+      .filter(
+        (img) =>
+          img.img_src
+      );
+
+
+    /*
+      Remove duplicate image URLs while
+      preserving Google's original ranking order.
+    */
+    const seen = new Set();
+
+    const uniqueResults = [];
+
+    for (const image of results) {
+      if (seen.has(image.img_src)) {
+        continue;
+      }
+
+      seen.add(image.img_src);
+      uniqueResults.push(image);
+    }
+
+
+    return json({
+      results: uniqueResults
     });
 
-  } catch (err) {
-    return new Response(JSON.stringify({ error: String(err) }), {
-      status: 500,
-      headers: corsHeaders({ 'Content-Type': 'application/json' }),
-    });
+  } catch (error) {
+
+    const message =
+      error?.name === 'AbortError'
+        ? 'Image search timed out'
+        : 'Image search failed';
+
+    return json(
+      { error: message },
+      502
+    );
+
+  } finally {
+    clearTimeout(timeout);
   }
 }
 
-export async function onRequestOptions() {
-  return new Response(null, { headers: corsHeaders() });
-}
 
-function corsHeaders(extra = {}) {
-  return {
-    'Access-Control-Allow-Origin':  '*',
-    'Access-Control-Allow-Methods': 'GET, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type',
-    ...extra,
-  };
+/*
+  Small response helper.
+  Same-origin frontend does not need the previous
+  wildcard CORS implementation.
+*/
+function json(data, status = 200) {
+  return new Response(
+    JSON.stringify(data),
+    {
+      status,
+
+      headers: {
+        'Content-Type':
+          'application/json; charset=utf-8',
+
+        /*
+          Search results should not be blindly
+          persisted by intermediary caches.
+        */
+        'Cache-Control':
+          'no-store'
+      }
+    }
+  );
 }

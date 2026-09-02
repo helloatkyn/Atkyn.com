@@ -1,12 +1,13 @@
-/* modules/images/images.css
-   ATKYN — Premium Image Masonry
-   Pinterest-style • Clean • Large Tiles • No Bottom Shadow
-   No Blur • No Shimmer • Stable Layout
-*/
+/* ══════════════════════════════════════════════════════════════
+   ATKYN — PREMIUM IMAGE GALLERY
+   Large Masonry • Max 2 Columns • Pinterest-inspired
+   Clean • Sharp • No Blur • No Bottom Shadow
+   Stable Layout • Fast Scroll Friendly
+══════════════════════════════════════════════════════════════ */
 
 
 /* ══════════════════════════════════════════════════════════════
-   MASONRY GRID
+   GALLERY
 ══════════════════════════════════════════════════════════════ */
 
 .images-grid {
@@ -20,6 +21,11 @@
   padding: 8px 8px 0;
 }
 
+
+/* ══════════════════════════════════════════════════════════════
+   TWO COLUMNS
+══════════════════════════════════════════════════════════════ */
+
 .img-col {
   flex: 1 1 0;
   min-width: 0;
@@ -32,7 +38,7 @@
 
 
 /* ══════════════════════════════════════════════════════════════
-   IMAGE TILE
+   TILE
 ══════════════════════════════════════════════════════════════ */
 
 .img-tile {
@@ -45,9 +51,9 @@
 
   overflow: hidden;
 
-  border-radius: 16px;
+  border-radius: 17px;
 
-  background: #e9e9e9;
+  background: #ededed;
 
   text-decoration: none;
 
@@ -56,9 +62,8 @@
 
 
 /* ══════════════════════════════════════════════════════════════
-   IMAGE SPACE RESERVATION
-   Reserves exact geometry before image arrives.
-   Zero layout shift / zero bounce.
+   IMAGE RESERVATION
+   Keeps geometry locked before the image arrives.
 ══════════════════════════════════════════════════════════════ */
 
 .img-tile__spacer {
@@ -69,12 +74,14 @@
 
   overflow: hidden;
 
-  border-radius: 16px;
+  border-radius: 17px;
+
+  background: #ededed;
 }
 
 
 /* ══════════════════════════════════════════════════════════════
-   IMAGE
+   ACTUAL IMAGE
 ══════════════════════════════════════════════════════════════ */
 
 .img-tile__spacer img {
@@ -86,19 +93,27 @@
   width: 100%;
   height: 100%;
 
-  border-radius: 16px;
+  border-radius: 17px;
 
   object-fit: cover;
   object-position: center;
 
+  background: #ededed;
+
   opacity: 0;
 
-  transition: opacity 140ms ease-out;
+  transition:
+    opacity 140ms ease-out;
 
-  /* Explicitly no visual effects */
   filter: none;
   box-shadow: none;
+
+  -webkit-user-drag: none;
+  user-select: none;
 }
+
+
+/* Loaded image */
 
 .img-tile__spacer img.img-loaded {
   opacity: 1;
@@ -106,11 +121,19 @@
 
 
 /* ══════════════════════════════════════════════════════════════
+   HERO / SINGLE IMAGE SUPPORT
+   JS can add .img-tile--hero when a tile should occupy
+   the complete gallery width.
+══════════════════════════════════════════════════════════════ */
+
+.img-tile--hero {
+  width: 100%;
+}
+
+
+/* ══════════════════════════════════════════════════════════════
    BOTTOM CONTENT
-   IMPORTANT:
-   NO gradient.
-   NO black scrim.
-   NO shadow over the image.
+   Completely transparent — NO image shadow.
 ══════════════════════════════════════════════════════════════ */
 
 .img-tile__overlay {
@@ -128,13 +151,10 @@
 
   padding: 8px;
 
-  /*
-    Completely transparent.
-    Image remains visually untouched.
-  */
   background: transparent;
 
-  border-radius: 0 0 16px 16px;
+  border-radius:
+    0 0 17px 17px;
 
   pointer-events: none;
 }
@@ -159,59 +179,53 @@
   white-space: nowrap;
   text-overflow: ellipsis;
 
-  /*
-    No heavy shadow on the image.
-    Tiny text shadow only keeps white text readable.
-  */
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+  text-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.25);
 }
 
 
 /* ══════════════════════════════════════════════════════════════
-   THREE DOT MENU
+   THREE DOT BUTTON
 ══════════════════════════════════════════════════════════════ */
 
 .img-tile__menu {
-  flex: 0 0 28px;
+  flex: 0 0 29px;
 
   display: flex;
   align-items: center;
   justify-content: center;
 
-  width: 28px;
-  height: 28px;
+  width: 29px;
+  height: 29px;
 
   padding: 0;
 
   border: 0;
   border-radius: 50%;
 
-  background: rgba(0, 0, 0, 0.34);
+  background:
+    rgba(0, 0, 0, 0.34);
 
   color: #fff;
 
   cursor: pointer;
-
   pointer-events: auto;
 
   -webkit-tap-highlight-color: transparent;
 
-  /*
-    No blur / glass effect.
-  */
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
 }
 
 .img-tile__menu:active {
-  background: rgba(0, 0, 0, 0.52);
+  background:
+    rgba(0, 0, 0, 0.52);
 }
 
 
 /* ══════════════════════════════════════════════════════════════
-   PREMIUM PLACEHOLDER GRID
-   Flat • Sharp • Professional
-   No shimmer • No gradient • No blur
+   PREMIUM PLACEHOLDER
+   Static • Flat • Sharp • Professional
 ══════════════════════════════════════════════════════════════ */
 
 .tab-skeleton.grid {
@@ -241,15 +255,12 @@
 
   box-sizing: border-box;
 
-  border-radius: 16px;
+  border-radius: 17px;
 
-  /*
-    Premium neutral placeholder.
-    Completely static.
-  */
   background: #ededed;
 
-  border: 1px solid rgba(0, 0, 0, 0.025);
+  border: 1px solid
+    rgba(0, 0, 0, 0.025);
 
   filter: none;
   box-shadow: none;
@@ -259,30 +270,64 @@
 
 
 /* ══════════════════════════════════════════════════════════════
+   LARGE MOBILE / TABLET
+   Slightly tighter edges while retaining max 2 columns.
+══════════════════════════════════════════════════════════════ */
+
+@media (min-width: 600px) {
+  .images-grid {
+    gap: 10px;
+    padding-left: 10px;
+    padding-right: 10px;
+  }
+
+  .img-col {
+    gap: 10px;
+  }
+
+  .img-tile,
+  .img-tile__spacer,
+  .img-tile__spacer img {
+    border-radius: 18px;
+  }
+}
+
+
+/* ══════════════════════════════════════════════════════════════
    DARK MODE
 ══════════════════════════════════════════════════════════════ */
 
 @media (prefers-color-scheme: dark) {
 
-  .img-tile {
+  .images-grid,
+  .img-col {
+    background: transparent;
+  }
+
+  .img-tile,
+  .img-tile__spacer,
+  .img-tile__spacer img {
     background: #2c2c2e;
   }
 
   .img-tile__menu {
-    background: rgba(255, 255, 255, 0.18);
+    background:
+      rgba(255, 255, 255, 0.18);
 
     backdrop-filter: none;
     -webkit-backdrop-filter: none;
   }
 
   .img-tile__menu:active {
-    background: rgba(255, 255, 255, 0.30);
+    background:
+      rgba(255, 255, 255, 0.30);
   }
 
   .sk-img {
     background: #2c2c2e;
 
-    border-color: rgba(255, 255, 255, 0.025);
+    border-color:
+      rgba(255, 255, 255, 0.025);
 
     filter: none;
     box-shadow: none;
@@ -297,6 +342,7 @@
 ══════════════════════════════════════════════════════════════ */
 
 @media (prefers-reduced-motion: reduce) {
+
   .img-tile__spacer img {
     transition: none;
   }

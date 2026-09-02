@@ -1,55 +1,63 @@
 /* ══════════════════════════════════════════════════════════════
-   ATKYN — PRODUCTION IMAGE GALLERY
-   Premium editorial masonry
-   Full-width hero + maximum 2-column grid
-   Stable geometry • Sharp placeholders • No blur
+   ATKYN — PREMIUM PRODUCTION IMAGE GALLERY
+   Large Editorial Masonry
+   Maximum 2 Columns
+   Full-width Hero Support
+   Stable Layout • Sharp Loading • No Blur
+   No Shimmer • No Bottom Gradient • No Ellipsis
 ══════════════════════════════════════════════════════════════ */
 
 
 /* ══════════════════════════════════════════════════════════════
-   MASTER GALLERY
+   ROOT GALLERY
 ══════════════════════════════════════════════════════════════ */
 
 .images-grid {
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-
   width: 100%;
   box-sizing: border-box;
 
+  display: flex;
+  flex-direction: column;
+
   gap: 9px;
-  padding: 8px 8px 0;
+
+  padding:
+    8px
+    8px
+    0;
 }
 
 
 /* ══════════════════════════════════════════════════════════════
-   FULL-WIDTH SINGLE / HERO IMAGE
+   HERO / SINGLE IMAGE
 ══════════════════════════════════════════════════════════════ */
 
 .gallery-hero {
   width: 100%;
   min-width: 0;
+  flex: 0 0 100%;
+
+  display: block;
 }
 
 
 /* ══════════════════════════════════════════════════════════════
-   TWO-COLUMN GALLERY SECTION
+   TWO-COLUMN SECTION
 ══════════════════════════════════════════════════════════════ */
 
 .gallery-grid {
+  width: 100%;
+  min-width: 0;
+
   display: grid;
 
   grid-template-columns:
     minmax(0, 1fr)
     minmax(0, 1fr);
 
-  align-items: start;
-
   gap: 9px;
 
-  width: 100%;
-  min-width: 0;
+  align-items: start;
 }
 
 .gallery-col {
@@ -63,7 +71,7 @@
 
 
 /* ══════════════════════════════════════════════════════════════
-   TILE
+   IMAGE TILE
 ══════════════════════════════════════════════════════════════ */
 
 .img-tile {
@@ -75,6 +83,8 @@
   min-width: 0;
 
   overflow: hidden;
+
+  box-sizing: border-box;
 
   border-radius: 17px;
 
@@ -88,8 +98,7 @@
 
 /* ══════════════════════════════════════════════════════════════
    IMAGE RESERVATION
-   Exact space exists before image loading.
-   This is the key anti-bounce layer.
+   Keeps exact geometry before image decoding.
 ══════════════════════════════════════════════════════════════ */
 
 .img-tile__spacer {
@@ -100,7 +109,9 @@
 
   overflow: hidden;
 
-  border-radius: 17px;
+  box-sizing: border-box;
+
+  border-radius: inherit;
 
   background: #ededed;
 }
@@ -112,6 +123,7 @@
 
 .img-tile__spacer img {
   position: absolute;
+
   inset: 0;
 
   display: block;
@@ -119,7 +131,10 @@
   width: 100%;
   height: 100%;
 
-  border-radius: 17px;
+  box-sizing: border-box;
+
+  border: 0;
+  border-radius: inherit;
 
   object-fit: cover;
   object-position: center;
@@ -128,18 +143,25 @@
 
   opacity: 0;
 
+  /*
+    Tiny reveal only.
+    No transform, scaling or geometry animation.
+  */
   transition:
-    opacity 120ms ease-out;
+    opacity 120ms linear;
 
   filter: none;
+
   box-shadow: none;
 
   -webkit-user-drag: none;
+  user-select: none;
 }
 
 
-/* Loaded = only opacity changes.
-   Geometry never changes. */
+/* ══════════════════════════════════════════════════════════════
+   LOADED IMAGE
+══════════════════════════════════════════════════════════════ */
 
 .img-tile__spacer img.img-loaded {
   opacity: 1;
@@ -147,8 +169,7 @@
 
 
 /* ══════════════════════════════════════════════════════════════
-   HERO IMAGE
-   Slightly more substantial visual treatment.
+   HERO TILE
 ══════════════════════════════════════════════════════════════ */
 
 .gallery-hero .img-tile {
@@ -165,10 +186,11 @@
 
 
 /* ══════════════════════════════════════════════════════════════
-   OVERLAY
+   IMAGE OVERLAY
    Completely transparent.
-   NO bottom gradient.
-   NO shadow over image.
+   No gradient.
+   No dark scrim.
+   No shadow.
 ══════════════════════════════════════════════════════════════ */
 
 .img-tile__overlay {
@@ -179,17 +201,22 @@
   bottom: 0;
 
   display: flex;
+
   align-items: flex-end;
   justify-content: space-between;
 
   gap: 6px;
 
-  padding: 8px;
+  padding:
+    8px;
 
   background: transparent;
 
   border-radius:
-    0 0 17px 17px;
+    0
+    0
+    inherit
+    inherit;
 
   pointer-events: none;
 }
@@ -207,19 +234,28 @@
 
   color: #fff;
 
+  font-family: inherit;
+
   font-size: 12px;
   font-weight: 600;
+
   line-height: 1.3;
 
   white-space: nowrap;
-  text-overflow: ellipsis;
+
+  /*
+    IMPORTANT:
+    No automatic "..." suffix.
+  */
+  text-overflow: clip;
 
   text-shadow:
-    0 1px 2px rgba(0, 0, 0, 0.25);
+    0 1px 2px
+    rgba(0, 0, 0, 0.22);
 }
 
 
-/* Hero title — slightly stronger hierarchy */
+/* Hero title */
 
 .gallery-hero .img-tile__title {
   font-size: 13px;
@@ -228,7 +264,7 @@
 
 
 /* ══════════════════════════════════════════════════════════════
-   THREE-DOT MENU
+   THREE-DOT ACTION
 ══════════════════════════════════════════════════════════════ */
 
 .img-tile__menu {
@@ -252,6 +288,7 @@
   color: #fff;
 
   cursor: pointer;
+
   pointer-events: auto;
 
   -webkit-tap-highlight-color: transparent;
@@ -267,20 +304,23 @@
 
 
 /* ══════════════════════════════════════════════════════════════
-   INITIAL PLACEHOLDER
-   Flat, clean, premium.
-   No shimmer / no gradient / no blur.
+   INITIAL LOADING GRID
 ══════════════════════════════════════════════════════════════ */
 
 .tab-skeleton.grid {
-  display: flex;
-  align-items: flex-start;
-
   width: 100%;
   box-sizing: border-box;
 
+  display: flex;
+
+  align-items: flex-start;
+
   gap: 9px;
-  padding: 8px 8px 0;
+
+  padding:
+    8px
+    8px
+    0;
 }
 
 .sk-col {
@@ -293,6 +333,12 @@
   gap: 9px;
 }
 
+
+/* ══════════════════════════════════════════════════════════════
+   SHARP PREMIUM PLACEHOLDER
+   Completely static.
+══════════════════════════════════════════════════════════════ */
+
 .sk-img {
   width: 100%;
   height: 0;
@@ -301,12 +347,15 @@
 
   border-radius: 17px;
 
-  background: #ededed;
+  background:
+    #ededed;
 
-  border: 1px solid
+  border:
+    1px solid
     rgba(0, 0, 0, 0.025);
 
   filter: none;
+
   box-shadow: none;
 
   animation: none;
@@ -314,13 +363,38 @@
 
 
 /* ══════════════════════════════════════════════════════════════
-   MEDIUM / TABLET
+   OPTIONAL FULL-WIDTH HERO PLACEHOLDER
+══════════════════════════════════════════════════════════════ */
+
+.tab-skeleton .sk-hero {
+  width: 100%;
+  flex: 0 0 100%;
+}
+
+
+/* ══════════════════════════════════════════════════════════════
+   TOUCH / ACTIVE BEHAVIOR
+   No scale or movement.
+══════════════════════════════════════════════════════════════ */
+
+.img-tile:active {
+  transform: none;
+}
+
+.img-tile__spacer img:active {
+  transform: none;
+}
+
+
+/* ══════════════════════════════════════════════════════════════
+   LARGE SCREENS
 ══════════════════════════════════════════════════════════════ */
 
 @media (min-width: 600px) {
 
   .images-grid {
     gap: 10px;
+
     padding-left: 10px;
     padding-right: 10px;
   }
@@ -344,6 +418,10 @@
   .gallery-hero .img-tile__spacer img {
     border-radius: 19px;
   }
+
+  .sk-img {
+    border-radius: 18px;
+  }
 }
 
 
@@ -355,15 +433,19 @@
 
   .images-grid,
   .gallery-grid,
-  .gallery-col {
+  .gallery-col,
+  .gallery-hero {
     background: transparent;
   }
+
 
   .img-tile,
   .img-tile__spacer,
   .img-tile__spacer img {
-    background: #2c2c2e;
+    background:
+      #2c2c2e;
   }
+
 
   .img-tile__menu {
     background:
@@ -373,18 +455,22 @@
     -webkit-backdrop-filter: none;
   }
 
+
   .img-tile__menu:active {
     background:
       rgba(255, 255, 255, 0.30);
   }
 
+
   .sk-img {
-    background: #2c2c2e;
+    background:
+      #2c2c2e;
 
     border-color:
       rgba(255, 255, 255, 0.025);
 
     filter: none;
+
     box-shadow: none;
 
     animation: none;
@@ -397,7 +483,8 @@
 ══════════════════════════════════════════════════════════════ */
 
 @media (prefers-reduced-motion: reduce) {
+
   .img-tile__spacer img {
     transition: none;
   }
-     }
+}

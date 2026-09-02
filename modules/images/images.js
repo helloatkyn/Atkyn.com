@@ -80,8 +80,11 @@
     image.decoding = 'async';
     image.dataset.src = src;
 
+    image.style.visibility = 'hidden';
+
     image.onload = function () {
       this.dataset.loaded = '1';
+      this.style.visibility = '';
       requestAnimationFrame(() => {
         if (this.isConnected) this.classList.add('img-loaded');
       });
@@ -194,54 +197,50 @@
     const fragment = document.createDocumentFragment();
     const random = _random(_seedFromString(_q));
 
-    // Pre-classify: hero-fit (ratio <= 0.75), grid-fit (ratio <= 1.4), no-dims
-    // Items with no dimensions go into grid pool as fallback
-    const heroPool = [];
-    const gridPool = [];
-
+    const queue = [];
     for (const item of results) {
       const r = _ratio(item);
-      if (r === null || r <= HERO_MAX_RATIO) {
-        heroPool.push(item);
-        if (r === null || r <= GRID_MAX_RATIO) gridPool.push(item);
-      } else if (r <= GRID_MAX_RATIO) {
-        gridPool.push(item);
-      }
-      // ratio > GRID_MAX_RATIO: too tall for any slot — skip entirely
+      if (r !== null && r > GRID_MAX_RATIO) continue;
+      queue.push({ item, heroOk: r === null || r <= HERO_MAX_RATIO });
     }
 
-    // Pointers into each pool
-    let hi = 0;
-    let gi = 0;
     let sectionNumber = 0;
 
-    while (hi < heroPool.length || gi < gridPool.length) {
-      const heroRemaining = heroPool.length - hi;
-      const gridRemaining = gridPool.length - gi;
-      const total = heroRemaining + gridRemaining;
+    const takeHero = function () {
+      for (let i = 0; i < queue.length; i++) {
+        if (queue[i].heroOk) {
+          return queue.splice(i, 1)[0].item;
+        }
+      }
+      return null;
+    };
 
-      if (total === 0) break;
+    const takeGrid = function (count) {
+      const taken = [];
+      while (taken.length < count && queue.length > 0) {
+        taken.push(queue.splice(0, 1)[0].item);
+      }
+      return taken;
+    };
 
+    while (queue.length > 0) {
+      const hasHero = queue.some(e => e.heroOk);
       const forceHero = sectionNumber === 0;
-      const useHero = heroRemaining > 0 && (forceHero || gridRemaining === 0 || random() < 0.65);
+      const useHero = hasHero && (forceHero || queue.length === 1 || random() < 0.55);
 
       if (useHero) {
-        const data = heroPool[hi++];
-        // Also advance gridPool pointer if same item is in both pools
-        if (gridPool[gi] === data) gi++;
-        const section = _buildHero(data);
-        if (section) fragment.appendChild(section);
-      } else {
-        if (gridRemaining === 0) continue;
-        const count = gridRemaining >= 4 && random() < 0.45 ? 4 : Math.min(2, gridRemaining);
-        const items = gridPool.slice(gi, gi + count);
-        gi += items.length;
-        // Also advance heroPool past any items consumed from gridPool
-        for (const item of items) {
-          if (heroPool[hi] === item) hi++;
+        const data = takeHero();
+        if (data) {
+          const section = _buildHero(data);
+          if (section) fragment.appendChild(section);
         }
-        const section = _buildGridSection(items);
-        if (section) fragment.appendChild(section);
+      } else {
+        const count = queue.length >= 4 && random() < 0.45 ? 4 : Math.min(2, queue.length);
+        const items = takeGrid(count);
+        if (items.length) {
+          const section = _buildGridSection(items);
+          if (section) fragment.appendChild(section);
+        }
       }
 
       sectionNumber++;
@@ -350,4 +349,3 @@
 
   window._atkynInit_images();
 }());
-             

@@ -1,13 +1,28 @@
 /* modules/images/images.js
-   ATKYN IMAGES
-   Premium masonry renderer
-   Direct high-resolution loading
-   Zero layout bounce • Smooth incremental rendering
-   No Wikipedia • No thumbnail swapping • No dead code
+   ATKYN — Premium Images
+   Fast-scroll protected
+   Stable masonry
+   Memory image cache
+   Aggressive ahead-of-viewport preload
+   No thumbnail swap
+   No Wikipedia
+   No layout bounce
 */
 
 (function () {
   'use strict';
+
+  /* ────────────────────────────────────────────────────────────
+     PERSISTENT IMAGE CACHE
+     Survives tab re-initialization inside this page session.
+  ──────────────────────────────────────────────────────────── */
+
+  const _imageCache = new Map();
+
+
+  /* ────────────────────────────────────────────────────────────
+     STATE
+  ──────────────────────────────────────────────────────────── */
 
   let _seen = new Set();
 
@@ -17,10 +32,13 @@
   let _grid = null;
   let _lazyIo = null;
 
-  let _queue = [];
-  let _renderFrame = 0;
-
   let _q = '';
+
+  let _preloadList = [];
+  let _preloadIndex = 0;
+  let _preloadRunning = false;
+
+  let _renderFrame = 0;
 
 
   /* ────────────────────────────────────────────────────────────
@@ -48,27 +66,173 @@
 
 
   /* ────────────────────────────────────────────────────────────
-     TILE BUILDER
+     IMAGE PRELOAD CACHE
+  ──────────────────────────────────────────────────────────── */
+
+  function _preloadImage(src) {
+    if (!src) {
+      return Promise.reject(
+        new Error('Missing image source')
+      );
+    }
+
+
+    const cached = _imageCache.get(src);
+
+    if (cached) {
+      return cached;
+    }
+
+
+    const promise = new Promise(function (resolve, reject) {
+      const image = new Image();
+
+      image.decoding = 'async';
+
+      image.onload = function () {
+        /*
+          Decode the already downloaded image where supported.
+          This reduces visible decode stalls during fast scrolling.
+        */
+
+        if (typeof image.decode === 'function') {
+          image.decode()
+            .catch(function () {})
+            .finally(function () {
+              _imageCache.set(src, {
+                state: 'loaded',
+                image: image
+              });
+
+              resolve(image);
+            });
+        } else {
+          _imageCache.set(src, {
+            state: 'loaded',
+            image: image
+          });
+
+          resolve(image);
+        }
+      };
+
+
+      image.onerror = function () {
+        _imageCache.delete(src);
+        reject(
+          new Error('Image failed: ' + src)
+        );
+      };
+
+
+      image.src = src;
+    });
+
+
+    _imageCache.set(src, {
+      state: 'loading',
+      promise: promise
+    });
+
+
+    return promise;
+  }
+
+
+  /* ────────────────────────────────────────────────────────────
+     LOAD IMAGE INTO TILE
+  ──────────────────────────────────────────────────────────── */
+
+  function _loadTileImage(imgEl) {
+    if (!imgEl || !imgEl.isConnected) {
+      return;
+    }
+
+
+    const src = imgEl.dataset.src;
+
+    if (!src) {
+      return;
+    }
+
+
+    if (imgEl.dataset.loading === '1') {
+      return;
+    }
+
+
+    imgEl.dataset.loading = '1';
+
+
+    const cached = _imageCache.get(src);
+
+
+    /*
+      Already decoded/loaded:
+      assign immediately without another network fetch.
+    */
+
+    if (
+      cached &&
+      cached.state === 'loaded'
+    ) {
+      imgEl.src = src;
+
+      /*
+        The source is already decoded.
+        Reveal on the next paint.
+      */
+
+      requestAnimationFrame(function () {
+        if (imgEl.isConnected) {
+          imgEl.classList.add('img-loaded');
+        }
+      });
+
+      return;
+    }
+
+
+    _preloadImage(src)
+      .then(function () {
+        if (!imgEl.isConnected) {
+          return;
+        }
+
+        imgEl.src = src;
+
+        requestAnimationFrame(function () {
+          if (imgEl.isConnected) {
+            imgEl.classList.add('img-loaded');
+          }
+        });
+      })
+      .catch(function () {
+        /*
+          Image-specific failure.
+          Keep the tile geometry intact instead of
+          removing the entire masonry space.
+        */
+
+        imgEl.dataset.failed = '1';
+      });
+  }
+
+
+  /* ────────────────────────────────────────────────────────────
+     BUILD TILE
   ──────────────────────────────────────────────────────────── */
 
   function _buildTile(data) {
-    const highRes =
+    const src =
       data.img_src ||
       data.thumbnail_src ||
       '';
 
-    const fallback =
-      data.thumbnail_src &&
-      data.thumbnail_src !== highRes
-        ? data.thumbnail_src
-        : '';
-
-    if (!highRes) {
+    if (!src) {
       return null;
     }
 
-
-    /* Stable aspect ratio */
 
     const aspect =
       data.width && data.height
@@ -76,23 +240,23 @@
         : '133.33%';
 
 
-    /* Tile */
-
     const tile =
       document.createElement('a');
 
-    tile.className = 'img-tile';
+    tile.className =
+      'img-tile';
 
     tile.href =
-      data.url || highRes;
+      data.url || src;
 
-    tile.target = '_blank';
+    tile.target =
+      '_blank';
 
     tile.rel =
       'noopener noreferrer';
 
 
-    /* Image reservation */
+    /* ── Stable image space ── */
 
     const spacer =
       document.createElement('div');
@@ -104,7 +268,7 @@
       aspect;
 
 
-    /* Image */
+    /* ── Image ── */
 
     const image =
       document.createElement('img');
@@ -118,20 +282,9 @@
     image.decoding =
       'async';
 
-    image.loading =
-      'lazy';
-
     image.dataset.src =
-      highRes;
+      src;
 
-    if (fallback) {
-      image.dataset.fallback =
-        fallback;
-    }
-
-
-    /* Only the actual final source is assigned.
-       No thumbnail → full image visual swap. */
 
     image.onload =
       function () {
@@ -141,25 +294,17 @@
       };
 
 
+    /*
+      Important:
+      Never remove the masonry tile on image failure.
+      The reserved placeholder remains so scrolling geometry
+      cannot suddenly collapse.
+    */
+
     image.onerror =
       function () {
-        const backup =
-          this.dataset.fallback;
-
-        if (
-          backup &&
-          this.dataset.fallbackTried !== '1'
-        ) {
-          this.dataset.fallbackTried =
-            '1';
-
-          this.src =
-            backup;
-
-          return;
-        }
-
-        tile.remove();
+        this.dataset.failed =
+          '1';
       };
 
 
@@ -168,10 +313,7 @@
     tile.appendChild(spacer);
 
 
-    /* ─────────────────────────────────────────────────────────
-       OVERLAY
-       Always creates the menu so tile structure stays consistent.
-    ───────────────────────────────────────────────────────── */
+    /* ── Overlay ── */
 
     const overlay =
       document.createElement('div');
@@ -193,11 +335,13 @@
       titleEl.textContent =
         title;
 
-      overlay.appendChild(titleEl);
+      overlay.appendChild(
+        titleEl
+      );
     }
 
 
-    /* Three-dot menu */
+    /* ── Menu ── */
 
     const menu =
       document.createElement('button');
@@ -222,24 +366,9 @@
         xmlns="http://www.w3.org/2000/svg"
         aria-hidden="true"
       >
-        <circle
-          cx="2"
-          cy="2"
-          r="1.5"
-          fill="currentColor"
-        />
-        <circle
-          cx="8"
-          cy="2"
-          r="1.5"
-          fill="currentColor"
-        />
-        <circle
-          cx="14"
-          cy="2"
-          r="1.5"
-          fill="currentColor"
-        />
+        <circle cx="2" cy="2" r="1.5" fill="currentColor"/>
+        <circle cx="8" cy="2" r="1.5" fill="currentColor"/>
+        <circle cx="14" cy="2" r="1.5" fill="currentColor"/>
       </svg>
     `;
 
@@ -263,9 +392,22 @@
     );
 
 
-    overlay.appendChild(menu);
+    overlay.appendChild(
+      menu
+    );
 
-    tile.appendChild(overlay);
+    tile.appendChild(
+      overlay
+    );
+
+
+    /*
+      Keep source metadata on tile for
+      later cache/preload operations.
+    */
+
+    tile.dataset.imageSrc =
+      src;
 
 
     return tile;
@@ -273,8 +415,8 @@
 
 
   /* ────────────────────────────────────────────────────────────
-     LAZY LOADER
-     Loads images BEFORE they enter the viewport.
+     INTERSECTION OBSERVER
+     Huge preload distance protects against very fast scrolling.
   ──────────────────────────────────────────────────────────── */
 
   function _initLazyObserver() {
@@ -286,6 +428,7 @@
     _lazyIo =
       new IntersectionObserver(
         function (entries, observer) {
+
           for (
             const entry of entries
           ) {
@@ -297,43 +440,42 @@
             const image =
               entry.target;
 
-            observer.unobserve(image);
+            observer.unobserve(
+              image
+            );
 
 
-            const source =
-              image.dataset.src;
-
-            if (!source) {
-              continue;
-            }
-
-
-            /*
-              Important:
-              The high-resolution source is loaded directly.
-              There is NO low-resolution thumbnail phase.
-            */
-
-            image.src =
-              source;
+            _loadTileImage(
+              image
+            );
           }
+
         },
         {
+          /*
+            Load images roughly 2500px
+            before they enter the viewport.
+          */
+
           rootMargin:
-            '1200px 0px'
+            '2500px 0px'
         }
       );
   }
 
 
   /* ────────────────────────────────────────────────────────────
-     OBSERVE ONE IMAGE
+     OBSERVE TILE
   ──────────────────────────────────────────────────────────── */
 
   function _observeTile(tile) {
-    if (!_lazyIo || !tile) {
+    if (
+      !_lazyIo ||
+      !tile
+    ) {
       return;
     }
+
 
     const image =
       tile.querySelector(
@@ -344,85 +486,121 @@
       return;
     }
 
-    _lazyIo.observe(image);
-  }
+
+    /*
+      If already visible / cached,
+      load immediately.
+      Otherwise observer takes over.
+    */
+
+    const src =
+      image.dataset.src;
+
+    const cached =
+      _imageCache.get(src);
 
 
-  /* ────────────────────────────────────────────────────────────
-     RENDER QUEUE
-     requestAnimationFrame keeps DOM work aligned with frames.
-  ──────────────────────────────────────────────────────────── */
+    if (
+      cached &&
+      cached.state === 'loaded'
+    ) {
+      _loadTileImage(
+        image
+      );
 
-  function _renderQueue() {
-    _renderFrame = 0;
-
-
-    if (!_queue.length) {
       return;
     }
 
 
-    /*
-      Small controlled batch.
-      Prevents one huge synchronous DOM operation.
-    */
-
-    const batch =
-      _queue.splice(0, 5);
+    _lazyIo.observe(
+      image
+    );
+  }
 
 
-    for (
-      const data of batch
+  /* ────────────────────────────────────────────────────────────
+     BACKGROUND CACHE WARMING
+     Preloads a limited number of future images.
+     Does NOT flood the network with every image at once.
+  ──────────────────────────────────────────────────────────── */
+
+  function _warmCache() {
+    if (_preloadRunning) {
+      return;
+    }
+
+
+    if (
+      !_preloadList.length ||
+      _preloadIndex >= _preloadList.length
     ) {
-      const tile =
-        _buildTile(data);
-
-      if (!tile) {
-        continue;
-      }
-
-
-      const column =
-        _shortCol();
-
-
-      _cols[column].appendChild(
-        tile
-      );
-
-
-      /*
-        Because column widths are identical,
-        aspect ratio gives a stable height estimate
-        before image decoding completes.
-      */
-
-      const aspect =
-        data.width &&
-        data.height
-          ? data.height / data.width
-          : 1.33;
-
-
-      _colH[column] +=
-        aspect;
-
-
-      _observeTile(tile);
+      return;
     }
 
 
-    if (_queue.length) {
-      _renderFrame =
+    _preloadRunning =
+      true;
+
+
+    const runNext =
+      function () {
+
+        if (
+          _preloadIndex >=
+          _preloadList.length
+        ) {
+          _preloadRunning =
+            false;
+
+          return;
+        }
+
+
+        const src =
+          _preloadList[
+            _preloadIndex++
+          ];
+
+
+        if (
+          src &&
+          !_imageCache.has(src)
+        ) {
+          _preloadImage(
+            src
+          )
+            .catch(function () {})
+            .finally(function () {
+
+              /*
+                Yield to the browser after
+                each preload so scrolling
+                stays responsive.
+              */
+
+              requestAnimationFrame(
+                runNext
+              );
+            });
+
+          return;
+        }
+
+
         requestAnimationFrame(
-          _renderQueue
+          runNext
         );
-    }
+      };
+
+
+    runNext();
   }
 
 
   /* ────────────────────────────────────────────────────────────
      APPEND RESULTS
+     All tile shells are created immediately.
+     This prevents fast scrolling from outrunning DOM rendering.
   ──────────────────────────────────────────────────────────── */
 
   function _appendResults(results) {
@@ -432,6 +610,9 @@
     ) {
       return;
     }
+
+
+    const fresh = [];
 
 
     for (
@@ -453,24 +634,105 @@
 
       _seen.add(key);
 
-      _queue.push(item);
+      fresh.push(item);
     }
 
 
-    if (
-      _queue.length &&
-      !_renderFrame
+    if (!fresh.length) {
+      return;
+    }
+
+
+    /*
+      Prepare the cache-warming list.
+    */
+
+    for (
+      const item of fresh
     ) {
-      _renderFrame =
-        requestAnimationFrame(
-          _renderQueue
-        );
+      const src =
+        item.img_src ||
+        item.thumbnail_src ||
+        '';
+
+      if (src) {
+        _preloadList.push(src);
+      }
     }
+
+
+    /*
+      Build both columns inside fragments.
+      Only two final DOM insertions are performed.
+    */
+
+    const fragments = [
+      document.createDocumentFragment(),
+      document.createDocumentFragment()
+    ];
+
+
+    for (
+      const item of fresh
+    ) {
+      const tile =
+        _buildTile(item);
+
+      if (!tile) {
+        continue;
+      }
+
+
+      const column =
+        _shortCol();
+
+
+      fragments[column].appendChild(
+        tile
+      );
+
+
+      const aspect =
+        item.width &&
+        item.height
+          ? item.height / item.width
+          : 1.33;
+
+
+      _colH[column] +=
+        aspect;
+
+
+      _observeTile(
+        tile
+      );
+    }
+
+
+    /*
+      Append all generated tiles immediately.
+      No render queue can fall behind a fast fling.
+    */
+
+    _cols[0].appendChild(
+      fragments[0]
+    );
+
+    _cols[1].appendChild(
+      fragments[1]
+    );
+
+
+    /*
+      Start gentle background preloading.
+    */
+
+    _warmCache();
   }
 
 
   /* ────────────────────────────────────────────────────────────
-     API FETCH
+     FETCH
   ──────────────────────────────────────────────────────────── */
 
   function _fetchImages() {
@@ -489,7 +751,9 @@
       })
       .then(function (data) {
         const results =
-          Array.isArray(data.results)
+          Array.isArray(
+            data.results
+          )
             ? data.results
             : [];
 
@@ -509,7 +773,9 @@
         }
 
 
-        _appendResults(results);
+        _appendResults(
+          results
+        );
       })
       .catch(function () {
         const page =
@@ -526,13 +792,11 @@
 
 
   /* ────────────────────────────────────────────────────────────
-     INITIALIZATION
+     INIT
   ──────────────────────────────────────────────────────────── */
 
   window._atkynInit_images =
     function () {
-
-      /* Cancel previous render */
 
       if (_renderFrame) {
         cancelAnimationFrame(
@@ -543,15 +807,18 @@
       }
 
 
-      /* Disconnect previous observer */
-
       if (_lazyIo) {
         _lazyIo.disconnect();
+
         _lazyIo = null;
       }
 
 
-      /* Reset state */
+      /*
+        IMPORTANT:
+        _imageCache is NOT cleared.
+        Previously loaded images remain reusable.
+      */
 
       _seen = new Set();
 
@@ -561,7 +828,12 @@
 
       _grid = null;
 
-      _queue = [];
+      _preloadList = [];
+
+      _preloadIndex = 0;
+
+      _preloadRunning = false;
+
 
       _q =
         sessionStorage.getItem(
@@ -579,8 +851,6 @@
       }
 
 
-      /* No query */
-
       if (!_q) {
         page.innerHTML =
           '<div class="tab-empty"><p>Search something to see images</p></div>';
@@ -589,9 +859,7 @@
       }
 
 
-      /* ───────────────────────────────────────────────────────
-         STATIC SHARP PLACEHOLDER
-      ─────────────────────────────────────────────────────── */
+      /* ── Static professional placeholder ── */
 
       page.innerHTML = `
         <div class="tab-skeleton grid">
@@ -634,7 +902,7 @@
       `;
 
 
-      /* Lazy observer */
+      /* Observer */
 
       _initLazyObserver();
 
@@ -651,9 +919,9 @@
 
 
       for (
-        let index = 0;
-        index < 2;
-        index++
+        let i = 0;
+        i < 2;
+        i++
       ) {
         const column =
           document.createElement(
@@ -667,14 +935,15 @@
           column
         );
 
-        _cols[index] =
+        _cols[i] =
           column;
       }
 
 
       /*
-        Replace placeholder with the
-        already-created grid in ONE DOM operation.
+        One DOM replacement.
+        The complete masonry shell now exists before
+        image loading starts.
       */
 
       page.replaceChildren(
@@ -682,11 +951,13 @@
       );
 
 
-      /* One source only: Atkyn image API */
-
       _fetchImages();
     };
 
+
+  /* ────────────────────────────────────────────────────────────
+     FIRST INIT
+  ──────────────────────────────────────────────────────────── */
 
   window._atkynInit_images();
 

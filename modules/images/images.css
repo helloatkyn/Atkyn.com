@@ -1,63 +1,55 @@
 /* ══════════════════════════════════════════════════════════════
-   ATKYN — PREMIUM PRODUCTION IMAGE GALLERY
-   Large Editorial Masonry
-   Maximum 2 Columns
-   Full-width Hero Support
-   Stable Layout • Sharp Loading • No Blur
-   No Shimmer • No Bottom Gradient • No Ellipsis
+   ATKYN — PRODUCTION IMAGE GALLERY
+   Premium editorial masonry
+   Full-width hero + maximum 2-column grid
+   Stable geometry • Sharp placeholders • No blur
 ══════════════════════════════════════════════════════════════ */
 
 
 /* ══════════════════════════════════════════════════════════════
-   ROOT GALLERY
+   MASTER GALLERY
 ══════════════════════════════════════════════════════════════ */
 
 .images-grid {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+
   width: 100%;
   box-sizing: border-box;
 
-  display: flex;
-  flex-direction: column;
-
   gap: 9px;
-
-  padding:
-    8px
-    8px
-    0;
+  padding: 8px 8px 0;
 }
 
 
 /* ══════════════════════════════════════════════════════════════
-   HERO / SINGLE IMAGE
+   FULL-WIDTH SINGLE / HERO IMAGE
 ══════════════════════════════════════════════════════════════ */
 
 .gallery-hero {
   width: 100%;
   min-width: 0;
-  flex: 0 0 100%;
-
-  display: block;
 }
 
 
 /* ══════════════════════════════════════════════════════════════
-   TWO-COLUMN SECTION
+   TWO-COLUMN GALLERY SECTION
 ══════════════════════════════════════════════════════════════ */
 
 .gallery-grid {
-  width: 100%;
-  min-width: 0;
-
   display: grid;
 
   grid-template-columns:
     minmax(0, 1fr)
     minmax(0, 1fr);
 
+  align-items: start;
+
   gap: 9px;
 
-  align-items: start;
+  width: 100%;
+  min-width: 0;
 }
 
 .gallery-col {
@@ -71,7 +63,7 @@
 
 
 /* ══════════════════════════════════════════════════════════════
-   IMAGE TILE
+   TILE
 ══════════════════════════════════════════════════════════════ */
 
 .img-tile {
@@ -83,8 +75,6 @@
   min-width: 0;
 
   overflow: hidden;
-
-  box-sizing: border-box;
 
   border-radius: 17px;
 
@@ -98,7 +88,8 @@
 
 /* ══════════════════════════════════════════════════════════════
    IMAGE RESERVATION
-   Keeps exact geometry before image decoding.
+   Exact space exists before image loading.
+   This is the key anti-bounce layer.
 ══════════════════════════════════════════════════════════════ */
 
 .img-tile__spacer {
@@ -109,9 +100,7 @@
 
   overflow: hidden;
 
-  box-sizing: border-box;
-
-  border-radius: inherit;
+  border-radius: 17px;
 
   background: #ededed;
 }
@@ -123,7 +112,6 @@
 
 .img-tile__spacer img {
   position: absolute;
-
   inset: 0;
 
   display: block;
@@ -131,10 +119,7 @@
   width: 100%;
   height: 100%;
 
-  box-sizing: border-box;
-
-  border: 0;
-  border-radius: inherit;
+  border-radius: 17px;
 
   object-fit: cover;
   object-position: center;
@@ -143,25 +128,18 @@
 
   opacity: 0;
 
-  /*
-    Tiny reveal only.
-    No transform, scaling or geometry animation.
-  */
   transition:
-    opacity 120ms linear;
+    opacity 120ms ease-out;
 
   filter: none;
-
   box-shadow: none;
 
   -webkit-user-drag: none;
-  user-select: none;
 }
 
 
-/* ══════════════════════════════════════════════════════════════
-   LOADED IMAGE
-══════════════════════════════════════════════════════════════ */
+/* Loaded = only opacity changes.
+   Geometry never changes. */
 
 .img-tile__spacer img.img-loaded {
   opacity: 1;
@@ -169,7 +147,8 @@
 
 
 /* ══════════════════════════════════════════════════════════════
-   HERO TILE
+   HERO IMAGE
+   Slightly more substantial visual treatment.
 ══════════════════════════════════════════════════════════════ */
 
 .gallery-hero .img-tile {
@@ -186,11 +165,10 @@
 
 
 /* ══════════════════════════════════════════════════════════════
-   IMAGE OVERLAY
+   OVERLAY
    Completely transparent.
-   No gradient.
-   No dark scrim.
-   No shadow.
+   NO bottom gradient.
+   NO shadow over image.
 ══════════════════════════════════════════════════════════════ */
 
 .img-tile__overlay {
@@ -201,22 +179,17 @@
   bottom: 0;
 
   display: flex;
-
   align-items: flex-end;
   justify-content: space-between;
 
   gap: 6px;
 
-  padding:
-    8px;
+  padding: 8px;
 
   background: transparent;
 
   border-radius:
-    0
-    0
-    inherit
-    inherit;
+    0 0 17px 17px;
 
   pointer-events: none;
 }
@@ -234,28 +207,19 @@
 
   color: #fff;
 
-  font-family: inherit;
-
   font-size: 12px;
   font-weight: 600;
-
   line-height: 1.3;
 
   white-space: nowrap;
-
-  /*
-    IMPORTANT:
-    No automatic "..." suffix.
-  */
-  text-overflow: clip;
+  text-overflow: ellipsis;
 
   text-shadow:
-    0 1px 2px
-    rgba(0, 0, 0, 0.22);
+    0 1px 2px rgba(0, 0, 0, 0.25);
 }
 
 
-/* Hero title */
+/* Hero title — slightly stronger hierarchy */
 
 .gallery-hero .img-tile__title {
   font-size: 13px;
@@ -264,7 +228,7 @@
 
 
 /* ══════════════════════════════════════════════════════════════
-   THREE-DOT ACTION
+   THREE-DOT MENU
 ══════════════════════════════════════════════════════════════ */
 
 .img-tile__menu {
@@ -288,7 +252,6 @@
   color: #fff;
 
   cursor: pointer;
-
   pointer-events: auto;
 
   -webkit-tap-highlight-color: transparent;
@@ -304,23 +267,20 @@
 
 
 /* ══════════════════════════════════════════════════════════════
-   INITIAL LOADING GRID
+   INITIAL PLACEHOLDER
+   Flat, clean, premium.
+   No shimmer / no gradient / no blur.
 ══════════════════════════════════════════════════════════════ */
 
 .tab-skeleton.grid {
+  display: flex;
+  align-items: flex-start;
+
   width: 100%;
   box-sizing: border-box;
 
-  display: flex;
-
-  align-items: flex-start;
-
   gap: 9px;
-
-  padding:
-    8px
-    8px
-    0;
+  padding: 8px 8px 0;
 }
 
 .sk-col {
@@ -333,12 +293,6 @@
   gap: 9px;
 }
 
-
-/* ══════════════════════════════════════════════════════════════
-   SHARP PREMIUM PLACEHOLDER
-   Completely static.
-══════════════════════════════════════════════════════════════ */
-
 .sk-img {
   width: 100%;
   height: 0;
@@ -347,15 +301,12 @@
 
   border-radius: 17px;
 
-  background:
-    #ededed;
+  background: #ededed;
 
-  border:
-    1px solid
+  border: 1px solid
     rgba(0, 0, 0, 0.025);
 
   filter: none;
-
   box-shadow: none;
 
   animation: none;
@@ -363,38 +314,13 @@
 
 
 /* ══════════════════════════════════════════════════════════════
-   OPTIONAL FULL-WIDTH HERO PLACEHOLDER
-══════════════════════════════════════════════════════════════ */
-
-.tab-skeleton .sk-hero {
-  width: 100%;
-  flex: 0 0 100%;
-}
-
-
-/* ══════════════════════════════════════════════════════════════
-   TOUCH / ACTIVE BEHAVIOR
-   No scale or movement.
-══════════════════════════════════════════════════════════════ */
-
-.img-tile:active {
-  transform: none;
-}
-
-.img-tile__spacer img:active {
-  transform: none;
-}
-
-
-/* ══════════════════════════════════════════════════════════════
-   LARGE SCREENS
+   MEDIUM / TABLET
 ══════════════════════════════════════════════════════════════ */
 
 @media (min-width: 600px) {
 
   .images-grid {
     gap: 10px;
-
     padding-left: 10px;
     padding-right: 10px;
   }
@@ -418,10 +344,6 @@
   .gallery-hero .img-tile__spacer img {
     border-radius: 19px;
   }
-
-  .sk-img {
-    border-radius: 18px;
-  }
 }
 
 
@@ -433,19 +355,15 @@
 
   .images-grid,
   .gallery-grid,
-  .gallery-col,
-  .gallery-hero {
+  .gallery-col {
     background: transparent;
   }
-
 
   .img-tile,
   .img-tile__spacer,
   .img-tile__spacer img {
-    background:
-      #2c2c2e;
+    background: #2c2c2e;
   }
-
 
   .img-tile__menu {
     background:
@@ -455,22 +373,18 @@
     -webkit-backdrop-filter: none;
   }
 
-
   .img-tile__menu:active {
     background:
       rgba(255, 255, 255, 0.30);
   }
 
-
   .sk-img {
-    background:
-      #2c2c2e;
+    background: #2c2c2e;
 
     border-color:
       rgba(255, 255, 255, 0.025);
 
     filter: none;
-
     box-shadow: none;
 
     animation: none;
@@ -483,7 +397,6 @@
 ══════════════════════════════════════════════════════════════ */
 
 @media (prefers-reduced-motion: reduce) {
-
   .img-tile__spacer img {
     transition: none;
   }

@@ -1,284 +1,145 @@
-/* ══════════════════════════════════════════════════════════════
-   ATKYN — PRODUCTION IMAGE GALLERY
-   Premium editorial masonry
-   Full-width hero + maximum 2-column grid
-   Stable geometry • Sharp placeholders • No blur
-══════════════════════════════════════════════════════════════ */
-
-
-/* ══════════════════════════════════════════════════════════════
-   MASTER GALLERY
-══════════════════════════════════════════════════════════════ */
-
 .images-grid {
   display: flex;
   flex-direction: column;
   align-items: stretch;
-
   width: 100%;
   box-sizing: border-box;
-
   gap: 9px;
   padding: 8px 8px 0;
 }
-
-
-/* ══════════════════════════════════════════════════════════════
-   FULL-WIDTH SINGLE / HERO IMAGE
-══════════════════════════════════════════════════════════════ */
 
 .gallery-hero {
   width: 100%;
   min-width: 0;
 }
 
-
-/* ══════════════════════════════════════════════════════════════
-   TWO-COLUMN GALLERY SECTION
-══════════════════════════════════════════════════════════════ */
-
 .gallery-grid {
   display: grid;
-
-  grid-template-columns:
-    minmax(0, 1fr)
-    minmax(0, 1fr);
-
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   align-items: start;
-
   gap: 9px;
-
   width: 100%;
   min-width: 0;
 }
 
 .gallery-col {
   min-width: 0;
-
   display: flex;
   flex-direction: column;
-
   gap: 9px;
 }
 
-
-/* ══════════════════════════════════════════════════════════════
-   TILE
-══════════════════════════════════════════════════════════════ */
-
 .img-tile {
   position: relative;
-
   display: block;
-
   width: 100%;
   min-width: 0;
-
   overflow: hidden;
-
-  border-radius: 17px;
-
-  background: #ededed;
-
+  border-radius: 10px;
+  background: #f2f2f2;
   text-decoration: none;
-
   -webkit-tap-highlight-color: transparent;
 }
 
-
-/* ══════════════════════════════════════════════════════════════
-   IMAGE RESERVATION
-   Exact space exists before image loading.
-   This is the key anti-bounce layer.
-══════════════════════════════════════════════════════════════ */
-
 .img-tile__spacer {
   position: relative;
-
   width: 100%;
   height: 0;
-
   overflow: hidden;
-
-  border-radius: 17px;
-
-  background: #ededed;
+  border-radius: 10px;
+  background: #f2f2f2;
 }
-
-
-/* ══════════════════════════════════════════════════════════════
-   IMAGE
-══════════════════════════════════════════════════════════════ */
 
 .img-tile__spacer img {
   position: absolute;
   inset: 0;
-
   display: block;
-
   width: 100%;
   height: 100%;
-
-  border-radius: 17px;
-
-  object-fit: cover;
+  border-radius: 10px;
+  object-fit: contain;
   object-position: center;
-
-  background: #ededed;
-
+  background: #f2f2f2;
   opacity: 0;
-
-  transition:
-    opacity 120ms ease-out;
-
-  filter: none;
-  box-shadow: none;
-
+  transition: opacity 120ms ease-out;
   -webkit-user-drag: none;
 }
-
-
-/* Loaded = only opacity changes.
-   Geometry never changes. */
 
 .img-tile__spacer img.img-loaded {
   opacity: 1;
 }
 
-
-/* ══════════════════════════════════════════════════════════════
-   HERO IMAGE
-   Slightly more substantial visual treatment.
-══════════════════════════════════════════════════════════════ */
-
 .gallery-hero .img-tile {
-  border-radius: 18px;
+  border-radius: 12px;
 }
 
 .gallery-hero .img-tile__spacer {
-  border-radius: 18px;
+  border-radius: 12px;
 }
 
 .gallery-hero .img-tile__spacer img {
-  border-radius: 18px;
+  border-radius: 12px;
 }
-
-
-/* ══════════════════════════════════════════════════════════════
-   OVERLAY
-   Completely transparent.
-   NO bottom gradient.
-   NO shadow over image.
-══════════════════════════════════════════════════════════════ */
 
 .img-tile__overlay {
   position: absolute;
-
   left: 0;
   right: 0;
   bottom: 0;
-
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
-
   gap: 6px;
-
   padding: 8px;
-
   background: transparent;
-
-  border-radius:
-    0 0 17px 17px;
-
+  border-radius: 0 0 10px 10px;
   pointer-events: none;
 }
-
-
-/* ══════════════════════════════════════════════════════════════
-   TITLE
-══════════════════════════════════════════════════════════════ */
 
 .img-tile__title {
   flex: 1 1 auto;
   min-width: 0;
-
   overflow: hidden;
-
   color: #fff;
-
   font-size: 12px;
   font-weight: 600;
   line-height: 1.3;
-
   white-space: nowrap;
   text-overflow: ellipsis;
-
-  text-shadow:
-    0 1px 2px rgba(0, 0, 0, 0.25);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
 }
-
-
-/* Hero title — slightly stronger hierarchy */
 
 .gallery-hero .img-tile__title {
   font-size: 13px;
   font-weight: 650;
 }
 
-
-/* ══════════════════════════════════════════════════════════════
-   THREE-DOT MENU
-══════════════════════════════════════════════════════════════ */
-
 .img-tile__menu {
   flex: 0 0 29px;
-
   display: flex;
   align-items: center;
   justify-content: center;
-
   width: 29px;
   height: 29px;
-
   padding: 0;
-
   border: 0;
   border-radius: 50%;
-
-  background:
-    rgba(0, 0, 0, 0.34);
-
+  background: rgba(0, 0, 0, 0.34);
   color: #fff;
-
   cursor: pointer;
   pointer-events: auto;
-
   -webkit-tap-highlight-color: transparent;
-
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
 }
 
 .img-tile__menu:active {
-  background:
-    rgba(0, 0, 0, 0.52);
+  background: rgba(0, 0, 0, 0.52);
 }
-
-
-/* ══════════════════════════════════════════════════════════════
-   INITIAL PLACEHOLDER
-   Flat, clean, premium.
-   No shimmer / no gradient / no blur.
-══════════════════════════════════════════════════════════════ */
 
 .tab-skeleton.grid {
   display: flex;
   align-items: flex-start;
-
   width: 100%;
   box-sizing: border-box;
-
   gap: 9px;
   padding: 8px 8px 0;
 }
@@ -286,49 +147,34 @@
 .sk-col {
   flex: 1 1 0;
   min-width: 0;
-
   display: flex;
   flex-direction: column;
-
   gap: 9px;
 }
 
 .sk-img {
   width: 100%;
   height: 0;
-
   box-sizing: border-box;
-
-  border-radius: 17px;
-
-  background: #ededed;
-
-  border: 1px solid
-    rgba(0, 0, 0, 0.025);
-
-  filter: none;
-  box-shadow: none;
-
-  animation: none;
+  border-radius: 10px;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e8e8e8 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: sk-shimmer 1.6s ease-in-out infinite;
 }
 
-
-/* ══════════════════════════════════════════════════════════════
-   MEDIUM / TABLET
-══════════════════════════════════════════════════════════════ */
+@keyframes sk-shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
 
 @media (min-width: 600px) {
-
   .images-grid {
     gap: 10px;
     padding-left: 10px;
     padding-right: 10px;
   }
 
-  .gallery-grid {
-    gap: 10px;
-  }
-
+  .gallery-grid,
   .gallery-col {
     gap: 10px;
   }
@@ -336,29 +182,17 @@
   .img-tile,
   .img-tile__spacer,
   .img-tile__spacer img {
-    border-radius: 18px;
+    border-radius: 11px;
   }
 
   .gallery-hero .img-tile,
   .gallery-hero .img-tile__spacer,
   .gallery-hero .img-tile__spacer img {
-    border-radius: 19px;
+    border-radius: 13px;
   }
 }
 
-
-/* ══════════════════════════════════════════════════════════════
-   DARK MODE
-══════════════════════════════════════════════════════════════ */
-
 @media (prefers-color-scheme: dark) {
-
-  .images-grid,
-  .gallery-grid,
-  .gallery-col {
-    background: transparent;
-  }
-
   .img-tile,
   .img-tile__spacer,
   .img-tile__spacer img {
@@ -366,38 +200,33 @@
   }
 
   .img-tile__menu {
-    background:
-      rgba(255, 255, 255, 0.18);
-
-    backdrop-filter: none;
-    -webkit-backdrop-filter: none;
+    background: rgba(255, 255, 255, 0.18);
   }
 
   .img-tile__menu:active {
-    background:
-      rgba(255, 255, 255, 0.30);
+    background: rgba(255, 255, 255, 0.30);
   }
 
   .sk-img {
-    background: #2c2c2e;
-
-    border-color:
-      rgba(255, 255, 255, 0.025);
-
-    filter: none;
-    box-shadow: none;
-
-    animation: none;
+    background: linear-gradient(90deg, #303032 25%, #3a3a3c 50%, #303032 75%);
+    background-size: 200% 100%;
+    animation: sk-shimmer 1.6s ease-in-out infinite;
   }
 }
-
-
-/* ══════════════════════════════════════════════════════════════
-   REDUCED MOTION
-══════════════════════════════════════════════════════════════ */
 
 @media (prefers-reduced-motion: reduce) {
   .img-tile__spacer img {
     transition: none;
+  }
+
+  .sk-img {
+    animation: none;
+    background: #f0f0f0;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    .sk-img {
+      background: #303032;
+    }
   }
 }

@@ -1,0 +1,62 @@
+/* ════════════════════════════════════════════════════════════════
+   tabs.css — Tab bar (Answer / Web / Images / Videos / News …)
+   Sticky, blurred, GPU-composited for smooth hide/show on scroll.
+════════════════════════════════════════════════════════════════ */
+
+.tab-bar {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0 14px;
+  gap: 8px;
+  height: 44px;
+  border-bottom: none;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: var(--color-tab-bar-bg);
+  -webkit-backdrop-filter: blur(12px) saturate(1.4);
+  backdrop-filter: blur(12px) saturate(1.4);
+  will-change: transform;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  transition: transform 0.32s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.tab-bar::-webkit-scrollbar { display: none; }
+.tab-bar.hide    { transform: translateY(-100%) translateZ(0); }
+.tab-bar.scrolled{ box-shadow: 0 1px 6px rgba(0, 0, 0, 0.08); }
+@media (prefers-color-scheme: dark) {
+  .tab-bar {
+    background: var(--color-tab-bar-bg-dark);
+  }
+  .tab-bar.scrolled { box-shadow: 0 1px 6px rgba(0, 0, 0, 0.3); }
+}
+
+.tab {
+  flex-shrink: 0;
+  height: 32px;
+  padding: 0 12px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text-strong);
+  background: var(--color-bg-alt);
+  border-radius: 6px;
+  cursor: pointer;
+  white-space: nowrap;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, color 0.15s;
+}
+.tab:active  { opacity: 0.75; }
+.tab.active  { background: var(--color-tab-active-bg); color: var(--color-bg); }
+@media (prefers-color-scheme: dark) {
+  .tab        { background: var(--color-bg-alt2-dark); color: var(--color-tab-active-bg-dark); }
+  .tab.active { background: var(--color-tab-active-bg-dark); color: var(--color-text-strong); }
+}

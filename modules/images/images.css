@@ -1,62 +1,103 @@
-/* modules/images/images.css — Atkyn Images Masonry
-   Clean • Sharp • No Blur • No Shimmer • Smooth Scrolling
+/* modules/images/images.css
+   ATKYN — Premium Image Masonry
+   Pinterest-style • Clean • Large Tiles • No Bottom Shadow
+   No Blur • No Shimmer • Stable Layout
 */
 
-/* ── Grid: 2-column masonry ──────────────────────────────────── */
+
+/* ══════════════════════════════════════════════════════════════
+   MASONRY GRID
+══════════════════════════════════════════════════════════════ */
 
 .images-grid {
   display: flex;
+  align-items: flex-start;
+
+  width: 100%;
+  box-sizing: border-box;
+
   gap: 8px;
   padding: 8px 8px 0;
-  align-items: flex-start;
 }
 
 .img-col {
   flex: 1 1 0;
   min-width: 0;
+
   display: flex;
   flex-direction: column;
+
   gap: 8px;
 }
 
 
-/* ── Tile ────────────────────────────────────────────────────── */
+/* ══════════════════════════════════════════════════════════════
+   IMAGE TILE
+══════════════════════════════════════════════════════════════ */
 
 .img-tile {
-  display: block;
   position: relative;
-  overflow: hidden;
+
+  display: block;
+
   width: 100%;
+  min-width: 0;
+
+  overflow: hidden;
+
   border-radius: 16px;
-  background: #e8e8e8;
+
+  background: #e9e9e9;
+
   text-decoration: none;
+
   -webkit-tap-highlight-color: transparent;
 }
 
 
-/* ── Fixed aspect-ratio image container ─────────────────────── */
+/* ══════════════════════════════════════════════════════════════
+   IMAGE SPACE RESERVATION
+   Reserves exact geometry before image arrives.
+   Zero layout shift / zero bounce.
+══════════════════════════════════════════════════════════════ */
 
 .img-tile__spacer {
   position: relative;
+
   width: 100%;
   height: 0;
+
   overflow: hidden;
+
   border-radius: 16px;
 }
 
 
-/* ── Image ───────────────────────────────────────────────────── */
+/* ══════════════════════════════════════════════════════════════
+   IMAGE
+══════════════════════════════════════════════════════════════ */
 
 .img-tile__spacer img {
   position: absolute;
   inset: 0;
+
   display: block;
+
   width: 100%;
   height: 100%;
+
   border-radius: 16px;
+
   object-fit: cover;
+  object-position: center;
+
   opacity: 0;
-  transition: opacity 0.18s ease;
+
+  transition: opacity 140ms ease-out;
+
+  /* Explicitly no visual effects */
+  filter: none;
+  box-shadow: none;
 }
 
 .img-tile__spacer img.img-loaded {
@@ -64,10 +105,17 @@
 }
 
 
-/* ── Bottom overlay ─────────────────────────────────────────── */
+/* ══════════════════════════════════════════════════════════════
+   BOTTOM CONTENT
+   IMPORTANT:
+   NO gradient.
+   NO black scrim.
+   NO shadow over the image.
+══════════════════════════════════════════════════════════════ */
 
 .img-tile__overlay {
   position: absolute;
+
   left: 0;
   right: 0;
   bottom: 0;
@@ -76,21 +124,25 @@
   align-items: flex-end;
   justify-content: space-between;
 
-  gap: 4px;
-  padding: 28px 8px 8px;
+  gap: 6px;
 
-  background: linear-gradient(
-    to bottom,
-    transparent 0%,
-    rgba(0, 0, 0, 0.32) 100%
-  );
+  padding: 8px;
+
+  /*
+    Completely transparent.
+    Image remains visually untouched.
+  */
+  background: transparent;
 
   border-radius: 0 0 16px 16px;
+
   pointer-events: none;
 }
 
 
-/* ── Title ───────────────────────────────────────────────────── */
+/* ══════════════════════════════════════════════════════════════
+   TITLE
+══════════════════════════════════════════════════════════════ */
 
 .img-tile__title {
   flex: 1 1 auto;
@@ -99,6 +151,7 @@
   overflow: hidden;
 
   color: #fff;
+
   font-size: 12px;
   font-weight: 600;
   line-height: 1.3;
@@ -106,11 +159,17 @@
   white-space: nowrap;
   text-overflow: ellipsis;
 
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.45);
+  /*
+    No heavy shadow on the image.
+    Tiny text shadow only keeps white text readable.
+  */
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
 }
 
 
-/* ── Three-dot menu ─────────────────────────────────────────── */
+/* ══════════════════════════════════════════════════════════════
+   THREE DOT MENU
+══════════════════════════════════════════════════════════════ */
 
 .img-tile__menu {
   flex: 0 0 28px;
@@ -121,38 +180,49 @@
 
   width: 28px;
   height: 28px;
+
   padding: 0;
 
   border: 0;
   border-radius: 50%;
 
-  background: rgba(0, 0, 0, 0.35);
+  background: rgba(0, 0, 0, 0.34);
+
   color: #fff;
 
   cursor: pointer;
+
   pointer-events: auto;
 
   -webkit-tap-highlight-color: transparent;
+
+  /*
+    No blur / glass effect.
+  */
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
 }
 
 .img-tile__menu:active {
-  background: rgba(0, 0, 0, 0.55);
+  background: rgba(0, 0, 0, 0.52);
 }
 
 
-/* ── Sentinel removed ───────────────────────────────────────── */
-/* Wikipedia/infinite-scroll sentinel is intentionally absent. */
-
-
-/* ── Skeleton ───────────────────────────────────────────────── */
-/* Solid placeholder only.
-   No blur • no shimmer • no animated gradient */
+/* ══════════════════════════════════════════════════════════════
+   PREMIUM PLACEHOLDER GRID
+   Flat • Sharp • Professional
+   No shimmer • No gradient • No blur
+══════════════════════════════════════════════════════════════ */
 
 .tab-skeleton.grid {
   display: flex;
+  align-items: flex-start;
+
+  width: 100%;
+  box-sizing: border-box;
+
   gap: 8px;
   padding: 8px 8px 0;
-  align-items: flex-start;
 }
 
 .sk-col {
@@ -161,6 +231,7 @@
 
   display: flex;
   flex-direction: column;
+
   gap: 8px;
 }
 
@@ -168,35 +239,65 @@
   width: 100%;
   height: 0;
 
+  box-sizing: border-box;
+
   border-radius: 16px;
 
-  /* Completely flat and sharp placeholder */
-  background: #e8e8e8;
+  /*
+    Premium neutral placeholder.
+    Completely static.
+  */
+  background: #ededed;
 
-  /* Explicitly prevent any visual blur */
+  border: 1px solid rgba(0, 0, 0, 0.025);
+
   filter: none;
   box-shadow: none;
+
+  animation: none;
 }
 
 
-/* ── Dark mode ───────────────────────────────────────────────── */
+/* ══════════════════════════════════════════════════════════════
+   DARK MODE
+══════════════════════════════════════════════════════════════ */
 
 @media (prefers-color-scheme: dark) {
+
   .img-tile {
     background: #2c2c2e;
   }
 
   .img-tile__menu {
     background: rgba(255, 255, 255, 0.18);
+
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
   }
 
   .img-tile__menu:active {
-    background: rgba(255, 255, 255, 0.32);
+    background: rgba(255, 255, 255, 0.30);
   }
 
   .sk-img {
     background: #2c2c2e;
+
+    border-color: rgba(255, 255, 255, 0.025);
+
     filter: none;
     box-shadow: none;
+
+    animation: none;
+  }
+}
+
+
+/* ══════════════════════════════════════════════════════════════
+   REDUCED MOTION
+══════════════════════════════════════════════════════════════ */
+
+@media (prefers-reduced-motion: reduce) {
+  .img-tile__spacer img {
+    transition: none;
   }
 }

@@ -1,6 +1,9 @@
 (function () {
   'use strict';
 
+  const HERO_MAX_RATIO = 0.75;
+  const GRID_MAX_RATIO = 1.4;
+
   const _preloaded = new Set();
   let _seen = new Set();
   let _gallery = null;
@@ -32,6 +35,10 @@
     return raw.trim().split(/\s+/).slice(0, 3).join(' ');
   }
 
+  function _ratio(data) {
+    return data.width && data.height ? data.height / data.width : null;
+  }
+
   function _preload(src) {
     if (!src || _preloaded.has(src)) return;
     _preloaded.add(src);
@@ -50,22 +57,12 @@
     _preloaded.add(src);
   }
 
-  function _buildTile(data, isHero) {
+  function _buildTile(data) {
     const src = data.img_src || data.thumbnail_src || '';
     if (!src) return null;
 
-    const MAX_HERO  = 75;
-    const MAX_GRID  = 140;
-
-    let rawRatio = data.width && data.height
-      ? (data.height / data.width * 100)
-      : (isHero ? 60 : 120);
-
-    const capped = isHero
-      ? Math.min(rawRatio, MAX_HERO)
-      : Math.min(rawRatio, MAX_GRID);
-
-    const aspect = capped.toFixed(2) + '%';
+    const r = _ratio(data);
+    const aspect = r !== null ? (r * 100).toFixed(2) + '%' : '100%';
 
     const tile = document.createElement('a');
     tile.className = 'img-tile';
@@ -91,7 +88,21 @@
     };
 
     image.onerror = function () {
-      this.dataset.failed = '1';
+      const t = this.closest('.img-tile');
+      if (!t) return;
+      const parent = t.parentElement;
+      t.remove();
+      if (!parent) return;
+      if (parent.classList.contains('gallery-col')) {
+        const grid = parent.parentElement;
+        if (grid && grid.classList.contains('gallery-grid')) {
+          const allEmpty = Array.from(grid.querySelectorAll('.gallery-col'))
+            .every(c => c.children.length === 0);
+          if (allEmpty) grid.remove();
+        }
+      } else if (parent.classList.contains('gallery-hero')) {
+        parent.remove();
+      }
     };
 
     spacer.appendChild(image);
@@ -155,11 +166,12 @@
     const heights = [0, 0];
     let placed = 0;
     for (const data of items) {
-      const tile = _buildTile(data, false);
+      const tile = _buildTile(data);
       if (!tile) continue;
       const col = heights[0] <= heights[1] ? 0 : 1;
       cols[col].appendChild(tile);
-      heights[col] += data.width && data.height ? Math.min(data.height / data.width, 1.4) : 1.2;
+      const r = _ratio(data);
+      heights[col] += r !== null ? r : 1.2;
       _observeTile(tile);
       placed++;
     }
@@ -169,7 +181,7 @@
   }
 
   function _buildHero(data) {
-    const tile = _buildTile(data, true);
+    const tile = _buildTile(data);
     if (!tile) return null;
     const section = document.createElement('div');
     section.className = 'gallery-hero';
@@ -181,23 +193,55 @@
   function _renderGallery(results) {
     const fragment = document.createDocumentFragment();
     const random = _random(_seedFromString(_q));
-    let index = 0;
+
+    // Pre-classify: hero-fit (ratio <= 0.75), grid-fit (ratio <= 1.4), no-dims
+    // Items with no dimensions go into grid pool as fallback
+    const heroPool = [];
+    const gridPool = [];
+
+    for (const item of results) {
+      const r = _ratio(item);
+      if (r === null || r <= HERO_MAX_RATIO) {
+        heroPool.push(item);
+        if (r === null || r <= GRID_MAX_RATIO) gridPool.push(item);
+      } else if (r <= GRID_MAX_RATIO) {
+        gridPool.push(item);
+      }
+      // ratio > GRID_MAX_RATIO: too tall for any slot — skip entirely
+    }
+
+    // Pointers into each pool
+    let hi = 0;
+    let gi = 0;
     let sectionNumber = 0;
 
-    while (index < results.length) {
-      const remaining = results.length - index;
-      const useHero = remaining === 1 || sectionNumber === 0 || random() < 0.65;
+    while (hi < heroPool.length || gi < gridPool.length) {
+      const heroRemaining = heroPool.length - hi;
+      const gridRemaining = gridPool.length - gi;
+      const total = heroRemaining + gridRemaining;
+
+      if (total === 0) break;
+
+      const forceHero = sectionNumber === 0;
+      const useHero = heroRemaining > 0 && (forceHero || gridRemaining === 0 || random() < 0.65);
 
       if (useHero) {
-        const section = _buildHero(results[index]);
+        const data = heroPool[hi++];
+        // Also advance gridPool pointer if same item is in both pools
+        if (gridPool[gi] === data) gi++;
+        const section = _buildHero(data);
         if (section) fragment.appendChild(section);
-        index += 1;
       } else {
-        const count = remaining >= 4 && random() < 0.45 ? 4 : Math.min(2, remaining);
-        const items = results.slice(index, index + count);
+        if (gridRemaining === 0) continue;
+        const count = gridRemaining >= 4 && random() < 0.45 ? 4 : Math.min(2, gridRemaining);
+        const items = gridPool.slice(gi, gi + count);
+        gi += items.length;
+        // Also advance heroPool past any items consumed from gridPool
+        for (const item of items) {
+          if (heroPool[hi] === item) hi++;
+        }
         const section = _buildGridSection(items);
         if (section) fragment.appendChild(section);
-        index += items.length;
       }
 
       sectionNumber++;
@@ -306,3 +350,4 @@
 
   window._atkynInit_images();
 }());
+             

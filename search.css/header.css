@@ -1,0 +1,218 @@
+/* ════════════════════════════════════════════════════════════════
+   header.css — Logo header · Hamburger · Nine-dot button
+   [POLISHED · NATIVE SMOOTH · GPU-ACCELERATED]
+════════════════════════════════════════════════════════════════ */
+
+/* ────────────────────────────────────────────────────────────────
+   LOGO HEADER
+──────────────────────────────────────────────────────────────── */
+.logo-header {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+
+  padding: 8px 18px;
+  padding-top: calc(8px + env(safe-area-inset-top, 0px));
+  height: calc(62px + env(safe-area-inset-top, 0px));
+
+  overflow: hidden;
+  background: var(--color-bg);
+
+  will-change: transform, opacity;
+  transform: translate3d(0, 0, 0);
+
+  contain: layout style paint;
+
+  transition:
+    transform 0.36s cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 0.24s ease,
+    background-color 0.3s ease;
+
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+@media (prefers-color-scheme: dark) {
+  .logo-header {
+    background: var(--color-bg-dark);
+  }
+}
+
+/* ────────────────────────────────────────────────────────────────
+   LOGO
+──────────────────────────────────────────────────────────────── */
+.logo-header img {
+  height: 54px;
+  width: auto;
+
+  object-fit: contain;
+
+  position: absolute;
+  left: 14px;
+  top: 50%;
+
+  transform: translate3d(0, -50%, 0);
+
+  will-change: transform, opacity;
+
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+
+  transition:
+    opacity 0.2s ease,
+    transform 0.36s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* ────────────────────────────────────────────────────────────────
+   COLLAPSED
+──────────────────────────────────────────────────────────────── */
+.logo-header.collapsed {
+  transform: translate3d(0, -100%, 0);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.logo-header.collapsed img {
+  transform: translate3d(0, -48%, 0);
+  opacity: 0;
+}
+
+/* ────────────────────────────────────────────────────────────────
+   HAMBURGER BUTTON (top-right)
+──────────────────────────────────────────────────────────────── */
+.hamburger-btn {
+  position: absolute;
+  right: 14px;
+  top: 50%;
+
+  transform: translate3d(0, -50%, 0);
+
+  border: none;
+  background: transparent;
+
+  cursor: pointer;
+
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-end;
+
+  gap: 5.5px;
+
+  width: 40px;
+  height: 40px;
+  padding: 8px;
+
+  border-radius: 10px;
+
+  transition:
+    background-color 0.16s ease,
+    opacity 0.16s ease;
+}
+
+.hamburger-btn span {
+  display: block;
+
+  height: 1.5px;
+  border-radius: 99px;
+
+  background: var(--color-text);
+
+  transition:
+    width 0.16s ease,
+    opacity 0.16s ease;
+}
+
+.hamburger-btn span:nth-child(1) { width: 22px; }
+.hamburger-btn span:nth-child(2) { width: 15px; }
+.hamburger-btn span:nth-child(3) { width: 22px; }
+
+.hamburger-btn:active {
+  background: var(--color-press-light);
+  opacity: 0.72;
+}
+
+@media (prefers-color-scheme: dark) {
+  .hamburger-btn span {
+    background: var(--color-text-dark-alt);
+  }
+}
+
+/* ────────────────────────────────────────────────────────────────
+   NINE-DOT GRID BUTTON (top-left) — temporarily hidden
+──────────────────────────────────────────────────────────────── */
+.dots-btn {
+  display: none;
+
+  position: absolute;
+  left: 14px;
+  top: 50%;
+
+  transform: translate3d(0, -50%, 0);
+
+  border: none;
+  background: transparent;
+
+  cursor: pointer;
+
+  grid-template-columns: repeat(3, 4px);
+  gap: 4px;
+
+  align-content: center;
+  justify-content: center;
+
+  width: 40px;
+  height: 40px;
+
+  border-radius: 12px;
+
+  transition:
+    background-color 0.16s ease,
+    opacity 0.16s ease;
+}
+
+.dots-btn span {
+  display: block;
+
+  width: 4px;
+  height: 4px;
+
+  border-radius: 50%;
+
+  background: var(--color-text);
+
+  transition:
+    background-color 0.18s ease,
+    transform 0.18s ease;
+}
+
+.dots-btn:active {
+  background: var(--color-press-light);
+  opacity: 0.72;
+}
+
+.dots-btn:active span {
+  background: var(--color-primary);
+}
+
+@media (prefers-color-scheme: dark) {
+  .dots-btn span {
+    background: var(--color-text-dark-alt);
+  }
+}
+
+/* ────────────────────────────────────────────────────────────────
+   REDUCED MOTION
+──────────────────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .logo-header,
+  .logo-header img,
+  .hamburger-btn,
+  .dots-btn,
+  .hamburger-btn span,
+  .dots-btn span {
+    transition: none !important;
+  }
+}

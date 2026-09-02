@@ -1,459 +1,1080 @@
-/* modules/images/images.js — Atkyn production image gallery
-   One API call • up to 100 results • high-res first • stable geometry
-   Random editorial gallery • no Wikipedia • no pagination • no title suffix
-*/
+/* ══════════════════════════════════════════════════════════════
+   modules/images/images.js
+   ATKYN — Production Google-Style Images
+   ONE API CALL • MAX RESULTS • HIGH-RES • FAST PAINT
+   Stable masonry • Fast scrolling • No Wikipedia
+══════════════════════════════════════════════════════════════ */
 
-let _imageCache = new Map();
-let _seen = new Set();
-let _gallery = null;
-let _observer = null;
-let _query = '';
-let _warmQueue = [];
-let _warmRunning = false;
-let _warmGeneration = 0;
+(function () {
+  'use strict';
 
-function _cleanTitle(value) {
-  return String(value || '')
-    .replace(/(?:\s*[.…]{2,}\s*)+$/u, '')
-    .replace(/\s*[|•·–—-]\s*$/u, '')
-    .replace(/\s+/g, ' ')
-    .trim()
-    .split(/\s+/)
-    .slice(0, 3)
-    .join(' ');
-}
 
-function _normalizeImage(item) {
-  if (!item || typeof item !== 'object') return null;
+  /* ═══════════════════════════════════════════════════════════
+     MEMORY CACHE
+     Kept across image-tab reinitializations.
+  ═══════════════════════════════════════════════════════════ */
 
-  const src = String(item.img_src || item.imageUrl || '').trim();
-  if (!src) return null;
+  const _imageCache = new Map();
 
-  const width = Number(item.width || item.imageWidth || 0);
-  const height = Number(item.height || item.imageHeight || 0);
 
-  return {
-    title: _cleanTitle(item.title),
-    url: String(item.url || item.link || '').trim(),
-    img_src: src,
-    thumbnail_src: String(
-      item.thumbnail_src || item.thumbnailUrl || ''
-    ).trim(),
-    width: width > 0 ? width : 1,
-    height: height > 0 ? height : 1
-  };
-}
+  /* ═══════════════════════════════════════════════════════════
+     STATE
+  ═══════════════════════════════════════════════════════════ */
 
-function _extractResults(data) {
-  const source = Array.isArray(data)
-    ? data
-    : Array.isArray(data?.results)
-      ? data.results
-      : Array.isArray(data?.images)
-        ? data.images
-        : [];
+  let _seen = new Set();
 
-  const results = [];
-  const localSeen = new Set();
+  let _gallery = null;
 
-  for (const item of source) {
-    const image = _normalizeImage(item);
-    if (!image) continue;
+  let _observer = null;
 
-    const key = image.img_src;
-    if (localSeen.has(key)) continue;
+  let _query = '';
 
-    localSeen.add(key);
-    results.push(image);
+  let _warmQueue = [];
+
+  let _warmRunning = false;
+
+
+  /* ═══════════════════════════════════════════════════════════
+     TITLE CLEANER
+     Removes trailing dots / ellipsis from actual source titles.
+  ═══════════════════════════════════════════════════════════ */
+
+  function _cleanTitle(value) {
+    if (!value) return '';
+
+    return value
+      .replace(/\u2026+/g, '')
+      .replace(/\.{2,}$/g, '')
+      .replace(/\s*[-–—:|]\s*$/g, '')
+      .trim();
   }
 
-  return results;
-}
 
-function _preloadImage(src) {
-  if (!src) return Promise.reject(new Error('Missing image source'));
+  /* ═══════════════════════════════════════════════════════════
+     SHORT TITLE
+  ═══════════════════════════════════════════════════════════ */
 
-  if (_imageCache.has(src)) {
-    return _imageCache.get(src);
+  function _shortTitle(raw) {
+    const clean = _cleanTitle(raw);
+
+    if (!clean) return '';
+
+    return clean
+      .split(/\s+/)
+      .slice(0, 3)
+      .join(' ');
   }
 
-  const promise = new Promise((resolve, reject) => {
-    const image = new Image();
-    image.decoding = 'async';
-    image.fetchPriority = 'high';
 
-    image.onload = async () => {
-      try {
-        if (typeof image.decode === 'function') {
-          await image.decode().catch(() => {});
-        }
-      } finally {
-        resolve(image);
-      }
+  /* ═══════════════════════════════════════════════════════════
+     SOURCE NORMALIZER
+     Supports:
+       Serper: imageUrl / imageWidth / imageHeight / link
+       Atkyn: img_src / width / height / url
+  ═══════════════════════════════════════════════════════════ */
+
+  function _normalize(item) {
+    if (!item || typeof item !== 'object') {
+      return null;
+    }
+
+    const src =
+      item.img_src ||
+      item.imageUrl ||
+      item.image_url ||
+      item.thumbnail_src ||
+      item.thumbnailUrl ||
+      '';
+
+    if (!src) {
+      return null;
+    }
+
+    const thumb =
+      item.thumbnail_src ||
+      item.thumbnailUrl ||
+      '';
+
+    return {
+      title:
+        item.title ||
+        '',
+
+      url:
+        item.url ||
+        item.link ||
+        src,
+
+      img_src:
+        src,
+
+      thumbnail_src:
+        thumb,
+
+      width:
+        Number(
+          item.width ||
+          item.imageWidth ||
+          item.thumbnailWidth ||
+          0
+        ),
+
+      height:
+        Number(
+          item.height ||
+          item.imageHeight ||
+          item.thumbnailHeight ||
+          0
+        )
     };
+  }
 
-    image.onerror = () => reject(new Error('Image failed to load'));
-    image.src = src;
-  });
 
-  _imageCache.set(src, promise);
+  /* ═══════════════════════════════════════════════════════════
+     PRELOAD
+     Browser cache + decoded image object.
+  ═══════════════════════════════════════════════════════════ */
 
-  promise.catch(() => {
-    if (_imageCache.get(src) === promise) {
-      _imageCache.delete(src);
+  function _preload(src) {
+    if (!src) {
+      return Promise.resolve(null);
     }
-  });
 
-  return promise;
-}
+    const existing =
+      _imageCache.get(src);
 
-async function _loadTileImage(tile, item) {
-  const image = tile.querySelector('.img-tile__spacer img');
-  if (!image || !item) return;
-
-  try {
-    const loaded = await _preloadImage(item.img_src);
-
-    if (!tile.isConnected) return;
-
-    image.src = loaded.currentSrc || loaded.src || item.img_src;
-    image.classList.add('img-loaded');
-    tile.classList.add('is-loaded');
-    return;
-  } catch (_) {
-    // Use the thumbnail only if the full-resolution source actually fails.
-  }
-
-  if (item.thumbnail_src && item.thumbnail_src !== item.img_src) {
-    try {
-      const fallback = await _preloadImage(item.thumbnail_src);
-
-      if (!tile.isConnected) return;
-
-      image.src =
-        fallback.currentSrc || fallback.src || item.thumbnail_src;
-      image.classList.add('img-loaded');
-      tile.classList.add('is-loaded', 'is-fallback');
-    } catch (_) {
-      // Keep the reserved tile geometry intact.
+    if (existing) {
+      return existing;
     }
-  }
-}
 
-function _createTile(item) {
-  const tile = document.createElement('article');
-  tile.className = 'img-tile';
 
-  const ratio = item.width / item.height;
-  const safeRatio =
-    Number.isFinite(ratio) && ratio > 0
-      ? Math.min(Math.max(ratio, 0.35), 3)
-      : 1;
+    const promise =
+      new Promise(function (resolve, reject) {
 
-  tile.style.setProperty('--img-ratio', String(safeRatio));
+        const image =
+          new Image();
 
-  const spacer = document.createElement('div');
-  spacer.className = 'img-tile__spacer';
+        image.decoding =
+          'async';
 
-  const image = document.createElement('img');
-  image.alt = item.title || 'Image';
-  image.loading = 'eager';
-  image.decoding = 'async';
-  image.fetchPriority = 'high';
 
-  spacer.appendChild(image);
-  tile.appendChild(spacer);
+        image.onload =
+          function () {
 
-  const overlay = document.createElement('div');
-  overlay.className = 'img-tile__overlay';
+            const finish =
+              function () {
 
-  if (item.title) {
-    const title = document.createElement('div');
-    title.className = 'img-tile__title';
-    title.textContent = item.title;
-    overlay.appendChild(title);
-  }
+                _imageCache.set(
+                  src,
+                  Promise.resolve(image)
+                );
 
-  const menu = document.createElement('button');
-  menu.type = 'button';
-  menu.className = 'img-tile__menu';
-  menu.setAttribute('aria-label', 'Image options');
-  menu.textContent = '•••';
+                resolve(image);
+              };
 
-  menu.addEventListener('click', event => {
-    event.preventDefault();
-    event.stopPropagation();
 
-    if (item.url) {
-      window.open(item.url, '_blank', 'noopener,noreferrer');
-    }
-  });
+            if (
+              typeof image.decode ===
+              'function'
+            ) {
 
-  overlay.appendChild(menu);
-  tile.appendChild(overlay);
+              image.decode()
+                .catch(function () {})
+                .finally(
+                  finish
+                );
 
-  return tile;
-}
+            } else {
+              finish();
+            }
+          };
 
-function _seededRandom(seed) {
-  let value = seed >>> 0;
 
-  return () => {
-    value += 0x6D2B79F5;
-    let t = value;
-    t = Math.imul(t ^ (t >>> 15), t | 1);
-    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
+        image.onerror =
+          function () {
 
-function _shuffle(items, random) {
-  const array = items.slice();
+            _imageCache.delete(
+              src
+            );
 
-  for (let i = array.length - 1; i > 0; i--) {
-    const j = Math.floor(random() * (i + 1));
-    [array[i], array[j]] = [array[j], array[i]];
-  }
+            reject(
+              new Error(
+                'Image failed'
+              )
+            );
+          };
 
-  return array;
-}
 
-function _buildGallery(results) {
-  const container =
-    document.querySelector('.images-grid') ||
-    document.querySelector('#images-grid');
-
-  if (!container) return;
-
-  _gallery = container;
-  _gallery.replaceChildren();
-
-  const seed =
-    Array.from(_query).reduce(
-      (hash, char) => ((hash * 31 + char.charCodeAt(0)) >>> 0),
-      2166136261
-    );
-
-  const random = _seededRandom(seed);
-  const shuffled = _shuffle(results, random);
-
-  const fragment = document.createDocumentFragment();
-
-  if (shuffled.length > 0) {
-    const hero = document.createElement('section');
-    hero.className = 'gallery-hero';
-
-    const heroTile = _createTile(shuffled[0]);
-    hero.appendChild(heroTile);
-    fragment.appendChild(hero);
-
-    _gallery._items = [{ tile: heroTile, item: shuffled[0] }];
-  } else {
-    _gallery._items = [];
-  }
-
-  let index = 1;
-  let makeHero = true;
-
-  while (index < shuffled.length) {
-    const useHero = makeHero && random() < 0.45;
-
-    if (useHero) {
-      const section = document.createElement('section');
-      section.className = 'gallery-hero';
-
-      const tile = _createTile(shuffled[index]);
-      section.appendChild(tile);
-      fragment.appendChild(section);
-
-      _gallery._items.push({
-        tile,
-        item: shuffled[index]
+        image.src =
+          src;
       });
 
-      index += 1;
-      makeHero = false;
-      continue;
-    }
 
-    const section = document.createElement('section');
-    section.className = 'gallery-grid';
-
-    const left = document.createElement('div');
-    const right = document.createElement('div');
-
-    left.className = 'gallery-col';
-    right.className = 'gallery-col';
-
-    const count = Math.min(
-      shuffled.length - index,
-      2 + Math.floor(random() * 3)
+    _imageCache.set(
+      src,
+      promise
     );
 
-    for (let i = 0; i < count; i++) {
-      const item = shuffled[index++];
-      const tile = _createTile(item);
+    return promise;
+  }
 
-      const target = i % 2 === 0 ? left : right;
-      target.appendChild(tile);
 
-      _gallery._items.push({ tile, item });
+  /* ═══════════════════════════════════════════════════════════
+     LOAD TILE
+  ═══════════════════════════════════════════════════════════ */
+
+  function _loadTile(image) {
+    if (!image) return;
+
+    if (
+      image.dataset.loading === '1' ||
+      image.dataset.loaded === '1'
+    ) {
+      return;
     }
 
-    section.append(left, right);
-    fragment.appendChild(section);
+    const src =
+      image.dataset.src;
 
-    makeHero = random() > 0.4;
-  }
+    if (!src) return;
 
-  _gallery.appendChild(fragment);
-}
+    image.dataset.loading =
+      '1';
 
-function _observeTiles() {
-  if (_observer) {
-    _observer.disconnect();
-    _observer = null;
-  }
 
-  if (!_gallery?._items?.length) return;
+    const cached =
+      _imageCache.get(src);
 
-  _observer = new IntersectionObserver(
-    entries => {
-      for (const entry of entries) {
-        if (!entry.isIntersecting) continue;
 
-        const record = entry.target._galleryRecord;
-        if (!record) continue;
+    if (cached) {
 
-        _loadTileImage(record.tile, record.item);
-        _observer.unobserve(entry.target);
-      }
-    },
-    {
-      root: null,
-      rootMargin: '2500px 0px',
-      threshold: 0
-    }
-  );
+      cached
+        .then(function () {
 
-  for (const record of _gallery._items) {
-    record.tile._galleryRecord = record;
-    _observer.observe(record.tile);
-  }
-}
-
-async function _warmFirstImages(generation) {
-  if (generation !== _warmGeneration) return;
-
-  const records = (_gallery?._items || []).slice(0, 8);
-
-  await Promise.all(
-    records.map(record => _preloadImage(record.item.img_src).catch(() => {}))
-  );
-}
-
-function _startIdleWarm(generation) {
-  if (_warmRunning || generation !== _warmGeneration) return;
-
-  _warmRunning = true;
-
-  const run = async () => {
-    while (_warmQueue.length && generation === _warmGeneration) {
-      const item = _warmQueue.shift();
-
-      if (item?.img_src) {
-        await _preloadImage(item.img_src).catch(() => {});
-      }
-
-      if (_warmQueue.length) {
-        await new Promise(resolve => {
-          if ('requestIdleCallback' in window) {
-            window.requestIdleCallback(
-              () => resolve(),
-              { timeout: 250 }
-            );
-          } else {
-            setTimeout(resolve, 16);
+          if (!image.isConnected) {
+            return;
           }
+
+          image.src =
+            src;
+
+          image.dataset.loaded =
+            '1';
+
+          requestAnimationFrame(
+            function () {
+              if (
+                image.isConnected
+              ) {
+                image.classList.add(
+                  'img-loaded'
+                );
+              }
+            }
+          );
+        })
+        .catch(function () {
+          image.dataset.failed =
+            '1';
         });
+
+      return;
+    }
+
+
+    image.src =
+      src;
+  }
+
+
+  /* ═══════════════════════════════════════════════════════════
+     TILE BUILDER
+  ═══════════════════════════════════════════════════════════ */
+
+  function _buildTile(data) {
+
+    const src =
+      data.img_src;
+
+    if (!src) {
+      return null;
+    }
+
+
+    const aspect =
+      data.width &&
+      data.height
+        ? (
+            data.height /
+            data.width *
+            100
+          ).toFixed(2) + '%'
+        : '133.33%';
+
+
+    const tile =
+      document.createElement('a');
+
+    tile.className =
+      'img-tile';
+
+    tile.href =
+      data.url || src;
+
+    tile.target =
+      '_blank';
+
+    tile.rel =
+      'noopener noreferrer';
+
+
+    /* Stable geometry */
+
+    const spacer =
+      document.createElement('div');
+
+    spacer.className =
+      'img-tile__spacer';
+
+    spacer.style.paddingBottom =
+      aspect;
+
+
+    /* Image */
+
+    const image =
+      document.createElement('img');
+
+    image.className =
+      'img-lazy';
+
+    image.alt =
+      _cleanTitle(data.title);
+
+    image.decoding =
+      'async';
+
+    image.dataset.src =
+      src;
+
+
+    image.onload =
+      function () {
+
+        this.dataset.loaded =
+          '1';
+
+        requestAnimationFrame(
+          function () {
+
+            if (
+              image.isConnected
+            ) {
+              image.classList.add(
+                'img-loaded'
+              );
+            }
+          }
+        );
+      };
+
+
+    image.onerror =
+      function () {
+
+        /*
+          Keep the reserved tile.
+          Never collapse masonry geometry.
+        */
+
+        this.dataset.failed =
+          '1';
+
+        this.dataset.loading =
+          '0';
+      };
+
+
+    spacer.appendChild(
+      image
+    );
+
+    tile.appendChild(
+      spacer
+    );
+
+
+    /* Overlay */
+
+    const overlay =
+      document.createElement(
+        'div'
+      );
+
+    overlay.className =
+      'img-tile__overlay';
+
+
+    const title =
+      _shortTitle(
+        data.title
+      );
+
+
+    if (title) {
+
+      const titleEl =
+        document.createElement(
+          'span'
+        );
+
+      titleEl.className =
+        'img-tile__title';
+
+      titleEl.textContent =
+        title;
+
+      overlay.appendChild(
+        titleEl
+      );
+    }
+
+
+    /* Menu */
+
+    const menu =
+      document.createElement(
+        'button'
+      );
+
+    menu.className =
+      'img-tile__menu';
+
+    menu.type =
+      'button';
+
+    menu.setAttribute(
+      'aria-label',
+      'More options'
+    );
+
+    menu.innerHTML = `
+      <svg
+        width="16"
+        height="4"
+        viewBox="0 0 16 4"
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+        aria-hidden="true"
+      >
+        <circle cx="2" cy="2" r="1.5" fill="currentColor"/>
+        <circle cx="8" cy="2" r="1.5" fill="currentColor"/>
+        <circle cx="14" cy="2" r="1.5" fill="currentColor"/>
+      </svg>
+    `;
+
+
+    menu.addEventListener(
+      'click',
+      function (event) {
+
+        event.preventDefault();
+        event.stopPropagation();
+
+        tile.dispatchEvent(
+          new CustomEvent(
+            'img-menu',
+            {
+              bubbles: true,
+              detail: data
+            }
+          )
+        );
       }
-    }
+    );
 
-    _warmRunning = false;
-  };
 
-  run();
-}
+    overlay.appendChild(
+      menu
+    );
 
-async function _fetchImages(query) {
-  const endpoint =
-    '/api/images?q=' + encodeURIComponent(query);
+    tile.appendChild(
+      overlay
+    );
 
-  const response = await fetch(endpoint, {
-    method: 'GET',
-    headers: { Accept: 'application/json' },
-    cache: 'no-store'
-  });
 
-  if (!response.ok) {
-    throw new Error(`Image search failed: ${response.status}`);
+    return tile;
   }
 
-  return response.json();
-}
 
-export async function searchImages(query) {
-  _query = String(query || '').trim();
+  /* ═══════════════════════════════════════════════════════════
+     INTERSECTION OBSERVER
+     Very large preload window.
+  ═══════════════════════════════════════════════════════════ */
 
-  if (!_query) {
-    if (_gallery) _gallery.replaceChildren();
-    return [];
-  }
+  function _initObserver() {
 
-  _warmGeneration += 1;
-  const generation = _warmGeneration;
-
-  _warmQueue = [];
-  _seen.clear();
-
-  try {
-    const data = await _fetchImages(_query);
-    const results = _extractResults(data);
-
-    const uniqueResults = [];
-
-    for (const item of results) {
-      if (_seen.has(item.img_src)) continue;
-
-      _seen.add(item.img_src);
-      uniqueResults.push(item);
+    if (_observer) {
+      _observer.disconnect();
     }
 
-    _buildGallery(uniqueResults);
-    _observeTiles();
 
-    _warmQueue = uniqueResults.slice(8);
+    _observer =
+      new IntersectionObserver(
+        function (
+          entries,
+          observer
+        ) {
 
-    await _warmFirstImages(generation);
-    _startIdleWarm(generation);
+          for (
+            const entry of entries
+          ) {
 
-    return uniqueResults;
-  } catch (error) {
-    console.error('[Atkyn Images]', error);
+            if (
+              !entry.isIntersecting
+            ) {
+              continue;
+            }
 
-    if (_gallery) {
-      _gallery.replaceChildren();
+
+            const image =
+              entry.target;
+
+
+            observer.unobserve(
+              image
+            );
+
+
+            _loadTile(
+              image
+            );
+          }
+        },
+        {
+          rootMargin:
+            '3000px 0px'
+        }
+      );
+  }
+
+
+  /* ═══════════════════════════════════════════════════════════
+     OBSERVE
+  ═══════════════════════════════════════════════════════════ */
+
+  function _observeTile(tile) {
+
+    const image =
+      tile.querySelector(
+        '.img-lazy'
+      );
+
+    if (
+      !image ||
+      !_observer
+    ) {
+      return;
     }
 
-    return [];
+
+    _observer.observe(
+      image
+    );
   }
-}
 
-export async function loadImages(query) {
-  return searchImages(query);
-}
 
-export default {
-  searchImages,
-  loadImages
-};
+  /* ═══════════════════════════════════════════════════════════
+     RENDER GRID
+     Max 2 columns.
+  ═══════════════════════════════════════════════════════════ */
+
+  function _renderResults(results) {
+
+    const fragment =
+      document.createDocumentFragment();
+
+
+    const colA =
+      document.createElement(
+        'div'
+      );
+
+    const colB =
+      document.createElement(
+        'div'
+      );
+
+
+    colA.className =
+      'gallery-col';
+
+    colB.className =
+      'gallery-col';
+
+
+    const heights =
+      [0, 0];
+
+
+    for (
+      const data of results
+    ) {
+
+      const tile =
+        _buildTile(data);
+
+      if (!tile) {
+        continue;
+      }
+
+
+      const ratio =
+        data.width &&
+        data.height
+          ? data.height /
+            data.width
+          : 1.33;
+
+
+      const column =
+        heights[0] <= heights[1]
+          ? 0
+          : 1;
+
+
+      if (column === 0) {
+        colA.appendChild(tile);
+      } else {
+        colB.appendChild(tile);
+      }
+
+
+      heights[column] +=
+        ratio;
+
+
+      _observeTile(
+        tile
+      );
+    }
+
+
+    fragment.appendChild(
+      colA
+    );
+
+    fragment.appendChild(
+      colB
+    );
+
+
+    const grid =
+      document.createElement(
+        'div'
+      );
+
+    grid.className =
+      'gallery-grid';
+
+    grid.appendChild(
+      fragment
+    );
+
+
+    _gallery.replaceChildren(
+      grid
+    );
+  }
+
+
+  /* ═══════════════════════════════════════════════════════════
+     CACHE WARMING
+  ═══════════════════════════════════════════════════════════ */
+
+  function _warmCache() {
+
+    if (
+      _warmRunning ||
+      !_warmQueue.length
+    ) {
+      return;
+    }
+
+
+    _warmRunning =
+      true;
+
+
+    const next =
+      function () {
+
+        if (
+          !_warmQueue.length
+        ) {
+
+          _warmRunning =
+            false;
+
+          return;
+        }
+
+
+        const src =
+          _warmQueue.shift();
+
+
+        if (
+          src &&
+          !_imageCache.has(src)
+        ) {
+
+          _preload(
+            src
+          ).catch(
+            function () {}
+          );
+        }
+
+
+        if (
+          typeof requestIdleCallback ===
+          'function'
+        ) {
+
+          requestIdleCallback(
+            next,
+            {
+              timeout: 100
+            }
+          );
+
+        } else {
+
+          requestAnimationFrame(
+            next
+          );
+        }
+      };
+
+
+    next();
+  }
+
+
+  /* ═══════════════════════════════════════════════════════════
+     NORMALIZE API RESPONSE
+  ═══════════════════════════════════════════════════════════ */
+
+  function _extractResults(data) {
+
+    const raw =
+      Array.isArray(data?.images)
+        ? data.images
+        : Array.isArray(data?.results)
+          ? data.results
+          : [];
+
+
+    const output = [];
+
+
+    for (
+      const item of raw
+    ) {
+
+      const normalized =
+        _normalize(item);
+
+      if (!normalized) {
+        continue;
+      }
+
+
+      const key =
+        normalized.img_src;
+
+
+      if (
+        _seen.has(key)
+      ) {
+        continue;
+      }
+
+
+      _seen.add(key);
+
+      output.push(
+        normalized
+      );
+    }
+
+
+    return output;
+  }
+
+
+  /* ═══════════════════════════════════════════════════════════
+     ONE AND ONLY ONE NETWORK CALL
+  ═══════════════════════════════════════════════════════════ */
+
+  function _fetchImages() {
+
+    const endpoint =
+      '/api/images?q=' +
+      encodeURIComponent(
+        _query
+      ) +
+      '&num=100';
+
+
+    fetch(
+      endpoint,
+      {
+        method: 'GET',
+        cache: 'default',
+        credentials: 'same-origin'
+      }
+    )
+      .then(
+        function (response) {
+
+          if (!response.ok) {
+            throw new Error(
+              'Images request failed'
+            );
+          }
+
+          return response.json();
+        }
+      )
+      .then(
+        function (data) {
+
+          const results =
+            _extractResults(
+              data
+            );
+
+
+          if (
+            !results.length
+          ) {
+
+            const empty =
+              document.createElement(
+                'div'
+              );
+
+            empty.className =
+              'tab-empty';
+
+            empty.innerHTML =
+              '<p>No images found</p>';
+
+            _gallery.replaceChildren(
+              empty
+            );
+
+            return;
+          }
+
+
+          /*
+            FIRST 12:
+            Start warming immediately so
+            first-screen content arrives ASAP.
+          */
+
+          results
+            .slice(0, 12)
+            .forEach(
+              function (item) {
+
+                _preload(
+                  item.img_src
+                ).catch(
+                  function () {}
+                );
+              }
+            );
+
+
+          /*
+            Remaining images:
+            warm gradually without
+            stealing the scroll thread.
+          */
+
+          _warmQueue =
+            results
+              .slice(12)
+              .map(
+                function (item) {
+                  return item.img_src;
+                }
+              );
+
+
+          /*
+            Build complete geometry immediately.
+          */
+
+          _renderResults(
+            results
+          );
+
+
+          _warmCache();
+        }
+      )
+      .catch(
+        function () {
+
+          if (!_gallery) {
+            return;
+          }
+
+          const error =
+            document.createElement(
+              'div'
+            );
+
+          error.className =
+            'tab-empty';
+
+          error.innerHTML =
+            '<p>Could not load images</p>';
+
+          _gallery.replaceChildren(
+            error
+          );
+        }
+      );
+  }
+
+
+  /* ═══════════════════════════════════════════════════════════
+     INIT
+  ═══════════════════════════════════════════════════════════ */
+
+  window._atkynInit_images =
+    function () {
+
+      if (_observer) {
+        _observer.disconnect();
+        _observer = null;
+      }
+
+
+      _seen =
+        new Set();
+
+      _warmQueue =
+        [];
+
+      _warmRunning =
+        false;
+
+
+      _query =
+        sessionStorage.getItem(
+          'atkyn_last_query'
+        ) || '';
+
+
+      const page =
+        document.getElementById(
+          'pageContent'
+        );
+
+
+      if (!page) {
+        return;
+      }
+
+
+      if (!_query) {
+
+        page.innerHTML =
+          '<div class="tab-empty"><p>Search something to see images</p></div>';
+
+        return;
+      }
+
+
+      /* Sharp static loading skeleton */
+
+      page.innerHTML = `
+        <div class="tab-skeleton grid">
+
+          <div class="sk-col">
+
+            <div
+              class="sk-img"
+              style="padding-bottom:110%"
+            ></div>
+
+            <div
+              class="sk-img"
+              style="padding-bottom:78%"
+            ></div>
+
+            <div
+              class="sk-img"
+              style="padding-bottom:125%"
+            ></div>
+
+          </div>
+
+          <div class="sk-col">
+
+            <div
+              class="sk-img"
+              style="padding-bottom:76%"
+            ></div>
+
+            <div
+              class="sk-img"
+              style="padding-bottom:118%"
+            ></div>
+
+            <div
+              class="sk-img"
+              style="padding-bottom:88%"
+            ></div>
+
+          </div>
+
+        </div>
+      `;
+
+
+      _gallery =
+        document.createElement(
+          'div'
+        );
+
+      _gallery.className =
+        'images-grid';
+
+
+      page.replaceChildren(
+        _gallery
+      );
+
+
+      _initObserver();
+
+
+      /*
+        ONE API REQUEST.
+      */
+
+      _fetchImages();
+    };
+
+
+  window._atkynInit_images();
+
+}());

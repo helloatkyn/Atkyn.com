@@ -50,13 +50,22 @@
     _preloaded.add(src);
   }
 
-  function _buildTile(data) {
+  function _buildTile(data, isHero) {
     const src = data.img_src || data.thumbnail_src || '';
     if (!src) return null;
 
-    const aspect = data.width && data.height
-      ? (data.height / data.width * 100).toFixed(2) + '%'
-      : '133.33%';
+    const MAX_HERO  = 75;
+    const MAX_GRID  = 140;
+
+    let rawRatio = data.width && data.height
+      ? (data.height / data.width * 100)
+      : (isHero ? 60 : 120);
+
+    const capped = isHero
+      ? Math.min(rawRatio, MAX_HERO)
+      : Math.min(rawRatio, MAX_GRID);
+
+    const aspect = capped.toFixed(2) + '%';
 
     const tile = document.createElement('a');
     tile.className = 'img-tile';
@@ -144,26 +153,28 @@
     cols.forEach(c => { c.className = 'gallery-col'; section.appendChild(c); });
 
     const heights = [0, 0];
+    let placed = 0;
     for (const data of items) {
-      const tile = _buildTile(data);
+      const tile = _buildTile(data, false);
       if (!tile) continue;
       const col = heights[0] <= heights[1] ? 0 : 1;
       cols[col].appendChild(tile);
-      heights[col] += data.width && data.height ? data.height / data.width : 1.33;
+      heights[col] += data.width && data.height ? Math.min(data.height / data.width, 1.4) : 1.2;
       _observeTile(tile);
+      placed++;
     }
 
+    if (!placed) return null;
     return section;
   }
 
   function _buildHero(data) {
+    const tile = _buildTile(data, true);
+    if (!tile) return null;
     const section = document.createElement('div');
     section.className = 'gallery-hero';
-    const tile = _buildTile(data);
-    if (tile) {
-      section.appendChild(tile);
-      _observeTile(tile);
-    }
+    section.appendChild(tile);
+    _observeTile(tile);
     return section;
   }
 
@@ -178,12 +189,14 @@
       const useHero = remaining === 1 || sectionNumber === 0 || random() < 0.65;
 
       if (useHero) {
-        fragment.appendChild(_buildHero(results[index]));
+        const section = _buildHero(results[index]);
+        if (section) fragment.appendChild(section);
         index += 1;
       } else {
         const count = remaining >= 4 && random() < 0.45 ? 4 : Math.min(2, remaining);
         const items = results.slice(index, index + count);
-        fragment.appendChild(_buildGridSection(items));
+        const section = _buildGridSection(items);
+        if (section) fragment.appendChild(section);
         index += items.length;
       }
 

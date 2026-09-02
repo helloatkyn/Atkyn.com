@@ -1,16 +1,15 @@
 /* ══════════════════════════════════════════════════════════════
-   modules/images/images.css
-   ATKYN — Premium Editorial Image Gallery
-   Hero + Masonry · Max 2 Columns · Stable Layout
-   No blur · No shimmer · No gradient overlay · No animation
-   Version: 2.0
+   ATKYN — PREMIUM PRODUCTION IMAGE GALLERY
+   Large Editorial Masonry
+   Maximum 2 Columns
+   Full-width Hero Support
+   Stable Layout • Sharp Loading • No Blur
+   No Shimmer • No Bottom Gradient • No Ellipsis
 ══════════════════════════════════════════════════════════════ */
 
 
 /* ══════════════════════════════════════════════════════════════
-   ROOT GALLERY CONTAINER
-   Vertical stack of sections.
-   NOT a 2-column grid itself.
+   ROOT GALLERY
 ══════════════════════════════════════════════════════════════ */
 
 .images-grid {
@@ -22,26 +21,28 @@
 
   gap: 9px;
 
-  padding: 8px 8px 0;
+  padding:
+    8px
+    8px
+    0;
 }
 
 
 /* ══════════════════════════════════════════════════════════════
-   HERO SECTION — Full-width single image
+   HERO / SINGLE IMAGE
 ══════════════════════════════════════════════════════════════ */
 
 .gallery-hero {
   width: 100%;
   min-width: 0;
-  flex: 0 0 auto;
+  flex: 0 0 100%;
 
   display: block;
 }
 
 
 /* ══════════════════════════════════════════════════════════════
-   GRID SECTION — 2-column masonry group
-   Never 3 columns. Never the entire gallery.
+   TWO-COLUMN SECTION
 ══════════════════════════════════════════════════════════════ */
 
 .gallery-grid {
@@ -49,17 +50,15 @@
   min-width: 0;
 
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+
+  grid-template-columns:
+    minmax(0, 1fr)
+    minmax(0, 1fr);
 
   gap: 9px;
 
   align-items: start;
 }
-
-
-/* ══════════════════════════════════════════════════════════════
-   COLUMN — Vertical flex stack within grid section
-══════════════════════════════════════════════════════════════ */
 
 .gallery-col {
   min-width: 0;
@@ -73,7 +72,6 @@
 
 /* ══════════════════════════════════════════════════════════════
    IMAGE TILE
-   Anchor wrapper. Overflow hidden for border-radius clipping.
 ══════════════════════════════════════════════════════════════ */
 
 .img-tile {
@@ -85,6 +83,7 @@
   min-width: 0;
 
   overflow: hidden;
+
   box-sizing: border-box;
 
   border-radius: 17px;
@@ -96,16 +95,10 @@
   -webkit-tap-highlight-color: transparent;
 }
 
-.img-tile:active {
-  /* No scale, no movement */
-  transform: none;
-}
-
 
 /* ══════════════════════════════════════════════════════════════
-   SPACER — Reserves exact geometry via padding-bottom ratio.
-   This is set inline by JS based on API width/height.
-   Layout never shifts when image loads.
+   IMAGE RESERVATION
+   Keeps exact geometry before image decoding.
 ══════════════════════════════════════════════════════════════ */
 
 .img-tile__spacer {
@@ -115,6 +108,7 @@
   height: 0;
 
   overflow: hidden;
+
   box-sizing: border-box;
 
   border-radius: inherit;
@@ -125,12 +119,11 @@
 
 /* ══════════════════════════════════════════════════════════════
    IMAGE
-   Starts invisible. Revealed after load via .img-loaded.
-   No blur. No shimmer. No transform animation.
 ══════════════════════════════════════════════════════════════ */
 
 .img-tile__spacer img {
   position: absolute;
+
   inset: 0;
 
   display: block;
@@ -150,23 +143,24 @@
 
   opacity: 0;
 
-  /* Tiny opacity reveal only — no geometry, no blur */
-  transition: opacity 130ms linear;
+  /*
+    Tiny reveal only.
+    No transform, scaling or geometry animation.
+  */
+  transition:
+    opacity 120ms linear;
 
   filter: none;
+
   box-shadow: none;
 
   -webkit-user-drag: none;
   user-select: none;
 }
 
-.img-tile__spacer img:active {
-  transform: none;
-}
-
 
 /* ══════════════════════════════════════════════════════════════
-   LOADED STATE — Image fully decoded and revealed
+   LOADED IMAGE
 ══════════════════════════════════════════════════════════════ */
 
 .img-tile__spacer img.img-loaded {
@@ -175,7 +169,7 @@
 
 
 /* ══════════════════════════════════════════════════════════════
-   HERO TILE — Slightly larger radius for visual prominence
+   HERO TILE
 ══════════════════════════════════════════════════════════════ */
 
 .gallery-hero .img-tile {
@@ -192,28 +186,37 @@
 
 
 /* ══════════════════════════════════════════════════════════════
-   OVERLAY
-   Completely transparent background — no gradient, no scrim.
-   Only pointer-events pass through to children.
+   IMAGE OVERLAY
+   Completely transparent.
+   No gradient.
+   No dark scrim.
+   No shadow.
 ══════════════════════════════════════════════════════════════ */
 
 .img-tile__overlay {
   position: absolute;
+
   left: 0;
   right: 0;
   bottom: 0;
 
   display: flex;
+
   align-items: flex-end;
   justify-content: space-between;
 
   gap: 6px;
 
-  padding: 8px;
+  padding:
+    8px;
 
   background: transparent;
 
-  border-radius: 0 0 inherit inherit;
+  border-radius:
+    0
+    0
+    inherit
+    inherit;
 
   pointer-events: none;
 }
@@ -221,7 +224,6 @@
 
 /* ══════════════════════════════════════════════════════════════
    TITLE
-   Max 3 words. No ellipsis. Clipped if needed.
 ══════════════════════════════════════════════════════════════ */
 
 .img-tile__title {
@@ -233,6 +235,7 @@
   color: #fff;
 
   font-family: inherit;
+
   font-size: 12px;
   font-weight: 600;
 
@@ -240,11 +243,19 @@
 
   white-space: nowrap;
 
-  /* No automatic "…" suffix */
+  /*
+    IMPORTANT:
+    No automatic "..." suffix.
+  */
   text-overflow: clip;
 
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.22);
+  text-shadow:
+    0 1px 2px
+    rgba(0, 0, 0, 0.22);
 }
+
+
+/* Hero title */
 
 .gallery-hero .img-tile__title {
   font-size: 13px;
@@ -253,9 +264,7 @@
 
 
 /* ══════════════════════════════════════════════════════════════
-   3-DOT MENU BUTTON
-   Dark circular button. Pointer-events enabled.
-   No backdrop-filter blur.
+   THREE-DOT ACTION
 ══════════════════════════════════════════════════════════════ */
 
 .img-tile__menu {
@@ -273,7 +282,8 @@
   border: 0;
   border-radius: 50%;
 
-  background: rgba(0, 0, 0, 0.34);
+  background:
+    rgba(0, 0, 0, 0.34);
 
   color: #fff;
 
@@ -288,13 +298,13 @@
 }
 
 .img-tile__menu:active {
-  background: rgba(0, 0, 0, 0.52);
+  background:
+    rgba(0, 0, 0, 0.52);
 }
 
 
 /* ══════════════════════════════════════════════════════════════
-   SKELETON — Shown immediately while fetch is in-flight.
-   Static. No shimmer. No animation. No blur.
+   INITIAL LOADING GRID
 ══════════════════════════════════════════════════════════════ */
 
 .tab-skeleton.grid {
@@ -302,11 +312,15 @@
   box-sizing: border-box;
 
   display: flex;
+
   align-items: flex-start;
 
   gap: 9px;
 
-  padding: 8px 8px 0;
+  padding:
+    8px
+    8px
+    0;
 }
 
 .sk-col {
@@ -319,6 +333,12 @@
   gap: 9px;
 }
 
+
+/* ══════════════════════════════════════════════════════════════
+   SHARP PREMIUM PLACEHOLDER
+   Completely static.
+══════════════════════════════════════════════════════════════ */
+
 .sk-img {
   width: 100%;
   height: 0;
@@ -327,14 +347,24 @@
 
   border-radius: 17px;
 
-  background: #ededed;
+  background:
+    #ededed;
 
-  border: 1px solid rgba(0, 0, 0, 0.025);
+  border:
+    1px solid
+    rgba(0, 0, 0, 0.025);
 
   filter: none;
+
   box-shadow: none;
+
   animation: none;
 }
+
+
+/* ══════════════════════════════════════════════════════════════
+   OPTIONAL FULL-WIDTH HERO PLACEHOLDER
+══════════════════════════════════════════════════════════════ */
 
 .tab-skeleton .sk-hero {
   width: 100%;
@@ -343,27 +373,16 @@
 
 
 /* ══════════════════════════════════════════════════════════════
-   EMPTY / ERROR STATE
+   TOUCH / ACTIVE BEHAVIOR
+   No scale or movement.
 ══════════════════════════════════════════════════════════════ */
 
-.tab-empty {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-
-  padding: 48px 16px;
-
-  color: #999;
-
-  font-family: inherit;
-  font-size: 14px;
-  font-weight: 400;
-
-  text-align: center;
+.img-tile:active {
+  transform: none;
 }
 
-.tab-empty p {
-  margin: 0;
+.img-tile__spacer img:active {
+  transform: none;
 }
 
 
@@ -375,6 +394,7 @@
 
   .images-grid {
     gap: 10px;
+
     padding-left: 10px;
     padding-right: 10px;
   }
@@ -407,7 +427,6 @@
 
 /* ══════════════════════════════════════════════════════════════
    DARK MODE
-   Professional dark neutral. No blur. No translucent overlays.
 ══════════════════════════════════════════════════════════════ */
 
 @media (prefers-color-scheme: dark) {
@@ -419,32 +438,42 @@
     background: transparent;
   }
 
+
   .img-tile,
   .img-tile__spacer,
   .img-tile__spacer img {
-    background: #2c2c2e;
+    background:
+      #2c2c2e;
   }
 
+
   .img-tile__menu {
-    background: rgba(255, 255, 255, 0.18);
+    background:
+      rgba(255, 255, 255, 0.18);
+
     backdrop-filter: none;
     -webkit-backdrop-filter: none;
   }
 
+
   .img-tile__menu:active {
-    background: rgba(255, 255, 255, 0.30);
+    background:
+      rgba(255, 255, 255, 0.30);
   }
+
 
   .sk-img {
-    background: #2c2c2e;
-    border-color: rgba(255, 255, 255, 0.025);
-    filter: none;
-    box-shadow: none;
-    animation: none;
-  }
+    background:
+      #2c2c2e;
 
-  .tab-empty {
-    color: #666;
+    border-color:
+      rgba(255, 255, 255, 0.025);
+
+    filter: none;
+
+    box-shadow: none;
+
+    animation: none;
   }
 }
 

@@ -1,39 +1,64 @@
 /* ══════════════════════════════════════════════════════════════
-   ATKYN — PREMIUM IMAGE GALLERY
-   Large Masonry • Max 2 Columns • Pinterest-inspired
-   Clean • Sharp • No Blur • No Bottom Shadow
-   Stable Layout • Fast Scroll Friendly
+   ATKYN — PRODUCTION IMAGE GALLERY
+   Premium editorial masonry
+   Full-width hero + maximum 2-column grid
+   Stable geometry • Sharp placeholders • No blur
 ══════════════════════════════════════════════════════════════ */
 
 
 /* ══════════════════════════════════════════════════════════════
-   GALLERY
+   MASTER GALLERY
 ══════════════════════════════════════════════════════════════ */
 
 .images-grid {
   display: flex;
-  align-items: flex-start;
+  flex-direction: column;
+  align-items: stretch;
 
   width: 100%;
   box-sizing: border-box;
 
-  gap: 8px;
+  gap: 9px;
   padding: 8px 8px 0;
 }
 
 
 /* ══════════════════════════════════════════════════════════════
-   TWO COLUMNS
+   FULL-WIDTH SINGLE / HERO IMAGE
 ══════════════════════════════════════════════════════════════ */
 
-.img-col {
-  flex: 1 1 0;
+.gallery-hero {
+  width: 100%;
+  min-width: 0;
+}
+
+
+/* ══════════════════════════════════════════════════════════════
+   TWO-COLUMN GALLERY SECTION
+══════════════════════════════════════════════════════════════ */
+
+.gallery-grid {
+  display: grid;
+
+  grid-template-columns:
+    minmax(0, 1fr)
+    minmax(0, 1fr);
+
+  align-items: start;
+
+  gap: 9px;
+
+  width: 100%;
+  min-width: 0;
+}
+
+.gallery-col {
   min-width: 0;
 
   display: flex;
   flex-direction: column;
 
-  gap: 8px;
+  gap: 9px;
 }
 
 
@@ -63,7 +88,8 @@
 
 /* ══════════════════════════════════════════════════════════════
    IMAGE RESERVATION
-   Keeps geometry locked before the image arrives.
+   Exact space exists before image loading.
+   This is the key anti-bounce layer.
 ══════════════════════════════════════════════════════════════ */
 
 .img-tile__spacer {
@@ -81,7 +107,7 @@
 
 
 /* ══════════════════════════════════════════════════════════════
-   ACTUAL IMAGE
+   IMAGE
 ══════════════════════════════════════════════════════════════ */
 
 .img-tile__spacer img {
@@ -103,17 +129,17 @@
   opacity: 0;
 
   transition:
-    opacity 140ms ease-out;
+    opacity 120ms ease-out;
 
   filter: none;
   box-shadow: none;
 
   -webkit-user-drag: none;
-  user-select: none;
 }
 
 
-/* Loaded image */
+/* Loaded = only opacity changes.
+   Geometry never changes. */
 
 .img-tile__spacer img.img-loaded {
   opacity: 1;
@@ -121,19 +147,28 @@
 
 
 /* ══════════════════════════════════════════════════════════════
-   HERO / SINGLE IMAGE SUPPORT
-   JS can add .img-tile--hero when a tile should occupy
-   the complete gallery width.
+   HERO IMAGE
+   Slightly more substantial visual treatment.
 ══════════════════════════════════════════════════════════════ */
 
-.img-tile--hero {
-  width: 100%;
+.gallery-hero .img-tile {
+  border-radius: 18px;
+}
+
+.gallery-hero .img-tile__spacer {
+  border-radius: 18px;
+}
+
+.gallery-hero .img-tile__spacer img {
+  border-radius: 18px;
 }
 
 
 /* ══════════════════════════════════════════════════════════════
-   BOTTOM CONTENT
-   Completely transparent — NO image shadow.
+   OVERLAY
+   Completely transparent.
+   NO bottom gradient.
+   NO shadow over image.
 ══════════════════════════════════════════════════════════════ */
 
 .img-tile__overlay {
@@ -184,8 +219,16 @@
 }
 
 
+/* Hero title — slightly stronger hierarchy */
+
+.gallery-hero .img-tile__title {
+  font-size: 13px;
+  font-weight: 650;
+}
+
+
 /* ══════════════════════════════════════════════════════════════
-   THREE DOT BUTTON
+   THREE-DOT MENU
 ══════════════════════════════════════════════════════════════ */
 
 .img-tile__menu {
@@ -224,8 +267,9 @@
 
 
 /* ══════════════════════════════════════════════════════════════
-   PREMIUM PLACEHOLDER
-   Static • Flat • Sharp • Professional
+   INITIAL PLACEHOLDER
+   Flat, clean, premium.
+   No shimmer / no gradient / no blur.
 ══════════════════════════════════════════════════════════════ */
 
 .tab-skeleton.grid {
@@ -235,7 +279,7 @@
   width: 100%;
   box-sizing: border-box;
 
-  gap: 8px;
+  gap: 9px;
   padding: 8px 8px 0;
 }
 
@@ -246,7 +290,7 @@
   display: flex;
   flex-direction: column;
 
-  gap: 8px;
+  gap: 9px;
 }
 
 .sk-img {
@@ -270,18 +314,22 @@
 
 
 /* ══════════════════════════════════════════════════════════════
-   LARGE MOBILE / TABLET
-   Slightly tighter edges while retaining max 2 columns.
+   MEDIUM / TABLET
 ══════════════════════════════════════════════════════════════ */
 
 @media (min-width: 600px) {
+
   .images-grid {
     gap: 10px;
     padding-left: 10px;
     padding-right: 10px;
   }
 
-  .img-col {
+  .gallery-grid {
+    gap: 10px;
+  }
+
+  .gallery-col {
     gap: 10px;
   }
 
@@ -289,6 +337,12 @@
   .img-tile__spacer,
   .img-tile__spacer img {
     border-radius: 18px;
+  }
+
+  .gallery-hero .img-tile,
+  .gallery-hero .img-tile__spacer,
+  .gallery-hero .img-tile__spacer img {
+    border-radius: 19px;
   }
 }
 
@@ -300,7 +354,8 @@
 @media (prefers-color-scheme: dark) {
 
   .images-grid,
-  .img-col {
+  .gallery-grid,
+  .gallery-col {
     background: transparent;
   }
 
@@ -342,8 +397,7 @@
 ══════════════════════════════════════════════════════════════ */
 
 @media (prefers-reduced-motion: reduce) {
-
   .img-tile__spacer img {
     transition: none;
   }
-}
+     }

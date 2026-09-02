@@ -1,9 +1,9 @@
-/* modules/images/images.js — Pinterest-style masonry grid */
+/* modules/images/images.js — Pinterest-exact masonry, v4 */
 (function () {
 
   let _seen      = new Set();
-  let _cols      = [null, null, null];
-  let _colH      = [0, 0, 0];
+  let _cols      = [null, null];
+  let _colH      = [0, 0];
   let _grid      = null;
   let _lazyIo    = null;
   let _scrollIo  = null;
@@ -13,33 +13,36 @@
   let _queue     = [];
   let _batchTimer = null;
 
-  // ── Column helpers ────────────────────────────────────────────
-  function _shortCol() {
-    return _colH.indexOf(Math.min(..._colH));
-  }
+  // ── Shortest column ───────────────────────────────────────────
+  function _shortCol() { return _colH[0] <= _colH[1] ? 0 : 1; }
 
-  // ── Short title: max 3 words, no ellipsis suffix ──────────────
+  // ── 3-word title max, no suffix ───────────────────────────────
   function _shortTitle(raw) {
     if (!raw) return '';
-    const words = raw.trim().split(/\s+/);
-    return words.slice(0, 3).join(' ');
+    return raw.trim().split(/\s+/).slice(0, 3).join(' ');
   }
 
-  // ── Tile builder (Pinterest style) ───────────────────────────
+  // ── Tile builder ──────────────────────────────────────────────
   function _buildTile(img) {
     const src   = img.img_src       || img.thumbnail_src || '';
     const thumb = img.thumbnail_src || img.img_src       || '';
     if (!src) return null;
 
-    const wrap       = document.createElement('div');
-    wrap.className   = 'img-tile';
+    // Calculate aspect ratio for placeholder — prevents reflow/bounce
+    const aspect = (img.width && img.height)
+      ? (img.height / img.width * 100).toFixed(2) + '%'
+      : '133.33%'; // default ~3:4
 
-    // Image link
-    const a       = document.createElement('a');
-    a.href        = img.url || src;
-    a.target      = '_blank';
-    a.rel         = 'noopener noreferrer';
-    a.className   = 'img-tile__link';
+    const a     = document.createElement('a');
+    a.className = 'img-tile';
+    a.href      = img.url || src;
+    a.target    = '_blank';
+    a.rel       = 'noopener noreferrer';
+
+    // Aspect-ratio spacer — holds exact space before image loads
+    const spacer       = document.createElement('div');
+    spacer.className   = 'img-tile__spacer';
+    spacer.style.paddingBottom = aspect;
 
     const imgEl         = document.createElement('img');
     imgEl.alt           = img.title || '';
@@ -49,7 +52,7 @@
     imgEl.classList.add('img-lazy');
 
     imgEl.onload = function () {
-      requestAnimationFrame(() => { this.style.opacity = '1'; });
+      requestAnimationFrame(() => { this.classList.add('img-loaded'); });
     };
     imgEl.onerror = function () {
       if (this.dataset.triedThumb !== '1' && thumb && thumb !== this.src) {
@@ -57,40 +60,49 @@
         this.src = thumb;
         return;
       }
-      wrap.remove();
+      a.remove();
     };
 
-    a.appendChild(imgEl);
-    wrap.appendChild(a);
+    spacer.appendChild(imgEl);
+    a.appendChild(spacer);
 
-    // Bottom row: title + 3-dot menu
+    // Overlay: title + 3-dot (horizontal ···) at bottom of image
     const title = _shortTitle(img.title);
     if (title) {
-      const footer       = document.createElement('div');
-      footer.className   = 'img-tile__footer';
+      const overlay      = document.createElement('div');
+      overlay.className  = 'img-tile__overlay';
 
       const titleEl      = document.createElement('span');
       titleEl.className  = 'img-tile__title';
       titleEl.textContent = title;
 
+      // Horizontal 3-dot button (Pinterest style)
       const menu         = document.createElement('button');
       menu.className     = 'img-tile__menu';
       menu.setAttribute('aria-label', 'More options');
-      menu.innerHTML     = `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <circle cx="8" cy="3" r="1.4" fill="currentColor"/>
-        <circle cx="8" cy="8" r="1.4" fill="currentColor"/>
-        <circle cx="8" cy="13" r="1.4" fill="currentColor"/>
+      // Three horizontal dots via SVG
+      menu.innerHTML = `<svg width="16" height="4" viewBox="0 0 16 4" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="2" cy="2" r="1.5" fill="currentColor"/>
+        <circle cx="8" cy="2" r="1.5" fill="currentColor"/>
+        <circle cx="14" cy="2" r="1.5" fill="currentColor"/>
       </svg>`;
 
-      footer.appendChild(titleEl);
-      footer.appendChild(menu);
-      wrap.appendChild(footer);
+      menu.addEventListener('click', e => {
+        e.preventDefault();
+        e.stopPropagation();
+        // Hook: dispatch custom event for menu handling
+        a.dispatchEvent(new CustomEvent('img-menu', { bubbles: true, detail: img }));
+      });
+
+      overlay.appendChild(titleEl);
+      overlay.appendChild(menu);
+      a.appendChild(overlay);
     }
 
-    return wrap;
+    return a;
   }
 
-  // ── Drip renderer: 6 tiles every 80ms ────────────────────────
+  // ── Drip renderer: 6 tiles / 80ms ────────────────────────────
   function _drip() {
     if (!_queue.length) { _batchTimer = null; return; }
 
@@ -98,12 +110,13 @@
     batch.forEach(img => {
       const tile = _buildTile(img);
       if (!tile) return;
-      const c    = _shortCol();
+      const c = _shortCol();
       _cols[c].appendChild(tile);
-      const aspect = (img.width && img.height) ? img.height / img.width : 1.2;
+      const aspect = (img.width && img.height) ? img.height / img.width : 1.33;
       _colH[c] += aspect;
     });
 
+    // Observe newly added lazy images
     _grid.querySelectorAll('.img-lazy:not([data-ob])').forEach(el => {
       el.dataset.ob = '1';
       _lazyIo.observe(el);
@@ -124,7 +137,7 @@
     if (!_batchTimer) _drip();
   }
 
-  // ── Sentinel — triggers Wikipedia fetch on scroll ─────────────
+  // ── Sentinel — lazy-fetch Wikipedia on scroll ─────────────────
   function _attachSentinel() {
     if (_sentinel) _sentinel.remove();
     _sentinel           = document.createElement('div');
@@ -137,8 +150,38 @@
       _wikiDone = true;
       _scrollIo.disconnect();
       _fetchWiki();
-    }, { rootMargin: '400px' });
+    }, { rootMargin: '600px' });
     _scrollIo.observe(_sentinel);
+  }
+
+  // ── Lazy loader: thumb first → full swap (no bounce) ─────────
+  function _initLazyIo() {
+    if (_lazyIo) _lazyIo.disconnect();
+    _lazyIo = new IntersectionObserver((entries, obs) => {
+      entries.forEach(entry => {
+        if (!entry.isIntersecting) return;
+        const el = entry.target;
+        obs.unobserve(el);
+
+        const thumbSrc = el.dataset.thumb || el.dataset.src;
+        const fullSrc  = el.dataset.src;
+
+        // Step 1: load thumb immediately (fast)
+        if (thumbSrc) el.src = thumbSrc;
+
+        // Step 2: silently fetch full-res, swap in-place once ready
+        if (fullSrc && fullSrc !== thumbSrc) {
+          const full    = new Image();
+          full.decoding = 'async';
+          full.onload   = () => {
+            if (!el.isConnected) return;
+            // Swap src without opacity flash
+            requestAnimationFrame(() => { el.src = fullSrc; });
+          };
+          full.src = fullSrc;
+        }
+      });
+    }, { rootMargin: '1400px' }); // large margin = loads well before visible
   }
 
   // ── Fetch #1 — Serper ─────────────────────────────────────────
@@ -153,7 +196,7 @@
           return;
         }
         _appendResults(results);
-        const delay = Math.ceil(results.length / 6) * 80 + 300;
+        const delay = Math.ceil(results.length / 6) * 80 + 400;
         setTimeout(_attachSentinel, delay);
       })
       .catch(() => {
@@ -162,7 +205,7 @@
       });
   }
 
-  // ── Fetch #2 — Wikipedia Commons (on scroll) ──────────────────
+  // ── Fetch #2 — Wikimedia Commons on scroll ────────────────────
   function _fetchWiki() {
     const LIMIT = 50;
     const BASE  = {
@@ -185,8 +228,7 @@
         .filter(p => {
           const ii   = p.imageinfo?.[0];
           if (!ii) return false;
-          const mime = ii.mime || '';
-          return /^image\/(jpeg|png|webp|gif)/.test(mime);
+          return /^image\/(jpeg|png|webp|gif)/.test(ii.mime || '');
         })
         .map(p => {
           const ii = p.imageinfo[0];
@@ -205,38 +247,11 @@
     });
   }
 
-  // ── Lazy image loader ─────────────────────────────────────────
-  function _initLazyIo() {
-    if (_lazyIo) _lazyIo.disconnect();
-    _lazyIo = new IntersectionObserver((entries, obs) => {
-      entries.forEach(entry => {
-        if (!entry.isIntersecting) return;
-        const el = entry.target;
-        obs.unobserve(el);
-
-        const thumbSrc = el.dataset.thumb || el.dataset.src;
-        const fullSrc  = el.dataset.src;
-        if (thumbSrc) el.src = thumbSrc;
-
-        if (fullSrc && fullSrc !== thumbSrc) {
-          const full    = new Image();
-          full.decoding = 'async';
-          full.onload   = () => {
-            if (!el.isConnected) return;
-            el.style.opacity = '0';
-            requestAnimationFrame(() => { el.src = fullSrc; });
-          };
-          full.src = fullSrc;
-        }
-      });
-    }, { rootMargin: '1200px' });
-  }
-
   // ── Init ──────────────────────────────────────────────────────
   window._atkynInit_images = function () {
     _seen      = new Set();
-    _cols      = [null, null, null];
-    _colH      = [0, 0, 0];
+    _cols      = [null, null];
+    _colH      = [0, 0];
     _grid      = null;
     _wikiDone  = false;
     _queue     = [];
@@ -253,21 +268,26 @@
       return;
     }
 
+    // Skeleton: 2-col, varied heights
     pc.innerHTML = `
       <div class="tab-skeleton grid">
-        ${[0,1,2].map(() => `
-          <div class="sk-col">
-            <div class="sk-img" style="aspect-ratio:3/4"></div>
-            <div class="sk-img" style="aspect-ratio:4/3"></div>
-            <div class="sk-img" style="aspect-ratio:1/1"></div>
-          </div>`).join('')}
+        <div class="sk-col">
+          <div class="sk-img" style="padding-bottom:133%"></div>
+          <div class="sk-img" style="padding-bottom:75%"></div>
+          <div class="sk-img" style="padding-bottom:110%"></div>
+        </div>
+        <div class="sk-col">
+          <div class="sk-img" style="padding-bottom:80%"></div>
+          <div class="sk-img" style="padding-bottom:130%"></div>
+          <div class="sk-img" style="padding-bottom:90%"></div>
+        </div>
       </div>`;
 
     _initLazyIo();
 
     _grid = document.createElement('div');
     _grid.className = 'images-grid';
-    for (let i = 0; i < 3; i++) {
+    for (let i = 0; i < 2; i++) {
       const col = document.createElement('div');
       col.className = 'img-col';
       _grid.appendChild(col);
@@ -282,4 +302,4 @@
 
   window._atkynInit_images();
 }());
-          
+      

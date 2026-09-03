@@ -1,873 +1,843 @@
 /* ═══════════════════════════════════════════════════════════════
-   ATKYN — PREMIUM COMPACT GLASS CHATBAR
-   LIGHT MODE — CLEAN WHITE GLASS / HAIRLINE EDGE
-   DARK MODE — PRESERVED
-   ═══════════════════════════════════════════════════════════════ */
-
+ATKYN — PREMIUM COMPACT GLASS CHATBAR
+Performance Optimized • Native Smoothness • 0px UI Change
+═══════════════════════════════════════════════════════════════ */
 
 /* ───────────────────────────────────────────────────────────────
-   WRAPPER
-   ─────────────────────────────────────────────────────────────── */
+WRAPPER
+─────────────────────────────────────────────────────────────── */
 
 .chatbar-wrap {
-  flex-shrink: 0;
-  position: relative;
-  z-index: 10;
+flex-shrink: 0;
+position: relative;
+z-index: 10;
 
-  width: 100%;
-  box-sizing: border-box;
+width: 100%;
+box-sizing: border-box;
 
-  padding:
-    10px
-    18px
-    calc(12px + env(safe-area-inset-bottom));
+padding:
+10px
+18px
+calc(12px + env(safe-area-inset-bottom));
 
-  background: transparent;
+background: transparent;
 
-  transform: translate3d(0, 0, 0);
-  backface-visibility: hidden;
-  -webkit-backface-visibility: hidden;
+transform: translate3d(0, 0, 0);
+backface-visibility: hidden;
+-webkit-backface-visibility: hidden;
 
-  contain: layout style paint;
+contain: layout style paint;
 }
 
-
 /* ═══════════════════════════════════════════════════════════════
-   MAIN GLASS PILL — LIGHT
-   ═══════════════════════════════════════════════════════════════ */
+MAIN GLASS PILL
+═══════════════════════════════════════════════════════════════ */
 
 .overlay-pill {
-  position: relative;
-  isolation: isolate;
+position: relative;
+isolation: isolate;
 
-  width: 100%;
-  height: 60px;
-  min-height: 60px;
+width: 100%;
+height: 60px;
+min-height: 60px;
 
-  display: flex;
-  align-items: center;
+display: flex;
+align-items: center;
 
-  box-sizing: border-box;
+box-sizing: border-box;
 
-  gap: 6px;
+gap: 6px;
 
-  padding: 0 12px 0 14px;
-  margin: 0;
+padding: 0 12px 0 14px;
+margin: 0;
 
-  border-radius: 999px;
+border-radius: 999px;
 
-  /*
-   * Clean white glass.
-   * Very subtle vertical tonal shift only.
-   */
-  background:
-    linear-gradient(
-      180deg,
-      rgba(255, 255, 255, 0.985) 0%,
-      rgba(255, 255, 254, 0.97) 48%,
-      rgba(252, 251, 248, 0.95) 100%
-    );
+background:
+linear-gradient(
+180deg,
+rgba(255, 255, 255, 0.975) 0%,
+rgba(252, 251, 248, 0.96) 48%,
+rgba(248, 247, 243, 0.94) 100%
+);
 
-  /*
-   * Main edge is almost pure white.
-   */
-  border: 1px solid rgba(255, 255, 255, 0.99);
+border: 1px solid rgba(255, 255, 255, 0.98);
 
-  /*
-   * NO heavy external shadow.
-   * Only an extremely subtle internal glass edge.
-   */
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.98),
-    inset 0 -1px 0 rgba(230, 229, 225, 0.14);
+box-shadow:
+inset 0 1px 0 rgba(255, 255, 255, 1),
+inset 0 -1px 0 rgba(218, 217, 213, 0.32);
 
-  -webkit-backdrop-filter: blur(24px) saturate(1.03);
-  backdrop-filter: blur(24px) saturate(1.03);
+-webkit-backdrop-filter: blur(24px) saturate(1.03);
+backdrop-filter: blur(24px) saturate(1.03);
 
-  overflow: visible;
+overflow: visible;
 
-  -webkit-tap-highlight-color: transparent;
+-webkit-tap-highlight-color: transparent;
 
-  transform: translate3d(0, 0, 0);
-  will-change: transform;
+transform: translate3d(0, 0, 0);
+will-change: transform;
 
-  transition:
-    background 0.18s ease,
-    border-color 0.18s ease;
+transition:
+background 0.18s ease,
+border-color 0.18s ease;
 }
 
-
 /* ───────────────────────────────────────────────────────────────
-   THIN OUTER GLASS RING — LIGHT
-   ─────────────────────────────────────────────────────────────── */
+OUTER GLASS RING — INNER
+─────────────────────────────────────────────────────────────── */
 
 .overlay-pill::before {
-  content: "";
+content: "";
 
-  position: absolute;
-  inset: -1px;
+position: absolute;
+inset: -2px;
 
-  box-sizing: border-box;
+box-sizing: border-box;
 
-  border-radius: inherit;
+border-radius: inherit;
 
-  /*
-   * Single hairline ring.
-   * No fill and no shadow.
-   */
-  border: 1px solid rgba(255, 255, 255, 0.88);
+border: 1px solid rgba(226, 225, 221, 0.94);
 
-  background: transparent;
+background: transparent;
 
-  pointer-events: none;
+pointer-events: none;
 
-  z-index: -1;
+z-index: -1;
 }
-
 
 /* ───────────────────────────────────────────────────────────────
-   VERY SUBTLE OUTER WHITE EDGE — LIGHT
-   ─────────────────────────────────────────────────────────────── */
+OUTER GLASS RING — WHITE EDGE
+─────────────────────────────────────────────────────────────── */
 
 .overlay-pill::after {
-  content: "";
+content: "";
 
-  position: absolute;
-  inset: -2px;
+position: absolute;
+inset: -4px;
 
-  box-sizing: border-box;
+box-sizing: border-box;
 
-  border-radius: inherit;
+border-radius: inherit;
 
-  /*
-   * Extremely faint secondary edge.
-   * Keeps the premium glass boundary without the
-   * previous thick 4px-looking ring.
-   */
-  border: 1px solid rgba(255, 255, 255, 0.62);
+border: 1px solid rgba(255, 255, 255, 0.94);
 
-  background: transparent;
+background: transparent;
 
-  pointer-events: none;
+pointer-events: none;
 
-  z-index: -2;
+z-index: -2;
 }
 
-
 /* ═══════════════════════════════════════════════════════════════
-   PLUS
-   ═══════════════════════════════════════════════════════════════ */
+PLUS
+═══════════════════════════════════════════════════════════════ */
 
 .ico-plus {
-  flex: 0 0 40px;
+flex: 0 0 40px;
 
-  width: 40px;
-  height: 40px;
+width: 40px;
+height: 40px;
 
-  display: flex;
-  align-items: center;
-  justify-content: center;
+display: flex;
+align-items: center;
+justify-content: center;
 
-  box-sizing: border-box;
+box-sizing: border-box;
 
-  padding: 0;
-  margin: 0;
+padding: 0;
+margin: 0;
 
-  border: 0;
-  outline: 0;
+border: 0;
+outline: 0;
 
-  background: transparent;
+background: transparent;
 
-  color: #64635f;
+color: #64635f;
 
-  border-radius: 50%;
+border-radius: 50%;
 
-  cursor: pointer;
+cursor: pointer;
 
-  -webkit-tap-highlight-color: transparent;
+-webkit-tap-highlight-color: transparent;
 
-  transition:
-    background 0.12s ease,
-    transform 0.12s ease,
-    color 0.12s ease;
+transition:
+background 0.12s ease,
+transform 0.12s ease,
+color 0.12s ease;
 }
 
 .ico-plus:hover {
-  background: rgba(70, 69, 66, 0.022);
+background: rgba(70, 69, 66, 0.022);
 }
 
 .ico-plus:active {
-  background: rgba(70, 69, 66, 0.045);
-  transform: scale(0.95);
+background: rgba(70, 69, 66, 0.045);
+transform: scale(0.95);
 }
 
 .ico-plus svg {
-  width: 27px;
-  height: 27px;
+width: 27px;
+height: 27px;
 
-  display: block;
+display: block;
 
-  stroke: currentColor;
-  stroke-width: 1.45;
+stroke: currentColor;
+stroke-width: 1.45;
 
-  stroke-linecap: round;
-  stroke-linejoin: round;
+stroke-linecap: round;
+stroke-linejoin: round;
 
-  fill: none;
+fill: none;
 
-  vector-effect: non-scaling-stroke;
+vector-effect: non-scaling-stroke;
 }
 
-
 /* ═══════════════════════════════════════════════════════════════
-   INPUT WRAPPER
-   ═══════════════════════════════════════════════════════════════ */
+INPUT WRAPPER
+═══════════════════════════════════════════════════════════════ */
 
 .overlay-input-wrap {
-  flex: 1;
-  min-width: 0;
+flex: 1;
+min-width: 0;
 
-  position: relative;
+position: relative;
 
-  height: 100%;
+height: 100%;
 
-  display: flex;
-  align-items: center;
+display: flex;
+align-items: center;
 }
 
-
 /* ═══════════════════════════════════════════════════════════════
-   INPUT
-   ═══════════════════════════════════════════════════════════════ */
+INPUT
+═══════════════════════════════════════════════════════════════ */
 
 .search-input {
-  position: absolute;
-  inset: 0;
+position: absolute;
+inset: 0;
 
-  width: 100%;
-  height: 100%;
+width: 100%;
+height: 100%;
 
-  box-sizing: border-box;
+box-sizing: border-box;
 
-  padding: 0;
-  margin: 0;
+padding: 0;
+margin: 0;
 
-  border: 0;
-  outline: 0;
+border: 0;
+outline: 0;
 
-  background: transparent;
+background: transparent;
 
-  font-family:
-    -apple-system,
-    BlinkMacSystemFont,
-    "SF Pro Text",
-    "SF Pro Display",
-    "Inter",
-    system-ui,
-    sans-serif;
+font-family:
+-apple-system,
+BlinkMacSystemFont,
+"SF Pro Text",
+"SF Pro Display",
+"Inter",
+system-ui,
+sans-serif;
 
-  font-size: 16px;
-  font-weight: 400;
+font-size: 16px;
+font-weight: 400;
 
-  line-height: 1.2;
-  letter-spacing: -0.01em;
+line-height: 1.2;
+letter-spacing: -0.01em;
 
-  color: #44433f;
+color: #44433f;
 
-  caret-color: #55544f;
+caret-color: #55544f;
 
-  z-index: 2;
+z-index: 2;
 
-  -webkit-appearance: none;
-  appearance: none;
+-webkit-appearance: none;
+appearance: none;
 
-  -webkit-tap-highlight-color: transparent;
+-webkit-tap-highlight-color: transparent;
 }
 
 .search-input::placeholder {
-  color: transparent;
-  opacity: 0;
+color: transparent;
+opacity: 0;
 }
 
 .search-input::-webkit-search-cancel-button,
 .search-input::-webkit-search-decoration,
 .search-input::-webkit-search-results-button,
 .search-input::-webkit-search-results-decoration {
-  -webkit-appearance: none;
-  appearance: none;
-  display: none;
+-webkit-appearance: none;
+appearance: none;
+display: none;
 }
 
-
 /* ═══════════════════════════════════════════════════════════════
-   SHIMMER PLACEHOLDER
-   ═══════════════════════════════════════════════════════════════ */
+SHIMMER PLACEHOLDER
+═══════════════════════════════════════════════════════════════ */
 
 .shimmer-overlay {
-  position: absolute;
-  inset: 0;
+position: absolute;
+inset: 0;
 
-  display: flex;
-  align-items: center;
+display: flex;
+align-items: center;
 
-  overflow: hidden;
+overflow: hidden;
 
-  pointer-events: none;
+pointer-events: none;
 
-  z-index: 1;
+z-index: 1;
 }
 
 .shimmer-overlay span {
-  font-family:
-    -apple-system,
-    BlinkMacSystemFont,
-    "SF Pro Text",
-    "SF Pro Display",
-    "Inter",
-    system-ui,
-    sans-serif;
+font-family:
+-apple-system,
+BlinkMacSystemFont,
+"SF Pro Text",
+"SF Pro Display",
+"Inter",
+system-ui,
+sans-serif;
 
-  font-size: 16px;
-  font-weight: 400;
+font-size: 16px;
+font-weight: 400;
 
-  line-height: 1.2;
-  letter-spacing: -0.01em;
+line-height: 1.2;
+letter-spacing: -0.01em;
 
-  white-space: nowrap;
+white-space: nowrap;
 
-  background:
-    linear-gradient(
-      90deg,
-      #696762 0%,
-      #696762 35%,
-      #7a7873 43%,
-      #f3f1ec 50%,
-      #7a7873 57%,
-      #696762 65%,
-      #696762 100%
-    );
+background:
+linear-gradient(
+90deg,
+#696762 0%,
+#696762 35%,
+#7a7873 43%,
+#f3f1ec 50%,
+#7a7873 57%,
+#696762 65%,
+#696762 100%
+);
 
-  background-size: 320% 100%;
-  background-position: 150% center;
+background-size: 320% 100%;
+background-position: 150% center;
 
-  -webkit-background-clip: text;
-  background-clip: text;
+-webkit-background-clip: text;
+background-clip: text;
 
-  -webkit-text-fill-color: transparent;
+-webkit-text-fill-color: transparent;
 
-  animation: sweep 3.8s 1s linear infinite;
+animation: sweep 3.8s 1s linear infinite;
 
-  transform: translateZ(0);
+transform: translateZ(0);
 }
 
 @keyframes sweep {
-  0% {
-    background-position: 150% center;
-  }
+0% {
+background-position: 150% center;
+}
 
-  100% {
-    background-position: -150% center;
-  }
+100% {
+background-position: -150% center;
+}
 }
 
 .search-input:not(:placeholder-shown) + .shimmer-overlay {
-  display: none;
+display: none;
 }
 
-
 /* ═══════════════════════════════════════════════════════════════
-   CAMERA
-   ═══════════════════════════════════════════════════════════════ */
+CAMERA
+═══════════════════════════════════════════════════════════════ */
 
 .ico-camera {
-  flex: 0 0 40px;
+flex: 0 0 40px;
 
-  width: 40px;
-  height: 40px;
+width: 40px;
+height: 40px;
 
-  display: flex;
-  align-items: center;
-  justify-content: center;
+display: flex;
+align-items: center;
+justify-content: center;
 
-  box-sizing: border-box;
+box-sizing: border-box;
 
-  padding: 0;
-  margin: 0;
+padding: 0;
+margin: 0;
 
-  border: 0;
-  outline: 0;
+border: 0;
+outline: 0;
 
-  background: transparent;
+background: transparent;
 
-  color: #64635f;
+color: #64635f;
 
-  border-radius: 50%;
+border-radius: 50%;
 
-  cursor: pointer;
+cursor: pointer;
 
-  -webkit-tap-highlight-color: transparent;
+-webkit-tap-highlight-color: transparent;
 
-  transition:
-    background 0.12s ease,
-    transform 0.12s ease,
-    color 0.12s ease;
+transition:
+background 0.12s ease,
+transform 0.12s ease,
+color 0.12s ease;
 }
 
 .ico-camera:hover {
-  background: rgba(70, 69, 66, 0.022);
+background: rgba(70, 69, 66, 0.022);
 }
 
 .ico-camera:active {
-  background: rgba(70, 69, 66, 0.045);
-  transform: scale(0.95);
+background: rgba(70, 69, 66, 0.045);
+transform: scale(0.95);
 }
 
 .ico-camera svg {
-  width: 27px;
-  height: 27px;
+width: 27px;
+height: 27px;
 
-  display: block;
+display: block;
 
-  stroke: currentColor;
-  stroke-width: 1.45;
+stroke: currentColor;
+stroke-width: 1.45;
 
-  stroke-linecap: round;
-  stroke-linejoin: round;
+stroke-linecap: round;
+stroke-linejoin: round;
 
-  fill: none;
+fill: none;
 
-  vector-effect: non-scaling-stroke;
+vector-effect: non-scaling-stroke;
 }
 
-
 /* ═══════════════════════════════════════════════════════════════
-   SEND
-   ═══════════════════════════════════════════════════════════════ */
+SEND
+═══════════════════════════════════════════════════════════════ */
 
 .send-btn {
-  flex: 0 0 40px;
+flex: 0 0 40px;
 
-  width: 40px;
-  height: 40px;
+width: 40px;
+height: 40px;
 
-  display: none;
+display: none;
 
-  align-items: center;
-  justify-content: center;
+align-items: center;
+justify-content: center;
 
-  box-sizing: border-box;
+box-sizing: border-box;
 
-  padding: 0;
-  margin: 0;
+padding: 0;
+margin: 0;
 
-  border: 0;
-  border-radius: 50%;
+border: 0;
+border-radius: 50%;
 
-  background: #11110f;
+background: #11110f;
 
-  cursor: pointer;
+cursor: pointer;
 
-  -webkit-tap-highlight-color: transparent;
+-webkit-tap-highlight-color: transparent;
 
-  transition: transform 0.15s ease;
+transition: transform 0.15s ease;
 }
 
 .send-btn:active {
-  transform: scale(0.90);
+transform: scale(0.90);
 }
 
 .send-btn svg {
-  width: 18px;
-  height: 18px;
+width: 18px;
+height: 18px;
 
-  display: block;
+display: block;
 
-  stroke: #ffffff;
-  stroke-width: 1.8;
+stroke: #ffffff;
+stroke-width: 1.8;
 
-  stroke-linecap: round;
-  stroke-linejoin: round;
+stroke-linecap: round;
+stroke-linejoin: round;
 
-  fill: none;
+fill: none;
 }
 
-
 /* ═══════════════════════════════════════════════════════════════
-   CAMERA / SEND TOGGLE
-   ═══════════════════════════════════════════════════════════════ */
+CAMERA / SEND TOGGLE
+═══════════════════════════════════════════════════════════════ */
 
 .overlay-pill.has-text .ico-camera {
-  display: none;
+display: none;
 }
 
 .overlay-pill.has-text .send-btn {
-  display: flex;
+display: flex;
 }
 
-
 /* ═══════════════════════════════════════════════════════════════
-   CROSS MODE
-   ═══════════════════════════════════════════════════════════════ */
+CROSS MODE
+═══════════════════════════════════════════════════════════════ */
 
 .send-btn.cross-mode {
-  background: transparent;
+background: transparent;
 }
 
 .send-btn.cross-mode svg {
-  width: 23px;
-  height: 23px;
+width: 23px;
+height: 23px;
 
-  stroke: #11110f;
-  stroke-width: 1.7;
+stroke: #11110f;
+stroke-width: 1.7;
 
-  stroke-linecap: round;
-  stroke-linejoin: round;
+stroke-linecap: round;
+stroke-linejoin: round;
 }
 
-
 /* ═══════════════════════════════════════════════════════════════
-   PLUS MENU
-   ═══════════════════════════════════════════════════════════════ */
+PLUS MENU
+═══════════════════════════════════════════════════════════════ */
 
 .plus-menu-backdrop {
-  position: fixed;
-  inset: 0;
+position: fixed;
+inset: 0;
 
-  z-index: 100;
+z-index: 100;
 
-  display: none;
+display: none;
 }
 
 .plus-menu-backdrop.open {
-  display: block;
+display: block;
 }
 
 .plus-menu {
-  position: fixed;
+position: fixed;
 
-  left: 20px;
+left: 20px;
 
-  bottom: calc(82px + env(safe-area-inset-bottom));
+bottom: calc(82px + env(safe-area-inset-bottom));
 
-  width: 190px;
+width: 190px;
 
-  box-sizing: border-box;
+box-sizing: border-box;
 
-  background: #f0f0f0;
+background: #f0f0f0;
 
-  border-radius: 14px;
+border-radius: 14px;
 
-  overflow: hidden;
+overflow: hidden;
 
-  z-index: 101;
+z-index: 101;
 
-  transform:
-    translateY(8px)
-    scale(0.97);
+transform:
+translateY(8px)
+scale(0.97);
 
-  transform-origin: bottom left;
+transform-origin: bottom left;
 
-  opacity: 0;
-  pointer-events: none;
+opacity: 0;
+pointer-events: none;
 
-  will-change: transform, opacity;
+will-change: transform, opacity;
 
-  transition:
-    transform 0.22s cubic-bezier(0.22, 1, 0.36, 1),
-    opacity 0.14s ease;
+transition:
+transform 0.22s cubic-bezier(0.22, 1, 0.36, 1),
+opacity 0.14s ease;
 }
 
 .plus-menu.open {
-  transform:
-    translateY(0)
-    scale(1);
+transform:
+translateY(0)
+scale(1);
 
-  opacity: 1;
-  pointer-events: auto;
+opacity: 1;
+pointer-events: auto;
 }
 
-
 /* ═══════════════════════════════════════════════════════════════
-   MENU ITEMS
-   ═══════════════════════════════════════════════════════════════ */
+MENU ITEMS
+═══════════════════════════════════════════════════════════════ */
 
 .pm-item {
-  display: flex;
-  align-items: center;
+display: flex;
+align-items: center;
 
-  gap: 12px;
+gap: 12px;
 
-  width: 100%;
+width: 100%;
 
-  box-sizing: border-box;
+box-sizing: border-box;
 
-  padding: 12px 16px;
+padding: 12px 16px;
 
-  border: 0;
+border: 0;
 
-  background: transparent;
+background: transparent;
 
-  text-align: left;
+text-align: left;
 
-  color: #111111;
+color: #111111;
 
-  font-family:
-    -apple-system,
-    BlinkMacSystemFont,
-    "SF Pro Text",
-    "SF Pro Display",
-    "Inter",
-    system-ui,
-    sans-serif;
+font-family:
+-apple-system,
+BlinkMacSystemFont,
+"SF Pro Text",
+"SF Pro Display",
+"Inter",
+system-ui,
+sans-serif;
 
-  font-size: 0.9rem;
-  font-weight: 500;
+font-size: 0.9rem;
+font-weight: 500;
 
-  letter-spacing: 0;
+letter-spacing: 0;
 
-  cursor: pointer;
+cursor: pointer;
 
-  -webkit-tap-highlight-color: transparent;
+-webkit-tap-highlight-color: transparent;
 
-  transition: background 0.1s ease;
+transition: background 0.1s ease;
 }
 
 .pm-item:hover {
-  background: rgba(0, 0, 0, 0.024);
+background: rgba(0, 0, 0, 0.024);
 }
 
 .pm-item:active {
-  background: rgba(0, 0, 0, 0.05);
+background: rgba(0, 0, 0, 0.05);
 }
 
-
 /* ═══════════════════════════════════════════════════════════════
-   MENU ICON
-   ═══════════════════════════════════════════════════════════════ */
+MENU ICON
+═══════════════════════════════════════════════════════════════ */
 
 .pm-icon {
-  flex-shrink: 0;
+flex-shrink: 0;
 
-  width: 20px;
-  height: 20px;
+width: 20px;
+height: 20px;
 
-  display: flex;
-  align-items: center;
-  justify-content: center;
+display: flex;
+align-items: center;
+justify-content: center;
 }
 
 .pm-icon svg {
-  width: 18px;
-  height: 18px;
+width: 18px;
+height: 18px;
 
-  stroke: #111111;
-  stroke-width: 1.65;
+stroke: #111111;
+stroke-width: 1.65;
 
-  stroke-linecap: round;
-  stroke-linejoin: round;
+stroke-linecap: round;
+stroke-linejoin: round;
 
-  fill: none;
+fill: none;
 }
 
-
 /* ═══════════════════════════════════════════════════════════════
-   DARK MODE — UNCHANGED
-   ═══════════════════════════════════════════════════════════════ */
+DARK MODE
+═══════════════════════════════════════════════════════════════ */
 
 @media (prefers-color-scheme: dark) {
 
-  .overlay-pill {
-    background:
-      linear-gradient(
-        180deg,
-        rgba(62, 62, 61, 0.96) 0%,
-        rgba(56, 56, 55, 0.95) 48%,
-        rgba(52, 52, 51, 0.94) 100%
-      );
+.overlay-pill {
+background:
+linear-gradient(
+180deg,
+rgba(62, 62, 61, 0.96) 0%,
+rgba(56, 56, 55, 0.95) 48%,
+rgba(52, 52, 51, 0.94) 100%
+);
 
-    border-color: transparent;
+border-color: transparent;  
 
-    box-shadow: none;
+box-shadow: none;  
 
-    -webkit-backdrop-filter: none;
-    backdrop-filter: none;
-  }
+-webkit-backdrop-filter: none;  
+backdrop-filter: none;
 
-  .overlay-pill::before,
-  .overlay-pill::after {
-    display: none;
-  }
-
-  .search-input {
-    color: #efeeeb;
-    caret-color: #d7d5d0;
-  }
-
-  .shimmer-overlay span {
-    background:
-      linear-gradient(
-        90deg,
-        #aaa8a2 0%,
-        #aaa8a2 35%,
-        #bbb9b4 43%,
-        #f0efeb 50%,
-        #bbb9b4 57%,
-        #aaa8a2 65%,
-        #aaa8a2 100%
-      );
-
-    background-size: 320% 100%;
-
-    -webkit-background-clip: text;
-    background-clip: text;
-  }
-
-  .ico-plus,
-  .ico-camera {
-    color: #d0cec9;
-  }
-
-  .send-btn {
-    background:
-      linear-gradient(
-        180deg,
-        #eeece9 0%,
-        #dfddda 100%
-      );
-
-    box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.70),
-      inset 0 -1px 0 rgba(0, 0, 0, 0.15);
-  }
-
-  .send-btn svg {
-    stroke: #11110f;
-  }
-
-  .send-btn.cross-mode {
-    background: transparent;
-    box-shadow: none;
-  }
-
-  .send-btn.cross-mode svg {
-    stroke: #d0cec9;
-  }
-
-  .plus-menu {
-    background: #2c2c2b;
-
-    box-shadow:
-      0 4px 16px rgba(0, 0, 0, 0.35),
-      0 1px 4px rgba(0, 0, 0, 0.2);
-  }
-
-  .pm-item {
-    color: #e5e3de;
-  }
-
-  .pm-item:hover {
-    background: rgba(255, 255, 255, 0.035);
-  }
-
-  .pm-item:active {
-    background: rgba(255, 255, 255, 0.07);
-  }
-
-  .pm-icon svg {
-    stroke: #e5e3de;
-  }
 }
 
+.overlay-pill::before,
+.overlay-pill::after {
+display: none;
+}
+
+.search-input {
+color: #efeeeb;
+caret-color: #d7d5d0;
+}
+
+.shimmer-overlay span {
+background:
+linear-gradient(
+90deg,
+#aaa8a2 0%,
+#aaa8a2 35%,
+#bbb9b4 43%,
+#f0efeb 50%,
+#bbb9b4 57%,
+#aaa8a2 65%,
+#aaa8a2 100%
+);
+
+background-size: 320% 100%;  
+
+-webkit-background-clip: text;  
+background-clip: text;
+
+}
+
+.ico-plus,
+.ico-camera {
+color: #d0cec9;
+}
+
+.send-btn {
+background:
+linear-gradient(
+180deg,
+#eeece9 0%,
+#dfddda 100%
+);
+
+box-shadow:  
+  inset 0 1px 0 rgba(255, 255, 255, 0.70),  
+  inset 0 -1px 0 rgba(0, 0, 0, 0.15);
+
+}
+
+.send-btn svg {
+stroke: #11110f;
+}
+
+.send-btn.cross-mode {
+background: transparent;
+box-shadow: none;
+}
+
+.send-btn.cross-mode svg {
+stroke: #d0cec9;
+}
+
+.plus-menu {
+background: #2c2c2b;
+
+box-shadow:  
+  0 4px 16px rgba(0, 0, 0, 0.35),  
+  0 1px 4px rgba(0, 0, 0, 0.2);
+
+}
+
+.pm-item {
+color: #e5e3de;
+}
+
+.pm-item:hover {
+background: rgba(255, 255, 255, 0.035);
+}
+
+.pm-item:active {
+background: rgba(255, 255, 255, 0.07);
+}
+
+.pm-icon svg {
+stroke: #e5e3de;
+}
+}
 
 /* ═══════════════════════════════════════════════════════════════
-   MOBILE
-   ═══════════════════════════════════════════════════════════════ */
+MOBILE
+═══════════════════════════════════════════════════════════════ */
 
 @media (max-width: 480px) {
 
-  .chatbar-wrap {
-    padding-left: 18px;
-    padding-right: 18px;
+.chatbar-wrap {
+padding-left: 18px;
+padding-right: 18px;
 
-    padding-top: 10px;
-    padding-bottom: calc(12px + env(safe-area-inset-bottom));
-  }
+padding-top: 10px;  
+padding-bottom: calc(12px + env(safe-area-inset-bottom));
 
-  .overlay-pill {
-    height: 60px;
-    min-height: 60px;
-
-    padding-left: 14px;
-    padding-right: 12px;
-
-    gap: 6px;
-  }
-
-  .search-input,
-  .shimmer-overlay span {
-    font-size: 16px;
-  }
-
-  .ico-plus,
-  .ico-camera,
-  .send-btn {
-    flex-basis: 40px;
-
-    width: 40px;
-    height: 40px;
-  }
 }
 
+.overlay-pill {
+height: 60px;
+min-height: 60px;
+
+padding-left: 14px;  
+padding-right: 12px;  
+
+gap: 6px;
+
+}
+
+.search-input,
+.shimmer-overlay span {
+font-size: 16px;
+}
+
+.ico-plus,
+.ico-camera,
+.send-btn {
+flex-basis: 40px;
+
+width: 40px;  
+height: 40px;
+
+}
+}
 
 /* ═══════════════════════════════════════════════════════════════
-   SMALL PHONES
-   ═══════════════════════════════════════════════════════════════ */
+SMALL PHONES
+═══════════════════════════════════════════════════════════════ */
 
 @media (max-width: 360px) {
 
-  .chatbar-wrap {
-    padding-left: 16px;
-    padding-right: 16px;
-  }
-
-  .overlay-pill {
-    padding-left: 12px;
-    padding-right: 10px;
-
-    gap: 4px;
-  }
-
-  .ico-plus,
-  .ico-camera,
-  .send-btn {
-    flex-basis: 38px;
-
-    width: 38px;
-    height: 38px;
-  }
+.chatbar-wrap {
+padding-left: 16px;
+padding-right: 16px;
 }
 
+.overlay-pill {
+padding-left: 12px;
+padding-right: 10px;
+
+gap: 4px;
+
+}
+
+.ico-plus,
+.ico-camera,
+.send-btn {
+flex-basis: 38px;
+
+width: 38px;  
+height: 38px;
+
+}
+}
 
 /* ═══════════════════════════════════════════════════════════════
-   REDUCED MOTION
-   ═══════════════════════════════════════════════════════════════ */
+REDUCED MOTION
+═══════════════════════════════════════════════════════════════ */
 
 @media (prefers-reduced-motion: reduce) {
 
-  .shimmer-overlay span {
-    animation: none;
+.shimmer-overlay span {
+animation: none;
 
-    background: none;
+background: none;  
 
-    -webkit-text-fill-color: #696762;
-    color: #696762;
-  }
+-webkit-text-fill-color: #696762;  
+color: #696762;
 
-  .overlay-pill,
-  .ico-plus,
-  .ico-camera,
-  .send-btn,
-  .plus-menu {
-    transition: none;
-  }
+}
+
+.overlay-pill,
+.ico-plus,
+.ico-camera,
+.send-btn,
+.plus-menu {
+transition: none;
+}
 }

@@ -136,7 +136,7 @@
     if (r === null) {
       aspect = gridMode ? '100%' : '75%';
     } else if (gridMode) {
-      aspect = (Math.min(Math.max(r, 0.5), 1.2) * 100).toFixed(2) + '%';
+      aspect = (Math.min(Math.max(r, 0.6), 1.0) * 100).toFixed(2) + '%';
     } else {
       aspect = (r * 100).toFixed(2) + '%';
     }
@@ -279,7 +279,7 @@
       const col = heights[0] <= heights[1] ? 0 : 1;
       cols[col].appendChild(tile);
       const r = _ratio(data);
-      heights[col] += r !== null ? Math.min(Math.max(r, 0.5), 1.2) : 1.0;
+      heights[col] += r !== null ? Math.min(Math.max(r, 0.6), 1.0) : 0.8;
       _observeTile(tile);
       placed++;
     }
@@ -357,7 +357,7 @@
           if (section) fragment.appendChild(section);
         }
       } else {
-        const count = queue.length >= 4 && random() < 0.45 ? 4 : Math.min(2, queue.length);
+        const count = Math.min(2, queue.length);
         const items = takeGrid(count);
         if (items.length) {
           const section = _buildGridSection(items);
@@ -483,3 +483,4 @@
 
   window._atkynInit_images();
 }());
+          

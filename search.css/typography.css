@@ -140,16 +140,27 @@
 }
 
 
-/* ── Unordered — deep nesting ───────────────────────────────── */
+/* ── Unordered — third level: no bullet ─────────────────────── */
 
 .msg.bot .bubble li > ul > li > ul,
 .msg.bot .bubble li > ol > li > ul {
+  margin-top: 5px;
+  margin-bottom: 6px;
   margin-left: 0 !important;
-  padding-left: 8px !important;
+  padding-left: 0 !important;
 }
 
-.msg.bot .bubble li > ul > li > ul > li {
-  padding-left: 16px !important;
+.msg.bot .bubble li > ul > li > ul > li,
+.msg.bot .bubble li > ol > li > ul > li {
+  padding-left: 0 !important;
+  margin: 5px 0;
+  line-height: 1.56;
+}
+
+.msg.bot .bubble li > ul > li > ul > li::before,
+.msg.bot .bubble li > ol > li > ul > li::before {
+  content: none !important;
+  display: none !important;
 }
 
 
@@ -374,6 +385,25 @@
     opacity: 0.68;
   }
 
+  /* Unordered — third level: no bullet */
+  .msg.bot .bubble li > ul > li > ul,
+  .msg.bot .bubble li > ol > li > ul {
+    margin-left: 0 !important;
+    padding-left: 0 !important;
+  }
+
+  .msg.bot .bubble li > ul > li > ul > li,
+  .msg.bot .bubble li > ol > li > ul > li {
+    padding-left: 0 !important;
+    margin: 5px 0;
+  }
+
+  .msg.bot .bubble li > ul > li > ul > li::before,
+  .msg.bot .bubble li > ol > li > ul > li::before {
+    content: none !important;
+    display: none !important;
+  }
+
   /* Ordered — top level */
   .msg.bot .bubble ol {
     padding-left: 21px;
@@ -387,6 +417,11 @@
   .msg.bot .bubble li > ol {
     margin-left: 0 !important;
     padding-left: 19px !important;
+  }
+
+  .msg.bot .bubble li > ol > li {
+    padding-left: 2px;
+    margin: 5px 0;
   }
 
 }

@@ -88,9 +88,33 @@
   bottom: 0;
   display: flex;
   align-items: flex-end;
+  justify-content: space-between;
+  gap: 6px;
   padding: 8px;
   background: transparent;
+  border-radius: 0 0 10px 10px;
   pointer-events: none;
+}
+
+.img-tile__menu {
+  flex: 0 0 29px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 29px;
+  height: 29px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.34);
+  color: #fff;
+  cursor: pointer;
+  pointer-events: auto;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.img-tile__menu:active {
+  background: rgba(0, 0, 0, 0.52);
 }
 
 .img-tile__title {
@@ -334,6 +358,14 @@
   .img-tile__spacer,
   .img-tile__spacer img {
     background: #2c2c2e;
+  }
+
+  .img-tile__menu {
+    background: rgba(255, 255, 255, 0.18);
+  }
+
+  .img-tile__menu:active {
+    background: rgba(255, 255, 255, 0.30);
   }
 
   .sk-img {

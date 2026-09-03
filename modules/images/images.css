@@ -79,7 +79,6 @@
 
 .gallery-hero .img-tile__spacer img {
   border-radius: 12px;
-  object-fit: contain;
 }
 
 .img-tile__overlay {
@@ -429,4 +428,4 @@
       background: #303032;
     }
   }
-}
+                   }

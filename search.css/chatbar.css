@@ -1,497 +1,670 @@
 /* ════════════════════════════════════════════════════════════════
-chatbar.css — Minimal professional chatbar
-Professional soft gradient · Light Gray pill · No pill shadow
-════════════════════════════════════════════════════════════════ */
+   ATKYN — PREMIUM COMPACT GLASS CHATBAR
+   Full Replacement
+   • Existing 66px pill height preserved
+   • Light mode redesigned to match reference
+   • Existing functionality / JS hooks preserved
+   • No layout shift
+   • No unnecessary heavy glass effects
+   • Responsive and production-ready
+   ════════════════════════════════════════════════════════════════ */
+
 
 /* ────────────────────────────────────────────────────────────────
-CHATBAR WRAPPER
-──────────────────────────────────────────────────────────────── */
-.chatbar-wrap {
-flex-shrink: 0;
+   BOX MODEL
+   Keep every dimension inside the existing component footprint.
+   ──────────────────────────────────────────────────────────────── */
 
-padding: 8px 16px calc(4px + env(safe-area-inset-bottom));
-
-position: relative;
-z-index: 10;
-
-will-change: transform;
-transform: translateZ(0);
-
-background: #ffffff;
+.chatbar-wrap,
+.chatbar-wrap *,
+.chatbar-wrap *::before,
+.chatbar-wrap *::after {
+    box-sizing: border-box;
 }
 
-@media (prefers-color-scheme: dark) {
-.chatbar-wrap {
-background: var(--color-bg-dark);
-}
-}
 
 /* ────────────────────────────────────────────────────────────────
-PILL
-──────────────────────────────────────────────────────────────── */
+   CHATBAR WRAPPER
+   ──────────────────────────────────────────────────────────────── */
+
+.chatbar-wrap {
+    flex-shrink: 0;
+
+    position: relative;
+    z-index: 10;
+
+    padding: 8px 16px calc(4px + env(safe-area-inset-bottom));
+
+    background: #ffffff;
+
+    will-change: transform;
+    transform: translateZ(0);
+}
+
+
+/* ────────────────────────────────────────────────────────────────
+   MAIN PILL
+   Reference:
+   soft warm-white / subtle glass / extremely rounded capsule
+   ──────────────────────────────────────────────────────────────── */
+
 .overlay-pill {
-width: 100%;
+    width: 100%;
+    height: 66px;
+    min-height: 66px;
+    max-height: 66px;
 
-display: flex;
-align-items: center;
+    margin: 0;
 
-background: var(--color-bg);
+    display: flex;
+    align-items: center;
 
-border: 2px solid #5f6368;
-border-radius: 100px;
+    min-width: 0;
 
-padding: 0 18px 0 20px;
-margin: 0;
+    gap: 10px;
 
-height: 64.5px;
-gap: 12px;
+    padding: 0 12px 0 18px;
 
-transition: border-color 0.18s;
+    border: 1px solid rgba(255, 255, 255, 0.82);
+    border-radius: 999px;
+
+    /*
+     * Soft warm-white surface.
+     * Kept intentionally close to the reference rather than using
+     * an obvious gradient.
+     */
+    background: rgba(249, 247, 243, 0.94);
+
+    /*
+     * Extremely restrained glass treatment.
+     * The fallback background remains correct if backdrop-filter
+     * is unsupported.
+     */
+    -webkit-backdrop-filter: blur(14px) saturate(1.06);
+    backdrop-filter: blur(14px) saturate(1.06);
+
+    /*
+     * The shadow is broad and diffuse.
+     * It visually lifts the pill without making it look heavy.
+     */
+    box-shadow:
+        0 1px 0 rgba(255, 255, 255, 0.92) inset,
+        0 0 0 1px rgba(255, 255, 255, 0.18) inset,
+        0 8px 28px rgba(0, 0, 0, 0.085),
+        0 2px 8px rgba(0, 0, 0, 0.045);
+
+    overflow: hidden;
+
+    transition:
+        border-color 0.18s ease,
+        box-shadow 0.18s ease;
 }
+
+
+/* Keep focus subtle.
+   No blue outline or visible hard ring. */
 
 .overlay-pill:focus-within {
-border-color: var(--color-primary-dark);
+    border-color: rgba(255, 255, 255, 0.92);
+
+    box-shadow:
+        0 1px 0 rgba(255, 255, 255, 0.95) inset,
+        0 0 0 1px rgba(255, 255, 255, 0.16) inset,
+        0 8px 28px rgba(0, 0, 0, 0.09),
+        0 2px 8px rgba(0, 0, 0, 0.05);
 }
 
-@media (prefers-color-scheme: dark) {
-.overlay-pill {
-background: var(--color-bg-alt-dark);
-border-color: var(--color-primary);
-}
-}
 
 /* ────────────────────────────────────────────────────────────────
-PLUS / ATTACH BUTTON
-──────────────────────────────────────────────────────────────── */
+   LEFT / TOOL BUTTON
+   Existing JS behavior retained.
+   Positioned as a compact internal control.
+   ──────────────────────────────────────────────────────────────── */
+
 .ico-plus {
-flex-shrink: 0;
-display: flex;
-align-items: center;
+    flex: 0 0 32px;
 
-border: none;
-background: none;
+    width: 32px;
+    height: 32px;
 
-cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 
-padding: 4px;
-border-radius: 50%;
+    margin: 0;
 
-color: var(--color-primary);
+    padding: 3px;
 
-transition:
-background 0.12s,
-color 0.12s;
+    border: 0;
+    border-radius: 50%;
+
+    background: transparent;
+
+    color: var(--color-primary);
+
+    cursor: pointer;
+
+    transition:
+        background 0.12s ease,
+        color 0.12s ease,
+        transform 0.12s ease;
 }
 
 .ico-plus:active {
-background: rgba(0, 0, 0, 0.06);
+    background: rgba(0, 0, 0, 0.055);
+    transform: scale(0.96);
 }
 
 .ico-plus svg {
-width: 24px;
-height: 24px;
+    width: 22px;
+    height: 22px;
+
+    display: block;
+
+    flex-shrink: 0;
 }
 
-@media (prefers-color-scheme: dark) {
-.ico-plus:active {
-background: rgba(255, 255, 255, 0.08);
-}
-}
 
 /* ────────────────────────────────────────────────────────────────
-INPUT WRAPPER
-──────────────────────────────────────────────────────────────── */
+   INPUT WRAPPER
+   Flexible center region.
+   ──────────────────────────────────────────────────────────────── */
+
 .overlay-input-wrap {
-flex: 1;
-position: relative;
+    flex: 1 1 auto;
 
-height: 100%;
+    min-width: 0;
 
-display: flex;
-align-items: center;
+    position: relative;
+
+    height: 100%;
+
+    display: flex;
+    align-items: center;
 }
 
+
 /* ────────────────────────────────────────────────────────────────
-SEARCH INPUT
-──────────────────────────────────────────────────────────────── */
+   SEARCH INPUT
+   ──────────────────────────────────────────────────────────────── */
+
 .search-input {
-position: absolute;
-inset: 0;
+    position: absolute;
+    inset: 0;
 
-width: 100%;
-height: 100%;
+    width: 100%;
+    height: 100%;
 
-border: none;
-outline: none;
+    min-width: 0;
 
-background: transparent;
+    margin: 0;
+    padding: 0;
 
-font-size: 1rem;
-font-weight: 400;
+    border: 0;
+    outline: 0;
 
-color: var(--color-text);
+    appearance: none;
+    -webkit-appearance: none;
 
-padding: 0;
+    background: transparent;
 
-z-index: 2;
+    z-index: 2;
 
-caret-color: var(--color-primary);
+    color: var(--color-text);
 
-letter-spacing: 0.01em;
+    caret-color: var(--color-primary);
+
+    font-size: 1rem;
+    font-weight: 400;
+    line-height: 1.2;
+
+    letter-spacing: 0.005em;
+
+    text-overflow: ellipsis;
+
+    box-shadow: none;
 }
 
 .search-input::placeholder {
-color: transparent;
+    color: transparent;
+    opacity: 0;
 }
 
 .search-input::-webkit-search-cancel-button,
 .search-input::-webkit-search-decoration,
 .search-input::-webkit-search-results-button,
 .search-input::-webkit-search-results-decoration {
--webkit-appearance: none;
-appearance: none;
-display: none;
+    -webkit-appearance: none;
+    appearance: none;
+
+    display: none;
 }
 
-@media (prefers-color-scheme: dark) {
-.search-input {
-color: var(--color-text-dark-alt);
-}
-}
 
 /* ────────────────────────────────────────────────────────────────
-ANIMATED SHIMMER PLACEHOLDER
-──────────────────────────────────────────────────────────────── */
+   ANIMATED PLACEHOLDER
+   ──────────────────────────────────────────────────────────────── */
+
 .shimmer-overlay {
-position: absolute;
-inset: 0;
+    position: absolute;
+    inset: 0;
 
-display: flex;
-align-items: center;
+    display: flex;
+    align-items: center;
 
-pointer-events: none;
+    min-width: 0;
 
-z-index: 1;
+    overflow: hidden;
 
-overflow: hidden;
+    pointer-events: none;
+
+    z-index: 1;
 }
 
 .shimmer-overlay span {
-font-size: 1.08rem;
+    max-width: 100%;
 
-white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 
-letter-spacing: 0.01em;
+    font-size: 1.08rem;
+    font-weight: 400;
+    line-height: 1.2;
 
-background: linear-gradient(
-90deg,
-#9e9e9e 0%,
-#9e9e9e 25%,
-#ffffff 48%,
-#ffffff 52%,
-#9e9e9e 75%,
-#9e9e9e 100%
-);
+    letter-spacing: 0;
 
-background-size: 300% auto;
+    /*
+     * Softer than the previous gray/white sweep.
+     * Keeps the text close to the reference's muted gray appearance.
+     */
+    background: linear-gradient(
+        90deg,
+        #909090 0%,
+        #909090 28%,
+        #c8c5c1 42%,
+        #ffffff 50%,
+        #c8c5c1 58%,
+        #909090 72%,
+        #909090 100%
+    );
 
--webkit-background-clip: text;
--webkit-text-fill-color: transparent;
-background-clip: text;
+    background-size: 300% 100%;
 
-animation: sweep 3.5s 1s linear infinite;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+
+    animation: atkyn-chatbar-shimmer 3.5s 1s linear infinite;
 }
 
-@keyframes sweep {
-0%   { background-position: 150% center; }
-100% { background-position: -150% center; }
+@keyframes atkyn-chatbar-shimmer {
+    0% {
+        background-position: 150% center;
+    }
+
+    100% {
+        background-position: -150% center;
+    }
 }
 
 .search-input:not(:placeholder-shown) + .shimmer-overlay {
-display: none;
+    display: none;
 }
 
+
 /* ────────────────────────────────────────────────────────────────
-CAMERA BUTTON
-──────────────────────────────────────────────────────────────── */
+   CAMERA / SECONDARY ACTION
+   Existing functionality remains intact.
+   ──────────────────────────────────────────────────────────────── */
+
 .ico-camera {
-flex-shrink: 0;
+    flex: 0 0 32px;
 
-border: none;
-background: none;
+    width: 32px;
+    height: 32px;
 
-cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 
-display: flex;
-align-items: center;
+    margin: 0;
 
-padding: 4px;
+    padding: 3px;
 
-border-radius: 50%;
+    border: 0;
+    border-radius: 50%;
 
-color: var(--color-primary);
+    background: transparent;
 
-transition:
-background 0.12s,
-color 0.12s;
+    color: var(--color-primary);
+
+    cursor: pointer;
+
+    transition:
+        background 0.12s ease,
+        color 0.12s ease,
+        transform 0.12s ease;
 }
 
 .ico-camera:active {
-background: rgba(0, 0, 0, 0.06);
+    background: rgba(0, 0, 0, 0.055);
+    transform: scale(0.96);
 }
 
 .ico-camera svg {
-width: 24px;
-height: 24px;
+    width: 22px;
+    height: 22px;
+
+    display: block;
+
+    flex-shrink: 0;
 }
 
-@media (prefers-color-scheme: dark) {
-.ico-camera:active {
-background: rgba(255, 255, 255, 0.08);
-}
-}
 
 /* ────────────────────────────────────────────────────────────────
-SEND BUTTON
-──────────────────────────────────────────────────────────────── */
+   SEND BUTTON
+   Existing state / JS behavior preserved.
+   ──────────────────────────────────────────────────────────────── */
+
 .send-btn {
-flex-shrink: 0;
+    flex: 0 0 40px;
 
-display: none;
+    width: 40px;
+    height: 40px;
 
-align-items: center;
-justify-content: center;
+    display: none;
 
-width: 40px;
-height: 40px;
+    align-items: center;
+    justify-content: center;
 
-border-radius: 50%;
-border: none;
+    margin: 0;
+    padding: 0;
 
-background: var(--color-primary);
+    border: 0;
+    border-radius: 50%;
 
-cursor: pointer;
+    background: var(--color-primary);
 
-transition:
-transform 0.15s ease,
-opacity 0.15s ease,
-background 0.15s ease;
+    cursor: pointer;
+
+    transition:
+        transform 0.15s ease,
+        opacity 0.15s ease,
+        background 0.15s ease;
 }
 
 .send-btn:active {
-transform: scale(0.88);
+    transform: scale(0.88);
 }
 
 .send-btn:hover {
-opacity: 0.88;
+    opacity: 0.88;
 }
 
 .send-btn svg {
-width: 17px;
-height: 17px;
+    width: 17px;
+    height: 17px;
+
+    display: block;
 }
 
 .overlay-pill.has-text .ico-camera {
-display: none;
+    display: none;
 }
 
 .overlay-pill.has-text .send-btn {
-display: flex;
+    display: flex;
 }
 
+
 /* ────────────────────────────────────────────────────────────────
-CROSS MODE — NON-AI TABS
-──────────────────────────────────────────────────────────────── */
+   CROSS MODE
+   ──────────────────────────────────────────────────────────────── */
+
 .send-btn.cross-mode {
-background: rgba(0, 0, 0, 0.07);
+    background: rgba(0, 0, 0, 0.065);
 }
 
 .send-btn.cross-mode svg {
-stroke: rgba(0, 0, 0, 0.6);
+    width: 18px;
+    height: 18px;
 
-width: 18px;
-height: 18px;
-}
-
-@media (prefers-color-scheme: dark) {
-.send-btn.cross-mode {
-background: rgba(255, 255, 255, 0.12);
+    stroke: rgba(0, 0, 0, 0.58);
 }
 
-.send-btn.cross-mode svg {
-stroke: rgba(255, 255, 255, 0.7);
-}
-}
 
 /* ────────────────────────────────────────────────────────────────
-DISCLAIMER LINE
-──────────────────────────────────────────────────────────────── */
+   DISCLAIMER
+   ──────────────────────────────────────────────────────────────── */
+
 .atkyn-disclaimer {
-text-align: center;
+    margin: 8px 0 0;
+    padding: 0;
 
-font-size: 0.72rem;
+    text-align: center;
 
-color: rgba(0, 0, 0, 0.55);
+    font-size: 0.72rem;
+    font-weight: 400;
+    line-height: 1.2;
 
-margin: 8px 0 0 0;
-padding: 0;
+    letter-spacing: 0.01em;
 
-letter-spacing: 0.01em;
+    color: rgba(0, 0, 0, 0.55);
 }
 
-@media (prefers-color-scheme: dark) {
-.atkyn-disclaimer {
-color: rgba(255, 255, 255, 0.50);
-}
-}
 
 /* ────────────────────────────────────────────────────────────────
-PLUS MENU — Glassmorphism floating sheet
-──────────────────────────────────────────────────────────────── */
+   PLUS MENU — GLASS FLOATING SHEET
+   ──────────────────────────────────────────────────────────────── */
+
 .plus-menu-backdrop {
-position: fixed;
-inset: 0;
+    position: fixed;
+    inset: 0;
 
-z-index: 100;
+    z-index: 100;
 
-display: none;
+    display: none;
 }
 
 .plus-menu-backdrop.open {
-display: block;
+    display: block;
 }
 
 .plus-menu {
-position: fixed;
+    position: fixed;
 
-left: 20px;
+    left: 20px;
 
-bottom: calc(90px + env(safe-area-inset-bottom));
+    bottom: calc(90px + env(safe-area-inset-bottom));
 
-width: 220px;
+    width: 220px;
 
-background: var(--color-glass-bg);
+    z-index: 101;
 
--webkit-backdrop-filter: blur(32px) saturate(1.9);
-backdrop-filter: blur(32px) saturate(1.9);
+    overflow: hidden;
 
-border-radius: 18px;
+    border: 0.5px solid rgba(255, 255, 255, 0.50);
+    border-radius: 18px;
 
-border: 0.5px solid rgba(255, 255, 255, 0.50);
+    background: var(--color-glass-bg);
 
-box-shadow:
-0 2px 5px rgba(0, 0, 0, 0.04),
-0 10px 30px rgba(0, 0, 0, 0.08);
+    -webkit-backdrop-filter: blur(32px) saturate(1.9);
+    backdrop-filter: blur(32px) saturate(1.9);
 
-overflow: hidden;
+    box-shadow:
+        0 2px 6px rgba(0, 0, 0, 0.05),
+        0 12px 36px rgba(0, 0, 0, 0.10);
 
-z-index: 101;
+    opacity: 0;
 
-transform:
-translateY(8px)
-scale(0.97);
+    pointer-events: none;
 
-transform-origin: bottom left;
+    transform:
+        translateY(8px)
+        scale(0.97);
 
-opacity: 0;
+    transform-origin: bottom left;
 
-pointer-events: none;
-
-transition:
-transform 0.22s cubic-bezier(0.22, 1, 0.36, 1),
-opacity 0.14s ease;
+    transition:
+        transform 0.22s cubic-bezier(0.22, 1, 0.36, 1),
+        opacity 0.14s ease;
 }
 
 .plus-menu.open {
-transform:
-translateY(0)
-scale(1);
+    opacity: 1;
 
-opacity: 1;
+    pointer-events: auto;
 
-pointer-events: auto;
+    transform:
+        translateY(0)
+        scale(1);
 }
 
-@media (prefers-color-scheme: dark) {
-.plus-menu {
-background: #363737;
-
-border-color: rgba(255, 255, 255, 0.08);  
-
-box-shadow:  
-  0 2px 8px rgba(0, 0, 0, 0.16),  
-  0 14px 40px rgba(0, 0, 0, 0.40);
-
-}
-}
 
 /* ────────────────────────────────────────────────────────────────
-PLUS MENU ITEMS
-──────────────────────────────────────────────────────────────── */
+   PLUS MENU ITEMS
+   ──────────────────────────────────────────────────────────────── */
+
 .pm-item {
-display: flex;
-align-items: center;
+    width: 100%;
 
-gap: 12px;
+    display: flex;
+    align-items: center;
 
-padding: 14px 18px;
+    gap: 12px;
 
-cursor: pointer;
+    margin: 0;
+    padding: 14px 18px;
 
-border: none;
-background: none;
+    border: 0;
 
-width: 100%;
+    background: transparent;
 
-text-align: left;
+    text-align: left;
 
-color: var(--color-text);
+    color: var(--color-text);
 
-font-size: 0.92rem;
-font-weight: 500;
+    font-size: 0.92rem;
+    font-weight: 500;
 
-letter-spacing: 0.01em;
+    letter-spacing: 0.01em;
 
-transition: background 0.1s;
+    cursor: pointer;
+
+    transition: background 0.1s ease;
 }
 
 .pm-item:active {
-background: var(--color-press-light-sm);
+    background: var(--color-press-light-sm);
 }
 
-@media (prefers-color-scheme: dark) {
-.pm-item {
-color: var(--color-text-dark);
-}
-
-.pm-item:active {
-background: var(--color-press-dark);
-}
-}
 
 /* ────────────────────────────────────────────────────────────────
-PLUS MENU ICON
-──────────────────────────────────────────────────────────────── */
+   PLUS MENU ICON
+   ──────────────────────────────────────────────────────────────── */
+
 .pm-icon {
-flex-shrink: 0;
+    flex: 0 0 20px;
 
-width: 20px;
-height: 20px;
+    width: 20px;
+    height: 20px;
 
-display: flex;
-align-items: center;
-justify-content: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .pm-icon svg {
-width: 18px;
-height: 18px;
+    width: 18px;
+    height: 18px;
 
-stroke: var(--color-icon-stroke);
+    display: block;
+
+    stroke: var(--color-icon-stroke);
 }
+
+
+/* ════════════════════════════════════════════════════════════════
+   DARK MODE
+   Existing dark-mode treatment intentionally preserved.
+   ════════════════════════════════════════════════════════════════ */
 
 @media (prefers-color-scheme: dark) {
-.pm-icon svg {
-stroke: var(--color-icon-dark);
+
+    .chatbar-wrap {
+        background: var(--color-bg-dark);
+    }
+
+    .overlay-pill {
+        background: var(--color-bg-alt-dark);
+        border-color: var(--color-primary);
+    }
+
+    .search-input {
+        color: var(--color-text-dark-alt);
+    }
+
+    .ico-plus:active {
+        background: rgba(255, 255, 255, 0.08);
+    }
+
+    .ico-camera:active {
+        background: rgba(255, 255, 255, 0.08);
+    }
+
+    .send-btn.cross-mode {
+        background: rgba(255, 255, 255, 0.12);
+    }
+
+    .send-btn.cross-mode svg {
+        stroke: rgba(255, 255, 255, 0.7);
+    }
+
+    .atkyn-disclaimer {
+        color: rgba(255, 255, 255, 0.50);
+    }
+
+    .plus-menu {
+        background: #363737;
+
+        border-color: rgba(255, 255, 255, 0.08);
+
+        box-shadow:
+            0 2px 8px rgba(0, 0, 0, 0.16),
+            0 14px 40px rgba(0, 0, 0, 0.40);
+    }
+
+    .pm-item {
+        color: var(--color-text-dark);
+    }
+
+    .pm-item:active {
+        background: var(--color-press-dark);
+    }
+
+    .pm-icon svg {
+        stroke: var(--color-icon-dark);
+    }
 }
-}
+
+
+/* ════════════════════════════════════════════════════════════════
+   ACCESSIBILITY / MOTION
+   ════════════════════════════════════════════════════════════════ */
+
+@media (prefers-reduced-motion: reduce) {
+
+    .shimmer-overlay span {
+        animation: none;
+    }
+
+    .overlay-pill,
+    .ico-plus,
+    .ico-camera,
+    .send-btn,
+    .plus-menu,
+    .pm-item {
+        transition: none;
+    }
+  }

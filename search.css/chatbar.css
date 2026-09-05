@@ -77,7 +77,7 @@ cursor: pointer;
 padding: 4px;
 border-radius: 50%;
 
-color: var(--color-primary);
+color: #000000;
 
 transition:
 background 0.12s,
@@ -230,7 +230,7 @@ padding: 4px;
 
 border-radius: 50%;
 
-color: var(--color-primary);
+color: #000000;
 
 transition:
 background 0.12s,
@@ -304,23 +304,26 @@ display: flex;
 CROSS MODE — NON-AI TABS
 ──────────────────────────────────────────────────────────────── */
 .send-btn.cross-mode {
-background: rgba(0, 0, 0, 0.07);
+background: transparent;
+border-radius: 0;
+width: auto;
+height: auto;
+padding: 4px;
 }
 
 .send-btn.cross-mode svg {
-stroke: rgba(0, 0, 0, 0.6);
-
-width: 18px;
-height: 18px;
+stroke: rgba(0, 0, 0, 0.5);
+width: 20px;
+height: 20px;
 }
 
 @media (prefers-color-scheme: dark) {
 .send-btn.cross-mode {
-background: rgba(255, 255, 255, 0.12);
+background: transparent;
 }
 
 .send-btn.cross-mode svg {
-stroke: rgba(255, 255, 255, 0.7);
+stroke: rgba(255, 255, 255, 0.6);
 }
 }
 

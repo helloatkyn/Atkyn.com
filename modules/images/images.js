@@ -1,69 +1,115 @@
-/**
- * Atkyn Images Module
- * Drop-in for modules/images/
- * Expects:
- *   - a <div id="images-tab"> in the DOM
- *   - window.IMAGES_API_URL  OR  a global fetchImageResults(q) function
- *   - Brand color already set via CSS (--brand: #0072B1)
- */
+/* ═══════════════════════════════════════════════════════════════════
+   images.js — Atkyn Images module
+   Loaded by core.js as modules/images/images.js
+   Registers window._atkynInit_images() which core calls on tab switch
+════════════════════════════════════════════════════════════════════ */
 
 (function () {
   'use strict';
 
-  /* ── Config ── */
-  const PAGE_SIZE = 20;   // images per "page"
+  const PAGE_SIZE = 20;
 
   /* ── State ── */
-  let _allResults  = [];
-  let _page        = 0;
-  let _currentQ    = '';
-  let _lightbox    = null;
+  let _allResults = [];
+  let _page       = 0;
+  let _lastQuery  = '';
+  let _lightbox   = null;
 
-  /* ── Entry point called from your main search handler ── */
-  window.ImagesModule = {
-    /**
-     * Call this when the user searches and the Images tab is (or becomes) active.
-     * @param {string} query
-     * @param {Array}  results  — array from your backend: [{title, url, img_src, thumbnail_src, width, height}]
-     */
-    render(query, results) {
-      _currentQ   = query;
-      _allResults = results || [];
-      _page       = 0;
+  /* ════════════════════════════════
+     INIT — called by core.js
+  ════════════════════════════════ */
+  window._atkynInit_images = function () {
+    let q = '';
+    try { q = sessionStorage.getItem('atkyn_last_query') || ''; } catch (_) {}
 
-      const tab = document.getElementById('images-tab');
-      if (!tab) return;
+    const pc = window._atkynPageContent;
+    if (!pc) return;
 
-      tab.innerHTML = '';
+    /* Same query already rendered — just show it */
+    if (q && q === _lastQuery && _allResults.length) {
+      _mountGrid(pc);
+      return;
+    }
 
-      if (!_allResults.length) {
-        tab.appendChild(_emptyState(query));
-        return;
-      }
+    if (!q) {
+      pc.innerHTML = '<div class="img-empty"><p>Type something to search images.</p></div>';
+      return;
+    }
 
-      const grid = _makeGrid();
-      tab.appendChild(grid);
-      _renderPage(grid);
+    _lastQuery  = q;
+    _allResults = [];
+    _page       = 0;
 
-      if (_allResults.length > PAGE_SIZE) {
-        tab.appendChild(_loadMoreBtn(grid));
-      }
-    },
-
-    /** Call if you lazy-load the images tab after a search already completed */
-    show() {
-      const tab = document.getElementById('images-tab');
-      if (tab && !tab.hasChildNodes() && _allResults.length) {
-        this.render(_currentQ, _allResults);
-      }
-    },
+    _showSkeleton(pc);
+    _fetchAndRender(q, pc);
   };
 
-  /* ── Grid ── */
+  /* ════════════════════════════════
+     FETCH
+  ════════════════════════════════ */
+  async function _fetchAndRender(q, pc) {
+    try {
+      /* Use same API base that the web/other modules use */
+      const base = (window.ATKYN_API_BASE || '').replace(/\/$/, '');
+      const url  = `${base}/api/images?q=${encodeURIComponent(q)}`;
+
+      const res  = await fetch(url);
+      if (!res.ok) throw new Error('API error ' + res.status);
+
+      const data = await res.json();
+      _allResults = (data.results || []).filter(r => r.img_src || r.thumbnail_src);
+
+    } catch (err) {
+      console.error('[Atkyn Images]', err);
+      _allResults = [];
+    }
+
+    /* Guard: user may have switched tab while fetching */
+    if (window._atkynPageContent !== pc && pc !== window._atkynPageContent) {
+      /* still mount — core hides/shows pageContent, not swaps it */
+    }
+
+    if (!_allResults.length) {
+      pc.innerHTML = `<div class="img-empty">
+        <svg width="44" height="44" viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="3" width="18" height="18" rx="2"/>
+          <circle cx="8.5" cy="8.5" r="1.5"/>
+          <polyline points="21 15 16 10 5 21"/>
+        </svg>
+        <p>No images found for <strong>${_esc(q)}</strong></p>
+      </div>`;
+      return;
+    }
+
+    _page = 0;
+    _mountGrid(pc);
+  }
+
+  /* ════════════════════════════════
+     GRID MOUNT
+  ════════════════════════════════ */
+  function _mountGrid(pc) {
+    pc.innerHTML = '';
+
+    const wrap = document.createElement('div');
+    wrap.id = 'images-tab';
+
+    const grid = _makeGrid();
+    wrap.appendChild(grid);
+    _renderPage(grid);
+
+    if (_allResults.length > PAGE_SIZE) {
+      wrap.appendChild(_loadMoreBtn(grid));
+    }
+
+    pc.appendChild(wrap);
+  }
+
   function _makeGrid() {
-    const grid = document.createElement('div');
-    grid.className = 'img-grid';
-    return grid;
+    const g = document.createElement('div');
+    g.className = 'img-grid';
+    return g;
   }
 
   function _renderPage(grid) {
@@ -73,7 +119,9 @@
     _page++;
   }
 
-  /* ── Card ── */
+  /* ════════════════════════════════
+     CARD
+  ════════════════════════════════ */
   function _makeCard(item, index) {
     const card = document.createElement('div');
     card.className = 'img-card';
@@ -81,45 +129,41 @@
     card.setAttribute('tabindex', '0');
     card.setAttribute('aria-label', item.title || 'Image');
 
-    /* Skeleton placeholder height — approximate based on aspect ratio */
-    const ar = (item.width && item.height) ? item.height / item.width : 0.75;
-    const skH = Math.round(ar * 100);
-
-    /* img element */
+    /* Natural aspect ratio — no fixed height, no crop */
     const img = document.createElement('img');
-    img.alt          = item.title || '';
-    img.loading      = 'lazy';
-    img.decoding     = 'async';
-    img.src          = item.thumbnail_src || item.img_src;
-    img.style.minHeight = skH + 'px';      /* holds space before load */
+    img.alt      = item.title || '';
+    img.loading  = 'lazy';
+    img.decoding = 'async';
+    img.src      = item.thumbnail_src || item.img_src;
 
-    img.addEventListener('load', () => {
-      img.style.minHeight = '';
-      img.classList.add('loaded');
-    });
+    /* Reserve approx space while loading to prevent layout jump */
+    if (item.width && item.height) {
+      const ar = item.height / item.width;
+      img.style.aspectRatio = `${item.width} / ${item.height}`;
+    }
+
+    img.addEventListener('load', () => img.classList.add('loaded'));
     img.addEventListener('error', () => {
-      /* fallback to full-size URL */
-      if (img.src !== item.img_src) {
+      if (img.src !== item.img_src && item.img_src) {
         img.src = item.img_src;
       } else {
-        card.style.display = 'none';       /* hide broken card */
+        card.style.display = 'none';
       }
     });
 
-    /* Overlay */
+    /* Hover title overlay */
     const overlay = document.createElement('div');
     overlay.className = 'img-overlay';
     if (item.title) {
-      const titleEl = document.createElement('span');
-      titleEl.className   = 'img-overlay-title';
-      titleEl.textContent = item.title;
-      overlay.appendChild(titleEl);
+      const t = document.createElement('span');
+      t.className   = 'img-overlay-title';
+      t.textContent = item.title;
+      overlay.appendChild(t);
     }
 
     card.appendChild(img);
     card.appendChild(overlay);
 
-    /* Open lightbox */
     const open = () => _openLightbox(index);
     card.addEventListener('click', open);
     card.addEventListener('keydown', e => {
@@ -129,7 +173,9 @@
     return card;
   }
 
-  /* ── Load More ── */
+  /* ════════════════════════════════
+     LOAD MORE
+  ════════════════════════════════ */
   function _loadMoreBtn(grid) {
     const wrap = document.createElement('div');
     wrap.className = 'img-load-more';
@@ -148,23 +194,33 @@
     return wrap;
   }
 
-  /* ── Empty State ── */
-  function _emptyState(query) {
-    const el = document.createElement('div');
-    el.className = 'img-empty';
-    el.innerHTML = `
-      <svg width="48" height="48" viewBox="0 0 24 24" fill="none"
-           stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
-        <circle cx="8.5" cy="8.5" r="1.5"/>
-        <polyline points="21 15 16 10 5 21"/>
-      </svg>
-      <p>No images found for <strong>${_esc(query)}</strong></p>
-    `;
-    return el;
+  /* ════════════════════════════════
+     SKELETON
+  ════════════════════════════════ */
+  function _showSkeleton(pc) {
+    pc.innerHTML = '';
+    const wrap = document.createElement('div');
+    wrap.id = 'images-tab';
+
+    const grid = document.createElement('div');
+    grid.className = 'img-grid';
+
+    /* 10 skeleton placeholders with varying heights */
+    const heights = [160,220,140,200,180,150,230,170,190,160];
+    heights.forEach(h => {
+      const sk = document.createElement('div');
+      sk.className   = 'img-skeleton';
+      sk.style.height = h + 'px';
+      grid.appendChild(sk);
+    });
+
+    wrap.appendChild(grid);
+    pc.appendChild(wrap);
   }
 
-  /* ── Lightbox ── */
+  /* ════════════════════════════════
+     LIGHTBOX
+  ════════════════════════════════ */
   function _openLightbox(index) {
     _closeLightbox();
 
@@ -177,54 +233,51 @@
     const inner = document.createElement('div');
     inner.className = 'img-lightbox-inner';
 
-    const img = document.createElement('img');
+    const img   = document.createElement('img');
     img.src = item.img_src || item.thumbnail_src;
     img.alt = item.title || '';
 
-    const title = document.createElement('p');
-    title.className   = 'img-lightbox-title';
-    title.textContent = item.title || '';
+    inner.appendChild(img);
+
+    if (item.title) {
+      const cap = document.createElement('p');
+      cap.className   = 'img-lightbox-title';
+      cap.textContent = item.title;
+      inner.appendChild(cap);
+    }
 
     const closeBtn = document.createElement('button');
-    closeBtn.className   = 'img-lightbox-close';
-    closeBtn.innerHTML   = '&#x2715;';
+    closeBtn.className = 'img-lightbox-close';
     closeBtn.setAttribute('aria-label', 'Close');
+    closeBtn.innerHTML = '&#x2715;';
     closeBtn.addEventListener('click', _closeLightbox);
-
-    inner.appendChild(img);
-    if (item.title) inner.appendChild(title);
 
     backdrop.appendChild(inner);
     backdrop.appendChild(closeBtn);
+    backdrop.addEventListener('click', e => { if (e.target === backdrop) _closeLightbox(); });
 
-    backdrop.addEventListener('click', e => {
-      if (e.target === backdrop) _closeLightbox();
-    });
-
-    document.addEventListener('keydown', _lbKeyHandler);
+    document.addEventListener('keydown', _lbKey);
     document.body.appendChild(backdrop);
     document.body.style.overflow = 'hidden';
     _lightbox = backdrop;
   }
 
   function _closeLightbox() {
-    if (_lightbox) {
-      _lightbox.remove();
-      _lightbox = null;
-      document.body.style.overflow = '';
-      document.removeEventListener('keydown', _lbKeyHandler);
-    }
+    if (!_lightbox) return;
+    _lightbox.remove();
+    _lightbox = null;
+    document.body.style.overflow = '';
+    document.removeEventListener('keydown', _lbKey);
   }
 
-  function _lbKeyHandler(e) {
-    if (e.key === 'Escape') _closeLightbox();
-  }
+  function _lbKey(e) { if (e.key === 'Escape') _closeLightbox(); }
 
-  /* ── Utils ── */
+  /* ════════════════════════════════
+     UTILS
+  ════════════════════════════════ */
   function _esc(str) {
-    return str.replace(/[&<>"']/g, c => ({
-      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
-    })[c]);
+    return String(str).replace(/[&<>"']/g, c =>
+      ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' })[c]);
   }
 
 })();

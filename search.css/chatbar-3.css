@@ -1,0 +1,641 @@
+/* ════════════════════════════════════════════════════════════════
+chatbar.css — Reference-matched premium chatbar
+Warm cream wrapper · Capsule pill · Soft iOS-native feel
+════════════════════════════════════════════════════════════════ */
+
+/* ────────────────────────────────────────────────────────────────
+CHATBAR WRAPPER
+Warm off-white surface — matches the reference's cream background.
+No separator line; the warm tone itself separates from content.
+──────────────────────────────────────────────────────────────── */
+.chatbar-wrap {
+  flex-shrink: 0;
+
+  padding: 10px 14px calc(8px + env(safe-area-inset-bottom));
+
+  position: relative;
+  z-index: 10;
+
+  will-change: transform;
+  transform: translateZ(0);
+
+  /* Warm cream — matches reference background tone */
+  background: #ece9e3;
+
+  border-top: none;
+}
+
+@media (prefers-color-scheme: dark) {
+  .chatbar-wrap {
+    background: var(--color-bg-dark, #141414);
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+  }
+}
+
+/* ────────────────────────────────────────────────────────────────
+PILL
+Full capsule, near-white warm surface, barely-there border.
+The pill floats against the cream wrapper — no shadow needed,
+contrast comes from the tone difference alone.
+──────────────────────────────────────────────────────────────── */
+.overlay-pill {
+  width: 100%;
+
+  display: flex;
+  align-items: center;
+
+  /* Near-white warm — slightly lighter than wrapper */
+  background: #f9f7f4;
+
+  /* Single hairline, warm gray — not blue at rest */
+  border: 1px solid rgba(0, 0, 0, 0.07);
+  border-radius: 100px;
+
+  padding: 0 16px 0 16px;
+  margin: 0;
+
+  /* Reference height — compact capsule */
+  height: 54px;
+  gap: 0;
+
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+/* Focus: very subtle ring, no harsh color */
+.overlay-pill:focus-within {
+  border-color: rgba(0, 0, 0, 0.15);
+  background: #ffffff;
+  box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.05);
+}
+
+@media (prefers-color-scheme: dark) {
+  .overlay-pill {
+    background: var(--color-bg-alt-dark, #242424);
+    border-color: rgba(255, 255, 255, 0.09);
+  }
+
+  .overlay-pill:focus-within {
+    border-color: rgba(255, 255, 255, 0.18);
+    background: var(--color-bg-alt-dark, #2c2c2c);
+    box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.05);
+  }
+}
+
+/* ────────────────────────────────────────────────────────────────
+PLUS / ATTACH BUTTON
+In the reference this sits on the LEFT — same side as the Copilot
+icon. The left icon in the reference is a brand/app icon, not a
+plus. However the existing DOM maps .ico-plus to the left button,
+so we style it to match: compact, quiet, no background at rest.
+──────────────────────────────────────────────────────────────── */
+.ico-plus {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border: none;
+  background: none;
+
+  cursor: pointer;
+
+  /* Size matches reference icon footprint */
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  margin-right: 8px;
+
+  border-radius: 50%;
+
+  /* Medium gray — matches reference + color */
+  color: rgba(0, 0, 0, 0.42);
+
+  transition:
+    background 0.12s ease,
+    color 0.12s ease;
+}
+
+.ico-plus:hover {
+  background: rgba(0, 0, 0, 0.05);
+  color: rgba(0, 0, 0, 0.62);
+}
+
+.ico-plus:active {
+  background: rgba(0, 0, 0, 0.08);
+  color: rgba(0, 0, 0, 0.75);
+}
+
+.ico-plus svg {
+  width: 22px;
+  height: 22px;
+}
+
+@media (prefers-color-scheme: dark) {
+  .ico-plus {
+    color: rgba(255, 255, 255, 0.40);
+  }
+
+  .ico-plus:hover {
+    background: rgba(255, 255, 255, 0.07);
+    color: rgba(255, 255, 255, 0.65);
+  }
+
+  .ico-plus:active {
+    background: rgba(255, 255, 255, 0.11);
+    color: rgba(255, 255, 255, 0.80);
+  }
+}
+
+/* ────────────────────────────────────────────────────────────────
+INPUT WRAPPER
+──────────────────────────────────────────────────────────────── */
+.overlay-input-wrap {
+  flex: 1;
+  position: relative;
+
+  height: 100%;
+
+  display: flex;
+  align-items: center;
+}
+
+/* ────────────────────────────────────────────────────────────────
+SEARCH INPUT
+──────────────────────────────────────────────────────────────── */
+.search-input {
+  position: absolute;
+  inset: 0;
+
+  width: 100%;
+  height: 100%;
+
+  border: none;
+  outline: none;
+
+  background: transparent;
+
+  /* Reference: medium weight, ~15–16px, slightly warm text color */
+  font-size: 1rem;
+  font-weight: 400;
+  line-height: 1.5;
+
+  color: rgba(0, 0, 0, 0.85);
+
+  padding: 0;
+
+  z-index: 2;
+
+  caret-color: rgba(0, 0, 0, 0.70);
+
+  letter-spacing: 0em;
+}
+
+.search-input::placeholder {
+  color: transparent;
+}
+
+.search-input::-webkit-search-cancel-button,
+.search-input::-webkit-search-decoration,
+.search-input::-webkit-search-results-button,
+.search-input::-webkit-search-results-decoration {
+  -webkit-appearance: none;
+  appearance: none;
+  display: none;
+}
+
+@media (prefers-color-scheme: dark) {
+  .search-input {
+    color: rgba(255, 255, 255, 0.88);
+    caret-color: rgba(255, 255, 255, 0.70);
+  }
+}
+
+/* ────────────────────────────────────────────────────────────────
+ANIMATED SHIMMER PLACEHOLDER
+Reference text: "Ask a follow-up" — medium warm gray.
+We honor the existing shimmer animation but tone it to warm gray.
+──────────────────────────────────────────────────────────────── */
+.shimmer-overlay {
+  position: absolute;
+  inset: 0;
+
+  display: flex;
+  align-items: center;
+
+  pointer-events: none;
+
+  z-index: 1;
+
+  overflow: hidden;
+}
+
+.shimmer-overlay span {
+  font-size: 1rem;
+  font-weight: 400;
+
+  white-space: nowrap;
+
+  letter-spacing: 0em;
+
+  /* Warm gray sweep matching reference placeholder tone */
+  background: linear-gradient(
+    90deg,
+    rgba(0, 0, 0, 0.38) 0%,
+    rgba(0, 0, 0, 0.38) 15%,
+    rgba(0, 0, 0, 0.20) 44%,
+    rgba(0, 0, 0, 0.20) 56%,
+    rgba(0, 0, 0, 0.38) 85%,
+    rgba(0, 0, 0, 0.38) 100%
+  );
+
+  background-size: 300% auto;
+
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+
+  animation: sweep 3.8s 0.6s linear infinite;
+}
+
+@keyframes sweep {
+  0%   { background-position:  150% center; }
+  100% { background-position: -150% center; }
+}
+
+.search-input:not(:placeholder-shown) + .shimmer-overlay {
+  display: none;
+}
+
+@media (prefers-color-scheme: dark) {
+  .shimmer-overlay span {
+    background: linear-gradient(
+      90deg,
+      rgba(255, 255, 255, 0.36) 0%,
+      rgba(255, 255, 255, 0.36) 15%,
+      rgba(255, 255, 255, 0.18) 44%,
+      rgba(255, 255, 255, 0.18) 56%,
+      rgba(255, 255, 255, 0.36) 85%,
+      rgba(255, 255, 255, 0.36) 100%
+    );
+    background-size: 300% auto;
+    animation: sweep 3.8s 0.6s linear infinite;
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+}
+
+/* ────────────────────────────────────────────────────────────────
+CAMERA BUTTON
+Reference: the right-side action is a "+" glyph in medium gray,
+same tone as placeholder text. Maps to .ico-camera in the DOM.
+──────────────────────────────────────────────────────────────── */
+.ico-camera {
+  flex-shrink: 0;
+
+  border: none;
+  background: none;
+
+  cursor: pointer;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  margin-left: 8px;
+
+  border-radius: 50%;
+
+  /* Same medium gray as reference + icon */
+  color: rgba(0, 0, 0, 0.40);
+
+  transition:
+    background 0.12s ease,
+    color 0.12s ease;
+}
+
+.ico-camera:hover {
+  background: rgba(0, 0, 0, 0.05);
+  color: rgba(0, 0, 0, 0.62);
+}
+
+.ico-camera:active {
+  background: rgba(0, 0, 0, 0.08);
+  color: rgba(0, 0, 0, 0.75);
+}
+
+.ico-camera svg {
+  width: 21px;
+  height: 21px;
+}
+
+@media (prefers-color-scheme: dark) {
+  .ico-camera {
+    color: rgba(255, 255, 255, 0.38);
+  }
+
+  .ico-camera:hover {
+    background: rgba(255, 255, 255, 0.07);
+    color: rgba(255, 255, 255, 0.62);
+  }
+
+  .ico-camera:active {
+    background: rgba(255, 255, 255, 0.11);
+    color: rgba(255, 255, 255, 0.78);
+  }
+}
+
+/* ────────────────────────────────────────────────────────────────
+SEND BUTTON
+Hidden at rest, shown when .has-text. Replaces the camera icon.
+Restrained — round, brand-colored, no heavy shadow.
+──────────────────────────────────────────────────────────────── */
+.send-btn {
+  flex-shrink: 0;
+
+  display: none;
+
+  align-items: center;
+  justify-content: center;
+
+  width: 36px;
+  height: 36px;
+
+  border-radius: 50%;
+  border: none;
+
+  background: rgba(0, 0, 0, 0.78);
+
+  cursor: pointer;
+
+  margin-left: 6px;
+
+  transition:
+    transform 0.14s cubic-bezier(0.22, 1, 0.36, 1),
+    background 0.12s ease;
+}
+
+.send-btn:hover {
+  background: rgba(0, 0, 0, 0.88);
+}
+
+.send-btn:active {
+  transform: scale(0.88);
+  background: rgba(0, 0, 0, 0.95);
+}
+
+.send-btn svg {
+  width: 15px;
+  height: 15px;
+  color: #ffffff;
+}
+
+/* Show/hide logic — preserve JS-controlled toggling */
+.overlay-pill.has-text .ico-camera {
+  display: none;
+}
+
+.overlay-pill.has-text .send-btn {
+  display: flex;
+}
+
+/* ────────────────────────────────────────────────────────────────
+CROSS MODE — NON-AI TABS
+──────────────────────────────────────────────────────────────── */
+.send-btn.cross-mode {
+  background: rgba(0, 0, 0, 0.07);
+}
+
+.send-btn.cross-mode:hover {
+  background: rgba(0, 0, 0, 0.11);
+}
+
+.send-btn.cross-mode svg {
+  color: rgba(0, 0, 0, 0.55);
+  stroke: rgba(0, 0, 0, 0.55);
+  width: 16px;
+  height: 16px;
+}
+
+@media (prefers-color-scheme: dark) {
+  .send-btn {
+    background: rgba(255, 255, 255, 0.88);
+  }
+
+  .send-btn:hover {
+    background: rgba(255, 255, 255, 0.96);
+  }
+
+  .send-btn:active {
+    background: #ffffff;
+  }
+
+  .send-btn svg {
+    color: #000000;
+  }
+
+  .send-btn.cross-mode {
+    background: rgba(255, 255, 255, 0.10);
+  }
+
+  .send-btn.cross-mode:hover {
+    background: rgba(255, 255, 255, 0.14);
+  }
+
+  .send-btn.cross-mode svg {
+    color: rgba(255, 255, 255, 0.65);
+    stroke: rgba(255, 255, 255, 0.65);
+  }
+}
+
+/* ────────────────────────────────────────────────────────────────
+DISCLAIMER LINE
+──────────────────────────────────────────────────────────────── */
+.atkyn-disclaimer {
+  text-align: center;
+
+  font-size: 0.6875rem;
+  font-weight: 400;
+
+  /* Warm gray matching reference's muted tone */
+  color: rgba(0, 0, 0, 0.32);
+
+  margin: 6px 0 0 0;
+  padding: 0;
+
+  letter-spacing: 0.015em;
+}
+
+@media (prefers-color-scheme: dark) {
+  .atkyn-disclaimer {
+    color: rgba(255, 255, 255, 0.28);
+  }
+}
+
+/* ────────────────────────────────────────────────────────────────
+PLUS MENU — Floating sheet
+──────────────────────────────────────────────────────────────── */
+.plus-menu-backdrop {
+  position: fixed;
+  inset: 0;
+
+  z-index: 100;
+
+  display: none;
+}
+
+.plus-menu-backdrop.open {
+  display: block;
+}
+
+.plus-menu {
+  position: fixed;
+
+  left: 20px;
+
+  bottom: calc(80px + env(safe-area-inset-bottom));
+
+  width: 210px;
+
+  background: #f9f7f4;
+
+  border-radius: 18px;
+
+  border: 1px solid rgba(0, 0, 0, 0.07);
+
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.04),
+    0 8px 24px rgba(0, 0, 0, 0.09),
+    0 2px 6px rgba(0, 0, 0, 0.05);
+
+  overflow: hidden;
+
+  z-index: 101;
+
+  transform:
+    translateY(6px)
+    scale(0.97);
+
+  transform-origin: bottom left;
+
+  opacity: 0;
+
+  pointer-events: none;
+
+  transition:
+    transform 0.20s cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 0.13s ease;
+}
+
+.plus-menu.open {
+  transform:
+    translateY(0)
+    scale(1);
+
+  opacity: 1;
+
+  pointer-events: auto;
+}
+
+@media (prefers-color-scheme: dark) {
+  .plus-menu {
+    background: #282828;
+    border-color: rgba(255, 255, 255, 0.08);
+
+    box-shadow:
+      0 1px 2px rgba(0, 0, 0, 0.22),
+      0 10px 32px rgba(0, 0, 0, 0.44),
+      0 2px 8px rgba(0, 0, 0, 0.20);
+  }
+}
+
+/* ────────────────────────────────────────────────────────────────
+PLUS MENU ITEMS
+──────────────────────────────────────────────────────────────── */
+.pm-item {
+  display: flex;
+  align-items: center;
+
+  gap: 11px;
+
+  padding: 13px 16px;
+
+  cursor: pointer;
+
+  border: none;
+  background: none;
+
+  width: 100%;
+
+  text-align: left;
+
+  color: rgba(0, 0, 0, 0.78);
+
+  font-size: 0.875rem;
+  font-weight: 400;
+
+  letter-spacing: 0em;
+
+  transition: background 0.10s ease;
+}
+
+.pm-item:hover {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.pm-item:active {
+  background: rgba(0, 0, 0, 0.07);
+}
+
+@media (prefers-color-scheme: dark) {
+  .pm-item {
+    color: rgba(255, 255, 255, 0.80);
+  }
+
+  .pm-item:hover {
+    background: rgba(255, 255, 255, 0.05);
+  }
+
+  .pm-item:active {
+    background: rgba(255, 255, 255, 0.09);
+  }
+}
+
+/* ────────────────────────────────────────────────────────────────
+PLUS MENU ICON
+──────────────────────────────────────────────────────────────── */
+.pm-icon {
+  flex-shrink: 0;
+
+  width: 18px;
+  height: 18px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  color: rgba(0, 0, 0, 0.42);
+}
+
+.pm-icon svg {
+  width: 16px;
+  height: 16px;
+
+  stroke: rgba(0, 0, 0, 0.42);
+}
+
+@media (prefers-color-scheme: dark) {
+  .pm-icon {
+    color: rgba(255, 255, 255, 0.40);
+  }
+
+  .pm-icon svg {
+    stroke: rgba(255, 255, 255, 0.40);
+  }
+}

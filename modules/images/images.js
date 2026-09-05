@@ -1,31 +1,35 @@
 (function () {
   'use strict';
 
-  /* ── Constants ────────────────────────────────────────────── */
-  // Skip images that are extremely tall (portrait ratio > 2.2) — they break the 2-col layout
-  const MAX_RATIO = 2.2;
+  /* ── Constants ─────────────────────────────────────────────── */
+  const MAX_RATIO  = 2.2;  // Skip portrait images taller than this ratio
+  const PILL_SLOT  = 46;   // Height (px) per suggestion pill slot
+  const MIN_GAP    = 60;   // Min column height diff before we fill with pills
 
-  const _preloaded = new Set();
-  let _seen      = new Set();
-  let _gallery   = null;
-  let _lazyIo    = null;
-  let _q         = '';
-  let _warmQueue    = [];
-  let _warmRunning  = false;
+  /* ── State ──────────────────────────────────────────────────── */
+  const _preloaded = new Set();   // Already-preloaded srcs (avoid duplicates)
+  let _seen        = new Set();   // Dedup filter for fetched results
+  let _gallery     = null;        // Root gallery DOM node
+  let _lazyIo      = null;        // IntersectionObserver for lazy loading
+  let _galleryRo   = null;        // ResizeObserver for gap-fill recalc
+  let _q           = '';          // Current search query
+  let _queryToken  = 0;           // Incremented on each new search; stale responses are ignored
 
-  let _suggestions = [];
-  let _suggPool    = [];
-  let _queryToken  = 0;
+  let _warmQueue   = [];          // Srcs queued for background preload
+  let _warmRunning = false;       // Whether warm loop is active
 
-  let _sheetEl       = null;
-  let _sheetBackdrop = null;
-  let _sheetOpen     = false;
+  let _suggestions = [];          // Wikipedia autocomplete results
+  let _suggPool    = [];          // Remaining suggestions not yet used as pills
+  let _resizing    = false;       // Debounce flag for resize handler
 
-  let _galleryRo = null;
-  let _resizing  = false;
-  const _pendingMeasure = new WeakSet();
+  let _sheetEl       = null;      // Bottom-sheet element
+  let _sheetBackdrop = null;      // Sheet backdrop overlay
+  let _sheetOpen     = false;     // Whether sheet is currently open
 
-  /* ── Seeded RNG (deterministic layout per query) ──────────── */
+  const _pendingMeasure = new WeakSet(); // Grids awaiting rAF measure
+
+  /* ── Seeded RNG ──────────────────────────────────────────────
+     Deterministic per-query so layout is stable on re-render     */
   function _seedFromString(s) {
     let h = 2166136261;
     for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); }
@@ -40,21 +44,23 @@
     };
   }
 
-  /* ── Helpers ──────────────────────────────────────────────── */
+  /* ── Helpers ─────────────────────────────────────────────────  */
+  // First 4 words of a title (overlay label)
   function _shortTitle(raw) {
-    if (!raw) return '';
-    return raw.trim().split(/\s+/).slice(0, 4).join(' ');
+    return raw ? raw.trim().split(/\s+/).slice(0, 4).join(' ') : '';
   }
 
+  // height/width ratio; null if dimensions missing
   function _ratio(data) {
     return (data.width && data.height) ? data.height / data.width : null;
   }
 
-  // Pick highest-quality src available
+  // Best available image URL
   function _bestSrc(data) {
     return data.img_src || data.thumbnail_src || '';
   }
 
+  // Fire-and-forget background preload (skip if already done)
   function _preload(src) {
     if (!src || _preloaded.has(src)) return;
     _preloaded.add(src);
@@ -63,28 +69,55 @@
     img.src = src;
   }
 
+  /* ── Lazy load ───────────────────────────────────────────────
+     Called by the IntersectionObserver when a tile enters view.
+     Attach onload/onerror BEFORE setting src to avoid race.      */
   function _loadImage(img) {
     if (!img || img.dataset.loaded === '1' || img.dataset.loading === '1') return;
     const src = img.dataset.src;
     if (!src) return;
     img.dataset.loading = '1';
+    // Handlers must be set before src so no load event is missed
+    img.onload = function () {
+      this.dataset.loaded = '1';
+      delete this.dataset.loading;
+      requestAnimationFrame(() => {
+        if (this.isConnected) this.classList.add('img-loaded');
+      });
+      // Rebalance gap-fill pills after image renders
+      const grid = this.closest('.gallery-grid');
+      if (grid) _scheduleMeasure(grid);
+    };
+    img.onerror = function () {
+      const tile = this.closest('.img-tile');
+      if (!tile) return;
+      const parent = tile.parentElement;
+      tile.remove();
+      if (!parent) return;
+      if (parent.classList.contains('gallery-col')) {
+        const grid = parent.parentElement;
+        if (grid) {
+          const allEmpty = Array.from(grid.querySelectorAll('.gallery-col')).every(c => !c.children.length);
+          if (allEmpty) grid.remove();
+          else _scheduleMeasure(grid);
+        }
+      } else if (parent.classList.contains('gallery-hero')) {
+        parent.remove();
+      }
+    };
     img.src = src;
     _preloaded.add(src);
   }
 
-  /* ── Bottom Sheet ─────────────────────────────────────────── */
+  /* ── Bottom Sheet ────────────────────────────────────────────  */
   function _ensureSheet() {
     if (_sheetEl) return;
-
     _sheetBackdrop = document.createElement('div');
     _sheetBackdrop.className = 'img-sheet-backdrop';
     _sheetBackdrop.addEventListener('click', _closeSheet);
-
     _sheetEl = document.createElement('div');
     _sheetEl.className = 'img-sheet';
-
-    document.body.appendChild(_sheetBackdrop);
-    document.body.appendChild(_sheetEl);
+    document.body.append(_sheetBackdrop, _sheetEl);
   }
 
   function _openSheet(data) {
@@ -92,9 +125,8 @@
     const src     = _bestSrc(data);
     const pageUrl = data.url || src;
     const title   = data.title || '';
-    const host    = pageUrl ? (function () {
-      try { return new URL(pageUrl).hostname.replace(/^www\./, ''); } catch (_) { return ''; }
-    }()) : '';
+    let host = '';
+    try { host = new URL(pageUrl).hostname.replace(/^www\./, ''); } catch (_) {}
 
     _sheetEl.innerHTML = `
       <div class="img-sheet__handle"></div>
@@ -132,72 +164,40 @@
     _sheetOpen = false;
   }
 
-  /* ── Tile ─────────────────────────────────────────────────── */
+  /* ── Tile builder ────────────────────────────────────────────
+     Creates one image card (anchor + lazy img + overlay).        */
   function _buildTile(data) {
     const src = _bestSrc(data);
     if (!src) return null;
 
     const r      = _ratio(data);
-    // padding-bottom = (h/w)*100% preserves natural aspect ratio
-    const aspect = (r !== null ? r * 100 : 75).toFixed(3) + '%';
+    const aspect = (r !== null ? r * 100 : 75).toFixed(3) + '%'; // padding-bottom trick
 
     const tile = document.createElement('a');
-    tile.className   = 'img-tile';
-    tile.href        = data.url || src;
-    tile.rel         = 'noopener noreferrer';
+    tile.className      = 'img-tile';
+    tile.href           = data.url || src;
+    tile.rel            = 'noopener noreferrer';
     tile.dataset.imageSrc = src;
-    tile._imageData  = data;
+    tile._imageData     = data;
+    tile.addEventListener('click', e => { e.preventDefault(); _openSheet(data); });
 
-    tile.addEventListener('click', function (e) {
-      e.preventDefault();
-      _openSheet(data);
-    });
-
-    // Spacer: height=0 + padding-bottom trick for ratio-preserving container
+    // Aspect-ratio spacer (height 0 + padding-bottom = natural ratio)
     const spacer = document.createElement('div');
-    spacer.className          = 'img-tile__spacer';
+    spacer.className           = 'img-tile__spacer';
     spacer.style.paddingBottom = aspect;
 
+    // Lazy image — src set later by observer via _loadImage()
     const image = document.createElement('img');
     image.className   = 'img-lazy';
     image.alt         = data.title || '';
     image.decoding    = 'async';
     image.dataset.src = src;
-
-    image.onload = function () {
-      this.dataset.loaded = '1';
-      delete this.dataset.loading;
-      requestAnimationFrame(() => {
-        if (this.isConnected) this.classList.add('img-loaded');
-      });
-      // After load, check if this grid section needs gap-filling
-      const grid = this.closest('.gallery-grid');
-      if (grid) _scheduleMeasure(grid);
-    };
-
-    image.onerror = function () {
-      const t = this.closest('.img-tile');
-      if (!t) return;
-      const parent = t.parentElement;
-      t.remove();
-      if (!parent) return;
-      if (parent.classList.contains('gallery-col')) {
-        const grid = parent.parentElement;
-        if (grid && grid.classList.contains('gallery-grid')) {
-          const allEmpty = Array.from(grid.querySelectorAll('.gallery-col'))
-            .every(c => c.children.length === 0);
-          if (allEmpty) grid.remove();
-          else _scheduleMeasure(grid);
-        }
-      } else if (parent.classList.contains('gallery-hero')) {
-        parent.remove();
-      }
-    };
+    // NOTE: onload/onerror are attached inside _loadImage() just before src is set
 
     spacer.appendChild(image);
     tile.appendChild(spacer);
 
-    // Overlay: title + menu button
+    // Overlay: short title + "…" menu button
     const overlay = document.createElement('div');
     overlay.className = 'img-tile__overlay';
 
@@ -214,18 +214,14 @@
     menu.type      = 'button';
     menu.setAttribute('aria-label', 'More options');
     menu.innerHTML = `<svg width="16" height="4" viewBox="0 0 16 4" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="2" cy="2" r="1.5" fill="currentColor"/><circle cx="8" cy="2" r="1.5" fill="currentColor"/><circle cx="14" cy="2" r="1.5" fill="currentColor"/></svg>`;
-    menu.addEventListener('click', function (e) {
-      e.preventDefault();
-      e.stopPropagation();
-      _openSheet(data);
-    });
+    menu.addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); _openSheet(data); });
     overlay.appendChild(menu);
     tile.appendChild(overlay);
 
     return tile;
   }
 
-  /* ── Suggestion pill ──────────────────────────────────────── */
+  /* ── Suggestion pill ─────────────────────────────────────────  */
   function _buildPill(q) {
     const btn     = document.createElement('button');
     btn.className = 'sugg-pill';
@@ -238,13 +234,11 @@
     return btn;
   }
 
-  /* ── Whitespace measurement & suggestion injection ────────── */
-  // Each pill slot ≈ 44px height + 2px gap = 46px minimum
-  const PILL_SLOT = 46;
-  const MIN_GAP   = 60; // ignore tiny differences
-
+  /* ── Gap-fill: suggestion pills in shorter column ────────────
+     After layout, if one column is significantly shorter,
+     fill the gap with suggestion pills so it looks balanced.     */
   function _scheduleMeasure(grid) {
-    if (_pendingMeasure.has(grid)) return;
+    if (_pendingMeasure.has(grid)) return; // Already scheduled
     _pendingMeasure.add(grid);
     requestAnimationFrame(function () {
       _pendingMeasure.delete(grid);
@@ -257,21 +251,16 @@
     const cols = grid.querySelectorAll('.gallery-col');
     if (cols.length !== 2) return;
 
-    const hA = cols[0].scrollHeight;
-    const hB = cols[1].scrollHeight;
-    const gap = Math.abs(hA - hB);
+    const gap = Math.abs(cols[0].scrollHeight - cols[1].scrollHeight);
     if (gap < MIN_GAP) return;
 
-    const shorter   = hA < hB ? cols[0] : cols[1];
-    const maxPills  = Math.floor(gap / PILL_SLOT);
+    const shorter  = cols[0].scrollHeight < cols[1].scrollHeight ? cols[0] : cols[1];
+    const maxPills = Math.floor(gap / PILL_SLOT);
     if (maxPills < 1) return;
 
-    // Remove old gap pills in this column
     shorter.querySelectorAll('.sugg-pill--gap').forEach(el => el.remove());
 
     const count = Math.min(maxPills, _suggPool.length);
-    if (count < 1) return;
-
     _suggPool.splice(0, count).forEach(function (text) {
       const pill = _buildPill(text);
       pill.classList.add('sugg-pill--gap');
@@ -279,6 +268,7 @@
     });
   }
 
+  // On resize: reset pill pool and remeasure all grids
   function _onGalleryResize() {
     if (!_gallery || _resizing) return;
     _resizing = true;
@@ -288,14 +278,15 @@
     _resizing = false;
   }
 
-  /* ── Lazy-load observer ───────────────────────────────────── */
+  /* ── Lazy-load IntersectionObserver ─────────────────────────
+     Large rootMargin (3000px) triggers load well before visible.  */
   function _initObserver() {
     if (_lazyIo) _lazyIo.disconnect();
     _lazyIo = new IntersectionObserver(function (entries, obs) {
       for (const e of entries) {
         if (!e.isIntersecting) continue;
         obs.unobserve(e.target);
-        _loadImage(e.target);
+        _loadImage(e.target); // Now sets handlers + src safely
       }
     }, { rootMargin: '3000px 0px' });
   }
@@ -306,11 +297,10 @@
     if (img) _lazyIo.observe(img);
   }
 
-  /* ── Layout builders ──────────────────────────────────────── */
-
-  // 2-column masonry grid section
+  /* ── Layout: 2-col masonry grid ──────────────────────────────
+     Always appends to the shorter column for balance.            */
   function _buildGridSection(items) {
-    const section     = document.createElement('div');
+    const section = document.createElement('div');
     section.className = 'gallery-grid';
 
     const cols    = [document.createElement('div'), document.createElement('div')];
@@ -322,11 +312,9 @@
     for (const data of items) {
       const tile = _buildTile(data);
       if (!tile) continue;
-      // Always add to the shorter column
       const col = heights[0] <= heights[1] ? 0 : 1;
       cols[col].appendChild(tile);
-      const r = _ratio(data);
-      heights[col] += r !== null ? r : 1.0;
+      heights[col] += _ratio(data) ?? 1.0;
       _observeTile(tile);
       placed++;
     }
@@ -334,7 +322,7 @@
     return placed ? section : null;
   }
 
-  // Full-width hero section
+  /* ── Layout: full-width hero ─────────────────────────────────  */
   function _buildHero(data) {
     const tile = _buildTile(data);
     if (!tile) return null;
@@ -345,101 +333,74 @@
     return section;
   }
 
-  /* ── Main render ──────────────────────────────────────────── */
+  /* ── Main render ─────────────────────────────────────────────
+     Alternates between hero (full-width) and 2-col grid rows.
+     Layout pattern is seeded from the query for consistency.    */
   function _renderGallery(results) {
     const frag   = document.createDocumentFragment();
     const random = _random(_seedFromString(_q));
 
-    // Filter out images that are absurdly tall
+    // Filter out absurdly tall portraits, tag landscape items as hero-eligible
     const queue = results
-      .filter(item => {
-        const r = _ratio(item);
-        return r === null || r <= MAX_RATIO;
-      })
-      .map(item => ({
-        item,
-        // Hero-eligible: landscape or near-square (ratio ≤ 0.8)
-        heroOk: (function () {
-          const r = _ratio(item);
-          return r === null || r <= 0.8;
-        }())
-      }));
+      .filter(item => { const r = _ratio(item); return r === null || r <= MAX_RATIO; })
+      .map(item => ({ item, heroOk: (_ratio(item) ?? 0) <= 0.8 }));
 
     while (queue.length > 0) {
-      const hasHero   = queue.some(e => e.heroOk);
-      const isFirst   = frag.childNodes.length === 0;
-      // Use hero for first item if possible, then ~40% chance
-      const useHero   = hasHero && (isFirst || queue.length === 1 || random() < 0.40);
+      const hasHero = queue.some(e => e.heroOk);
+      const isFirst = frag.childNodes.length === 0;
+      // First item always hero if possible; then ~40% chance
+      const useHero = hasHero && (isFirst || queue.length === 1 || random() < 0.40);
 
       if (useHero) {
-        let data = null;
-        for (let i = 0; i < queue.length; i++) {
-          if (queue[i].heroOk) { data = queue.splice(i, 1)[0].item; break; }
-        }
-        if (data) {
-          const sec = _buildHero(data);
-          if (sec) frag.appendChild(sec);
-        }
+        // Find first hero-eligible item
+        const idx  = queue.findIndex(e => e.heroOk);
+        const data = queue.splice(idx, 1)[0].item;
+        const sec  = _buildHero(data);
+        if (sec) frag.appendChild(sec);
       } else {
-        // Take 2–4 items for a grid row
+        // 2–4 items per grid row
         const want  = (queue.length >= 4 && random() < 0.4) ? 4 : Math.min(2, queue.length);
-        const items = [];
-        while (items.length < want && queue.length) items.push(queue.splice(0, 1)[0].item);
-        if (items.length) {
-          const sec = _buildGridSection(items);
-          if (sec) frag.appendChild(sec);
-        }
+        const items = queue.splice(0, want).map(e => e.item);
+        const sec   = _buildGridSection(items);
+        if (sec) frag.appendChild(sec);
       }
     }
 
     _gallery.replaceChildren(frag);
-    _suggPool = _suggestions.slice();
+    _suggPool = _suggestions.slice(); // Reset pill pool after full re-render
   }
 
-  /* ── Cache warming ────────────────────────────────────────── */
+  /* ── Background cache warming ────────────────────────────────
+     Preloads remaining images via requestIdleCallback.           */
   function _warmCache() {
     if (_warmRunning || !_warmQueue.length) return;
     _warmRunning = true;
     const next = function () {
       if (!_warmQueue.length) { _warmRunning = false; return; }
-      const src = _warmQueue.shift();
-      if (src && !_preloaded.has(src)) _preload(src);
-      if (typeof requestIdleCallback === 'function') {
-        requestIdleCallback(next, { timeout: 150 });
-      } else {
-        setTimeout(next, 0);
-      }
+      _preload(_warmQueue.shift());
+      typeof requestIdleCallback === 'function'
+        ? requestIdleCallback(next, { timeout: 150 })
+        : setTimeout(next, 0);
     };
     next();
   }
 
-  /* ── Suggestions (Wikipedia opensearch) ──────────────────── */
+  /* ── Wikipedia suggestions ───────────────────────────────────
+     Fills _suggestions with related query ideas for gap pills.   */
   function _fetchSuggestions(q, token) {
     if (!q) return;
-    const url = 'https://en.wikipedia.org/w/api.php'
-      + '?action=opensearch&format=json&origin=*&limit=10&search='
-      + encodeURIComponent(q);
-
-    fetch(url)
+    fetch('https://en.wikipedia.org/w/api.php?action=opensearch&format=json&origin=*&limit=10&search=' + encodeURIComponent(q))
       .then(r => { if (!r.ok) throw new Error(); return r.json(); })
       .then(function (data) {
-        if (token !== _queryToken) return;
-        const titles = Array.isArray(data[1]) ? data[1] : [];
-        const qLow   = q.toLowerCase();
-        const seen   = new Set([qLow]);
-        const fresh  = [];
-        for (const t of titles) {
-          if (!t) continue;
-          const tl = t.toLowerCase();
-          if (seen.has(tl)) continue;
-          seen.add(tl);
-          fresh.push(t);
-        }
-        _suggestions = fresh;
-        _suggPool    = fresh.slice();
-        if (_gallery) {
-          _gallery.querySelectorAll('.gallery-grid').forEach(s => _scheduleMeasure(s));
-        }
+        if (token !== _queryToken) return; // Stale — newer search started
+        const qLow  = q.toLowerCase();
+        const seen  = new Set([qLow]);
+        _suggestions = (Array.isArray(data[1]) ? data[1] : []).filter(t => {
+          const tl = t?.toLowerCase();
+          return tl && !seen.has(tl) && seen.add(tl);
+        });
+        _suggPool = _suggestions.slice();
+        if (_gallery) _gallery.querySelectorAll('.gallery-grid').forEach(s => _scheduleMeasure(s));
       })
       .catch(function () {
         if (token !== _queryToken) return;
@@ -448,32 +409,28 @@
       });
   }
 
-  /* ── Fetch images ─────────────────────────────────────────── */
+  /* ── Fetch images from API ───────────────────────────────────
+     Deduplicates results, preloads first 8, warms rest.          */
   function _fetchImages() {
     fetch('/api/images?q=' + encodeURIComponent(_q))
       .then(r => { if (!r.ok) throw new Error(); return r.json(); })
       .then(function (data) {
         const results = Array.isArray(data.results) ? data.results : [];
-
         if (!results.length) {
           const page = document.getElementById('pageContent');
           if (page) page.innerHTML = '<div class="tab-empty"><p>No images found</p></div>';
           return;
         }
 
-        const fresh = [];
-        for (const item of results) {
+        // Deduplicate against already-seen srcs
+        const fresh = results.filter(item => {
           const key = _bestSrc(item);
-          if (!key || _seen.has(key)) continue;
-          _seen.add(key);
-          fresh.push(item);
-        }
+          return key && !_seen.has(key) && _seen.add(key);
+        });
         if (!fresh.length) return;
 
-        // Preload first 8 immediately
-        fresh.slice(0, 8).forEach(item => _preload(_bestSrc(item)));
-        // Rest go into warm queue
-        _warmQueue = fresh.slice(8).map(item => _bestSrc(item));
+        fresh.slice(0, 8).forEach(item => _preload(_bestSrc(item))); // Immediate preload
+        _warmQueue = fresh.slice(8).map(_bestSrc);                   // Rest: lazy warm
 
         _renderGallery(fresh);
         _warmCache();
@@ -484,11 +441,14 @@
       });
   }
 
-  /* ── Init ─────────────────────────────────────────────────── */
+  /* ── Init (called by router on tab switch) ───────────────────
+     Tears down previous state, builds gallery for current query. */
   window._atkynInit_images = function () {
     if (_lazyIo)    { _lazyIo.disconnect();    _lazyIo    = null; }
     if (_galleryRo) { _galleryRo.disconnect(); _galleryRo = null; }
     _closeSheet();
+
+    // Reset all mutable state
     _seen        = new Set();
     _warmQueue   = [];
     _warmRunning = false;
@@ -508,15 +468,15 @@
       return;
     }
 
-    _gallery = document.createElement('div');
+    _gallery           = document.createElement('div');
     _gallery.id        = 'gallery';
     _gallery.className = 'gallery';
     page.replaceChildren(_gallery);
 
     _initObserver();
 
-    // Watch for width changes to re-run gap-fill logic
-    _galleryRo = new ResizeObserver(function () { _onGalleryResize(); });
+    // Track gallery width changes for gap-fill recalculation
+    _galleryRo = new ResizeObserver(_onGalleryResize);
     _galleryRo.observe(_gallery);
 
     _fetchImages();
@@ -524,3 +484,4 @@
   };
 
 }());
+ 

@@ -1,487 +1,230 @@
+/**
+ * Atkyn Images Module
+ * Drop-in for modules/images/
+ * Expects:
+ *   - a <div id="images-tab"> in the DOM
+ *   - window.IMAGES_API_URL  OR  a global fetchImageResults(q) function
+ *   - Brand color already set via CSS (--brand: #0072B1)
+ */
+
 (function () {
   'use strict';
 
-  /* ── Constants ─────────────────────────────────────────────── */
-  const MAX_RATIO  = 2.2;  // Skip portrait images taller than this ratio
-  const PILL_SLOT  = 46;   // Height (px) per suggestion pill slot
-  const MIN_GAP    = 60;   // Min column height diff before we fill with pills
+  /* ── Config ── */
+  const PAGE_SIZE = 20;   // images per "page"
 
-  /* ── State ──────────────────────────────────────────────────── */
-  const _preloaded = new Set();   // Already-preloaded srcs (avoid duplicates)
-  let _seen        = new Set();   // Dedup filter for fetched results
-  let _gallery     = null;        // Root gallery DOM node
-  let _lazyIo      = null;        // IntersectionObserver for lazy loading
-  let _galleryRo   = null;        // ResizeObserver for gap-fill recalc
-  let _q           = '';          // Current search query
-  let _queryToken  = 0;           // Incremented on each new search; stale responses are ignored
+  /* ── State ── */
+  let _allResults  = [];
+  let _page        = 0;
+  let _currentQ    = '';
+  let _lightbox    = null;
 
-  let _warmQueue   = [];          // Srcs queued for background preload
-  let _warmRunning = false;       // Whether warm loop is active
+  /* ── Entry point called from your main search handler ── */
+  window.ImagesModule = {
+    /**
+     * Call this when the user searches and the Images tab is (or becomes) active.
+     * @param {string} query
+     * @param {Array}  results  — array from your backend: [{title, url, img_src, thumbnail_src, width, height}]
+     */
+    render(query, results) {
+      _currentQ   = query;
+      _allResults = results || [];
+      _page       = 0;
 
-  let _suggestions = [];          // Wikipedia autocomplete results
-  let _suggPool    = [];          // Remaining suggestions not yet used as pills
-  let _resizing    = false;       // Debounce flag for resize handler
+      const tab = document.getElementById('images-tab');
+      if (!tab) return;
 
-  let _sheetEl       = null;      // Bottom-sheet element
-  let _sheetBackdrop = null;      // Sheet backdrop overlay
-  let _sheetOpen     = false;     // Whether sheet is currently open
+      tab.innerHTML = '';
 
-  const _pendingMeasure = new WeakSet(); // Grids awaiting rAF measure
-
-  /* ── Seeded RNG ──────────────────────────────────────────────
-     Deterministic per-query so layout is stable on re-render     */
-  function _seedFromString(s) {
-    let h = 2166136261;
-    for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); }
-    return h >>> 0;
-  }
-  function _random(seed) {
-    let x = seed + 0x6D2B79F5;
-    return function () {
-      x = Math.imul(x ^ (x >>> 15), x | 1);
-      x ^= x + Math.imul(x ^ (x >>> 7), x | 61);
-      return ((x ^ (x >>> 14)) >>> 0) / 4294967296;
-    };
-  }
-
-  /* ── Helpers ─────────────────────────────────────────────────  */
-  // First 4 words of a title (overlay label)
-  function _shortTitle(raw) {
-    return raw ? raw.trim().split(/\s+/).slice(0, 4).join(' ') : '';
-  }
-
-  // height/width ratio; null if dimensions missing
-  function _ratio(data) {
-    return (data.width && data.height) ? data.height / data.width : null;
-  }
-
-  // Best available image URL
-  function _bestSrc(data) {
-    return data.img_src || data.thumbnail_src || '';
-  }
-
-  // Fire-and-forget background preload (skip if already done)
-  function _preload(src) {
-    if (!src || _preloaded.has(src)) return;
-    _preloaded.add(src);
-    const img = new Image();
-    img.decoding = 'async';
-    img.src = src;
-  }
-
-  /* ── Lazy load ───────────────────────────────────────────────
-     Called by the IntersectionObserver when a tile enters view.
-     Attach onload/onerror BEFORE setting src to avoid race.      */
-  function _loadImage(img) {
-    if (!img || img.dataset.loaded === '1' || img.dataset.loading === '1') return;
-    const src = img.dataset.src;
-    if (!src) return;
-    img.dataset.loading = '1';
-    // Handlers must be set before src so no load event is missed
-    img.onload = function () {
-      this.dataset.loaded = '1';
-      delete this.dataset.loading;
-      requestAnimationFrame(() => {
-        if (this.isConnected) this.classList.add('img-loaded');
-      });
-      // Rebalance gap-fill pills after image renders
-      const grid = this.closest('.gallery-grid');
-      if (grid) _scheduleMeasure(grid);
-    };
-    img.onerror = function () {
-      const tile = this.closest('.img-tile');
-      if (!tile) return;
-      const parent = tile.parentElement;
-      tile.remove();
-      if (!parent) return;
-      if (parent.classList.contains('gallery-col')) {
-        const grid = parent.parentElement;
-        if (grid) {
-          const allEmpty = Array.from(grid.querySelectorAll('.gallery-col')).every(c => !c.children.length);
-          if (allEmpty) grid.remove();
-          else _scheduleMeasure(grid);
-        }
-      } else if (parent.classList.contains('gallery-hero')) {
-        parent.remove();
+      if (!_allResults.length) {
+        tab.appendChild(_emptyState(query));
+        return;
       }
-    };
-    img.src = src;
-    _preloaded.add(src);
+
+      const grid = _makeGrid();
+      tab.appendChild(grid);
+      _renderPage(grid);
+
+      if (_allResults.length > PAGE_SIZE) {
+        tab.appendChild(_loadMoreBtn(grid));
+      }
+    },
+
+    /** Call if you lazy-load the images tab after a search already completed */
+    show() {
+      const tab = document.getElementById('images-tab');
+      if (tab && !tab.hasChildNodes() && _allResults.length) {
+        this.render(_currentQ, _allResults);
+      }
+    },
+  };
+
+  /* ── Grid ── */
+  function _makeGrid() {
+    const grid = document.createElement('div');
+    grid.className = 'img-grid';
+    return grid;
   }
 
-  /* ── Bottom Sheet ────────────────────────────────────────────  */
-  function _ensureSheet() {
-    if (_sheetEl) return;
-    _sheetBackdrop = document.createElement('div');
-    _sheetBackdrop.className = 'img-sheet-backdrop';
-    _sheetBackdrop.addEventListener('click', _closeSheet);
-    _sheetEl = document.createElement('div');
-    _sheetEl.className = 'img-sheet';
-    document.body.append(_sheetBackdrop, _sheetEl);
+  function _renderPage(grid) {
+    const start = _page * PAGE_SIZE;
+    const slice = _allResults.slice(start, start + PAGE_SIZE);
+    slice.forEach((item, i) => grid.appendChild(_makeCard(item, start + i)));
+    _page++;
   }
 
-  function _openSheet(data) {
-    _ensureSheet();
-    const src     = _bestSrc(data);
-    const pageUrl = data.url || src;
-    const title   = data.title || '';
-    let host = '';
-    try { host = new URL(pageUrl).hostname.replace(/^www\./, ''); } catch (_) {}
+  /* ── Card ── */
+  function _makeCard(item, index) {
+    const card = document.createElement('div');
+    card.className = 'img-card';
+    card.setAttribute('role', 'button');
+    card.setAttribute('tabindex', '0');
+    card.setAttribute('aria-label', item.title || 'Image');
 
-    _sheetEl.innerHTML = `
-      <div class="img-sheet__handle"></div>
-      <div class="img-sheet__img-wrap">
-        <img class="img-sheet__img" src="${src}" alt="${title.replace(/"/g, '&quot;')}" decoding="async">
-      </div>
-      <div class="img-sheet__info">
-        <div class="img-sheet__text">
-          <span class="img-sheet__title">${title}</span>
-          ${host ? `<span class="img-sheet__host">${host}</span>` : ''}
-        </div>
-      </div>
-      <div class="img-sheet__actions">
-        <a class="img-sheet__btn" href="${pageUrl}" target="_blank" rel="noopener noreferrer">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></svg>
-          Visit
-        </a>
-        <a class="img-sheet__btn" href="${src}" download target="_blank" rel="noopener noreferrer">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-          Download
-        </a>
-      </div>`;
+    /* Skeleton placeholder height — approximate based on aspect ratio */
+    const ar = (item.width && item.height) ? item.height / item.width : 0.75;
+    const skH = Math.round(ar * 100);
 
-    _sheetBackdrop.classList.add('img-sheet-backdrop--open');
-    _sheetEl.classList.add('img-sheet--open');
-    document.body.style.overflow = 'hidden';
-    _sheetOpen = true;
-  }
+    /* img element */
+    const img = document.createElement('img');
+    img.alt          = item.title || '';
+    img.loading      = 'lazy';
+    img.decoding     = 'async';
+    img.src          = item.thumbnail_src || item.img_src;
+    img.style.minHeight = skH + 'px';      /* holds space before load */
 
-  function _closeSheet() {
-    if (!_sheetEl || !_sheetOpen) return;
-    _sheetBackdrop.classList.remove('img-sheet-backdrop--open');
-    _sheetEl.classList.remove('img-sheet--open');
-    document.body.style.overflow = '';
-    _sheetOpen = false;
-  }
+    img.addEventListener('load', () => {
+      img.style.minHeight = '';
+      img.classList.add('loaded');
+    });
+    img.addEventListener('error', () => {
+      /* fallback to full-size URL */
+      if (img.src !== item.img_src) {
+        img.src = item.img_src;
+      } else {
+        card.style.display = 'none';       /* hide broken card */
+      }
+    });
 
-  /* ── Tile builder ────────────────────────────────────────────
-     Creates one image card (anchor + lazy img + overlay).        */
-  function _buildTile(data) {
-    const src = _bestSrc(data);
-    if (!src) return null;
-
-    const r      = _ratio(data);
-    const aspect = (r !== null ? r * 100 : 75).toFixed(3) + '%'; // padding-bottom trick
-
-    const tile = document.createElement('a');
-    tile.className      = 'img-tile';
-    tile.href           = data.url || src;
-    tile.rel            = 'noopener noreferrer';
-    tile.dataset.imageSrc = src;
-    tile._imageData     = data;
-    tile.addEventListener('click', e => { e.preventDefault(); _openSheet(data); });
-
-    // Aspect-ratio spacer (height 0 + padding-bottom = natural ratio)
-    const spacer = document.createElement('div');
-    spacer.className           = 'img-tile__spacer';
-    spacer.style.paddingBottom = aspect;
-
-    // Lazy image — src set later by observer via _loadImage()
-    const image = document.createElement('img');
-    image.className   = 'img-lazy';
-    image.alt         = data.title || '';
-    image.decoding    = 'async';
-    image.dataset.src = src;
-    // NOTE: onload/onerror are attached inside _loadImage() just before src is set
-
-    spacer.appendChild(image);
-    tile.appendChild(spacer);
-
-    // Overlay: short title + "…" menu button
+    /* Overlay */
     const overlay = document.createElement('div');
-    overlay.className = 'img-tile__overlay';
-
-    const titleText = _shortTitle(data.title);
-    if (titleText) {
-      const titleEl     = document.createElement('span');
-      titleEl.className = 'img-tile__title';
-      titleEl.textContent = titleText;
+    overlay.className = 'img-overlay';
+    if (item.title) {
+      const titleEl = document.createElement('span');
+      titleEl.className   = 'img-overlay-title';
+      titleEl.textContent = item.title;
       overlay.appendChild(titleEl);
     }
 
-    const menu     = document.createElement('button');
-    menu.className = 'img-tile__menu';
-    menu.type      = 'button';
-    menu.setAttribute('aria-label', 'More options');
-    menu.innerHTML = `<svg width="16" height="4" viewBox="0 0 16 4" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="2" cy="2" r="1.5" fill="currentColor"/><circle cx="8" cy="2" r="1.5" fill="currentColor"/><circle cx="14" cy="2" r="1.5" fill="currentColor"/></svg>`;
-    menu.addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); _openSheet(data); });
-    overlay.appendChild(menu);
-    tile.appendChild(overlay);
+    card.appendChild(img);
+    card.appendChild(overlay);
 
-    return tile;
-  }
-
-  /* ── Suggestion pill ─────────────────────────────────────────  */
-  function _buildPill(q) {
-    const btn     = document.createElement('button');
-    btn.className = 'sugg-pill';
-    btn.type      = 'button';
-    btn.textContent = q;
-    btn.addEventListener('click', function () {
-      sessionStorage.setItem('atkyn_last_query', q);
-      window.dispatchEvent(new CustomEvent('atkyn-search', { detail: { q } }));
+    /* Open lightbox */
+    const open = () => _openLightbox(index);
+    card.addEventListener('click', open);
+    card.addEventListener('keydown', e => {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); }
     });
-    return btn;
+
+    return card;
   }
 
-  /* ── Gap-fill: suggestion pills in shorter column ────────────
-     After layout, if one column is significantly shorter,
-     fill the gap with suggestion pills so it looks balanced.     */
-  function _scheduleMeasure(grid) {
-    if (_pendingMeasure.has(grid)) return; // Already scheduled
-    _pendingMeasure.add(grid);
-    requestAnimationFrame(function () {
-      _pendingMeasure.delete(grid);
-      _measureAndFill(grid);
+  /* ── Load More ── */
+  function _loadMoreBtn(grid) {
+    const wrap = document.createElement('div');
+    wrap.className = 'img-load-more';
+
+    const btn = document.createElement('button');
+    btn.className   = 'img-load-more-btn';
+    btn.textContent = 'Load more images';
+
+    btn.addEventListener('click', () => {
+      _renderPage(grid);
+      const remaining = _allResults.length - _page * PAGE_SIZE;
+      if (remaining <= 0) wrap.style.display = 'none';
     });
+
+    wrap.appendChild(btn);
+    return wrap;
   }
 
-  function _measureAndFill(grid) {
-    if (!grid.isConnected) return;
-    const cols = grid.querySelectorAll('.gallery-col');
-    if (cols.length !== 2) return;
+  /* ── Empty State ── */
+  function _emptyState(query) {
+    const el = document.createElement('div');
+    el.className = 'img-empty';
+    el.innerHTML = `
+      <svg width="48" height="48" viewBox="0 0 24 24" fill="none"
+           stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+        <circle cx="8.5" cy="8.5" r="1.5"/>
+        <polyline points="21 15 16 10 5 21"/>
+      </svg>
+      <p>No images found for <strong>${_esc(query)}</strong></p>
+    `;
+    return el;
+  }
 
-    const gap = Math.abs(cols[0].scrollHeight - cols[1].scrollHeight);
-    if (gap < MIN_GAP) return;
+  /* ── Lightbox ── */
+  function _openLightbox(index) {
+    _closeLightbox();
 
-    const shorter  = cols[0].scrollHeight < cols[1].scrollHeight ? cols[0] : cols[1];
-    const maxPills = Math.floor(gap / PILL_SLOT);
-    if (maxPills < 1) return;
+    const item = _allResults[index];
+    if (!item) return;
 
-    shorter.querySelectorAll('.sugg-pill--gap').forEach(el => el.remove());
+    const backdrop = document.createElement('div');
+    backdrop.className = 'img-lightbox-backdrop';
 
-    const count = Math.min(maxPills, _suggPool.length);
-    _suggPool.splice(0, count).forEach(function (text) {
-      const pill = _buildPill(text);
-      pill.classList.add('sugg-pill--gap');
-      shorter.appendChild(pill);
+    const inner = document.createElement('div');
+    inner.className = 'img-lightbox-inner';
+
+    const img = document.createElement('img');
+    img.src = item.img_src || item.thumbnail_src;
+    img.alt = item.title || '';
+
+    const title = document.createElement('p');
+    title.className   = 'img-lightbox-title';
+    title.textContent = item.title || '';
+
+    const closeBtn = document.createElement('button');
+    closeBtn.className   = 'img-lightbox-close';
+    closeBtn.innerHTML   = '&#x2715;';
+    closeBtn.setAttribute('aria-label', 'Close');
+    closeBtn.addEventListener('click', _closeLightbox);
+
+    inner.appendChild(img);
+    if (item.title) inner.appendChild(title);
+
+    backdrop.appendChild(inner);
+    backdrop.appendChild(closeBtn);
+
+    backdrop.addEventListener('click', e => {
+      if (e.target === backdrop) _closeLightbox();
     });
+
+    document.addEventListener('keydown', _lbKeyHandler);
+    document.body.appendChild(backdrop);
+    document.body.style.overflow = 'hidden';
+    _lightbox = backdrop;
   }
 
-  // On resize: reset pill pool and remeasure all grids
-  function _onGalleryResize() {
-    if (!_gallery || _resizing) return;
-    _resizing = true;
-    _suggPool = _suggestions.slice();
-    _gallery.querySelectorAll('.sugg-pill--gap').forEach(el => el.remove());
-    _gallery.querySelectorAll('.gallery-grid').forEach(s => _scheduleMeasure(s));
-    _resizing = false;
-  }
-
-  /* ── Lazy-load IntersectionObserver ─────────────────────────
-     Large rootMargin (3000px) triggers load well before visible.  */
-  function _initObserver() {
-    if (_lazyIo) _lazyIo.disconnect();
-    _lazyIo = new IntersectionObserver(function (entries, obs) {
-      for (const e of entries) {
-        if (!e.isIntersecting) continue;
-        obs.unobserve(e.target);
-        _loadImage(e.target); // Now sets handlers + src safely
-      }
-    }, { rootMargin: '3000px 0px' });
-  }
-
-  function _observeTile(tile) {
-    if (!_lazyIo || !tile) return;
-    const img = tile.querySelector('.img-lazy');
-    if (img) _lazyIo.observe(img);
-  }
-
-  /* ── Layout: 2-col masonry grid ──────────────────────────────
-     Always appends to the shorter column for balance.            */
-  function _buildGridSection(items) {
-    const section = document.createElement('div');
-    section.className = 'gallery-grid';
-
-    const cols    = [document.createElement('div'), document.createElement('div')];
-    cols.forEach(c => { c.className = 'gallery-col'; section.appendChild(c); });
-
-    const heights = [0, 0];
-    let placed    = 0;
-
-    for (const data of items) {
-      const tile = _buildTile(data);
-      if (!tile) continue;
-      const col = heights[0] <= heights[1] ? 0 : 1;
-      cols[col].appendChild(tile);
-      heights[col] += _ratio(data) ?? 1.0;
-      _observeTile(tile);
-      placed++;
+  function _closeLightbox() {
+    if (_lightbox) {
+      _lightbox.remove();
+      _lightbox = null;
+      document.body.style.overflow = '';
+      document.removeEventListener('keydown', _lbKeyHandler);
     }
-
-    return placed ? section : null;
   }
 
-  /* ── Layout: full-width hero ─────────────────────────────────  */
-  function _buildHero(data) {
-    const tile = _buildTile(data);
-    if (!tile) return null;
-    const section     = document.createElement('div');
-    section.className = 'gallery-hero';
-    section.appendChild(tile);
-    _observeTile(tile);
-    return section;
+  function _lbKeyHandler(e) {
+    if (e.key === 'Escape') _closeLightbox();
   }
 
-  /* ── Main render ─────────────────────────────────────────────
-     Alternates between hero (full-width) and 2-col grid rows.
-     Layout pattern is seeded from the query for consistency.    */
-  function _renderGallery(results) {
-    const frag   = document.createDocumentFragment();
-    const random = _random(_seedFromString(_q));
-
-    // Filter out absurdly tall portraits, tag landscape items as hero-eligible
-    const queue = results
-      .filter(item => { const r = _ratio(item); return r === null || r <= MAX_RATIO; })
-      .map(item => ({ item, heroOk: (_ratio(item) ?? 0) <= 0.8 }));
-
-    while (queue.length > 0) {
-      const hasHero = queue.some(e => e.heroOk);
-      const isFirst = frag.childNodes.length === 0;
-      // First item always hero if possible; then ~40% chance
-      const useHero = hasHero && (isFirst || queue.length === 1 || random() < 0.40);
-
-      if (useHero) {
-        // Find first hero-eligible item
-        const idx  = queue.findIndex(e => e.heroOk);
-        const data = queue.splice(idx, 1)[0].item;
-        const sec  = _buildHero(data);
-        if (sec) frag.appendChild(sec);
-      } else {
-        // 2–4 items per grid row
-        const want  = (queue.length >= 4 && random() < 0.4) ? 4 : Math.min(2, queue.length);
-        const items = queue.splice(0, want).map(e => e.item);
-        const sec   = _buildGridSection(items);
-        if (sec) frag.appendChild(sec);
-      }
-    }
-
-    _gallery.replaceChildren(frag);
-    _suggPool = _suggestions.slice(); // Reset pill pool after full re-render
+  /* ── Utils ── */
+  function _esc(str) {
+    return str.replace(/[&<>"']/g, c => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+    })[c]);
   }
 
-  /* ── Background cache warming ────────────────────────────────
-     Preloads remaining images via requestIdleCallback.           */
-  function _warmCache() {
-    if (_warmRunning || !_warmQueue.length) return;
-    _warmRunning = true;
-    const next = function () {
-      if (!_warmQueue.length) { _warmRunning = false; return; }
-      _preload(_warmQueue.shift());
-      typeof requestIdleCallback === 'function'
-        ? requestIdleCallback(next, { timeout: 150 })
-        : setTimeout(next, 0);
-    };
-    next();
-  }
-
-  /* ── Wikipedia suggestions ───────────────────────────────────
-     Fills _suggestions with related query ideas for gap pills.   */
-  function _fetchSuggestions(q, token) {
-    if (!q) return;
-    fetch('https://en.wikipedia.org/w/api.php?action=opensearch&format=json&origin=*&limit=10&search=' + encodeURIComponent(q))
-      .then(r => { if (!r.ok) throw new Error(); return r.json(); })
-      .then(function (data) {
-        if (token !== _queryToken) return; // Stale — newer search started
-        const qLow  = q.toLowerCase();
-        const seen  = new Set([qLow]);
-        _suggestions = (Array.isArray(data[1]) ? data[1] : []).filter(t => {
-          const tl = t?.toLowerCase();
-          return tl && !seen.has(tl) && seen.add(tl);
-        });
-        _suggPool = _suggestions.slice();
-        if (_gallery) _gallery.querySelectorAll('.gallery-grid').forEach(s => _scheduleMeasure(s));
-      })
-      .catch(function () {
-        if (token !== _queryToken) return;
-        _suggestions = [];
-        _suggPool    = [];
-      });
-  }
-
-  /* ── Fetch images from API ───────────────────────────────────
-     Deduplicates results, preloads first 8, warms rest.          */
-  function _fetchImages() {
-    fetch('/api/images?q=' + encodeURIComponent(_q))
-      .then(r => { if (!r.ok) throw new Error(); return r.json(); })
-      .then(function (data) {
-        const results = Array.isArray(data.results) ? data.results : [];
-        if (!results.length) {
-          const page = document.getElementById('pageContent');
-          if (page) page.innerHTML = '<div class="tab-empty"><p>No images found</p></div>';
-          return;
-        }
-
-        // Deduplicate against already-seen srcs
-        const fresh = results.filter(item => {
-          const key = _bestSrc(item);
-          return key && !_seen.has(key) && _seen.add(key);
-        });
-        if (!fresh.length) return;
-
-        fresh.slice(0, 8).forEach(item => _preload(_bestSrc(item))); // Immediate preload
-        _warmQueue = fresh.slice(8).map(_bestSrc);                   // Rest: lazy warm
-
-        _renderGallery(fresh);
-        _warmCache();
-      })
-      .catch(function () {
-        const page = document.getElementById('pageContent');
-        if (page) page.innerHTML = '<div class="tab-empty"><p>Could not load images</p></div>';
-      });
-  }
-
-  /* ── Init (called by router on tab switch) ───────────────────
-     Tears down previous state, builds gallery for current query. */
-  window._atkynInit_images = function () {
-    if (_lazyIo)    { _lazyIo.disconnect();    _lazyIo    = null; }
-    if (_galleryRo) { _galleryRo.disconnect(); _galleryRo = null; }
-    _closeSheet();
-
-    // Reset all mutable state
-    _seen        = new Set();
-    _warmQueue   = [];
-    _warmRunning = false;
-    _suggestions = [];
-    _suggPool    = [];
-    _resizing    = false;
-    _queryToken  = (_queryToken + 1) | 0;
-
-    const token = _queryToken;
-    _q = sessionStorage.getItem('atkyn_last_query') || '';
-
-    const page = document.getElementById('pageContent');
-    if (!page) return;
-
-    if (!_q) {
-      page.innerHTML = '<div class="tab-empty"><p>Search something to see images</p></div>';
-      return;
-    }
-
-    _gallery           = document.createElement('div');
-    _gallery.id        = 'gallery';
-    _gallery.className = 'gallery';
-    page.replaceChildren(_gallery);
-
-    _initObserver();
-
-    // Track gallery width changes for gap-fill recalculation
-    _galleryRo = new ResizeObserver(_onGalleryResize);
-    _galleryRo.observe(_gallery);
-
-    _fetchImages();
-    _fetchSuggestions(_q, token);
-  };
-
-}());
- 
+})();

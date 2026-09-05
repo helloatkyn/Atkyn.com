@@ -1,7 +1,6 @@
 /* ═══════════════════════════════════════════════════════════════════
-   images.js — Atkyn Images module
-   Loaded by core.js as modules/images/images.js
-   Registers window._atkynInit_images() which core calls on tab switch
+   images.js — Atkyn Images module  
+   Registers window._atkynInit_images() called by core.js on tab switch
 ════════════════════════════════════════════════════════════════════ */
 
 (function () {
@@ -9,7 +8,6 @@
 
   const PAGE_SIZE = 20;
 
-  /* ── State ── */
   let _allResults = [];
   let _page       = 0;
   let _lastQuery  = '';
@@ -25,7 +23,6 @@
     const pc = window._atkynPageContent;
     if (!pc) return;
 
-    /* Same query already rendered — just show it */
     if (q && q === _lastQuery && _allResults.length) {
       _mountGrid(pc);
       return;
@@ -49,24 +46,15 @@
   ════════════════════════════════ */
   async function _fetchAndRender(q, pc) {
     try {
-      /* Use same API base that the web/other modules use */
       const base = (window.ATKYN_API_BASE || '').replace(/\/$/, '');
       const url  = `${base}/api/images?q=${encodeURIComponent(q)}`;
-
       const res  = await fetch(url);
-      if (!res.ok) throw new Error('API error ' + res.status);
-
+      if (!res.ok) throw new Error('API ' + res.status);
       const data = await res.json();
       _allResults = (data.results || []).filter(r => r.img_src || r.thumbnail_src);
-
     } catch (err) {
       console.error('[Atkyn Images]', err);
       _allResults = [];
-    }
-
-    /* Guard: user may have switched tab while fetching */
-    if (window._atkynPageContent !== pc && pc !== window._atkynPageContent) {
-      /* still mount — core hides/shows pageContent, not swaps it */
     }
 
     if (!_allResults.length) {
@@ -84,6 +72,16 @@
 
     _page = 0;
     _mountGrid(pc);
+  }
+
+  /* ════════════════════════════════
+     LAYOUT DECISION
+     square/landscape (ar <= 1.2)  → span full row (single)
+     portrait (ar > 1.2)           → half row (pair)
+  ════════════════════════════════ */
+  function _isWide(item) {
+    if (!item.width || !item.height) return false;
+    return (item.height / item.width) <= 1.2;
   }
 
   /* ════════════════════════════════
@@ -115,34 +113,74 @@
   function _renderPage(grid) {
     const start = _page * PAGE_SIZE;
     const slice = _allResults.slice(start, start + PAGE_SIZE);
-    slice.forEach((item, i) => grid.appendChild(_makeCard(item, start + i)));
+
+    let i = 0;
+    while (i < slice.length) {
+      const item = slice[i];
+      const globalIdx = start + i;
+
+      if (_isWide(item)) {
+        /* Full-width single card */
+        const card = _makeCard(item, globalIdx, 'img-card--wide');
+        grid.appendChild(card);
+        i++;
+      } else {
+        /* Try to pair two portrait images */
+        const next = slice[i + 1];
+        if (next && !_isWide(next)) {
+          const row = document.createElement('div');
+          row.className = 'img-row';
+          row.appendChild(_makeCard(item, globalIdx, ''));
+          row.appendChild(_makeCard(next, globalIdx + 1, ''));
+          grid.appendChild(row);
+          i += 2;
+        } else {
+          /* Orphan portrait — show as wide */
+          const card = _makeCard(item, globalIdx, 'img-card--wide');
+          grid.appendChild(card);
+          i++;
+        }
+      }
+    }
+
     _page++;
   }
 
   /* ════════════════════════════════
      CARD
   ════════════════════════════════ */
-  function _makeCard(item, index) {
+  function _makeCard(item, index, extraClass) {
     const card = document.createElement('div');
-    card.className = 'img-card';
+    card.className = 'img-card' + (extraClass ? ' ' + extraClass : '');
     card.setAttribute('role', 'button');
     card.setAttribute('tabindex', '0');
-    card.setAttribute('aria-label', item.title || 'Image');
 
-    /* Natural aspect ratio — no fixed height, no crop */
+    /* Shimmer placeholder — sits behind image until loaded */
+    const shimmer = document.createElement('div');
+    shimmer.className = 'img-shimmer';
+
+    /* Aspect ratio box so layout doesn't jump */
+    const ratio = document.createElement('div');
+    ratio.className = 'img-ratio';
+
+    if (item.width && item.height) {
+      const pct = (item.height / item.width * 100).toFixed(2);
+      ratio.style.paddingBottom = pct + '%';
+    } else {
+      /* Unknown ratio — use sensible defaults */
+      ratio.style.paddingBottom = extraClass === 'img-card--wide' ? '56.25%' : '100%';
+    }
+
     const img = document.createElement('img');
     img.alt      = item.title || '';
     img.loading  = 'lazy';
     img.decoding = 'async';
     img.src      = item.thumbnail_src || item.img_src;
 
-    /* Reserve approx space while loading to prevent layout jump */
-    if (item.width && item.height) {
-      const ar = item.height / item.width;
-      img.style.aspectRatio = `${item.width} / ${item.height}`;
-    }
-
-    img.addEventListener('load', () => img.classList.add('loaded'));
+    img.addEventListener('load', () => {
+      img.classList.add('loaded');
+      shimmer.style.display = 'none';
+    });
     img.addEventListener('error', () => {
       if (img.src !== item.img_src && item.img_src) {
         img.src = item.img_src;
@@ -151,7 +189,7 @@
       }
     });
 
-    /* Hover title overlay */
+    /* Hover overlay */
     const overlay = document.createElement('div');
     overlay.className = 'img-overlay';
     if (item.title) {
@@ -161,8 +199,10 @@
       overlay.appendChild(t);
     }
 
-    card.appendChild(img);
-    card.appendChild(overlay);
+    ratio.appendChild(shimmer);
+    ratio.appendChild(img);
+    ratio.appendChild(overlay);
+    card.appendChild(ratio);
 
     const open = () => _openLightbox(index);
     card.addEventListener('click', open);
@@ -182,12 +222,11 @@
 
     const btn = document.createElement('button');
     btn.className   = 'img-load-more-btn';
-    btn.textContent = 'Load more images';
+    btn.textContent = 'Load more';
 
     btn.addEventListener('click', () => {
       _renderPage(grid);
-      const remaining = _allResults.length - _page * PAGE_SIZE;
-      if (remaining <= 0) wrap.style.display = 'none';
+      if (_page * PAGE_SIZE >= _allResults.length) wrap.style.display = 'none';
     });
 
     wrap.appendChild(btn);
@@ -195,7 +234,7 @@
   }
 
   /* ════════════════════════════════
-     SKELETON
+     SKELETON — while fetching
   ════════════════════════════════ */
   function _showSkeleton(pc) {
     pc.innerHTML = '';
@@ -205,13 +244,23 @@
     const grid = document.createElement('div');
     grid.className = 'img-grid';
 
-    /* 10 skeleton placeholders with varying heights */
-    const heights = [160,220,140,200,180,150,230,170,190,160];
-    heights.forEach(h => {
-      const sk = document.createElement('div');
-      sk.className   = 'img-skeleton';
-      sk.style.height = h + 'px';
-      grid.appendChild(sk);
+    /* Mimic realistic layout: wide, pair, wide, pair, wide */
+    const pattern = ['wide', 'pair', 'pair', 'wide', 'pair'];
+    pattern.forEach(type => {
+      if (type === 'wide') {
+        const sk = document.createElement('div');
+        sk.className = 'img-sk img-sk--wide';
+        grid.appendChild(sk);
+      } else {
+        const row = document.createElement('div');
+        row.className = 'img-row';
+        [0, 1].forEach(() => {
+          const sk = document.createElement('div');
+          sk.className = 'img-sk img-sk--half';
+          row.appendChild(sk);
+        });
+        grid.appendChild(row);
+      }
     });
 
     wrap.appendChild(grid);
@@ -223,7 +272,6 @@
   ════════════════════════════════ */
   function _openLightbox(index) {
     _closeLightbox();
-
     const item = _allResults[index];
     if (!item) return;
 
@@ -233,7 +281,7 @@
     const inner = document.createElement('div');
     inner.className = 'img-lightbox-inner';
 
-    const img   = document.createElement('img');
+    const img = document.createElement('img');
     img.src = item.img_src || item.thumbnail_src;
     img.alt = item.title || '';
 
@@ -272,12 +320,9 @@
 
   function _lbKey(e) { if (e.key === 'Escape') _closeLightbox(); }
 
-  /* ════════════════════════════════
-     UTILS
-  ════════════════════════════════ */
-  function _esc(str) {
-    return String(str).replace(/[&<>"']/g, c =>
-      ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' })[c]);
+  function _esc(s) {
+    return String(s).replace(/[&<>"']/g, c =>
+      ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);
   }
 
 })();

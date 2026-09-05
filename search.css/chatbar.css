@@ -94,6 +94,9 @@ height: 24px;
 }
 
 @media (prefers-color-scheme: dark) {
+.ico-plus {
+color: #ffffff;
+}
 .ico-plus:active {
 background: rgba(255, 255, 255, 0.08);
 }
@@ -247,6 +250,9 @@ height: 24px;
 }
 
 @media (prefers-color-scheme: dark) {
+.ico-camera {
+color: #ffffff;
+}
 .ico-camera:active {
 background: rgba(255, 255, 255, 0.08);
 }

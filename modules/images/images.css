@@ -6,78 +6,72 @@
   padding: 10px 0 48px;
 }
 
-/* ── Main grid container ── */
 .img-grid {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 5px;
   padding: 0 10px;
 }
 
-/* ── Two-column row for portrait pairs ── */
+/* Two portrait images side by side */
 .img-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 6px;
+  gap: 5px;
 }
 
-/* ── Card base ── */
+/* ── Card ── */
 .img-card {
-  border-radius: 12px;
+  border-radius: 10px;
   overflow: hidden;
   cursor: pointer;
   position: relative;
   background: transparent;
   -webkit-tap-highlight-color: transparent;
-  transition: transform 0.16s ease;
+  transition: transform 0.15s ease;
 }
 
 .img-card:active { transform: scale(0.97); }
 
-/* Wide card fills full row */
-.img-card--wide {
-  width: 100%;
-}
-
-/* ── Aspect-ratio wrapper — eliminates layout jump ── */
+/* ── Aspect ratio wrapper ── */
 .img-ratio {
   position: relative;
   width: 100%;
-  height: 0;        /* paddingBottom set inline from real dimensions */
+  height: 0;
   overflow: hidden;
-  border-radius: 12px;
+  border-radius: 10px;
 }
 
-/* ── Shimmer placeholder — shown before image loads ── */
+/* ── Shimmer — light grey, NOT black ── */
 .img-shimmer {
   position: absolute;
   inset: 0;
-  border-radius: 12px;
+  border-radius: 10px;
   background: linear-gradient(
-    105deg,
-    #1e1e1e 0%,
-    #1e1e1e 30%,
-    #2c2c2c 50%,
-    #1e1e1e 70%,
-    #1e1e1e 100%
+    90deg,
+    #e0e0e0 0%,
+    #ececec 40%,
+    #f5f5f5 50%,
+    #ececec 60%,
+    #e0e0e0 100%
   );
-  background-size: 200% 100%;
-  animation: img-shimmer-anim 1.5s infinite linear;
+  background-size: 300% 100%;
+  animation: img-sh 1.6s infinite ease-in-out;
 }
 
-@keyframes img-shimmer-anim {
-  0%   { background-position: 200% 0; }
-  100% { background-position: -200% 0; }
+@keyframes img-sh {
+  0%   { background-position: 100% 0; }
+  100% { background-position: -100% 0; }
 }
 
-/* ── Actual image ── */
+/* ── Image ── */
 .img-ratio img {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
-  object-fit: cover;    /* fills the ratio box cleanly */
-  border-radius: 12px;
+  object-fit: cover;
+  border-radius: 10px;
   display: block;
   opacity: 0;
   transition: opacity 0.3s ease;
@@ -89,18 +83,17 @@
 .img-overlay {
   position: absolute;
   inset: 0;
-  border-radius: 12px;
-  background: linear-gradient(to bottom, transparent 50%, rgba(0,0,0,0.72) 100%);
+  border-radius: 10px;
+  background: linear-gradient(to bottom, transparent 50%, rgba(0,0,0,0.68) 100%);
   opacity: 0;
-  transition: opacity 0.2s ease;
+  transition: opacity 0.18s ease;
   display: flex;
   align-items: flex-end;
-  padding: 10px;
+  padding: 8px;
   pointer-events: none;
 }
 
-.img-card:hover .img-overlay,
-.img-card:focus .img-overlay { opacity: 1; }
+.img-card:hover .img-overlay { opacity: 1; }
 
 .img-overlay-title {
   font-size: 11px;
@@ -112,36 +105,30 @@
   overflow: hidden;
 }
 
-/* ════════════════════════════════
-   SKELETON (while fetching)
-════════════════════════════════ */
+/* ── Skeleton while fetching ── */
 .img-sk {
-  border-radius: 12px;
+  border-radius: 10px;
   background: linear-gradient(
-    105deg,
-    #1e1e1e 0%,
-    #1e1e1e 30%,
-    #2c2c2c 50%,
-    #1e1e1e 70%,
-    #1e1e1e 100%
+    90deg,
+    #e0e0e0 0%,
+    #ececec 40%,
+    #f5f5f5 50%,
+    #ececec 60%,
+    #e0e0e0 100%
   );
-  background-size: 200% 100%;
-  animation: img-shimmer-anim 1.5s infinite linear;
+  background-size: 300% 100%;
+  animation: img-sh 1.6s infinite ease-in-out;
 }
 
-.img-sk--wide  { height: 200px; width: 100%; }
-.img-sk--half  { height: 180px; }
+.img-sk--wide { height: 195px; width: 100%; }
+.img-sk--half { height: 175px; }
+.img-row .img-sk:last-child { animation-delay: 0.25s; }
 
-/* Stagger shimmer so they don't all pulse in sync */
-.img-row .img-sk:last-child { animation-delay: 0.2s; }
-
-/* ════════════════════════════════
-   LIGHTBOX
-════════════════════════════════ */
+/* ── Lightbox ── */
 .img-lightbox-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(0,0,0,0.94);
+  background: rgba(0,0,0,0.93);
   z-index: 9999;
   display: flex;
   align-items: center;
@@ -186,7 +173,7 @@
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  background: rgba(255,255,255,0.1);
+  background: rgba(255,255,255,0.12);
   border: none;
   color: #fff;
   font-size: 18px;
@@ -196,31 +183,26 @@
   justify-content: center;
   transition: background 0.15s;
   z-index: 10000;
-  line-height: 1;
 }
 
-.img-lightbox-close:hover { background: rgba(255,255,255,0.2); }
+.img-lightbox-close:hover { background: rgba(255,255,255,0.22); }
 
-/* ════════════════════════════════
-   EMPTY STATE
-════════════════════════════════ */
+/* ── Empty ── */
 .img-empty {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 12px;
   padding: 72px 24px;
-  color: #555;
+  color: #888;
   font-size: 14px;
   text-align: center;
 }
 
-.img-empty svg  { opacity: 0.25; }
-.img-empty strong { color: #777; }
+.img-empty svg { opacity: 0.25; }
+.img-empty strong { color: #666; }
 
-/* ════════════════════════════════
-   LOAD MORE
-════════════════════════════════ */
+/* ── Load more ── */
 .img-load-more {
   display: flex;
   justify-content: center;
@@ -236,11 +218,10 @@
   font-size: 13px;
   cursor: pointer;
   font-family: inherit;
-  transition: border-color 0.16s, color 0.16s, background 0.16s;
+  transition: border-color 0.16s, color 0.16s;
 }
 
 .img-load-more-btn:hover {
   border-color: #0072B1;
   color: #0072B1;
-  background: rgba(0,114,177,0.06);
 }

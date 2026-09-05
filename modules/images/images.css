@@ -1,105 +1,81 @@
 /* ═══════════════════════════════════════════════════════════
-   Atkyn — Images Tab CSS
-   Natural-ratio masonry grid (Yandex Images style)
+   Atkyn — Images Tab
+   Tight masonry grid, natural aspect ratios, zero shadows/blur
    ═══════════════════════════════════════════════════════════ */
 
-/* ── CSS Variables ────────────────────────────────────────── */
-:root {
-  --img-gap: 6px;
-  --img-radius: 10px;
-  --img-overlay-bg: linear-gradient(to top, rgba(0,0,0,0.62) 0%, transparent 56%);
-  --img-title-color: #fff;
-  --img-menu-bg: rgba(0,0,0,0.45);
-  --pill-bg: rgba(255,255,255,0.08);
-  --pill-bg-hover: rgba(255,255,255,0.14);
-  --pill-border: rgba(255,255,255,0.14);
-  --pill-color: rgba(255,255,255,0.82);
-  --sheet-bg: #1a1a1a;
-  --sheet-handle: rgba(255,255,255,0.22);
-  --sheet-radius: 20px;
-  --sheet-btn-bg: rgba(255,255,255,0.07);
-  --sheet-btn-hover: rgba(255,255,255,0.13);
-}
-
 /* ── Gallery wrapper ──────────────────────────────────────── */
-#gallery,
 .gallery {
   display: flex;
   flex-direction: column;
-  gap: var(--img-gap);
-  padding: var(--img-gap);
+  gap: 3px;
+  padding: 3px;
   box-sizing: border-box;
   width: 100%;
+  background: #000; /* fills micro-gaps between sections */
 }
 
-/* ── Empty / error state ──────────────────────────────────── */
+/* ── Empty / error ────────────────────────────────────────── */
 .tab-empty {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 64px 24px;
-  color: rgba(255,255,255,0.45);
+  padding: 72px 24px;
+  color: rgba(255,255,255,0.4);
   font-size: 15px;
   text-align: center;
 }
 
 /* ══════════════════════════════════════════════════════════
-   HERO — full-width single image
+   HERO — full-width single image, no gap around it
    ══════════════════════════════════════════════════════════ */
 .gallery-hero {
   width: 100%;
-  border-radius: var(--img-radius);
   overflow: hidden;
-}
-
-.gallery-hero .img-tile {
-  display: block;
-  width: 100%;
-  border-radius: var(--img-radius);
+  /* no border-radius, no margin, flush edge-to-edge */
 }
 
 /* ══════════════════════════════════════════════════════════
-   GRID — 2-column masonry columns
+   GRID — 2-column masonry
    ══════════════════════════════════════════════════════════ */
 .gallery-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: var(--img-gap);
-  align-items: start;       /* ← key: columns don't stretch to equal height */
+  gap: 3px;           /* only this tiny gap between columns */
+  align-items: start; /* critical: columns don't stretch to equal height */
 }
 
 .gallery-col {
   display: flex;
   flex-direction: column;
-  gap: var(--img-gap);
-  align-items: stretch;
+  gap: 3px;           /* tiny gap between tiles in same column */
   min-width: 0;
 }
 
 /* ══════════════════════════════════════════════════════════
-   TILE — individual image card
+   TILE
    ══════════════════════════════════════════════════════════ */
 .img-tile {
   display: block;
   position: relative;
-  border-radius: var(--img-radius);
   overflow: hidden;
-  background: rgba(255,255,255,0.05);
+  /* NO border-radius, NO shadow, NO background */
   text-decoration: none;
   -webkit-tap-highlight-color: transparent;
   cursor: pointer;
 }
 
-/* Spacer holds the intrinsic aspect ratio so the card
-   doesn't collapse before the image loads */
+/* Ratio-preserving spacer.
+   JS sets: spacer.style.paddingBottom = (h/w * 100).toFixed(3) + '%'
+   This makes the card exactly as tall as the image's natural ratio.
+   height: 0 is the key — the card height comes entirely from padding-bottom. */
 .img-tile__spacer {
   position: relative;
   width: 100%;
-  height: 0;               /* height comes from padding-bottom set inline */
+  height: 0;
   overflow: hidden;
 }
 
-/* The actual image — absolutely fills the spacer */
+/* Image fills the spacer absolutely — no gaps, no letterboxing */
 .img-lazy {
   position: absolute;
   inset: 0;
@@ -108,9 +84,9 @@
   object-fit: cover;
   object-position: center;
   display: block;
+  /* Invisible until loaded — avoids flash of broken img icon */
   opacity: 0;
-  transition: opacity 0.22s ease;
-  will-change: opacity;
+  transition: opacity 0.18s linear;
 }
 
 .img-lazy.img-loaded {
@@ -121,43 +97,49 @@
 .img-tile__overlay {
   position: absolute;
   inset: 0;
-  background: var(--img-overlay-bg);
+  /* Gradient only at the bottom — keeps image visible */
+  background: linear-gradient(to top,
+    rgba(0,0,0,0.60) 0%,
+    rgba(0,0,0,0.10) 40%,
+    transparent 65%);
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
-  padding: 8px 8px 7px 9px;
+  padding: 0 6px 6px 7px;
   opacity: 0;
-  transition: opacity 0.18s ease;
+  transition: opacity 0.15s linear;
   pointer-events: none;
 }
 
+/* Desktop hover */
 .img-tile:hover .img-tile__overlay,
 .img-tile:focus-visible .img-tile__overlay {
   opacity: 1;
   pointer-events: auto;
 }
 
-/* Always show overlay on touch devices (no hover) */
+/* Touch: always show so users can tap the menu */
 @media (hover: none) {
   .img-tile__overlay {
     opacity: 1;
     pointer-events: auto;
-    /* Lighter gradient so image stays readable on mobile */
-    background: linear-gradient(to top, rgba(0,0,0,0.48) 0%, transparent 48%);
+    background: linear-gradient(to top,
+      rgba(0,0,0,0.45) 0%,
+      transparent 50%);
   }
 }
 
 .img-tile__title {
   flex: 1;
-  font-size: 11.5px;
+  font-size: 11px;
   font-weight: 500;
+  color: #fff;
   line-height: 1.3;
-  color: var(--img-title-color);
   overflow: hidden;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
-  text-shadow: 0 1px 3px rgba(0,0,0,0.55);
+  text-shadow: 0 1px 2px rgba(0,0,0,0.7);
   padding-right: 4px;
 }
 
@@ -166,69 +148,55 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
+  width: 26px;
+  height: 26px;
   border: none;
-  background: var(--img-menu-bg);
+  /* Semi-transparent dark circle — NO blur */
+  background: rgba(0,0,0,0.50);
   border-radius: 50%;
   color: #fff;
   cursor: pointer;
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
-  transition: background 0.15s;
   padding: 0;
+  transition: background 0.12s;
 }
 
-.img-tile__menu:hover {
-  background: rgba(0,0,0,0.65);
-}
+.img-tile__menu:hover { background: rgba(0,0,0,0.72); }
+.img-tile__menu:active { transform: scale(0.90); }
 
-.img-tile__menu:active {
-  transform: scale(0.92);
-}
-
-/* Focus ring for accessibility */
 .img-tile:focus-visible {
-  outline: 2px solid rgba(255,255,255,0.7);
-  outline-offset: 2px;
+  outline: 2px solid #fff;
+  outline-offset: -2px;
 }
 
 /* ══════════════════════════════════════════════════════════
-   SUGGESTION PILLS
+   SUGGESTION PILLS (gap-filler)
    ══════════════════════════════════════════════════════════ */
 .sugg-pill {
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 48px;
-  padding: 10px 12px;
-  border-radius: 10px;
-  border: 1px solid var(--pill-border);
-  background: var(--pill-bg);
-  color: var(--pill-color);
-  font-size: 13px;
+  min-height: 44px;
+  padding: 8px 10px;
+  /* Subtle dark chip — blends with masonry */
+  background: rgba(255,255,255,0.07);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 8px;
+  color: rgba(255,255,255,0.78);
+  font-size: 12px;
   font-weight: 500;
   line-height: 1.35;
   text-align: center;
   cursor: pointer;
-  transition: background 0.15s, border-color 0.15s;
   word-break: break-word;
   -webkit-tap-highlight-color: transparent;
+  transition: background 0.12s;
 }
 
-.sugg-pill:hover {
-  background: var(--pill-bg-hover);
-  border-color: rgba(255,255,255,0.24);
-}
+.sugg-pill:hover   { background: rgba(255,255,255,0.13); }
+.sugg-pill:active  { transform: scale(0.96); }
 
-.sugg-pill:active {
-  transform: scale(0.97);
-}
-
-/* Gap-injected pills sit flush with the image column */
-.sugg-pill--gap {
-  margin-top: 0; /* gap comes from .gallery-col gap */
-}
+/* gap pills: no extra margin — column gap handles spacing */
+.sugg-pill--gap { margin: 0; }
 
 /* ══════════════════════════════════════════════════════════
    BOTTOM SHEET
@@ -236,17 +204,14 @@
 .img-sheet-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(0,0,0,0);
+  background: transparent;
   z-index: 900;
   pointer-events: none;
-  transition: background 0.28s ease;
+  transition: background 0.25s ease;
 }
-
 .img-sheet-backdrop--open {
-  background: rgba(0,0,0,0.55);
+  background: rgba(0,0,0,0.60);
   pointer-events: auto;
-  backdrop-filter: blur(3px);
-  -webkit-backdrop-filter: blur(3px);
 }
 
 .img-sheet {
@@ -255,67 +220,54 @@
   left: 0;
   right: 0;
   z-index: 901;
-  background: var(--sheet-bg);
-  border-radius: var(--sheet-radius) var(--sheet-radius) 0 0;
-  padding: 0 0 env(safe-area-inset-bottom, 12px);
+  background: #111;
+  border-radius: 18px 18px 0 0;
+  padding-bottom: env(safe-area-inset-bottom, 12px);
   transform: translateY(100%);
-  transition: transform 0.32s cubic-bezier(0.32, 0.72, 0, 1);
-  max-height: 92dvh;
+  transition: transform 0.30s cubic-bezier(0.32, 0.72, 0, 1);
+  max-height: 90dvh;
   overflow-y: auto;
   overscroll-behavior: contain;
 }
+.img-sheet--open { transform: translateY(0); }
 
-.img-sheet--open {
-  transform: translateY(0);
-}
-
-/* Drag handle */
 .img-sheet__handle {
   width: 36px;
   height: 4px;
-  background: var(--sheet-handle);
+  background: rgba(255,255,255,0.20);
   border-radius: 2px;
   margin: 12px auto 0;
 }
 
-/* Image preview in sheet */
 .img-sheet__img-wrap {
   width: 100%;
-  max-height: 52dvh;
+  max-height: 55dvh;
   overflow: hidden;
-  margin-top: 14px;
-  background: rgba(255,255,255,0.04);
+  margin-top: 12px;
+  background: #1a1a1a;
 }
 
 .img-sheet__img {
   display: block;
   width: 100%;
-  height: 100%;
+  max-height: 55dvh;
   object-fit: contain;
-  object-position: center;
-  max-height: 52dvh;
 }
 
-/* Info row */
 .img-sheet__info {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
   padding: 14px 18px 0;
 }
 
 .img-sheet__text {
-  flex: 1;
   display: flex;
   flex-direction: column;
   gap: 3px;
-  min-width: 0;
 }
 
 .img-sheet__title {
   font-size: 15px;
   font-weight: 600;
-  color: rgba(255,255,255,0.9);
+  color: rgba(255,255,255,0.90);
   line-height: 1.3;
   overflow: hidden;
   display: -webkit-box;
@@ -325,13 +277,12 @@
 
 .img-sheet__host {
   font-size: 12px;
-  color: rgba(255,255,255,0.4);
+  color: rgba(255,255,255,0.38);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-/* Action buttons */
 .img-sheet__actions {
   display: flex;
   gap: 10px;
@@ -344,66 +295,50 @@
   align-items: center;
   justify-content: center;
   gap: 7px;
-  padding: 12px 16px;
+  padding: 12px;
   border-radius: 12px;
-  background: var(--sheet-btn-bg);
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.08);
   color: rgba(255,255,255,0.85);
   font-size: 14px;
   font-weight: 500;
   text-decoration: none;
-  transition: background 0.15s;
-  border: 1px solid rgba(255,255,255,0.07);
+  transition: background 0.12s;
 }
-
-.img-sheet__btn:hover {
-  background: var(--sheet-btn-hover);
-}
-
-.img-sheet__btn:active {
-  transform: scale(0.97);
-}
+.img-sheet__btn:hover   { background: rgba(255,255,255,0.14); }
+.img-sheet__btn:active  { transform: scale(0.97); }
 
 /* ══════════════════════════════════════════════════════════
-   RESPONSIVE TWEAKS
+   RESPONSIVE
    ══════════════════════════════════════════════════════════ */
 
-/* Tablet: slightly larger gap */
+/* Slightly larger gap on tablet */
 @media (min-width: 600px) {
-  :root {
-    --img-gap: 8px;
-    --img-radius: 12px;
+  .gallery, .gallery-grid, .gallery-col {
+    gap: 4px;
   }
-
-  .img-tile__title {
-    font-size: 12.5px;
-  }
+  .gallery { padding: 4px; }
 }
 
-/* Desktop: 3 columns for grid sections */
+/* Desktop: 3-column grid, sheet becomes a centered dialog */
 @media (min-width: 900px) {
-  :root {
-    --img-gap: 10px;
-  }
-
   .gallery-grid {
     grid-template-columns: repeat(3, 1fr);
   }
-
   .img-sheet {
-    max-width: 520px;
+    max-width: 500px;
     left: 50%;
     right: auto;
     transform: translate(-50%, 100%);
-    border-radius: var(--sheet-radius);
-    bottom: 24px;
+    border-radius: 18px;
+    bottom: 20px;
   }
-
   .img-sheet--open {
     transform: translate(-50%, 0);
   }
 }
 
-/* Respect reduced motion */
+/* Respect reduced-motion */
 @media (prefers-reduced-motion: reduce) {
   .img-lazy,
   .img-tile__overlay,
@@ -411,4 +346,5 @@
   .img-sheet-backdrop {
     transition: none;
   }
-                                             }
+                   }
+   

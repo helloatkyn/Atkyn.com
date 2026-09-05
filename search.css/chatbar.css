@@ -35,9 +35,9 @@ width: 100%;
 display: flex;
 align-items: center;
 
-background: var(--color-bg);
+background: #D3D3D3;
 
-border: 1.5px solid rgba(0, 0, 0, 0.12);
+border: none;
 border-radius: 100px;
 
 padding: 0 18px 0 20px;
@@ -46,21 +46,17 @@ margin: 0;
 height: 66px;
 gap: 12px;
 
-transition: border-color 0.18s;
+transition: background 0.18s;
 }
 
 .overlay-pill:focus-within {
-border-color: rgba(0, 0, 0, 0.22);
+background: #C8C8C8;
 }
 
 @media (prefers-color-scheme: dark) {
 .overlay-pill {
 background: var(--color-bg-alt-dark);
-border-color: rgba(255, 255, 255, 0.10);
-}
-
-.overlay-pill:focus-within {
-border-color: rgba(255, 255, 255, 0.20);
+border: none;
 }
 }
 
@@ -80,7 +76,7 @@ cursor: pointer;
 padding: 4px;
 border-radius: 50%;
 
-color: #4a4a4a;
+color: var(--color-primary);
 
 transition:
 background 0.12s,
@@ -97,10 +93,6 @@ height: 24px;
 }
 
 @media (prefers-color-scheme: dark) {
-.ico-plus {
-color: #a0a0a0;
-}
-
 .ico-plus:active {
 background: rgba(255, 255, 255, 0.08);
 }
@@ -237,7 +229,7 @@ padding: 4px;
 
 border-radius: 50%;
 
-color: #4a4a4a;
+color: var(--color-primary);
 
 transition:
 background 0.12s,
@@ -254,10 +246,6 @@ height: 24px;
 }
 
 @media (prefers-color-scheme: dark) {
-.ico-camera {
-color: #a0a0a0;
-}
-
 .ico-camera:active {
 background: rgba(255, 255, 255, 0.08);
 }

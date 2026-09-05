@@ -1,0 +1,849 @@
+/* ═══════════════════════════════════════════════════════════════
+ATKYN — PREMIUM COMPACT GLASS CHATBAR
+Performance Optimized • Native Smoothness • 0px UI Change
+═══════════════════════════════════════════════════════════════ */
+
+/* ───────────────────────────────────────────────────────────────
+WRAPPER
+─────────────────────────────────────────────────────────────── */
+
+.chatbar-wrap {
+flex-shrink: 0;
+position: relative;
+z-index: 10;
+
+width: 100%;
+box-sizing: border-box;
+
+padding:
+10px
+18px
+calc(12px + env(safe-area-inset-bottom));
+
+background: transparent;
+
+transform: translate3d(0, 0, 0);
+backface-visibility: hidden;
+-webkit-backface-visibility: hidden;
+
+contain: layout style paint;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+MAIN GLASS PILL
+═══════════════════════════════════════════════════════════════ */
+
+.overlay-pill {
+position: relative;
+isolation: isolate;
+
+width: 100%;
+height: 60px;
+min-height: 60px;
+
+display: flex;
+align-items: center;
+
+box-sizing: border-box;
+
+gap: 6px;
+
+padding: 0 12px 0 14px;
+margin: 0;
+
+border-radius: 999px;
+
+background:
+linear-gradient(
+180deg,
+rgba(255, 255, 255, 0.975) 0%,
+rgba(252, 251, 248, 0.96) 48%,
+rgba(248, 247, 243, 0.94) 100%
+);
+
+border: 1px solid rgba(255, 255, 255, 0.98);
+
+box-shadow:
+inset 0 1px 0 rgba(255, 255, 255, 1),
+inset 0 -1px 0 rgba(218, 217, 213, 0.32);
+
+-webkit-backdrop-filter: blur(24px) saturate(1.03);
+backdrop-filter: blur(24px) saturate(1.03);
+
+overflow: visible;
+
+-webkit-tap-highlight-color: transparent;
+
+transform: translate3d(0, 0, 0);
+will-change: transform;
+
+transition:
+background 0.18s ease,
+border-color 0.18s ease;
+}
+
+/* ───────────────────────────────────────────────────────────────
+OUTER GLASS RING — INNER
+─────────────────────────────────────────────────────────────── */
+
+.overlay-pill::before {
+content: "";
+
+position: absolute;
+inset: -2px;
+
+box-sizing: border-box;
+
+border-radius: inherit;
+
+border: 1px solid rgba(226, 225, 221, 0.94);
+
+background: transparent;
+
+pointer-events: none;
+
+z-index: -1;
+}
+
+/* ───────────────────────────────────────────────────────────────
+OUTER GLASS RING — WHITE EDGE
+─────────────────────────────────────────────────────────────── */
+
+.overlay-pill::after {
+content: "";
+
+position: absolute;
+inset: -4px;
+
+box-sizing: border-box;
+
+border-radius: inherit;
+
+border: 1px solid rgba(255, 255, 255, 0.94);
+
+background: transparent;
+
+pointer-events: none;
+
+z-index: -2;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+PLUS
+═══════════════════════════════════════════════════════════════ */
+
+.ico-plus {
+flex: 0 0 40px;
+
+width: 40px;
+height: 40px;
+
+display: flex;
+align-items: center;
+justify-content: center;
+
+box-sizing: border-box;
+
+padding: 0;
+margin: 0;
+
+border: 0;
+outline: 0;
+
+background: transparent;
+
+color: #64635f;
+
+border-radius: 50%;
+
+cursor: pointer;
+
+-webkit-tap-highlight-color: transparent;
+
+transition:
+background 0.12s ease,
+transform 0.12s ease,
+color 0.12s ease;
+}
+
+.ico-plus:hover {
+background: rgba(70, 69, 66, 0.022);
+}
+
+.ico-plus:active {
+background: rgba(70, 69, 66, 0.045);
+transform: scale(0.95);
+}
+
+.ico-plus svg {
+width: 27px;
+height: 27px;
+
+display: block;
+
+stroke: currentColor;
+stroke-width: 1.45;
+
+stroke-linecap: round;
+stroke-linejoin: round;
+
+fill: none;
+
+vector-effect: non-scaling-stroke;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+INPUT WRAPPER
+═══════════════════════════════════════════════════════════════ */
+
+.overlay-input-wrap {
+flex: 1;
+min-width: 0;
+
+position: relative;
+
+height: 100%;
+
+display: flex;
+align-items: center;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+INPUT
+═══════════════════════════════════════════════════════════════ */
+
+.search-input {
+position: absolute;
+inset: 0;
+
+width: 100%;
+height: 100%;
+
+box-sizing: border-box;
+
+padding: 0;
+margin: 0;
+
+border: 0;
+outline: 0;
+
+background: transparent;
+
+font-family:
+-apple-system,
+BlinkMacSystemFont,
+"SF Pro Text",
+"SF Pro Display",
+"Inter",
+system-ui,
+sans-serif;
+
+font-size: 16px;
+font-weight: 400;
+
+line-height: 1.2;
+letter-spacing: -0.01em;
+
+color: #44433f;
+
+caret-color: #55544f;
+
+z-index: 2;
+
+-webkit-appearance: none;
+appearance: none;
+
+-webkit-tap-highlight-color: transparent;
+}
+
+.search-input::placeholder {
+color: transparent;
+opacity: 0;
+}
+
+.search-input::-webkit-search-cancel-button,
+.search-input::-webkit-search-decoration,
+.search-input::-webkit-search-results-button,
+.search-input::-webkit-search-results-decoration {
+-webkit-appearance: none;
+appearance: none;
+display: none;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+SHIMMER PLACEHOLDER
+═══════════════════════════════════════════════════════════════ */
+
+.shimmer-overlay {
+position: absolute;
+inset: 0;
+
+display: flex;
+align-items: center;
+
+overflow: hidden;
+
+pointer-events: none;
+
+z-index: 1;
+}
+
+.shimmer-overlay span {
+font-family:
+-apple-system,
+BlinkMacSystemFont,
+"SF Pro Text",
+"SF Pro Display",
+"Inter",
+system-ui,
+sans-serif;
+
+font-size: 16px;
+font-weight: 400;
+
+line-height: 1.2;
+letter-spacing: -0.01em;
+
+white-space: nowrap;
+
+background:
+linear-gradient(
+90deg,
+#696762 0%,
+#696762 35%,
+#7a7873 43%,
+#f3f1ec 50%,
+#7a7873 57%,
+#696762 65%,
+#696762 100%
+);
+
+background-size: 320% 100%;
+background-position: 150% center;
+
+-webkit-background-clip: text;
+background-clip: text;
+
+-webkit-text-fill-color: transparent;
+
+animation: sweep 3.8s 1s linear infinite;
+
+transform: translateZ(0);
+}
+
+@keyframes sweep {
+0% {
+background-position: 150% center;
+}
+
+100% {
+background-position: -150% center;
+}
+}
+
+.search-input:not(:placeholder-shown) + .shimmer-overlay {
+display: none;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+CAMERA
+═══════════════════════════════════════════════════════════════ */
+
+.ico-camera {
+flex: 0 0 40px;
+
+width: 40px;
+height: 40px;
+
+display: flex;
+align-items: center;
+justify-content: center;
+
+box-sizing: border-box;
+
+padding: 0;
+margin: 0;
+
+border: 0;
+outline: 0;
+
+background: transparent;
+
+color: #64635f;
+
+border-radius: 50%;
+
+cursor: pointer;
+
+-webkit-tap-highlight-color: transparent;
+
+transition:
+background 0.12s ease,
+transform 0.12s ease,
+color 0.12s ease;
+}
+
+.ico-camera:hover {
+background: rgba(70, 69, 66, 0.022);
+}
+
+.ico-camera:active {
+background: rgba(70, 69, 66, 0.045);
+transform: scale(0.95);
+}
+
+.ico-camera svg {
+width: 27px;
+height: 27px;
+
+display: block;
+
+stroke: currentColor;
+stroke-width: 1.45;
+
+stroke-linecap: round;
+stroke-linejoin: round;
+
+fill: none;
+
+vector-effect: non-scaling-stroke;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+SEND
+═══════════════════════════════════════════════════════════════ */
+
+.send-btn {
+flex: 0 0 40px;
+
+width: 40px;
+height: 40px;
+
+display: none;
+
+align-items: center;
+justify-content: center;
+
+box-sizing: border-box;
+
+padding: 0;
+margin: 0;
+
+border: 0;
+border-radius: 50%;
+
+background: #11110f;
+
+cursor: pointer;
+
+-webkit-tap-highlight-color: transparent;
+
+transition: transform 0.15s ease;
+}
+
+.send-btn:active {
+transform: scale(0.90);
+}
+
+.send-btn svg {
+width: 18px;
+height: 18px;
+
+display: block;
+
+stroke: #ffffff;
+stroke-width: 1.8;
+
+stroke-linecap: round;
+stroke-linejoin: round;
+
+fill: none;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+CAMERA / SEND TOGGLE
+═══════════════════════════════════════════════════════════════ */
+
+.overlay-pill.has-text .ico-camera {
+display: none;
+}
+
+.overlay-pill.has-text .send-btn {
+display: flex;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+CROSS MODE
+═══════════════════════════════════════════════════════════════ */
+
+.send-btn.cross-mode {
+background: transparent;
+}
+
+.send-btn.cross-mode svg {
+width: 23px;
+height: 23px;
+
+stroke: #11110f;
+stroke-width: 1.7;
+
+stroke-linecap: round;
+stroke-linejoin: round;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+PLUS MENU
+═══════════════════════════════════════════════════════════════ */
+
+.plus-menu-backdrop {
+position: fixed;
+inset: 0;
+
+z-index: 100;
+
+display: none;
+}
+
+.plus-menu-backdrop.open {
+display: block;
+}
+
+.plus-menu {
+position: fixed;
+
+left: 18px;
+right: 18px;
+
+bottom: calc(78px + env(safe-area-inset-bottom));
+
+width: auto;
+
+box-sizing: border-box;
+
+background: #ffffff;
+
+border-radius: 16px;
+
+border: 1px solid rgba(0, 0, 0, 0.07);
+
+box-shadow:
+0 8px 32px rgba(0, 0, 0, 0.10),
+0 2px 8px rgba(0, 0, 0, 0.06),
+0 0 0 0.5px rgba(0, 0, 0, 0.04);
+
+overflow: hidden;
+
+z-index: 101;
+
+transform:
+translateY(10px)
+scale(0.98);
+
+transform-origin: bottom center;
+
+opacity: 0;
+pointer-events: none;
+
+will-change: transform, opacity;
+
+transition:
+transform 0.2s cubic-bezier(0.22, 1, 0.36, 1),
+opacity 0.2s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.plus-menu.open {
+transform:
+translateY(0)
+scale(1);
+
+opacity: 1;
+pointer-events: auto;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+MENU ITEMS
+═══════════════════════════════════════════════════════════════ */
+
+.pm-item {
+display: flex;
+align-items: center;
+
+gap: 14px;
+
+width: 100%;
+
+box-sizing: border-box;
+
+padding: 15px 18px;
+
+border: 0;
+border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+
+background: transparent;
+
+text-align: left;
+
+color: #111110;
+
+font-family:
+-apple-system,
+BlinkMacSystemFont,
+"SF Pro Text",
+"SF Pro Display",
+"Inter",
+system-ui,
+sans-serif;
+
+font-size: 15px;
+font-weight: 500;
+
+letter-spacing: -0.01em;
+
+cursor: pointer;
+
+-webkit-tap-highlight-color: transparent;
+
+transition: background 0.1s ease;
+}
+
+.pm-item:last-child {
+border-bottom: 0;
+}
+
+.pm-item:hover {
+background: rgba(0, 0, 0, 0.02);
+}
+
+.pm-item:active {
+background: rgba(0, 0, 0, 0.05);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+MENU ICON
+═══════════════════════════════════════════════════════════════ */
+
+.pm-icon {
+flex-shrink: 0;
+
+width: 36px;
+height: 36px;
+
+display: flex;
+align-items: center;
+justify-content: center;
+
+background: #f4f4f3;
+
+border-radius: 10px;
+}
+
+.pm-icon svg {
+width: 18px;
+height: 18px;
+
+stroke: #3a3a38;
+stroke-width: 1.65;
+
+stroke-linecap: round;
+stroke-linejoin: round;
+
+fill: none;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+MENU LABEL
+═══════════════════════════════════════════════════════════════ */
+
+.pm-label {
+display: flex;
+flex-direction: column;
+
+gap: 1px;
+}
+
+.pm-label-title {
+font-size: 15px;
+font-weight: 500;
+color: #111110;
+letter-spacing: -0.01em;
+}
+
+.pm-label-sub {
+font-size: 12px;
+font-weight: 400;
+color: #8e8c87;
+letter-spacing: 0;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+DARK MODE
+═══════════════════════════════════════════════════════════════ */
+
+@media (prefers-color-scheme: dark) {
+
+.overlay-pill {
+/* FIX: fully opaque — no blur, no translucency, bilkul crisp */
+background: #3a3a39;
+
+border-color: transparent;
+
+box-shadow: none;
+
+-webkit-backdrop-filter: none;
+backdrop-filter: none;
+}
+
+.overlay-pill::before,
+.overlay-pill::after {
+display: none;
+}
+
+.search-input {
+color: #efeeeb;
+caret-color: #d7d5d0;
+}
+
+.shimmer-overlay span {
+/* FIX: only override the gradient colors — size/clip already set in base */
+background:
+linear-gradient(
+90deg,
+#aaa8a2 0%,
+#aaa8a2 35%,
+#bbb9b4 43%,
+#f0efeb 50%,
+#bbb9b4 57%,
+#aaa8a2 65%,
+#aaa8a2 100%
+);
+
+background-size: 320% 100%;
+background-position: 150% center;
+
+-webkit-background-clip: text;
+background-clip: text;
+}
+
+.ico-plus,
+.ico-camera {
+color: #d0cec9;
+}
+
+.send-btn {
+background:
+linear-gradient(
+180deg,
+#eeece9 0%,
+#dfddda 100%
+);
+
+box-shadow:
+inset 0 1px 0 rgba(255, 255, 255, 0.70),
+inset 0 -1px 0 rgba(0, 0, 0, 0.15);
+}
+
+.send-btn svg {
+stroke: #11110f;
+}
+
+.send-btn.cross-mode {
+background: transparent;
+box-shadow: none;
+}
+
+.send-btn.cross-mode svg {
+stroke: #d0cec9;
+}
+
+.plus-menu {
+background: #1e1e1d;
+
+border-color: rgba(255, 255, 255, 0.08);
+
+box-shadow:
+0 8px 32px rgba(0, 0, 0, 0.5),
+0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.pm-item {
+color: #efeeeb;
+
+border-bottom-color: rgba(255, 255, 255, 0.07);
+}
+
+.pm-item:hover {
+background: rgba(255, 255, 255, 0.04);
+}
+
+.pm-item:active {
+background: rgba(255, 255, 255, 0.08);
+}
+
+.pm-icon {
+background: #2e2e2d;
+}
+
+.pm-icon svg {
+stroke: #d0cec9;
+}
+
+.pm-label-title {
+color: #efeeeb;
+}
+
+.pm-label-sub {
+color: #706e69;
+}
+}
+
+/* ═══════════════════════════════════════════════════════════════
+SMALL PHONES
+═══════════════════════════════════════════════════════════════ */
+
+@media (max-width: 360px) {
+
+.chatbar-wrap {
+padding-left: 16px;
+padding-right: 16px;
+}
+
+.overlay-pill {
+padding-left: 12px;
+padding-right: 10px;
+
+gap: 4px;
+}
+
+.ico-plus,
+.ico-camera,
+.send-btn {
+flex: 0 0 38px;
+
+width: 38px;
+height: 38px;
+}
+}
+
+/* ═══════════════════════════════════════════════════════════════
+REDUCED MOTION
+═══════════════════════════════════════════════════════════════ */
+
+@media (prefers-reduced-motion: reduce) {
+
+.shimmer-overlay span {
+animation: none;
+
+background: none;
+
+-webkit-text-fill-color: #696762;
+color: #696762;
+}
+
+.overlay-pill,
+.ico-plus,
+.ico-camera,
+.send-btn,
+.plus-menu {
+transition: none;
+}
+}

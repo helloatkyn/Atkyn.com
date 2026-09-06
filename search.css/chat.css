@@ -123,20 +123,12 @@
   -webkit-tap-highlight-color: transparent;
 }
 
-/* ── Tabler Icons — Gemini-matched outline style ── */
-.bot-actions button i.ti {
-  font-size: 22px;
-  line-height: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
-
-/* Hide old SVGs if any remain */
+/* ── Heroicons inline SVG — sizing & color ── */
 .bot-actions button svg {
-  display: none;
+  width: 22px;
+  height: 22px;
+  display: block;
+  flex-shrink: 0;
 }
 
 .bot-actions button:active                 { background: var(--color-press-light-md); color: var(--color-text-faint); }
@@ -488,3 +480,4 @@
 .ai-disclaimer-logo {
   display: none;
    }
+   

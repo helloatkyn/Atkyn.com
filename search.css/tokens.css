@@ -20,13 +20,13 @@ Change a value here → updates everywhere automatically.
 --color-text-placeholder: #b0bec5;
 
 /* ── Surfaces (light) ──────────────────────────────────────── */
---color-bg:             #fdf9f6;   /* warm white — main page background */
---color-bg-alt:         #f0ede9;   /* user bubble — warm cream */
---color-bg-card:        #f5f3f0;   /* cards — warm off-white */
---color-bg-card-active: #f8f6f3;   /* active card state */
---color-bg-code:        #f7f5f2;   /* code blocks */
---color-bg-thumb:       #e4e0db;   /* scrollbar thumb */
---color-bg-favicon:     #ffffff;   /* favicon bg — keep white */
+--color-bg:             #ffffff;
+--color-bg-alt:         #F0F0F0;   /* user bubble — Gemini exact match */
+--color-bg-card:        #F1F3F4;
+--color-bg-card-active: #F8F8F8;
+--color-bg-code:        #fafafa;
+--color-bg-thumb:       #E0E0E0;
+--color-bg-favicon:     #ffffff;
 
 /* ── Surfaces (dark) ────────────────────────────────────────── */
 --color-bg-dark:        #1c1c1e;
@@ -72,10 +72,10 @@ Change a value here → updates everywhere automatically.
 --color-press-dark-md:  rgba(255, 255, 255, 0.09);
 
 /* ── Glassmorphism (plus menu) ──────────────────────────────── */
---color-glass-bg:       rgba(250, 249, 247, 0.75);   /* cream glass */
+--color-glass-bg:       rgba(255, 255, 255, 0.72);
 --color-glass-border:   rgba(255, 255, 255, 0.55);
 --color-glass-border-dark: rgba(255, 255, 255, 0.10);
---color-tab-bar-bg:     rgba(250, 249, 247, 0.95);   /* cream tab bar */
+--color-tab-bar-bg:     rgba(255, 255, 255, 0.95);
 --color-tab-bar-bg-dark:rgba(28, 28, 30, 0.95);
 
 /* ── Scrollbar / misc ───────────────────────────────────────── */
@@ -130,6 +130,6 @@ Change a value here → updates everywhere automatically.
 --color-code-num:       rgba(0, 0, 0, 0.26);
 --color-code-num-dark:  rgba(255, 255, 255, 0.24);
 --color-code-content:   #0d0d0d;
---color-inline-code-bg: #f0ede9;   /* inline code — matches cream bg-alt */
+--color-inline-code-bg: #F0F0F0;   /* inline code — same as user bubble, Gemini style */
 
 }

@@ -44,11 +44,11 @@
   font-size: 14px;
   font-weight: 600;
   color: var(--color-text-strong);
-  background: #f8f8f8;
+  background: transparent;
   border-radius: 4px;
   cursor: pointer;
   white-space: nowrap;
-  border: none;
+  border: 1.5px solid #1a1a1a;
   display: flex;
   align-items: center;
   justify-content: center;

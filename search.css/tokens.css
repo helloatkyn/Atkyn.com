@@ -20,7 +20,7 @@ Change a value here → updates everywhere automatically.
 --color-text-placeholder: #b0bec5;
 
 /* ── Surfaces (light) ──────────────────────────────────────── */
---color-bg:             #faf9f7;   /* cream white — main page background */
+--color-bg:             #fdf6e3;   /* bright warm cream — main page background */
 --color-bg-alt:         #f0ede9;   /* user bubble — warm cream */
 --color-bg-card:        #f5f3f0;   /* cards — warm off-white */
 --color-bg-card-active: #f8f6f3;   /* active card state */

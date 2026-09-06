@@ -106,6 +106,7 @@
 @keyframes fadeUp {
   to { opacity: 1; transform: translateY(0); }
 }
+
 .bot-actions button {
   display: flex;
   align-items: center;
@@ -119,9 +120,30 @@
   color: var(--color-text-subtle);
   padding: 0;
   transition: background 0.13s, color 0.13s;
+  -webkit-tap-highlight-color: transparent;
 }
-.bot-actions button svg                    { width: 18px; height: 18px; stroke-width: 1.65; }
-.bot-actions button[aria-label="Read"] svg { width: 21px; height: 21px; }
+
+/* ── Phosphor icon sizing ── */
+.bot-actions button i.ph {
+  font-size: 19px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Read button slightly larger */
+.bot-actions button[aria-label="Read"] i.ph {
+  font-size: 21px;
+}
+
+/* Hide old SVGs if any remain */
+.bot-actions button svg {
+  display: none;
+}
+
 .bot-actions button:active                 { background: var(--color-press-light-md); color: var(--color-text-faint); }
 .bot-actions button.active-like            { color: var(--color-like); }
 .bot-actions button.active-dislike         { color: var(--color-primary); }
@@ -470,4 +492,5 @@
 
 .ai-disclaimer-logo {
   display: none;
-}
+                                      }
+   

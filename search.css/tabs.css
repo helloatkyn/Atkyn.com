@@ -57,6 +57,6 @@
 .tab:active  { opacity: 0.75; }
 .tab.active  { background: var(--color-tab-active-bg); color: var(--color-bg); }
 @media (prefers-color-scheme: dark) {
-  .tab        { background: #2c2c2e; color: var(--color-tab-active-bg-dark); }
+  .tab        { background: transparent; border-color: #f0f0f2; color: var(--color-tab-active-bg-dark); }
   .tab.active { background: var(--color-tab-active-bg-dark); color: var(--color-text-strong); }
 }

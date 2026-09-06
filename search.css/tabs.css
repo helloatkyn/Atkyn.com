@@ -10,7 +10,7 @@
   overflow-x: auto;
   overflow-y: hidden;
   padding: 0 14px;
-  gap: 8px;
+  gap: 5px;
   height: 44px;
   border-bottom: none;
   -webkit-overflow-scrolling: touch;
@@ -44,8 +44,8 @@
   font-size: 14px;
   font-weight: 600;
   color: var(--color-text-strong);
-  background: var(--color-bg-alt);
-  border-radius: 6px;
+  background: #f8f8f8;
+  border-radius: 4px;
   cursor: pointer;
   white-space: nowrap;
   border: none;
@@ -57,6 +57,6 @@
 .tab:active  { opacity: 0.75; }
 .tab.active  { background: var(--color-tab-active-bg); color: var(--color-bg); }
 @media (prefers-color-scheme: dark) {
-  .tab        { background: var(--color-bg-alt2-dark); color: var(--color-tab-active-bg-dark); }
+  .tab        { background: #2c2c2e; color: var(--color-tab-active-bg-dark); }
   .tab.active { background: var(--color-tab-active-bg-dark); color: var(--color-text-strong); }
 }

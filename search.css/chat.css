@@ -119,19 +119,9 @@
   color: var(--color-text-subtle);
   padding: 0;
   transition: background 0.13s, color 0.13s;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
 }
-.bot-actions button svg {
-  width: 19px;
-  height: 19px;
-  stroke-width: 1.6;
-  shape-rendering: geometricPrecision;
-  transform: translateZ(0);
-  will-change: transform;
-  image-rendering: crisp-edges;
-}
-.bot-actions button[aria-label="Read"] svg { width: 22px; height: 22px; }
+.bot-actions button svg                    { width: 18px; height: 18px; stroke-width: 1.65; }
+.bot-actions button[aria-label="Read"] svg { width: 21px; height: 21px; }
 .bot-actions button:active                 { background: var(--color-press-light-md); color: var(--color-text-faint); }
 .bot-actions button.active-like            { color: var(--color-like); }
 .bot-actions button.active-dislike         { color: var(--color-primary); }

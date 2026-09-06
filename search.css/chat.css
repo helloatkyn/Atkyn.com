@@ -116,19 +116,28 @@
   background: none;
   cursor: pointer;
   border-radius: 8px;
-  color: #000000;
+  color: var(--color-text-subtle);
   padding: 0;
   transition: background 0.13s, color 0.13s;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
-.bot-actions button svg                    { width: 18.5px; height: 18.5px; stroke-width: 1.65; }
+.bot-actions button svg {
+  width: 18.5px;
+  height: 18.5px;
+  stroke-width: 1.65;
+  shape-rendering: geometricPrecision;
+  -webkit-transform: translateZ(0);
+  transform: translateZ(0);
+}
 .bot-actions button[aria-label="Read"] svg { width: 21.5px; height: 21.5px; }
-.bot-actions button:active                 { background: var(--color-press-light-md); color: #000000; }
+.bot-actions button:active                 { background: var(--color-press-light-md); color: var(--color-text-faint); }
 .bot-actions button.active-like            { color: var(--color-like); }
 .bot-actions button.active-dislike         { color: var(--color-primary); }
 
 @media (prefers-color-scheme: dark) {
-  .bot-actions button                { color: #ffffff; }
-  .bot-actions button:active         { background: var(--color-press-dark-md); color: #ffffff; }
+  .bot-actions button                { color: var(--color-text-dark-faint); }
+  .bot-actions button:active         { background: var(--color-press-dark-md); color: var(--color-text-dark-muted); }
   .bot-actions button.active-like    { color: var(--color-like-dark); }
   .bot-actions button.active-dislike { color: var(--color-primary); }
 }

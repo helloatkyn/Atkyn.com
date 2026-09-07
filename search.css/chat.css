@@ -1,14 +1,67 @@
 /* ════════════════════════════════════════════════════════════════
    chat.css — Chat area · Bubbles · Animations · Typing · Actions
+   Ultra-subtle geometric triangular background texture
 ════════════════════════════════════════════════════════════════ */
+
+/* ────────────────────────────────────────────────────────────────
+   CHAT AREA
+──────────────────────────────────────────────────────────────── */
 
 .chat-area {
   padding: 14px 16px 0;
   display: flex;
   flex-direction: column;
+
+  /*
+   * Pure white base with an extremely subtle triangular lattice.
+   * The texture is intentionally low-contrast so content remains
+   * the visual focus.
+   */
+  background-color: #ffffff;
+  background-image:
+    linear-gradient(
+      60deg,
+      transparent 49.45%,
+      rgba(0, 0, 0, 0.016) 49.72%,
+      rgba(0, 0, 0, 0.016) 50.28%,
+      transparent 50.55%
+    ),
+    linear-gradient(
+      -60deg,
+      transparent 49.45%,
+      rgba(0, 0, 0, 0.016) 49.72%,
+      rgba(0, 0, 0, 0.016) 50.28%,
+      transparent 50.55%
+    ),
+    linear-gradient(
+      0deg,
+      transparent 49.55%,
+      rgba(0, 0, 0, 0.012) 49.78%,
+      rgba(0, 0, 0, 0.012) 50.22%,
+      transparent 50.45%
+    );
+
+  /*
+   * Large tile size keeps the geometry refined instead of
+   * looking like a small repeating wallpaper.
+   */
+  background-size:
+    240px 208px,
+    240px 208px,
+    240px 208px;
+
+  background-position:
+    0 0,
+    0 0,
+    0 0;
+
+  background-repeat: repeat;
 }
 
-#chatSpacer { flex-shrink: 0; width: 100%; }
+#chatSpacer {
+  flex-shrink: 0;
+  width: 100%;
+}
 
 .msg-wrap {
   display: flex;
@@ -17,11 +70,21 @@
   contain: layout;
 }
 
-.msg          { display: flex; flex-direction: column; }
-.msg.user     { align-items: flex-end; }
-.msg.bot      { align-items: center; }
+.msg {
+  display: flex;
+  flex-direction: column;
+}
+
+.msg.user {
+  align-items: flex-end;
+}
+
+.msg.bot {
+  align-items: center;
+}
 
 /* ── User bubble ── */
+
 .msg.user .bubble {
   max-width: 78%;
   background: var(--color-bg-alt);
@@ -33,11 +96,21 @@
   line-height: 1.45;
   animation: bubbleIn 0.18s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
 }
+
 @media (prefers-color-scheme: dark) {
-  .msg.user .bubble { background: var(--color-bg-alt-dark); color: var(--color-text-dark); }
+  .chat-area {
+    background-color: #000000;
+    background-image: none;
+  }
+
+  .msg.user .bubble {
+    background: var(--color-bg-alt-dark);
+    color: var(--color-text-dark);
+  }
 }
 
 /* ── Bot bubble ── */
+
 .msg.bot .bubble {
   width: 100%;
   max-width: 100%;
@@ -49,25 +122,43 @@
   color: var(--color-text);
   animation: botIn 0.18s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
+
 @media (prefers-color-scheme: dark) {
-  .msg.bot .bubble { color: var(--color-text-dark-dim); }
+  .msg.bot .bubble {
+    color: var(--color-text-dark-dim);
+  }
 }
 
 /* ────────────────────────────────────────────────────────────────
    ENTRANCE ANIMATIONS
 ──────────────────────────────────────────────────────────────── */
+
 @keyframes bubbleIn {
-  from { opacity: 0; transform: translateY(5px); }
-  to   { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(5px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
+
 @keyframes botIn {
-  from { transform: translateY(5px); }
-  to   { transform: translateY(0); }
+  from {
+    transform: translateY(5px);
+  }
+
+  to {
+    transform: translateY(0);
+  }
 }
 
 /* ────────────────────────────────────────────────────────────────
    TYPING INDICATOR
 ──────────────────────────────────────────────────────────────── */
+
 .typing {
   position: relative;
   width: 54px;
@@ -75,27 +166,69 @@
   padding: 0;
   margin: 2px 0;
 }
+
 .typing span {
   position: absolute;
   border-radius: 50%;
   background: #000000;
   animation: tPulse 1.4s ease-in-out infinite;
 }
+
 @media (prefers-color-scheme: dark) {
-  .typing span { background: #ffffff; }
+  .typing span {
+    background: #ffffff;
+  }
 }
-.typing span:nth-child(1) { width: 16px; height: 16px; left: 0px;  top: 6px;  animation-delay: 0s;    }
-.typing span:nth-child(2) { width: 11px; height: 11px; left: 20px; top: 22px; animation-delay: 0.2s;  }
-.typing span:nth-child(3) { width: 8px;  height: 8px;  left: 34px; top: 10px; animation-delay: 0.35s; }
-.typing span:nth-child(4) { width: 6px;  height: 6px;  left: 46px; top: 13px; animation-delay: 0.5s;  }
+
+.typing span:nth-child(1) {
+  width: 16px;
+  height: 16px;
+  left: 0;
+  top: 6px;
+  animation-delay: 0s;
+}
+
+.typing span:nth-child(2) {
+  width: 11px;
+  height: 11px;
+  left: 20px;
+  top: 22px;
+  animation-delay: 0.2s;
+}
+
+.typing span:nth-child(3) {
+  width: 8px;
+  height: 8px;
+  left: 34px;
+  top: 10px;
+  animation-delay: 0.35s;
+}
+
+.typing span:nth-child(4) {
+  width: 6px;
+  height: 6px;
+  left: 46px;
+  top: 13px;
+  animation-delay: 0.5s;
+}
+
 @keyframes tPulse {
-  0%, 100% { transform: scale(1);    opacity: 0.55; }
-  45%       { transform: scale(1.35); opacity: 1;    }
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.55;
+  }
+
+  45% {
+    transform: scale(1.35);
+    opacity: 1;
+  }
 }
 
 /* ────────────────────────────────────────────────────────────────
    BOT ACTION BAR
 ──────────────────────────────────────────────────────────────── */
+
 .bot-actions {
   display: flex;
   align-items: center;
@@ -106,8 +239,12 @@
   transform: translateY(4px);
   animation: fadeUp 0.22s ease 0.1s forwards;
 }
+
 @keyframes fadeUp {
-  to { opacity: 1; transform: translateY(0); }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .bot-actions button {
@@ -126,7 +263,6 @@
   -webkit-tap-highlight-color: transparent;
 }
 
-/* ── Inline SVG — sizing & color ── */
 .bot-actions button svg {
   width: 20px;
   height: 20px;
@@ -134,20 +270,42 @@
   flex-shrink: 0;
 }
 
-.bot-actions button:active                 { background: var(--color-press-light-md); color: var(--color-text-faint); }
-.bot-actions button.active-like            { color: var(--color-like); }
-.bot-actions button.active-dislike         { color: var(--color-primary); }
+.bot-actions button:active {
+  background: var(--color-press-light-md);
+  color: var(--color-text-faint);
+}
+
+.bot-actions button.active-like {
+  color: var(--color-like);
+}
+
+.bot-actions button.active-dislike {
+  color: var(--color-primary);
+}
 
 @media (prefers-color-scheme: dark) {
-  .bot-actions button                { color: var(--color-text-dark-faint); }
-  .bot-actions button:active         { background: var(--color-press-dark-md); color: var(--color-text-dark-muted); }
-  .bot-actions button.active-like    { color: var(--color-like-dark); }
-  .bot-actions button.active-dislike { color: var(--color-primary); }
+  .bot-actions button {
+    color: var(--color-text-dark-faint);
+  }
+
+  .bot-actions button:active {
+    background: var(--color-press-dark-md);
+    color: var(--color-text-dark-muted);
+  }
+
+  .bot-actions button.active-like {
+    color: var(--color-like-dark);
+  }
+
+  .bot-actions button.active-dislike {
+    color: var(--color-primary);
+  }
 }
 
 /* ────────────────────────────────────────────────────────────────
    SOURCE CHIPS
 ──────────────────────────────────────────────────────────────── */
+
 .chip-group {
   display: inline-flex;
   flex-wrap: wrap;
@@ -183,13 +341,45 @@
   appearance: none;
   -webkit-appearance: none;
 }
-.source-chip:hover         { background: #e8eaed; color: #202124; text-decoration: none; }
-.source-chip:active        { background: #dadce0; color: #202124; text-decoration: none; }
-.source-chip:focus         { outline: none; color: #202124; text-decoration: none; }
-.source-chip:focus-visible { outline: none; color: #202124; text-decoration: none; }
-.source-chip:visited       { color: #202124 !important; text-decoration: none !important; }
-.source-chip:any-link      { color: #202124 !important; text-decoration: none !important; }
-.source-chip:link          { color: #202124 !important; text-decoration: none !important; }
+
+.source-chip:hover {
+  background: #e8eaed;
+  color: #202124;
+  text-decoration: none;
+}
+
+.source-chip:active {
+  background: #dadce0;
+  color: #202124;
+  text-decoration: none;
+}
+
+.source-chip:focus {
+  outline: none;
+  color: #202124;
+  text-decoration: none;
+}
+
+.source-chip:focus-visible {
+  outline: none;
+  color: #202124;
+  text-decoration: none;
+}
+
+.source-chip:visited {
+  color: #202124 !important;
+  text-decoration: none !important;
+}
+
+.source-chip:any-link {
+  color: #202124 !important;
+  text-decoration: none !important;
+}
+
+.source-chip:link {
+  color: #202124 !important;
+  text-decoration: none !important;
+}
 
 .source-chip img {
   width: 16px;
@@ -226,25 +416,65 @@
   font-size: 12px;
   font-weight: 500;
 }
-.source-chip-overflow:hover { color: #5f6368; }
-.source-chip-overflow:focus { outline: none; }
+
+.source-chip-overflow:hover {
+  color: #5f6368;
+}
+
+.source-chip-overflow:focus {
+  outline: none;
+}
 
 @media (prefers-color-scheme: dark) {
-  .source-chip              { background: #303134; color: #e8eaed; }
-  .source-chip:hover        { background: #3c4043; color: #e8eaed; }
-  .source-chip:active       { background: #444749; color: #e8eaed; }
-  .source-chip:focus        { outline: none; color: #e8eaed; }
-  .source-chip:any-link     { color: #e8eaed !important; }
-  .source-chip:link         { color: #e8eaed !important; }
-  .source-chip:visited      { color: #e8eaed !important; }
-  .chip-fallback            { background: #5f6368; }
-  .source-chip-overflow     { color: #9aa0a6; }
-  .source-chip-overflow:hover { color: #9aa0a6; }
+  .source-chip {
+    background: #303134;
+    color: #e8eaed;
+  }
+
+  .source-chip:hover {
+    background: #3c4043;
+    color: #e8eaed;
+  }
+
+  .source-chip:active {
+    background: #444749;
+    color: #e8eaed;
+  }
+
+  .source-chip:focus {
+    outline: none;
+    color: #e8eaed;
+  }
+
+  .source-chip:any-link {
+    color: #e8eaed !important;
+  }
+
+  .source-chip:link {
+    color: #e8eaed !important;
+  }
+
+  .source-chip:visited {
+    color: #e8eaed !important;
+  }
+
+  .chip-fallback {
+    background: #5f6368;
+  }
+
+  .source-chip-overflow {
+    color: #9aa0a6;
+  }
+
+  .source-chip-overflow:hover {
+    color: #9aa0a6;
+  }
 }
 
 /* ────────────────────────────────────────────────────────────────
-   SOURCE CHIP BOTTOM SHEET — wc-card style (Web tab 1:1 copy)
+   SOURCE CHIP BOTTOM SHEET — wc-card style
 ──────────────────────────────────────────────────────────────── */
+
 #chipSheetBackdrop {
   position: fixed;
   inset: 0;
@@ -257,7 +487,9 @@
 
 #chipSheetCard {
   position: fixed;
-  bottom: 0; left: 0; right: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
   background: #ffffff;
   border-radius: 20px 20px 0 0;
   padding: 0 0 40px;
@@ -267,18 +499,25 @@
   max-height: 80vh;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  font-family:
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    system-ui,
+    sans-serif;
 }
 
 #chipSheet.open #chipSheetBackdrop {
   opacity: 1;
   pointer-events: all;
 }
+
 #chipSheet.open #chipSheetCard {
   transform: translateY(0);
 }
 
 /* Drag handle */
+
 #chipSheetCard::before {
   content: '';
   display: block;
@@ -289,7 +528,8 @@
   margin: 10px auto 8px;
 }
 
-/* ── Each result — exact wc-card clone ── */
+/* ── Each result ── */
+
 .csi {
   display: block;
   text-decoration: none;
@@ -300,14 +540,24 @@
   margin: 4px 8px 0;
   position: relative;
   -webkit-tap-highlight-color: transparent;
-  box-shadow: 0 1px 2px rgba(0,0,0,0.06);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
   transition: background 0.15s;
 }
-.csi:active   { background: #f5f5f5; }
-.csi--active  { background: #fff; }
-.csi:last-child { margin-bottom: 0; }
 
-/* Meta row — wc-meta clone */
+.csi:active {
+  background: #f5f5f5;
+}
+
+.csi--active {
+  background: #fff;
+}
+
+.csi:last-child {
+  margin-bottom: 0;
+}
+
+/* Meta row */
+
 .csi-top {
   display: flex;
   align-items: center;
@@ -315,28 +565,36 @@
   margin-bottom: 8px;
 }
 
-/* Favicon wrap — wc-fav-wrap clone */
+/* Favicon wrap */
+
 .csi-favicon-wrap {
   flex-shrink: 0;
-  width: 28px; height: 28px;
+  width: 28px;
+  height: 28px;
   border-radius: 50%;
   background: #f1f1f1;
-  display: flex; align-items: center; justify-content: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   overflow: hidden;
 }
+
 .csi-favicon {
-  width: 16px; height: 16px;
+  width: 16px;
+  height: 16px;
   display: block;
   object-fit: contain;
 }
 
-/* Domain + path stack — wc-meta-text clone */
+/* Domain + path stack */
+
 .csi-site {
   display: flex;
   flex-direction: column;
   flex: 1;
   min-width: 0;
 }
+
 .csi-domain {
   font-size: 0.875rem;
   font-weight: 600;
@@ -345,6 +603,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
 .csi-url {
   font-size: 0.7rem;
   color: #999;
@@ -353,7 +612,8 @@
   text-overflow: ellipsis;
 }
 
-/* Title — wc-title exact clone, 2-line clamp */
+/* Title */
+
 .csi-title {
   display: -webkit-box;
   -webkit-box-orient: vertical;
@@ -367,7 +627,8 @@
   word-break: break-word;
 }
 
-/* Snippet — wc-snippet exact clone, 3-line clamp */
+/* Snippet */
+
 .csi-snippet {
   display: -webkit-box;
   -webkit-box-orient: vertical;
@@ -381,25 +642,52 @@
 }
 
 @media (prefers-color-scheme: dark) {
-  #chipSheetCard         { background: #000000; }
-  #chipSheetCard::before { background: #3a3a3c; }
+  #chipSheetCard {
+    background: #000000;
+  }
 
-  .csi          { background: #1c1c1e; box-shadow: 0 1px 4px rgba(0,0,0,0.3); }
-  .csi:active   { background: #2a2a2c; }
-  .csi--active  { background: #1c1c1e; }
+  #chipSheetCard::before {
+    background: #3a3a3c;
+  }
 
-  .csi-favicon-wrap { background: #2c2c2e; }
-  .csi-domain       { color: rgba(255,255,255,0.75); }
-  .csi-url          { color: rgba(255,255,255,0.3); }
-  .csi-title        { color: #4BA8D8; }
-  .csi-snippet      { color: #d4d4d6; }
+  .csi {
+    background: #1c1c1e;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+  }
+
+  .csi:active {
+    background: #2a2a2c;
+  }
+
+  .csi--active {
+    background: #1c1c1e;
+  }
+
+  .csi-favicon-wrap {
+    background: #2c2c2e;
+  }
+
+  .csi-domain {
+    color: rgba(255, 255, 255, 0.75);
+  }
+
+  .csi-url {
+    color: rgba(255, 255, 255, 0.3);
+  }
+
+  .csi-title {
+    color: #4ba8d8;
+  }
+
+  .csi-snippet {
+    color: #d4d4d6;
+  }
 }
 
 /* ────────────────────────────────────────────────────────────────
-   SHEET OG IMAGES — mirrors web tab wc-thumb-* logic exactly
+   SHEET OG IMAGES
 ──────────────────────────────────────────────────────────────── */
 
-/* Landscape → full-width banner below title */
 .csi-og-full-wrap {
   width: 100%;
   margin: 8px 0 4px;
@@ -408,6 +696,7 @@
   background: #f1f1f1;
   line-height: 0;
 }
+
 .csi-og-full {
   width: 100%;
   height: auto;
@@ -416,17 +705,18 @@
   border-radius: 10px;
 }
 
-/* Portrait/square → inline row: snippet left, thumb right */
 .csi-og-inline-row {
   display: flex;
   align-items: flex-start;
   gap: 10px;
   margin-top: 4px;
 }
+
 .csi-og-inline-row .csi-snippet {
   flex: 1;
   min-width: 0;
 }
+
 .csi-og-thumb-wrap {
   flex-shrink: 0;
   width: 72px;
@@ -436,6 +726,7 @@
   background: #f1f1f1;
   line-height: 0;
 }
+
 .csi-og-thumb {
   width: 72px;
   height: 72px;
@@ -445,16 +736,29 @@
 }
 
 @media (prefers-color-scheme: dark) {
-  .csi-og-full-wrap  { background: #2c2c2e; }
-  .csi-og-thumb-wrap { background: #2c2c2e; }
+  .csi-og-full-wrap {
+    background: #2c2c2e;
+  }
+
+  .csi-og-thumb-wrap {
+    background: #2c2c2e;
+  }
 }
 
 /* ────────────────────────────────────────────────────────────────
    AI DISCLAIMER
 ──────────────────────────────────────────────────────────────── */
+
 @keyframes disclaimerIn {
-  from { opacity: 0;    transform: translateY(3px); }
-  to   { opacity: 1; transform: translateY(0);   }
+  from {
+    opacity: 0;
+    transform: translateY(3px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .ai-disclaimer {
@@ -474,13 +778,17 @@
 }
 
 @media (prefers-color-scheme: dark) {
-  .ai-disclaimer { color: #8e8e8e; }
+  .ai-disclaimer {
+    color: #8e8e8e;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .ai-disclaimer { animation: none; }
+  .ai-disclaimer {
+    animation: none;
+  }
 }
 
 .ai-disclaimer-logo {
   display: none;
-}
+     }

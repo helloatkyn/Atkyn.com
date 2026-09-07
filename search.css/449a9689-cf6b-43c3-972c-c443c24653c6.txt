@@ -1,0 +1,1604 @@
+/* ═══════════════════════════════════════════════════════════════
+   ATKYN — PREMIUM COMPACT GLASS CHATBAR
+   Full Replacement
+   Professional White UI • Native Smoothness • Floating Pill
+═══════════════════════════════════════════════════════════════ */
+
+
+/* ───────────────────────────────────────────────────────────────
+   WRAPPER
+─────────────────────────────────────────────────────────────── */
+
+.chatbar-wrap {
+  flex-shrink: 0;
+  position: sticky;
+  bottom: 0;
+  z-index: 10;
+
+  width: 100%;
+  box-sizing: border-box;
+
+  padding:
+    10px
+    18px
+    calc(12px + env(safe-area-inset-bottom));
+
+  background: transparent;
+
+  transform: translate3d(0, 0, 0);
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+
+  /*
+   * Paint containment removed intentionally.
+   * It can clip or affect fixed-position plus menus
+   * in some mobile browsers.
+   */
+  contain: layout style;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════
+   MAIN GLASS PILL
+   Same shape and dimensions — refined premium surface
+═══════════════════════════════════════════════════════════════ */
+
+.overlay-pill {
+  position: relative;
+  isolation: isolate;
+
+  width: 100%;
+  height: 60px;
+  min-height: 60px;
+
+  display: flex;
+  align-items: center;
+
+  box-sizing: border-box;
+
+  gap: 6px;
+
+  padding: 0 12px 0 14px;
+  margin: 0;
+
+  border-radius: 999px;
+
+  background: #ffffff;
+
+  /*
+   * Subtle border keeps the white pill visible
+   * on a pure white page without changing its shape.
+   */
+  border: 1px solid #e8e8e5;
+
+  /*
+   * Balanced premium floating shadow.
+   */
+  box-shadow:
+    0 1px 2px rgba(22, 22, 20, 0.045),
+    0 5px 16px rgba(22, 22, 20, 0.055);
+
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+
+  overflow: visible;
+
+  -webkit-tap-highlight-color: transparent;
+
+  transform: translate3d(0, 0, 0);
+
+  /*
+   * The pill is static, so constant will-change is unnecessary.
+   * This reduces memory usage on mobile devices.
+   */
+  will-change: auto;
+
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+
+  transition:
+    border-color 180ms cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 180ms cubic-bezier(0.22, 1, 0.36, 1),
+    background-color 180ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.overlay-pill:focus-within {
+  border-color: #cfcfca;
+
+  box-shadow:
+    0 0 0 3px rgba(74, 74, 68, 0.075),
+    0 1px 2px rgba(22, 22, 20, 0.05),
+    0 6px 18px rgba(22, 22, 20, 0.065);
+}
+
+
+/* ═══════════════════════════════════════════════════════════════
+   PLUS BUTTON
+═══════════════════════════════════════════════════════════════ */
+
+.ico-plus {
+  flex: 0 0 40px;
+
+  width: 40px;
+  height: 40px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  box-sizing: border-box;
+
+  padding: 0;
+  margin: 0;
+
+  border: 0;
+  outline: 0;
+
+  background: transparent;
+
+  color: #5e5e58;
+
+  border-radius: 50%;
+
+  cursor: pointer;
+
+  -webkit-tap-highlight-color: transparent;
+
+  transition:
+    background-color 150ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 120ms cubic-bezier(0.22, 1, 0.36, 1),
+    color 150ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.ico-plus:hover {
+  background: rgba(50, 50, 46, 0.045);
+  color: #34342f;
+}
+
+.ico-plus:active {
+  background: rgba(50, 50, 46, 0.085);
+  transform: scale(0.94);
+}
+
+.ico-plus:focus-visible {
+  outline: 0;
+  box-shadow: 0 0 0 3px rgba(72, 72, 66, 0.16);
+}
+
+.ico-plus svg {
+  width: 27px;
+  height: 27px;
+
+  display: block;
+
+  stroke: currentColor;
+  stroke-width: 1.45;
+
+  stroke-linecap: round;
+  stroke-linejoin: round;
+
+  fill: none;
+
+  vector-effect: non-scaling-stroke;
+  shape-rendering: geometricPrecision;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════
+   INPUT WRAPPER
+═══════════════════════════════════════════════════════════════ */
+
+.overlay-input-wrap {
+  flex: 1;
+  min-width: 0;
+
+  position: relative;
+
+  height: 100%;
+
+  display: flex;
+  align-items: center;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════
+   INPUT
+═══════════════════════════════════════════════════════════════ */
+
+.search-input {
+  position: absolute;
+  inset: 0;
+
+  width: 100%;
+  height: 100%;
+
+  box-sizing: border-box;
+
+  padding: 0;
+  margin: 0;
+
+  border: 0;
+  outline: 0;
+
+  background: transparent;
+
+  font-family:
+    -apple-system,
+    BlinkMacSystemFont,
+    "SF Pro Text",
+    "SF Pro Display",
+    "Inter",
+    system-ui,
+    sans-serif;
+
+  font-size: 16px;
+  font-weight: 400;
+
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+
+  color: #292925;
+
+  caret-color: #4d4d47;
+
+  z-index: 2;
+
+  -webkit-appearance: none;
+  appearance: none;
+
+  -webkit-text-size-adjust: 100%;
+  text-rendering: optimizeLegibility;
+
+  -webkit-tap-highlight-color: transparent;
+}
+
+.search-input::placeholder {
+  color: transparent;
+  opacity: 0;
+}
+
+.search-input::-webkit-search-cancel-button,
+.search-input::-webkit-search-decoration,
+.search-input::-webkit-search-results-button,
+.search-input::-webkit-search-results-decoration {
+  -webkit-appearance: none;
+  appearance: none;
+  display: none;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════
+   SHIMMER PLACEHOLDER
+═══════════════════════════════════════════════════════════════ */
+
+.shimmer-overlay {
+  position: absolute;
+  inset: 0;
+
+  display: flex;
+  align-items: center;
+
+  overflow: hidden;
+
+  pointer-events: none;
+
+  z-index: 1;
+}
+
+.shimmer-overlay span {
+  font-family:
+    -apple-system,
+    BlinkMacSystemFont,
+    "SF Pro Text",
+    "SF Pro Display",
+    "Inter",
+    system-ui,
+    sans-serif;
+
+  font-size: 16px;
+  font-weight: 400;
+
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+
+  white-space: nowrap;
+
+  color: #96958f;
+
+  background:
+    linear-gradient(
+      108deg,
+      #96958f 0%,
+      #96958f 35%,
+      #c4c3be 46%,
+      #77766f 50%,
+      #c4c3be 54%,
+      #96958f 65%,
+      #96958f 100%
+    );
+
+  background-size: 260% 100%;
+  background-position: 145% center;
+
+  -webkit-background-clip: text;
+  background-clip: text;
+
+  -webkit-text-fill-color: transparent;
+
+  animation:
+    atkyn-placeholder-shimmer
+    3.8s
+    cubic-bezier(0.45, 0, 0.55, 1)
+    infinite;
+}
+
+.search-input:not(:placeholder-shown) + .shimmer-overlay {
+  display: none;
+}
+
+@keyframes atkyn-placeholder-shimmer {
+  0% {
+    background-position: 145% center;
+  }
+
+  55%,
+  100% {
+    background-position: -45% center;
+  }
+}
+
+
+/* ═══════════════════════════════════════════════════════════════
+   CAMERA BUTTON
+═══════════════════════════════════════════════════════════════ */
+
+.ico-camera {
+  flex: 0 0 40px;
+
+  width: 40px;
+  height: 40px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  box-sizing: border-box;
+
+  padding: 0;
+  margin: 0;
+
+  border: 0;
+  outline: 0;
+
+  background: transparent;
+
+  color: #5e5e58;
+
+  border-radius: 50%;
+
+  cursor: pointer;
+
+  -webkit-tap-highlight-color: transparent;
+
+  transition:
+    background-color 150ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 120ms cubic-bezier(0.22, 1, 0.36, 1),
+    color 150ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.ico-camera:hover {
+  background: rgba(50, 50, 46, 0.045);
+  color: #34342f;
+}
+
+.ico-camera:active {
+  background: rgba(50, 50, 46, 0.085);
+  transform: scale(0.94);
+}
+
+.ico-camera:focus-visible {
+  outline: 0;
+  box-shadow: 0 0 0 3px rgba(72, 72, 66, 0.16);
+}
+
+.ico-camera svg {
+  width: 27px;
+  height: 27px;
+
+  display: block;
+
+  stroke: currentColor;
+  stroke-width: 1.45;
+
+  stroke-linecap: round;
+  stroke-linejoin: round;
+
+  fill: none;
+
+  vector-effect: non-scaling-stroke;
+  shape-rendering: geometricPrecision;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════
+   SEND BUTTON
+═══════════════════════════════════════════════════════════════ */
+
+.send-btn {
+  flex: 0 0 40px;
+
+  width: 40px;
+  height: 40px;
+
+  display: none;
+
+  align-items: center;
+  justify-content: center;
+
+  box-sizing: border-box;
+
+  padding: 0;
+  margin: 0;
+
+  border: 0;
+  border-radius: 50%;
+
+  background: #171714;
+
+  cursor: pointer;
+
+  -webkit-tap-highlight-color: transparent;
+
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 1px 2px rgba(0, 0, 0, 0.16);
+
+  transition:
+    transform 140ms cubic-bezier(0.22, 1, 0.36, 1),
+    background-color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.send-btn:hover {
+  background: #292924;
+
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.10),
+    0 2px 5px rgba(0, 0, 0, 0.18);
+}
+
+.send-btn:active {
+  transform: scale(0.91);
+
+  box-shadow:
+    inset 0 1px 1px rgba(0, 0, 0, 0.18),
+    0 1px 2px rgba(0, 0, 0, 0.12);
+}
+
+.send-btn:focus-visible {
+  outline: 0;
+  box-shadow:
+    0 0 0 3px rgba(72, 72, 66, 0.18),
+    0 2px 5px rgba(0, 0, 0, 0.18);
+}
+
+.send-btn svg {
+  width: 18px;
+  height: 18px;
+
+  display: block;
+
+  stroke: #ffffff;
+  stroke-width: 1.9;
+
+  stroke-linecap: round;
+  stroke-linejoin: round;
+
+  fill: none;
+
+  shape-rendering: geometricPrecision;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════
+   CAMERA / SEND TOGGLE
+═══════════════════════════════════════════════════════════════ */
+
+.overlay-pill.has-text .ico-camera {
+  display: none;
+}
+
+.overlay-pill.has-text .send-btn {
+  display: flex;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════
+   CROSS MODE
+═══════════════════════════════════════════════════════════════ */
+
+.send-btn.cross-mode {
+  background: transparent;
+  box-shadow: none;
+}
+
+.send-btn.cross-mode:hover {
+  background: rgba(50, 50, 46, 0.045);
+  box-shadow: none;
+}
+
+.send-btn.cross-mode svg {
+  width: 23px;
+  height: 23px;
+
+  stroke: #11110f;
+  stroke-width: 1.7;
+
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════
+   PLUS MENU BACKDROP
+═══════════════════════════════════════════════════════════════ */
+
+.plus-menu-backdrop {
+  position: fixed;
+  inset: 0;
+
+  z-index: 100;
+
+  display: none;
+}
+
+.plus-menu-backdrop.open {
+  display: block;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════
+   PLUS MENU — PREMIUM FROSTED SHEET
+Previous code message accidentally cut ho gaya tha. Yeh **complete final replacement** hai—directly purane CSS ki jagah paste karein.
+
+```css
+/* ═══════════════════════════════════════════════════════════════
+   ATKYN — PREMIUM COMPACT GLASS CHATBAR
+   Full Replacement
+   Shape preserved • Professional white UI • Smooth performance
+═══════════════════════════════════════════════════════════════ */
+
+
+/* ───────────────────────────────────────────────────────────────
+   WRAPPER
+─────────────────────────────────────────────────────────────── */
+
+.chatbar-wrap {
+  flex-shrink: 0;
+  position: sticky;
+  bottom: 0;
+  z-index: 10;
+
+  width: 100%;
+  box-sizing: border-box;
+
+  padding:
+    10px
+    18px
+    calc(12px + env(safe-area-inset-bottom));
+
+  background: transparent;
+
+  transform: translate3d(0, 0, 0);
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+
+  /*
+   * Paint containment fixed menu ko kuch browsers mein clip kar sakti hai.
+   * Isliye layout/style containment rakha gaya hai, paint nahi.
+   */
+  contain: layout style;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════
+   MAIN GLASS PILL
+   Same 60px height and same rounded shape
+═══════════════════════════════════════════════════════════════ */
+
+.overlay-pill {
+  position: relative;
+  isolation: isolate;
+
+  width: 100%;
+  height: 60px;
+  min-height: 60px;
+
+  display: flex;
+  align-items: center;
+
+  box-sizing: border-box;
+
+  gap: 6px;
+
+  padding: 0 12px 0 14px;
+  margin: 0;
+
+  border-radius: 999px;
+
+  background: #ffffff;
+
+  /*
+   * White page par pill ko clearly visible rakhne ke liye
+   * extremely subtle neutral border.
+   */
+  border: 1px solid #e8e8e5;
+
+  /*
+   * Soft symmetric floating shadow.
+   */
+  box-shadow:
+    0 1px 2px rgba(22, 22, 20, 0.045),
+    0 5px 16px rgba(22, 22, 20, 0.055);
+
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+
+  overflow: visible;
+
+  -webkit-tap-highlight-color: transparent;
+
+  transform: translate3d(0, 0, 0);
+
+  /*
+   * Static element par unnecessary will-change avoid kiya gaya hai.
+   */
+  will-change: auto;
+
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+
+  transition:
+    border-color 180ms cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 180ms cubic-bezier(0.22, 1, 0.36, 1),
+    background-color 180ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.overlay-pill:focus-within {
+  border-color: #cfcfca;
+
+  box-shadow:
+    0 0 0 3px rgba(74, 74, 68, 0.075),
+    0 1px 2px rgba(22, 22, 20, 0.05),
+    0 6px 18px rgba(22, 22, 20, 0.065);
+}
+
+
+/* ═══════════════════════════════════════════════════════════════
+   PLUS BUTTON
+═══════════════════════════════════════════════════════════════ */
+
+.ico-plus {
+  flex: 0 0 40px;
+
+  width: 40px;
+  height: 40px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  box-sizing: border-box;
+
+  padding: 0;
+  margin: 0;
+
+  border: 0;
+  outline: 0;
+
+  background: transparent;
+
+  color: #5e5e58;
+
+  border-radius: 50%;
+
+  cursor: pointer;
+
+  -webkit-tap-highlight-color: transparent;
+
+  transition:
+    background-color 150ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 120ms cubic-bezier(0.22, 1, 0.36, 1),
+    color 150ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.ico-plus:hover {
+  background: rgba(50, 50, 46, 0.045);
+  color: #34342f;
+}
+
+.ico-plus:active {
+  background: rgba(50, 50, 46, 0.085);
+  transform: scale(0.94);
+}
+
+.ico-plus:focus-visible {
+  outline: 0;
+  box-shadow: 0 0 0 3px rgba(72, 72, 66, 0.16);
+}
+
+.ico-plus svg {
+  width: 27px;
+  height: 27px;
+
+  display: block;
+
+  stroke: currentColor;
+  stroke-width: 1.45;
+
+  stroke-linecap: round;
+  stroke-linejoin: round;
+
+  fill: none;
+
+  vector-effect: non-scaling-stroke;
+  shape-rendering: geometricPrecision;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════
+   INPUT WRAPPER
+═══════════════════════════════════════════════════════════════ */
+
+.overlay-input-wrap {
+  flex: 1;
+  min-width: 0;
+
+  position: relative;
+
+  height: 100%;
+
+  display: flex;
+  align-items: center;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════
+   INPUT
+═══════════════════════════════════════════════════════════════ */
+
+.search-input {
+  position: absolute;
+  inset: 0;
+
+  width: 100%;
+  height: 100%;
+
+  box-sizing: border-box;
+
+  padding: 0;
+  margin: 0;
+
+  border: 0;
+  outline: 0;
+
+  background: transparent;
+
+  font-family:
+    -apple-system,
+    BlinkMacSystemFont,
+    "SF Pro Text",
+    "SF Pro Display",
+    "Inter",
+    system-ui,
+    sans-serif;
+
+  font-size: 16px;
+  font-weight: 400;
+
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+
+  color: #292925;
+  caret-color: #4d4d47;
+
+  z-index: 2;
+
+  -webkit-appearance: none;
+  appearance: none;
+
+  -webkit-text-size-adjust: 100%;
+  text-rendering: optimizeLegibility;
+
+  -webkit-tap-highlight-color: transparent;
+}
+
+.search-input::placeholder {
+  color: transparent;
+  opacity: 0;
+}
+
+.search-input::-webkit-search-cancel-button,
+.search-input::-webkit-search-decoration,
+.search-input::-webkit-search-results-button,
+.search-input::-webkit-search-results-decoration {
+  -webkit-appearance: none;
+  appearance: none;
+  display: none;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════
+   SHIMMER PLACEHOLDER
+═══════════════════════════════════════════════════════════════ */
+
+.shimmer-overlay {
+  position: absolute;
+  inset: 0;
+
+  display: flex;
+  align-items: center;
+
+  overflow: hidden;
+
+  pointer-events: none;
+
+  z-index: 1;
+}
+
+.shimmer-overlay span {
+  font-family:
+    -apple-system,
+    BlinkMacSystemFont,
+    "SF Pro Text",
+    "SF Pro Display",
+    "Inter",
+    system-ui,
+    sans-serif;
+
+  font-size: 16px;
+  font-weight: 400;
+
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+
+  white-space: nowrap;
+
+  color: #96958f;
+
+  background:
+    linear-gradient(
+      108deg,
+      #96958f 0%,
+      #96958f 35%,
+      #c4c3be 46%,
+      #77766f 50%,
+      #c4c3be 54%,
+      #96958f 65%,
+      #96958f 100%
+    );
+
+  background-size: 260% 100%;
+  background-position: 145% center;
+
+  -webkit-background-clip: text;
+  background-clip: text;
+
+  -webkit-text-fill-color: transparent;
+
+  animation:
+    atkyn-placeholder-shimmer
+    3.8s
+    cubic-bezier(0.45, 0, 0.55, 1)
+    infinite;
+}
+
+.search-input:not(:placeholder-shown) + .shimmer-overlay {
+  display: none;
+}
+
+@keyframes atkyn-placeholder-shimmer {
+  0% {
+    background-position: 145% center;
+  }
+
+  55%,
+  100% {
+    background-position: -45% center;
+  }
+}
+
+
+/* ═══════════════════════════════════════════════════════════════
+   CAMERA BUTTON
+═══════════════════════════════════════════════════════════════ */
+
+.ico-camera {
+  flex: 0 0 40px;
+
+  width: 40px;
+  height: 40px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  box-sizing: border-box;
+
+  padding: 0;
+  margin: 0;
+
+  border: 0;
+  outline: 0;
+
+  background: transparent;
+
+  color: #5e5e58;
+
+  border-radius: 50%;
+
+  cursor: pointer;
+
+  -webkit-tap-highlight-color: transparent;
+
+  transition:
+    background-color 150ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 120ms cubic-bezier(0.22, 1, 0.36, 1),
+    color 150ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.ico-camera:hover {
+  background: rgba(50, 50, 46, 0.045);
+  color: #34342f;
+}
+
+.ico-camera:active {
+  background: rgba(50, 50, 46, 0.085);
+  transform: scale(0.94);
+}
+
+.ico-camera:focus-visible {
+  outline: 0;
+  box-shadow: 0 0 0 3px rgba(72, 72, 66, 0.16);
+}
+
+.ico-camera svg {
+  width: 27px;
+  height: 27px;
+
+  display: block;
+
+  stroke: currentColor;
+  stroke-width: 1.45;
+
+  stroke-linecap: round;
+  stroke-linejoin: round;
+
+  fill: none;
+
+  vector-effect: non-scaling-stroke;
+  shape-rendering: geometricPrecision;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════
+   SEND BUTTON
+═══════════════════════════════════════════════════════════════ */
+
+.send-btn {
+  flex: 0 0 40px;
+
+  width: 40px;
+  height: 40px;
+
+  display: none;
+
+  align-items: center;
+  justify-content: center;
+
+  box-sizing: border-box;
+
+  padding: 0;
+  margin: 0;
+
+  border: 0;
+  border-radius: 50%;
+
+  background: #171714;
+
+  cursor: pointer;
+
+  -webkit-tap-highlight-color: transparent;
+
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 1px 2px rgba(0, 0, 0, 0.16);
+
+  transition:
+    transform 140ms cubic-bezier(0.22, 1, 0.36, 1),
+    background-color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.send-btn:hover {
+  background: #292924;
+
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.10),
+    0 2px 5px rgba(0, 0, 0, 0.18);
+}
+
+.send-btn:active {
+  transform: scale(0.91);
+
+  box-shadow:
+    inset 0 1px 1px rgba(0, 0, 0, 0.18),
+    0 1px 2px rgba(0, 0, 0, 0.12);
+}
+
+.send-btn:focus-visible {
+  outline: 0;
+
+  box-shadow:
+    0 0 0 3px rgba(72, 72, 66, 0.18),
+    0 2px 5px rgba(0, 0, 0, 0.18);
+}
+
+.send-btn svg {
+  width: 18px;
+  height: 18px;
+
+  display: block;
+
+  stroke: #ffffff;
+  stroke-width: 1.9;
+
+  stroke-linecap: round;
+  stroke-linejoin: round;
+
+  fill: none;
+
+  shape-rendering: geometricPrecision;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════
+   CAMERA / SEND TOGGLE
+═══════════════════════════════════════════════════════════════ */
+
+.overlay-pill.has-text .ico-camera {
+  display: none;
+}
+
+.overlay-pill.has-text .send-btn {
+  display: flex;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════
+   CROSS MODE
+═══════════════════════════════════════════════════════════════ */
+
+.send-btn.cross-mode {
+  background: transparent;
+  box-shadow: none;
+}
+
+.send-btn.cross-mode:hover {
+  background: rgba(50, 50, 46, 0.045);
+  box-shadow: none;
+}
+
+.send-btn.cross-mode svg {
+  width: 23px;
+  height: 23px;
+
+  stroke: #11110f;
+  stroke-width: 1.7;
+
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════
+   PLUS MENU BACKDROP
+═══════════════════════════════════════════════════════════════ */
+
+.plus-menu-backdrop {
+  position: fixed;
+  inset: 0;
+
+  z-index: 100;
+
+  display: none;
+}
+
+.plus-menu-backdrop.open {
+  display: block;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════
+   PLUS MENU — PREMIUM FROSTED SHEET
+═══════════════════════════════════════════════════════════════ */
+
+.plus-menu {
+  position: fixed;
+
+  left: 14px;
+  right: 14px;
+
+  bottom: calc(76px + env(safe-area-inset-bottom));
+
+  width: auto;
+
+  box-sizing: border-box;
+
+  background: rgba(255, 255, 255, 0.94);
+
+  -webkit-backdrop-filter: blur(24px) saturate(1.25);
+  backdrop-filter: blur(24px) saturate(1.25);
+
+  border-radius: 22px;
+
+  border: 1px solid rgba(225, 225, 221, 0.9);
+
+  box-shadow:
+    0 1px 2px rgba(20, 20, 18, 0.05),
+    0 10px 30px rgba(20, 20, 18, 0.11),
+    0 24px 55px rgba(20, 20, 18, 0.075);
+
+  overflow: hidden;
+
+  padding: 6px;
+
+  z-index: 101;
+
+  transform:
+    translateY(14px)
+    scale(0.96);
+
+  transform-origin: bottom center;
+
+  opacity: 0;
+  pointer-events: none;
+
+  will-change: transform, opacity;
+
+  transition:
+    transform 280ms cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 220ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.plus-menu.open {
+  transform:
+    translateY(0)
+    scale(1);
+
+  opacity: 1;
+  pointer-events: auto;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════
+   MENU SECTION LABEL
+═══════════════════════════════════════════════════════════════ */
+
+.pm-section-label {
+  font-family:
+    -apple-system,
+    BlinkMacSystemFont,
+    "SF Pro Text",
+    "Inter",
+    system-ui,
+    sans-serif;
+
+  font-size: 11px;
+  font-weight: 600;
+
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+
+  color: #92918b;
+
+  padding: 10px 14px 4px;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════
+   MENU ITEMS
+═══════════════════════════════════════════════════════════════ */
+
+.pm-item {
+  display: flex;
+  align-items: center;
+
+  gap: 16px;
+
+  width: 100%;
+
+  box-sizing: border-box;
+
+  padding: 14px 18px;
+
+  border: 0;
+  border-radius: 14px;
+
+  background: transparent;
+
+  text-align: left;
+
+  color: #252521;
+
+  font-family:
+    -apple-system,
+    BlinkMacSystemFont,
+    "SF Pro Text",
+    "SF Pro Display",
+    "Inter",
+    system-ui,
+    sans-serif;
+
+  font-size: 15px;
+  font-weight: 500;
+
+  letter-spacing: -0.01em;
+
+  cursor: pointer;
+
+  -webkit-tap-highlight-color: transparent;
+
+  transition:
+    background-color 130ms cubic-bezier(0.22, 1, 0.36, 1),
+    color 130ms ease;
+}
+
+.pm-item:hover {
+  background: rgba(40, 40, 36, 0.045);
+}
+
+.pm-item:active {
+  background: rgba(40, 40, 36, 0.085);
+}
+
+.pm-item:focus-visible {
+  outline: 0;
+  box-shadow: 0 0 0 3px rgba(72, 72, 66, 0.16);
+}
+
+.pm-item + .pm-item {
+  margin-top: 2px;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════
+   MENU ICON
+═══════════════════════════════════════════════════════════════ */
+
+.pm-icon {
+  flex-shrink: 0;
+
+  width: 28px;
+  height: 28px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  background: none;
+  border-radius: 0;
+}
+
+.pm-icon svg {
+  width: 26px;
+  height: 26px;
+
+  stroke: #50504a;
+  stroke-width: 1.6;
+
+  stroke-linecap: round;
+  stroke-linejoin: round;
+
+  fill: none;
+
+  shape-rendering: geometricPrecision;
+}
+
+.pm-icon img {
+  width: 26px;
+  height: 26px;
+
+  object-fit: contain;
+  display: block;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════
+   MENU LABEL
+═══════════════════════════════════════════════════════════════ */
+
+.pm-label {
+  display: flex;
+  flex-direction: column;
+
+  gap: 2px;
+}
+
+.pm-label-title {
+  font-size: 15px;
+  font-weight: 500;
+
+  color: #252521;
+
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+}
+
+.pm-label-sub {
+  font-size: 12px;
+  font-weight: 400;
+
+  color: #92918b;
+
+  letter-spacing: 0;
+  line-height: 1.3;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════
+   CHEVRON / BADGE
+═══════════════════════════════════════════════════════════════ */
+
+.pm-chevron {
+  margin-left: auto;
+  flex-shrink: 0;
+
+  color: #b0afa9;
+}
+
+.pm-chevron svg {
+  width: 16px;
+  height: 16px;
+
+  stroke: currentColor;
+  stroke-width: 1.8;
+
+  stroke-linecap: round;
+  stroke-linejoin: round;
+
+  fill: none;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════
+   MENU DIVIDER
+═══════════════════════════════════════════════════════════════ */
+
+.pm-rule {
+  height: 1px;
+
+  background: rgba(40, 40, 36, 0.075);
+
+  margin: 6px 0;
+
+  border-radius: 1px;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════
+   DARK MODE
+═══════════════════════════════════════════════════════════════ */
+
+@media (prefers-color-scheme: dark) {
+  .overlay-pill {
+    background: #2b2b2e;
+    border-color: #414145;
+
+    box-shadow:
+      0 1px 2px rgba(0, 0, 0, 0.24),
+      0 6px 18px rgba(0, 0, 0, 0.26);
+  }
+
+  .overlay-pill:focus-within {
+    border-color: #68686d;
+
+    box-shadow:
+      0 0 0 3px rgba(205, 205, 210, 0.10),
+      0 1px 2px rgba(0, 0, 0, 0.24),
+      0 7px 20px rgba(0, 0, 0, 0.28);
+  }
+
+  .search-input {
+    color: #f1f1ef;
+    caret-color: #d9d9d5;
+  }
+
+  .shimmer-overlay span {
+    color: #999891;
+
+    background:
+      linear-gradient(
+        108deg,
+        #999891 0%,
+        #999891 35%,
+        #d0cec8 47%,
+        #f1f0eb 50%,
+        #d0cec8 53%,
+        #999891 65%,
+        #999891 100%
+      );
+
+    background-size: 260% 100%;
+    background-position: 145% center;
+
+    -webkit-background-clip: text;
+    background-clip: text;
+
+    -webkit-text-fill-color: transparent;
+  }
+
+  .ico-plus,
+  .ico-camera {
+    color: #c9c8c3;
+  }
+
+  .ico-plus:hover,
+  .ico-camera:hover {
+    background: rgba(255, 255, 255, 0.075);
+    color: #f0efeb;
+  }
+
+  .ico-plus:focus-visible,
+  .ico-camera:focus-visible {
+    box-shadow: 0 0 0 3px rgba(205, 205, 210, 0.16);
+  }
+
+  .send-btn {
+    background: #f0efeb;
+
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.75),
+      0 1px 2px rgba(0, 0, 0, 0.22);
+  }
+
+  .send-btn:hover {
+    background: #ffffff;
+  }
+
+  .send-btn svg {
+    stroke: #191917;
+  }
+
+  .send-btn.cross-mode {
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .send-btn.cross-mode:hover {
+    background: rgba(255, 255, 255, 0.075);
+  }
+
+  .send-btn.cross-mode svg {
+    stroke: #deddd8;
+  }
+
+  .plus-menu {
+    background: rgba(39, 39, 41, 0.94);
+
+    -webkit-backdrop-filter: blur(24px) saturate(1.35);
+    backdrop-filter: blur(24px) saturate(1.35);
+
+    border-color: rgba(255, 255, 255, 0.10);
+
+    box-shadow:
+      0 1px 2px rgba(0, 0, 0, 0.28),
+      0 12px 32px rgba(0, 0, 0, 0.36);
+  }
+
+  .pm-section-label {
+    color: #96958f;
+  }
+
+  .pm-item {
+    color: #f0f0ed;
+  }
+
+  .pm-item:hover {
+    background: rgba(255, 255, 255, 0.065);
+  }
+
+  .pm-item:active {
+    background: rgba(255, 255, 255, 0.11);
+  }
+
+  .pm-item:focus-visible {
+    box-shadow: 0 0 0 3px rgba(205, 205, 210, 0.16);
+  }
+
+  .pm-icon {
+    background: none;
+  }
+
+  .pm-icon svg {
+    stroke: #cac9c4;
+  }
+
+  .pm-icon img {
+    opacity: 0.85;
+  }
+
+  .pm-label-title {
+    color: #f0f0ed;
+  }
+
+  .pm-label-sub {
+    color: #96958f;
+  }
+
+  .pm-chevron {
+    color: #77767a;
+  }
+
+  .pm-rule {
+    background: rgba(255, 255, 255, 0.10);
+  }
+}
+
+
+/* ═══════════════════════════════════════════════════════════════
+   SMALL PHONES
+   Same layout, only original compact sizing preserved
+═══════════════════════════════════════════════════════════════ */
+
+@media (max-width: 360px) {
+  .chatbar-wrap {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+
+  .overlay-pill {
+    padding-left: 12px;
+    padding-right: 10px;
+    gap: 4px;
+  }
+
+  .ico-plus,
+  .ico-camera,
+  .send-btn {
+    flex: 0 0 38px;
+
+    width: 38px;
+    height: 38px;
+  }
+
+  .plus-menu {
+    left: 10px;
+    right: 10px;
+  }
+}
+
+
+/* ═══════════════════════════════════════════════════════════════
+   REDUCED MOTION
+═══════════════════════════════════════════════════════════════ */
+
+@media (prefers-reduced-motion: reduce) {
+  .shimmer-overlay span {
+    animation: none;
+
+    background: none;
+
+    color: #8e8d87;
+    -webkit-text-fill-color: currentColor;
+  }
+
+  .overlay-pill,
+  .ico-plus,
+  .ico-camera,
+  .send-btn,
+  .plus-menu,
+  .pm-item {
+    transition-duration: 1ms;
+  }
+}

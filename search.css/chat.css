@@ -78,8 +78,11 @@
 .typing span {
   position: absolute;
   border-radius: 50%;
-  background: var(--color-primary);
+  background: #000000;
   animation: tPulse 1.4s ease-in-out infinite;
+}
+@media (prefers-color-scheme: dark) {
+  .typing span { background: #ffffff; }
 }
 .typing span:nth-child(1) { width: 16px; height: 16px; left: 0px;  top: 6px;  animation-delay: 0s;    }
 .typing span:nth-child(2) { width: 11px; height: 11px; left: 20px; top: 22px; animation-delay: 0.2s;  }
@@ -480,5 +483,4 @@
 
 .ai-disclaimer-logo {
   display: none;
-   }
-   
+}

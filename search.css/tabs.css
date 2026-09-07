@@ -1,180 +1,176 @@
 /* ════════════════════════════════════════════════════════════════
-   tabs-liquid-glass.css
-   Drop-in override — replaces ONLY .tab visual design.
-   All layout, spacing, z-index, scroll, hide/show logic unchanged.
+   tabs-liquid-glass.css  —  v2
+   Strategy: the TAB BAR is the unified glass surface.
+   Individual .tab elements are transparent label containers.
+   Only .tab.active gets a refined glass indicator — NOT a bubble.
 ════════════════════════════════════════════════════════════════ */
 
-/* ── Tab bar: no change to layout, just tweak bg to be more transparent ── */
+/* ── 1. TAB BAR: the single unified glass surface ── */
 .tab-bar {
-  background: rgba(255, 255, 255, 0.72);
-  -webkit-backdrop-filter: blur(20px) saturate(1.8);
-  backdrop-filter: blur(20px) saturate(1.8);
+  /* Cohesive glass: one continuous translucent plane */
+  background: rgba(248, 248, 252, 0.78);
+  -webkit-backdrop-filter: blur(24px) saturate(1.9) brightness(1.02);
+  backdrop-filter: blur(24px) saturate(1.9) brightness(1.02);
+
+  /* Subtle outer shell */
+  border-bottom: 0.5px solid rgba(0, 0, 0, 0.07);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.82),   /* top specular edge */
+    0 1px 0 rgba(0, 0, 0, 0.04);               /* bottom separator */
+
+  /* Increase height slightly — more room, less cramped */
+  height: 48px;
+  padding: 0 10px;
+  gap: 2px;
 }
 
 @media (prefers-color-scheme: dark) {
   .tab-bar {
-    background: rgba(18, 18, 20, 0.70);
-    -webkit-backdrop-filter: blur(20px) saturate(1.6);
-    backdrop-filter: blur(20px) saturate(1.6);
+    background: rgba(22, 22, 26, 0.82);
+    -webkit-backdrop-filter: blur(24px) saturate(1.6) brightness(0.95);
+    backdrop-filter: blur(24px) saturate(1.6) brightness(0.95);
+    border-bottom: 0.5px solid rgba(255, 255, 255, 0.06);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.07),
+      0 1px 0 rgba(0, 0, 0, 0.25);
   }
 }
 
-/* ── Liquid Glass: inactive tab ── */
+/* ── 2. INDIVIDUAL TABS: transparent, no bubble ── */
 .tab {
-  /* Reset old solid bg */
+  /* Reset everything — no background, no border, no shadow */
   background: transparent;
+  background-color: transparent;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  border: none;
+  box-shadow: none;
+  outline: none;
 
-  /* Glass layers:
-     1. subtle white translucency base
-     2. soft specular top-edge highlight via box-shadow inset */
-  background-color: rgba(255, 255, 255, 0.38);
-  -webkit-backdrop-filter: blur(16px) saturate(1.5) brightness(1.04);
-  backdrop-filter: blur(16px) saturate(1.5) brightness(1.04);
-
-  /* Luminous border — very subtle, not heavy */
-  border: 0.5px solid rgba(255, 255, 255, 0.60);
-
-  /* Specular highlight: top edge catches light, bottom has soft shadow */
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.70),   /* top specular */
-    inset 0 -1px 0 rgba(0, 0, 0, 0.04),         /* bottom depth */
-    0 1px 3px rgba(0, 0, 0, 0.06),              /* ambient lift */
-    0 0 0 0.5px rgba(0, 0, 0, 0.06);            /* outer edge definition */
-
-  /* Refined geometry */
+  /* Generous padding — tabs feel substantial, not cramped */
+  height: 36px;
+  padding: 0 14px;
   border-radius: 10px;
 
-  /* Text: dark enough to read on translucent bg */
-  color: rgba(28, 28, 32, 0.82);
+  /* Typography */
+  font-size: 14px;
+  font-weight: 500;
+  color: rgba(40, 40, 50, 0.60);
+  white-space: nowrap;
 
-  /* Smooth all transitions */
+  /* Smooth transitions — only visual properties */
   transition:
-    background-color 0.18s ease,
-    box-shadow 0.18s ease,
-    border-color 0.18s ease,
     color 0.18s ease,
-    transform 0.15s ease,
-    opacity 0.15s ease;
-
-  /* Respect reduced motion */
+    background-color 0.15s ease,
+    box-shadow 0.15s ease,
+    transform 0.12s ease;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .tab {
-    transition: background-color 0.01ms, color 0.01ms;
-  }
-}
-
-/* ── Hover / press micro-interactions ── */
+/* Inactive hover: very gentle tint, not a full bubble */
 .tab:hover:not(.active) {
-  background-color: rgba(255, 255, 255, 0.52);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.80),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.05),
-    0 2px 6px rgba(0, 0, 0, 0.08),
-    0 0 0 0.5px rgba(0, 0, 0, 0.07);
+  background-color: rgba(0, 0, 0, 0.04);
+  color: rgba(40, 40, 50, 0.80);
 }
 
 .tab:active {
+  transform: scale(0.96);
   opacity: 1; /* override old rule */
-  transform: scale(0.97);
-  background-color: rgba(255, 255, 255, 0.28);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.50),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.03),
-    0 0.5px 2px rgba(0, 0, 0, 0.05);
 }
 
-/* ── Active tab: Liquid Glass + green accent ──
-   Green sits inside the glass — translucent, not a solid pill.        */
+/* ── 3. ACTIVE TAB: glass indicator floats inside the bar ── */
 .tab.active {
-  /* Green glass base — slightly saturated translucent green */
-  background-color: rgba(52, 168, 83, 0.16);
-  -webkit-backdrop-filter: blur(16px) saturate(1.8) brightness(1.02);
-  backdrop-filter: blur(16px) saturate(1.8) brightness(1.02);
+  /* Green-tinted glass — same material language as bar, with green accent */
+  background-color: rgba(52, 168, 83, 0.13);
+  -webkit-backdrop-filter: blur(12px) saturate(1.6);
+  backdrop-filter: blur(12px) saturate(1.6);
 
-  /* Green-tinted luminous border */
-  border: 0.5px solid rgba(52, 168, 83, 0.38);
-
-  /* Layered shadows:
-     top specular with green cast, soft green ambient glow, edge definition */
+  /* Layered glass shell */
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.75),        /* top specular */
-    inset 0 -1px 0 rgba(34, 120, 60, 0.10),          /* green bottom depth */
-    inset 0 0 12px rgba(52, 168, 83, 0.08),          /* inner green ambient */
-    0 1px 4px rgba(52, 168, 83, 0.14),               /* soft green lift */
-    0 0 0 0.5px rgba(52, 168, 83, 0.18);             /* outer green ring */
+    inset 0 1px 0 rgba(255, 255, 255, 0.72),       /* top specular */
+    inset 0 -0.5px 0 rgba(34, 120, 60, 0.12),       /* green bottom edge */
+    0 1px 4px rgba(52, 168, 83, 0.15),              /* soft green lift shadow */
+    0 0 0 0.5px rgba(52, 168, 83, 0.22);            /* outer green contour */
 
-  /* Text: deep green for legibility — not pure black */
-  color: rgba(22, 101, 52, 0.95);
+  /* Crisp but not harsh border */
+  border: 0.5px solid rgba(52, 168, 83, 0.28);
+
+  /* Deep readable green text */
+  color: rgba(18, 92, 42, 0.95);
+  font-weight: 600;
 }
 
 .tab.active:active {
-  transform: scale(0.97);
-  background-color: rgba(52, 168, 83, 0.22);
+  transform: scale(0.96);
+  background-color: rgba(52, 168, 83, 0.20);
 }
 
-/* ── Dark mode: inactive ── */
+/* ── 4. DARK MODE: tabs ── */
 @media (prefers-color-scheme: dark) {
   .tab {
-    background-color: rgba(255, 255, 255, 0.08);
-    border: 0.5px solid rgba(255, 255, 255, 0.12);
-    box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.12),
-      inset 0 -1px 0 rgba(0, 0, 0, 0.20),
-      0 1px 3px rgba(0, 0, 0, 0.25),
-      0 0 0 0.5px rgba(0, 0, 0, 0.30);
-    color: rgba(235, 235, 240, 0.78);
+    color: rgba(220, 220, 230, 0.50);
   }
 
   .tab:hover:not(.active) {
-    background-color: rgba(255, 255, 255, 0.12);
-    box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.16),
-      inset 0 -1px 0 rgba(0, 0, 0, 0.25),
-      0 2px 6px rgba(0, 0, 0, 0.30),
-      0 0 0 0.5px rgba(0, 0, 0, 0.35);
-  }
-
-  .tab:active {
     background-color: rgba(255, 255, 255, 0.05);
+    color: rgba(220, 220, 230, 0.72);
   }
 
-  /* Dark active: muted green, not neon */
+  /* Dark active: refined, not neon */
   .tab.active {
-    background-color: rgba(52, 168, 83, 0.18);
-    border: 0.5px solid rgba(52, 200, 100, 0.28);
+    background-color: rgba(52, 168, 83, 0.20);
+    border: 0.5px solid rgba(80, 200, 120, 0.30);
     box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.14),
-      inset 0 -1px 0 rgba(0, 0, 0, 0.25),
-      inset 0 0 14px rgba(52, 168, 83, 0.10),
+      inset 0 1px 0 rgba(255, 255, 255, 0.12),
+      inset 0 -0.5px 0 rgba(0, 0, 0, 0.20),
       0 1px 4px rgba(0, 0, 0, 0.30),
-      0 0 0 0.5px rgba(52, 200, 100, 0.22);
-    color: rgba(134, 239, 172, 0.95); /* soft green-100 equivalent */
+      0 0 0 0.5px rgba(80, 200, 120, 0.20);
+    color: rgba(120, 220, 155, 0.95);
+    font-weight: 600;
   }
 }
 
-/* ── Backdrop-filter fallback (Safari old / Firefox without flag) ──
-   If backdrop-filter is unsupported, fall back to a slightly more
-   opaque solid so readability is maintained.                          */
+/* ── 5. SCROLLED state: slightly heavier separator ── */
+.tab-bar.scrolled {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.82),
+    0 1px 8px rgba(0, 0, 0, 0.08);
+}
+
+@media (prefers-color-scheme: dark) {
+  .tab-bar.scrolled {
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.07),
+      0 1px 8px rgba(0, 0, 0, 0.35);
+  }
+}
+
+/* ── 6. REDUCED MOTION ── */
+@media (prefers-reduced-motion: reduce) {
+  .tab,
+  .tab.active {
+    transition: color 0.01ms, background-color 0.01ms;
+  }
+}
+
+/* ── 7. BACKDROP-FILTER FALLBACK ── */
 @supports not (backdrop-filter: blur(1px)) {
-  .tab {
-    background-color: rgba(245, 245, 248, 0.90);
-    border: 0.5px solid rgba(200, 200, 210, 0.60);
+  .tab-bar {
+    background: rgba(252, 252, 255, 0.97);
   }
   .tab.active {
-    background-color: rgba(220, 242, 228, 0.95);
-    border: 0.5px solid rgba(52, 168, 83, 0.40);
+    background-color: rgba(210, 240, 220, 0.95);
+    border: 0.5px solid rgba(52, 168, 83, 0.35);
+    box-shadow: 0 0 0 0.5px rgba(52, 168, 83, 0.25);
   }
 
   @media (prefers-color-scheme: dark) {
-    .tab {
-      background-color: rgba(38, 38, 42, 0.92);
-      border: 0.5px solid rgba(80, 80, 90, 0.50);
+    .tab-bar {
+      background: rgba(24, 24, 28, 0.98);
     }
     .tab.active {
-      background-color: rgba(30, 60, 38, 0.92);
-      border: 0.5px solid rgba(52, 168, 83, 0.40);
+      background-color: rgba(30, 65, 42, 0.95);
+      border: 0.5px solid rgba(80, 200, 120, 0.35);
     }
   }
-}
+     }
+   

@@ -1,62 +1,543 @@
 /* ════════════════════════════════════════════════════════════════
-   tabs.css — Tab bar (Answer / Web / Images / Videos / News …)
-   Sticky, blurred, GPU-composited for smooth hide/show on scroll.
+   tabs.css — Atkyn Tab Bar
+   Apple-inspired Liquid Glass Material
+   Geometry preserved • Active = Black • No visible outlines
 ════════════════════════════════════════════════════════════════ */
+
+/* ──────────────────────────────────────────────────────────────
+   TAB BAR
+────────────────────────────────────────────────────────────── */
 
 .tab-bar {
   flex-shrink: 0;
   display: flex;
   align-items: center;
+
   overflow-x: auto;
   overflow-y: hidden;
+
   padding: 0 14px;
   gap: 6.5px;
   height: 44px;
-  border-bottom: none;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: none;
+
   position: sticky;
   top: 0;
   z-index: 20;
-  background: var(--color-tab-bar-bg);
-  -webkit-backdrop-filter: blur(12px) saturate(1.4);
-  backdrop-filter: blur(12px) saturate(1.4);
+
+  /* Keep the bar visually quiet.
+     The material is primarily perceived on the tab surfaces. */
+  background: rgba(255, 255, 255, 0.62);
+
+  -webkit-backdrop-filter:
+    blur(18px)
+    saturate(1.45);
+
+  backdrop-filter:
+    blur(18px)
+    saturate(1.45);
+
+  border: none;
+  border-bottom: none;
+
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+
   will-change: transform;
   transform: translateZ(0);
+
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
-  transition: transform 0.32s cubic-bezier(0.4, 0, 0.2, 1);
-}
-.tab-bar::-webkit-scrollbar { display: none; }
-.tab-bar.hide    { transform: translateY(-100%) translateZ(0); }
-.tab-bar.scrolled{ box-shadow: 0 1px 6px rgba(0, 0, 0, 0.08); }
-@media (prefers-color-scheme: dark) {
-  .tab-bar {
-    background: var(--color-tab-bar-bg-dark);
-  }
-  .tab-bar.scrolled { box-shadow: 0 1px 6px rgba(0, 0, 0, 0.3); }
+
+  transition:
+    transform 0.32s cubic-bezier(0.4, 0, 0.2, 1),
+    background-color 0.2s ease;
 }
 
+.tab-bar::-webkit-scrollbar {
+  display: none;
+}
+
+.tab-bar.hide {
+  transform: translateY(-100%) translateZ(0);
+}
+
+/*
+   Do NOT create a hard divider underneath the navigation.
+   A tiny amount of depth is enough when the bar becomes scrolled.
+*/
+.tab-bar.scrolled {
+  box-shadow:
+    0 4px 14px rgba(0, 0, 0, 0.035);
+}
+
+/* ──────────────────────────────────────────────────────────────
+   INDIVIDUAL TAB
+   Geometry intentionally preserved
+────────────────────────────────────────────────────────────── */
+
 .tab {
+  /* ORIGINAL GEOMETRY — DO NOT CHANGE */
   flex-shrink: 0;
+
   height: 32px;
   padding: 0 12px;
+
   font-size: 14px;
   font-weight: 600;
-  color: var(--color-text-strong);
-  background: var(--color-bg-alt);
-  border-radius: 4px;
-  cursor: pointer;
+  line-height: 1;
+
   white-space: nowrap;
-  border: none;
+
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background 0.15s, color 0.15s;
+
+  position: relative;
+  overflow: hidden;
+
+  cursor: pointer;
+
+  border: none;
+  outline: none;
+
+  border-radius: 4px;
+
+  /*
+     Neutral Liquid Glass base.
+
+     This is intentionally NOT an opaque white card.
+     The background is translucent so the underlying material can
+     influence the appearance.
+  */
+  background:
+    radial-gradient(
+      140% 180% at 18% 0%,
+      rgba(255, 255, 255, 0.66) 0%,
+      rgba(255, 255, 255, 0.30) 42%,
+      rgba(236, 238, 241, 0.24) 100%
+    );
+
+  -webkit-backdrop-filter:
+    blur(20px)
+    saturate(1.65)
+    brightness(1.03);
+
+  backdrop-filter:
+    blur(20px)
+    saturate(1.65)
+    brightness(1.03);
+
+  /*
+     Depth without outlines.
+     Keep this extremely soft — the shadow must not define the tab.
+  */
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.035),
+    0 3px 8px rgba(0, 0, 0, 0.035),
+    inset 0 1px 0 rgba(255, 255, 255, 0.48),
+    inset 0 -1px 2px rgba(0, 0, 0, 0.025);
+
+  color: var(--color-text-strong);
+
+  isolation: isolate;
+
+  transition:
+    background 180ms ease,
+    color 180ms ease,
+    box-shadow 180ms ease,
+    opacity 120ms ease;
 }
-.tab:active  { opacity: 0.75; }
-.tab.active  { background: var(--color-tab-active-bg); color: var(--color-bg); }
+
+/* ──────────────────────────────────────────────────────────────
+   LIQUID GLASS LIGHT LAYER
+────────────────────────────────────────────────────────────── */
+
+/*
+   Broad soft reflection.
+
+   IMPORTANT:
+   This is a material highlight, NOT a border.
+   It fades into the surface and never draws an outline.
+*/
+.tab::before {
+  content: "";
+
+  position: absolute;
+  inset: 0;
+
+  pointer-events: none;
+  z-index: -1;
+
+  border-radius: inherit;
+
+  background:
+    radial-gradient(
+      95% 85% at 24% -12%,
+      rgba(255, 255, 255, 0.58) 0%,
+      rgba(255, 255, 255, 0.20) 35%,
+      rgba(255, 255, 255, 0) 70%
+    ),
+    linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.16) 0%,
+      rgba(255, 255, 255, 0) 54%
+    );
+
+  opacity: 0.82;
+
+  transform: translateZ(0);
+
+  transition:
+    opacity 180ms ease;
+}
+
+/*
+   Very subtle lower material density.
+   Again: no stroke, no outline.
+*/
+.tab::after {
+  content: "";
+
+  position: absolute;
+  left: 5%;
+  right: 5%;
+  bottom: 0;
+
+  height: 42%;
+
+  pointer-events: none;
+  z-index: -1;
+
+  border-radius: 0 0 4px 4px;
+
+  background:
+    linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0) 0%,
+      rgba(0, 0, 0, 0.018) 100%
+    );
+
+  opacity: 0.9;
+}
+
+/* ──────────────────────────────────────────────────────────────
+   PRESS / TOUCH
+────────────────────────────────────────────────────────────── */
+
+.tab:active {
+  opacity: 0.78;
+}
+
+/* ──────────────────────────────────────────────────────────────
+   ACTIVE TAB — BLACK LIQUID GLASS
+   NO GREEN
+   NO BORDER
+────────────────────────────────────────────────────────────── */
+
+.tab.active {
+  /*
+     The active state remains unmistakably BLACK,
+     but it is not a flat black rectangle.
+  */
+  background:
+    radial-gradient(
+      125% 170% at 20% -15%,
+      rgba(255, 255, 255, 0.16) 0%,
+      rgba(255, 255, 255, 0.055) 26%,
+      rgba(255, 255, 255, 0) 58%
+    ),
+    linear-gradient(
+      180deg,
+      rgba(34, 34, 36, 0.94) 0%,
+      rgba(15, 15, 16, 0.91) 52%,
+      rgba(7, 7, 8, 0.94) 100%
+    );
+
+  -webkit-backdrop-filter:
+    blur(22px)
+    saturate(1.25);
+
+  backdrop-filter:
+    blur(22px)
+    saturate(1.25);
+
+  color: #ffffff;
+
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.16),
+    0 4px 10px rgba(0, 0, 0, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.13),
+    inset 0 -1px 2px rgba(0, 0, 0, 0.22);
+}
+
+/*
+   Dark-glass specular reflection.
+   No colored glow.
+*/
+.tab.active::before {
+  background:
+    radial-gradient(
+      100% 95% at 24% -12%,
+      rgba(255, 255, 255, 0.21) 0%,
+      rgba(255, 255, 255, 0.08) 28%,
+      rgba(255, 255, 255, 0) 67%
+    ),
+    linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.065) 0%,
+      rgba(255, 255, 255, 0) 58%
+    );
+
+  opacity: 0.9;
+}
+
+.tab.active::after {
+  background:
+    linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0) 0%,
+      rgba(0, 0, 0, 0.14) 100%
+    );
+}
+
+/* ──────────────────────────────────────────────────────────────
+   ACTIVE HOVER / POINTER
+────────────────────────────────────────────────────────────── */
+
+@media (hover: hover) and (pointer: fine) {
+  .tab:not(.active):hover {
+    background:
+      radial-gradient(
+        140% 180% at 18% 0%,
+        rgba(255, 255, 255, 0.72) 0%,
+        rgba(255, 255, 255, 0.34) 42%,
+        rgba(236, 238, 241, 0.25) 100%
+      );
+
+    box-shadow:
+      0 1px 2px rgba(0, 0, 0, 0.035),
+      0 4px 10px rgba(0, 0, 0, 0.045),
+      inset 0 1px 0 rgba(255, 255, 255, 0.56),
+      inset 0 -1px 2px rgba(0, 0, 0, 0.025);
+  }
+
+  .tab.active:hover {
+    background:
+      radial-gradient(
+        125% 170% at 20% -15%,
+        rgba(255, 255, 255, 0.18) 0%,
+        rgba(255, 255, 255, 0.06) 27%,
+        rgba(255, 255, 255, 0) 58%
+      ),
+      linear-gradient(
+        180deg,
+        rgba(39, 39, 41, 0.95) 0%,
+        rgba(15, 15, 16, 0.92) 52%,
+        rgba(7, 7, 8, 0.95) 100%
+      );
+  }
+}
+
+/* ──────────────────────────────────────────────────────────────
+   BACKDROP-FILTER FALLBACK
+────────────────────────────────────────────────────────────── */
+
+@supports not (
+  (backdrop-filter: blur(1px)) or
+  (-webkit-backdrop-filter: blur(1px))
+) {
+
+  .tab-bar {
+    background: rgba(248, 249, 250, 0.96);
+  }
+
+  .tab {
+    background:
+      linear-gradient(
+        180deg,
+        rgba(239, 240, 242, 0.96) 0%,
+        rgba(229, 231, 234, 0.96) 100%
+      );
+
+    box-shadow:
+      0 1px 3px rgba(0, 0, 0, 0.06),
+      inset 0 1px 0 rgba(255, 255, 255, 0.40);
+  }
+
+  .tab.active {
+    background:
+      linear-gradient(
+        180deg,
+        #2b2b2d 0%,
+        #111112 100%
+      );
+
+    color: #ffffff;
+
+    box-shadow:
+      0 2px 8px rgba(0, 0, 0, 0.14),
+      inset 0 1px 0 rgba(255, 255, 255, 0.10);
+  }
+}
+
+/* ──────────────────────────────────────────────────────────────
+   DARK MODE
+────────────────────────────────────────────────────────────── */
+
 @media (prefers-color-scheme: dark) {
-  .tab        { background: var(--color-bg-alt2-dark); color: var(--color-tab-active-bg-dark); }
-  .tab.active { background: var(--color-tab-active-bg-dark); color: var(--color-text-strong); }
+
+  .tab-bar {
+    background: rgba(13, 14, 16, 0.62);
+
+    -webkit-backdrop-filter:
+      blur(18px)
+      saturate(1.4);
+
+    backdrop-filter:
+      blur(18px)
+      saturate(1.4);
+  }
+
+  .tab-bar.scrolled {
+    box-shadow:
+      0 4px 14px rgba(0, 0, 0, 0.22);
+  }
+
+  .tab {
+    background:
+      radial-gradient(
+        140% 180% at 18% 0%,
+        rgba(255, 255, 255, 0.105) 0%,
+        rgba(255, 255, 255, 0.045) 38%,
+        rgba(255, 255, 255, 0.025) 100%
+      );
+
+    -webkit-backdrop-filter:
+      blur(20px)
+      saturate(1.45);
+
+    backdrop-filter:
+      blur(20px)
+      saturate(1.45);
+
+    color: rgba(255, 255, 255, 0.86);
+
+    box-shadow:
+      0 1px 2px rgba(0, 0, 0, 0.24),
+      0 3px 8px rgba(0, 0, 0, 0.16),
+      inset 0 1px 0 rgba(255, 255, 255, 0.07),
+      inset 0 -1px 2px rgba(0, 0, 0, 0.20);
+  }
+
+  .tab::before {
+    background:
+      radial-gradient(
+        95% 85% at 24% -12%,
+        rgba(255, 255, 255, 0.12) 0%,
+        rgba(255, 255, 255, 0.035) 34%,
+        rgba(255, 255, 255, 0) 70%
+      ),
+      linear-gradient(
+        180deg,
+        rgba(255, 255, 255, 0.045) 0%,
+        rgba(255, 255, 255, 0) 56%
+      );
+  }
+
+  .tab::after {
+    background:
+      linear-gradient(
+        180deg,
+        rgba(255, 255, 255, 0) 0%,
+        rgba(0, 0, 0, 0.08) 100%
+      );
+  }
+
+  /*
+     Active remains BLACK / near-black.
+     Still no green.
+  */
+  .tab.active {
+    background:
+      radial-gradient(
+        125% 170% at 20% -15%,
+        rgba(255, 255, 255, 0.13) 0%,
+        rgba(255, 255, 255, 0.04) 28%,
+        rgba(255, 255, 255, 0) 60%
+      ),
+      linear-gradient(
+        180deg,
+        rgba(36, 36, 38, 0.96) 0%,
+        rgba(14, 14, 15, 0.95) 52%,
+        rgba(5, 5, 6, 0.97) 100%
+      );
+
+    color: #ffffff;
+
+    box-shadow:
+      0 1px 2px rgba(0, 0, 0, 0.32),
+      0 4px 10px rgba(0, 0, 0, 0.25),
+      inset 0 1px 0 rgba(255, 255, 255, 0.10),
+      inset 0 -1px 2px rgba(0, 0, 0, 0.25);
+  }
+
+  .tab.active::before {
+    background:
+      radial-gradient(
+        100% 95% at 24% -12%,
+        rgba(255, 255, 255, 0.15) 0%,
+        rgba(255, 255, 255, 0.045) 32%,
+        rgba(255, 255, 255, 0) 68%
+      ),
+      linear-gradient(
+        180deg,
+        rgba(255, 255, 255, 0.045) 0%,
+        rgba(255, 255, 255, 0) 58%
+      );
+  }
+
+  @supports not (
+    (backdrop-filter: blur(1px)) or
+    (-webkit-backdrop-filter: blur(1px))
+  ) {
+    .tab-bar {
+      background: rgba(15, 16, 18, 0.97);
+    }
+
+    .tab {
+      background:
+        linear-gradient(
+          180deg,
+          rgba(56, 57, 60, 0.96) 0%,
+          rgba(43, 44, 47, 0.96) 100%
+        );
+
+      color: rgba(255, 255, 255, 0.86);
+    }
+
+    .tab.active {
+      background:
+        linear-gradient(
+          180deg,
+          #29292b 0%,
+          #0d0d0e 100%
+        );
+
+      color: #ffffff;
+    }
+  }
+}
+
+/* ──────────────────────────────────────────────────────────────
+   ACCESSIBILITY / REDUCED MOTION
+────────────────────────────────────────────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+
+  .tab,
+  .tab::before,
+  .tab::after,
+  .tab-bar {
+    transition-duration: 0.01ms !important;
+  }
 }

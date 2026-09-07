@@ -1,62 +1,180 @@
 /* ════════════════════════════════════════════════════════════════
-   tabs.css — Tab bar (Answer / Web / Images / Videos / News …)
-   Sticky, blurred, GPU-composited for smooth hide/show on scroll.
+   tabs-liquid-glass.css
+   Drop-in override — replaces ONLY .tab visual design.
+   All layout, spacing, z-index, scroll, hide/show logic unchanged.
 ════════════════════════════════════════════════════════════════ */
 
+/* ── Tab bar: no change to layout, just tweak bg to be more transparent ── */
 .tab-bar {
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  overflow-x: auto;
-  overflow-y: hidden;
-  padding: 0 14px;
-  gap: 6.5px;
-  height: 44px;
-  border-bottom: none;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: none;
-  position: sticky;
-  top: 0;
-  z-index: 20;
-  background: var(--color-tab-bar-bg);
-  -webkit-backdrop-filter: blur(12px) saturate(1.4);
-  backdrop-filter: blur(12px) saturate(1.4);
-  will-change: transform;
-  transform: translateZ(0);
-  backface-visibility: hidden;
-  -webkit-backface-visibility: hidden;
-  transition: transform 0.32s cubic-bezier(0.4, 0, 0.2, 1);
-}
-.tab-bar::-webkit-scrollbar { display: none; }
-.tab-bar.hide    { transform: translateY(-100%) translateZ(0); }
-.tab-bar.scrolled{ box-shadow: 0 1px 6px rgba(0, 0, 0, 0.08); }
-@media (prefers-color-scheme: dark) {
-  .tab-bar {
-    background: var(--color-tab-bar-bg-dark);
-  }
-  .tab-bar.scrolled { box-shadow: 0 1px 6px rgba(0, 0, 0, 0.3); }
+  background: rgba(255, 255, 255, 0.72);
+  -webkit-backdrop-filter: blur(20px) saturate(1.8);
+  backdrop-filter: blur(20px) saturate(1.8);
 }
 
-.tab {
-  flex-shrink: 0;
-  height: 32px;
-  padding: 0 12px;
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--color-text-strong);
-  background: var(--color-bg-alt);
-  border-radius: 4px;
-  cursor: pointer;
-  white-space: nowrap;
-  border: none;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: background 0.15s, color 0.15s;
-}
-.tab:active  { opacity: 0.75; }
-.tab.active  { background: var(--color-tab-active-bg); color: var(--color-bg); }
 @media (prefers-color-scheme: dark) {
-  .tab        { background: var(--color-bg-alt2-dark); color: var(--color-tab-active-bg-dark); }
-  .tab.active { background: var(--color-tab-active-bg-dark); color: var(--color-text-strong); }
+  .tab-bar {
+    background: rgba(18, 18, 20, 0.70);
+    -webkit-backdrop-filter: blur(20px) saturate(1.6);
+    backdrop-filter: blur(20px) saturate(1.6);
+  }
+}
+
+/* ── Liquid Glass: inactive tab ── */
+.tab {
+  /* Reset old solid bg */
+  background: transparent;
+
+  /* Glass layers:
+     1. subtle white translucency base
+     2. soft specular top-edge highlight via box-shadow inset */
+  background-color: rgba(255, 255, 255, 0.38);
+  -webkit-backdrop-filter: blur(16px) saturate(1.5) brightness(1.04);
+  backdrop-filter: blur(16px) saturate(1.5) brightness(1.04);
+
+  /* Luminous border — very subtle, not heavy */
+  border: 0.5px solid rgba(255, 255, 255, 0.60);
+
+  /* Specular highlight: top edge catches light, bottom has soft shadow */
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.70),   /* top specular */
+    inset 0 -1px 0 rgba(0, 0, 0, 0.04),         /* bottom depth */
+    0 1px 3px rgba(0, 0, 0, 0.06),              /* ambient lift */
+    0 0 0 0.5px rgba(0, 0, 0, 0.06);            /* outer edge definition */
+
+  /* Refined geometry */
+  border-radius: 10px;
+
+  /* Text: dark enough to read on translucent bg */
+  color: rgba(28, 28, 32, 0.82);
+
+  /* Smooth all transitions */
+  transition:
+    background-color 0.18s ease,
+    box-shadow 0.18s ease,
+    border-color 0.18s ease,
+    color 0.18s ease,
+    transform 0.15s ease,
+    opacity 0.15s ease;
+
+  /* Respect reduced motion */
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tab {
+    transition: background-color 0.01ms, color 0.01ms;
+  }
+}
+
+/* ── Hover / press micro-interactions ── */
+.tab:hover:not(.active) {
+  background-color: rgba(255, 255, 255, 0.52);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.80),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.05),
+    0 2px 6px rgba(0, 0, 0, 0.08),
+    0 0 0 0.5px rgba(0, 0, 0, 0.07);
+}
+
+.tab:active {
+  opacity: 1; /* override old rule */
+  transform: scale(0.97);
+  background-color: rgba(255, 255, 255, 0.28);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.50),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.03),
+    0 0.5px 2px rgba(0, 0, 0, 0.05);
+}
+
+/* ── Active tab: Liquid Glass + green accent ──
+   Green sits inside the glass — translucent, not a solid pill.        */
+.tab.active {
+  /* Green glass base — slightly saturated translucent green */
+  background-color: rgba(52, 168, 83, 0.16);
+  -webkit-backdrop-filter: blur(16px) saturate(1.8) brightness(1.02);
+  backdrop-filter: blur(16px) saturate(1.8) brightness(1.02);
+
+  /* Green-tinted luminous border */
+  border: 0.5px solid rgba(52, 168, 83, 0.38);
+
+  /* Layered shadows:
+     top specular with green cast, soft green ambient glow, edge definition */
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.75),        /* top specular */
+    inset 0 -1px 0 rgba(34, 120, 60, 0.10),          /* green bottom depth */
+    inset 0 0 12px rgba(52, 168, 83, 0.08),          /* inner green ambient */
+    0 1px 4px rgba(52, 168, 83, 0.14),               /* soft green lift */
+    0 0 0 0.5px rgba(52, 168, 83, 0.18);             /* outer green ring */
+
+  /* Text: deep green for legibility — not pure black */
+  color: rgba(22, 101, 52, 0.95);
+}
+
+.tab.active:active {
+  transform: scale(0.97);
+  background-color: rgba(52, 168, 83, 0.22);
+}
+
+/* ── Dark mode: inactive ── */
+@media (prefers-color-scheme: dark) {
+  .tab {
+    background-color: rgba(255, 255, 255, 0.08);
+    border: 0.5px solid rgba(255, 255, 255, 0.12);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.12),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.20),
+      0 1px 3px rgba(0, 0, 0, 0.25),
+      0 0 0 0.5px rgba(0, 0, 0, 0.30);
+    color: rgba(235, 235, 240, 0.78);
+  }
+
+  .tab:hover:not(.active) {
+    background-color: rgba(255, 255, 255, 0.12);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.16),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.25),
+      0 2px 6px rgba(0, 0, 0, 0.30),
+      0 0 0 0.5px rgba(0, 0, 0, 0.35);
+  }
+
+  .tab:active {
+    background-color: rgba(255, 255, 255, 0.05);
+  }
+
+  /* Dark active: muted green, not neon */
+  .tab.active {
+    background-color: rgba(52, 168, 83, 0.18);
+    border: 0.5px solid rgba(52, 200, 100, 0.28);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.14),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.25),
+      inset 0 0 14px rgba(52, 168, 83, 0.10),
+      0 1px 4px rgba(0, 0, 0, 0.30),
+      0 0 0 0.5px rgba(52, 200, 100, 0.22);
+    color: rgba(134, 239, 172, 0.95); /* soft green-100 equivalent */
+  }
+}
+
+/* ── Backdrop-filter fallback (Safari old / Firefox without flag) ──
+   If backdrop-filter is unsupported, fall back to a slightly more
+   opaque solid so readability is maintained.                          */
+@supports not (backdrop-filter: blur(1px)) {
+  .tab {
+    background-color: rgba(245, 245, 248, 0.90);
+    border: 0.5px solid rgba(200, 200, 210, 0.60);
+  }
+  .tab.active {
+    background-color: rgba(220, 242, 228, 0.95);
+    border: 0.5px solid rgba(52, 168, 83, 0.40);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    .tab {
+      background-color: rgba(38, 38, 42, 0.92);
+      border: 0.5px solid rgba(80, 80, 90, 0.50);
+    }
+    .tab.active {
+      background-color: rgba(30, 60, 38, 0.92);
+      border: 0.5px solid rgba(52, 168, 83, 0.40);
+    }
+  }
 }

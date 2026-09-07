@@ -1,52 +1,7 @@
 /* ════════════════════════════════════════════════════════════════
    tabs.css — Tab bar (Answer / Web / Images / Videos / News …)
    Sticky, blurred, GPU-composited for smooth hide/show on scroll.
-
-   MATERIAL: Apple-inspired Liquid Glass
-   GEOMETRY: Original Atkyn tab structure — fully preserved
-
-   Material philosophy:
-   - NO visible borders/outlines
-   - Depth from light + shadow + translucency, NOT strokes
-   - Active = black liquid glass | Inactive = neutral liquid glass
-   - backdrop-filter is the core; layered gradients simulate optics
-   ════════════════════════════════════════════════════════════════ */
-
-/* ── Material Design Tokens ─────────────────────────────────── */
-
-:root {
-  /* Inactive glass layers */
-  --tg-inactive-top:    rgba(255, 255, 255, 0.22);
-  --tg-inactive-btm:    rgba(200, 200, 206, 0.10);
-  --tg-inactive-blur:   blur(20px) saturate(1.6) brightness(1.04);
-
-  /* Active (black) glass layers */
-  --tg-active-top:      rgba(18, 18, 20, 0.82);
-  --tg-active-btm:      rgba(6,  6,  8,  0.90);
-  --tg-active-blur:     blur(20px) saturate(1.8) brightness(0.92);
-
-  /* Shared shadow/highlight values */
-  --tg-shadow-ambient:  0 2px 8px rgba(0, 0, 0, 0.07);
-  --tg-highlight-top:   inset 0 1px 0 rgba(255, 255, 255, 0.48);
-  --tg-highlight-btm:   inset 0 -1px 0 rgba(0, 0, 0, 0.05);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --tg-inactive-top:  rgba(255, 255, 255, 0.07);
-    --tg-inactive-btm:  rgba(255, 255, 255, 0.02);
-    --tg-inactive-blur: blur(20px) saturate(1.5) brightness(1.0);
-
-    --tg-active-top:    rgba(22, 22, 26, 0.86);
-    --tg-active-btm:    rgba(8,  8,  10, 0.94);
-
-    --tg-shadow-ambient: 0 2px 8px rgba(0, 0, 0, 0.25);
-    --tg-highlight-top:  inset 0 1px 0 rgba(255, 255, 255, 0.11);
-    --tg-highlight-btm:  inset 0 -1px 0 rgba(0, 0, 0, 0.30);
-  }
-}
-
-/* ── Tab Bar Container ──────────────────────────────────────── */
+════════════════════════════════════════════════════════════════ */
 
 .tab-bar {
   flex-shrink: 0;
@@ -64,261 +19,44 @@
   top: 0;
   z-index: 20;
   background: var(--color-tab-bar-bg);
-  -webkit-backdrop-filter: blur(16px) saturate(1.5);
-  backdrop-filter: blur(16px) saturate(1.5);
+  -webkit-backdrop-filter: blur(12px) saturate(1.4);
+  backdrop-filter: blur(12px) saturate(1.4);
   will-change: transform;
   transform: translateZ(0);
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
   transition: transform 0.32s cubic-bezier(0.4, 0, 0.2, 1);
 }
-
 .tab-bar::-webkit-scrollbar { display: none; }
-
-.tab-bar.hide     { transform: translateY(-100%) translateZ(0); }
-
-/* Scrolled: soft tonal depth only — no hard line */
-.tab-bar.scrolled {
-  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.04), 0 4px 12px rgba(0, 0, 0, 0.06);
-}
-
+.tab-bar.hide    { transform: translateY(-100%) translateZ(0); }
+.tab-bar.scrolled{ box-shadow: 0 1px 6px rgba(0, 0, 0, 0.08); }
 @media (prefers-color-scheme: dark) {
   .tab-bar {
     background: var(--color-tab-bar-bg-dark);
   }
-  .tab-bar.scrolled {
-    box-shadow: 0 1px 0 rgba(0, 0, 0, 0.15), 0 4px 12px rgba(0, 0, 0, 0.28);
-  }
+  .tab-bar.scrolled { box-shadow: 0 1px 6px rgba(0, 0, 0, 0.3); }
 }
 
-/* ── Individual Tab — Geometry Lock ─────────────────────────── */
-/*
-   LOCKED dimensions from original Atkyn:
-     height: 32px | padding: 0 12px | border-radius: 4px
-     font-size: 14px | font-weight: 600 | gap: 6.5px (container)
-
-   Nothing below changes these values.
-   Only surface material is modified.
-*/
-
 .tab {
-  /* ── Geometry (LOCKED — do not touch) ── */
   flex-shrink: 0;
   height: 32px;
   padding: 0 12px;
   font-size: 14px;
   font-weight: 600;
+  color: var(--color-text-strong);
+  background: var(--color-bg-alt);
   border-radius: 4px;
+  cursor: pointer;
   white-space: nowrap;
+  border: none;
   display: flex;
   align-items: center;
   justify-content: center;
-  cursor: pointer;
-
-  /* ── NO BORDER — definition comes from material/light ── */
-  border: none;
-
-  /* ── Liquid Glass Material — Inactive ── */
-  /*
-     Layer 1 (deepest): backdrop diffusion via blur+saturate
-     Layer 2: translucent gradient wash — reads as tinted glass
-     Layer 3: subtle ambient shadow — lifts from surface without cardiness
-     Layer 4: inset highlights — simulate top-edge light catch
-  */
-  position: relative;
-  overflow: hidden;
-
-  background:
-    linear-gradient(
-      175deg,
-      var(--tg-inactive-top) 0%,
-      var(--tg-inactive-btm) 100%
-    );
-
-  -webkit-backdrop-filter: var(--tg-inactive-blur);
-  backdrop-filter: var(--tg-inactive-blur);
-
-  box-shadow:
-    var(--tg-shadow-ambient),
-    var(--tg-highlight-top),
-    var(--tg-highlight-btm);
-
-  color: var(--color-text-strong);
-
-  transition:
-    background      0.22s ease,
-    box-shadow      0.22s ease,
-    color           0.22s ease,
-    backdrop-filter 0.22s ease;
+  transition: background 0.15s, color 0.15s;
 }
-
-/* ── Specular Reflection (pseudo-element) ───────────────────── */
-/*
-   Simulates top-surface light catch on the glass.
-   Broad, very low opacity, smoothly fading.
-   Clipped to tab bounds. Does NOT look like a glossy button.
-   Does NOT create a white outline.
-*/
-
-.tab::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  background:
-    linear-gradient(
-      160deg,
-      rgba(255, 255, 255, 0.22) 0%,
-      rgba(255, 255, 255, 0.06) 40%,
-      rgba(255, 255, 255, 0.00) 70%
-    );
-  pointer-events: none;
-  /* Sits above background, below text */
-  z-index: 0;
-}
-
-/* Ensure text renders above pseudo layers */
-.tab > * {
-  position: relative;
-  z-index: 1;
-}
-
-/* ── Pressed State ──────────────────────────────────────────── */
-
-.tab:active {
-  opacity: 0.70;
-  transform: scale(0.985) translateZ(0);
-  transition-duration: 0.08s;
-}
-
-/* ── Active Tab — Black Liquid Glass ────────────────────────── */
-/*
-   Material system:
-   - Deep near-black translucent gradient
-   - Stronger backdrop blur + brightness reduction
-   - Inset top highlight catches light on dark glass edge
-   - Ambient shadow is denser — reads as heavier material
-   - NO green. NO border. Definition from depth + contrast.
-*/
-
-.tab.active {
-  background:
-    linear-gradient(
-      175deg,
-      var(--tg-active-top) 0%,
-      var(--tg-active-btm) 100%
-    );
-
-  -webkit-backdrop-filter: var(--tg-active-blur);
-  backdrop-filter: var(--tg-active-blur);
-
-  box-shadow:
-    0 2px 10px rgba(0, 0, 0, 0.18),
-    0 1px 3px  rgba(0, 0, 0, 0.14),
-    inset 0  1px 0   rgba(255, 255, 255, 0.16),
-    inset 0 -1px 0   rgba(0, 0, 0, 0.40);
-
-  color: rgba(255, 255, 255, 0.96);
-}
-
-/* Active glass — more pronounced highlight (dark surface catches light) */
-.tab.active::before {
-  background:
-    linear-gradient(
-      160deg,
-      rgba(255, 255, 255, 0.16) 0%,
-      rgba(255, 255, 255, 0.04) 35%,
-      rgba(255, 255, 255, 0.00) 60%
-    );
-}
-
-/* ── Focus Accessibility (keyboard nav) ─────────────────────── */
-/*
-   Focus ring only on keyboard navigation (not on click/tap).
-   Respects no-outline requirement for normal interaction.
-*/
-
-.tab:focus-visible {
-  outline: 2px solid rgba(255, 255, 255, 0.70);
-  outline-offset: 1px;
-}
-
-/* ── Backdrop-Filter Fallback ───────────────────────────────── */
-/*
-   When backdrop-filter unavailable: use semi-opaque fills that
-   approximate the original Atkyn grey/black palette.
-   Still no border.
-*/
-
-@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-  .tab {
-    background: rgba(195, 195, 200, 0.88);
-    border: none;
-  }
-
-  .tab.active {
-    background: rgba(16, 16, 18, 0.94);
-    color: rgba(255, 255, 255, 0.96);
-  }
-
-  @media (prefers-color-scheme: dark) {
-    .tab        { background: rgba(48, 48, 54, 0.92); }
-    .tab.active { background: rgba(14, 14, 16, 0.96); }
-  }
-}
-
-/* ── Dark Mode ──────────────────────────────────────────────── */
-/*
-   Inactive: near-invisible wash — dark environment, glass barely
-   tints the background. Original dark surface remains dominant.
-
-   Active: still black — slightly lighter threshold needed so
-   it's distinguishable from the very dark bar bg.
-   Adds a subtle brighter top highlight visible on dark glass.
-*/
-
+.tab:active  { opacity: 0.75; }
+.tab.active  { background: var(--color-tab-active-bg); color: var(--color-bg); }
 @media (prefers-color-scheme: dark) {
-  .tab {
-    color: rgba(255, 255, 255, 0.72);
-  }
-
-  .tab::before {
-    background:
-      linear-gradient(
-        160deg,
-        rgba(255, 255, 255, 0.10) 0%,
-        rgba(255, 255, 255, 0.03) 45%,
-        rgba(255, 255, 255, 0.00) 70%
-      );
-  }
-
-  .tab.active {
-    color: rgba(255, 255, 255, 0.96);
-    box-shadow:
-      0 2px 12px rgba(0, 0, 0, 0.40),
-      0 1px 4px  rgba(0, 0, 0, 0.30),
-      inset 0  1px 0 rgba(255, 255, 255, 0.13),
-      inset 0 -1px 0 rgba(0, 0, 0, 0.55);
-  }
-
-  .tab.active::before {
-    background:
-      linear-gradient(
-        160deg,
-        rgba(255, 255, 255, 0.13) 0%,
-        rgba(255, 255, 255, 0.03) 35%,
-        rgba(255, 255, 255, 0.00) 60%
-      );
-  }
-}
-
-/* ── Reduced Motion ─────────────────────────────────────────── */
-
-@media (prefers-reduced-motion: reduce) {
-  .tab,
-  .tab::before,
-  .tab-bar {
-    transition-duration: 0.01ms !important;
-    animation: none !important;
-  }
+  .tab        { background: var(--color-bg-alt2-dark); color: var(--color-tab-active-bg-dark); }
+  .tab.active { background: var(--color-tab-active-bg-dark); color: var(--color-text-strong); }
 }

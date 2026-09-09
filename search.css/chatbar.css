@@ -606,8 +606,8 @@ fill: none;
 
 /* PNG icon support */
 .pm-icon img {
-width: 26px;
-height: 26px;
+width: 42px;
+height: 42px;
 
 object-fit: contain;
 display: block;

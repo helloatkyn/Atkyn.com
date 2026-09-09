@@ -25,7 +25,6 @@ body {
   color: var(--color-text);
 
   font-family: sans-serif;
-
   font-size: 16px;
   line-height: 1.6;
   font-weight: 400;
@@ -40,6 +39,7 @@ body {
 
 /* ────────────────────────────────────────────────────────────────
    DARK MODE
+   Completely clean — NO texture
 ──────────────────────────────────────────────────────────────── */
 
 @media (prefers-color-scheme: dark) {
@@ -51,7 +51,7 @@ body {
 
 /* ────────────────────────────────────────────────────────────────
    SCROLL HOST
-   Crisp · Minimal · Precision Grid Texture
+   Light mode: Precision editorial grid
 ──────────────────────────────────────────────────────────────── */
 
 .scroll-host {
@@ -67,47 +67,42 @@ body {
   scroll-behavior: auto;
 
   /*
-   * Premium precision-grid texture.
+   * Subtle precision texture.
    *
-   * Large grid:
-   *   very subtle structural rhythm
+   * 120px → primary structural grid
+   * 30px  → fine reference grid
    *
-   * Micro grid:
-   *   barely-visible fine detail
-   *
-   * No blur.
-   * No gradients with depth.
-   * No shadows.
-   * No visual noise.
+   * The contrast is deliberately restrained so the
+   * texture adds depth without competing with content.
    */
 
   background-image:
     linear-gradient(
       to right,
-      rgba(0, 0, 0, 0.045) 1px,
+      rgba(0, 0, 0, 0.038) 1px,
       transparent 1px
     ),
     linear-gradient(
       to bottom,
-      rgba(0, 0, 0, 0.045) 1px,
+      rgba(0, 0, 0, 0.038) 1px,
       transparent 1px
     ),
     linear-gradient(
       to right,
-      rgba(0, 0, 0, 0.016) 1px,
+      rgba(0, 0, 0, 0.012) 1px,
       transparent 1px
     ),
     linear-gradient(
       to bottom,
-      rgba(0, 0, 0, 0.016) 1px,
+      rgba(0, 0, 0, 0.012) 1px,
       transparent 1px
     );
 
   background-size:
-    96px 96px,
-    96px 96px,
-    24px 24px,
-    24px 24px;
+    120px 120px,
+    120px 120px,
+    30px 30px,
+    30px 30px;
 
   background-position:
     -1px -1px,
@@ -123,44 +118,13 @@ body {
 }
 
 /* ────────────────────────────────────────────────────────────────
-   DARK MODE — SAME PRECISION, LIGHTER LINES
+   DARK MODE
+   Flat background — texture intentionally removed
 ──────────────────────────────────────────────────────────────── */
 
 @media (prefers-color-scheme: dark) {
   .scroll-host {
-    background-image:
-      linear-gradient(
-        to right,
-        rgba(255, 255, 255, 0.045) 1px,
-        transparent 1px
-      ),
-      linear-gradient(
-        to bottom,
-        rgba(255, 255, 255, 0.045) 1px,
-        transparent 1px
-      ),
-      linear-gradient(
-        to right,
-        rgba(255, 255, 255, 0.016) 1px,
-        transparent 1px
-      ),
-      linear-gradient(
-        to bottom,
-        rgba(255, 255, 255, 0.016) 1px,
-        transparent 1px
-      );
-
-    background-size:
-      96px 96px,
-      96px 96px,
-      24px 24px,
-      24px 24px;
-
-    background-position:
-      -1px -1px,
-      -1px -1px,
-      -1px -1px,
-      -1px -1px;
+    background-image: none;
   }
 }
 

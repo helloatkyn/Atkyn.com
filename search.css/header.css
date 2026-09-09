@@ -1,138 +1,133 @@
 /* ════════════════════════════════════════════════════════════════
-   header.css — Logo header · Hamburger · Nine-dot button
-   [POLISHED · NATIVE SMOOTH · GPU-ACCELERATED]
+header.css — Logo header · Hamburger · Nine-dot button
+[POLISHED · NATIVE SMOOTH · GPU-ACCELERATED]
 ════════════════════════════════════════════════════════════════ */
 
 /* ────────────────────────────────────────────────────────────────
-   LOGO HEADER
+LOGO HEADER
 ──────────────────────────────────────────────────────────────── */
 .logo-header {
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  position: relative;
+flex-shrink: 0;
+display: flex;
+align-items: center;
+justify-content: center;
+position: relative;
 
-  padding: 8px 18px;
-  height: 62px;
+padding: 8px 18px;
+height: 62px;
 
-  overflow: hidden;
+overflow: hidden;
+background: var(--color-bg);
 
-  background-color: var(--color-bg);
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75 0.65' numOctaves='4' seed='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3CfeBlend in='SourceGraphic' mode='multiply'/%3E%3C/filter%3E%3Crect width='80' height='80' filter='url(%23n)' opacity='0.028'/%3E%3Cline x1='0' y1='40' x2='80' y2='40' stroke='%23000' stroke-width='0.4' stroke-opacity='0.018'/%3E%3Cline x1='40' y1='0' x2='40' y2='80' stroke='%23000' stroke-width='0.4' stroke-opacity='0.018'/%3E%3Cline x1='0' y1='0' x2='80' y2='80' stroke='%23000' stroke-width='0.35' stroke-opacity='0.012'/%3E%3Cline x1='80' y1='0' x2='0' y2='80' stroke='%23000' stroke-width='0.35' stroke-opacity='0.012'/%3E%3C/svg%3E");
-  background-size: 80px 80px;
-  background-repeat: repeat;
+border: none;
+outline: none;
+box-shadow: none;
 
-  border: none;
-  outline: none;
-  box-shadow: none;
+will-change: transform, opacity;
+transform: translate3d(0, 0, 0);
 
-  will-change: transform, opacity;
-  transform: translate3d(0, 0, 0);
+contain: layout style paint;
 
-  contain: layout style paint;
+transition:
+transform 0.36s cubic-bezier(0.22, 1, 0.36, 1),
+opacity 0.24s ease,
+background-color 0.3s ease;
 
-  transition:
-    transform 0.36s cubic-bezier(0.22, 1, 0.36, 1),
-    opacity 0.24s ease,
-    background-color 0.3s ease;
-
-  backface-visibility: hidden;
-  -webkit-backface-visibility: hidden;
+backface-visibility: hidden;
+-webkit-backface-visibility: hidden;
 }
 
 @media (prefers-color-scheme: dark) {
-  .logo-header {
-    background-color: var(--color-bg-dark);
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75 0.65' numOctaves='4' seed='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3CfeBlend in='SourceGraphic' mode='screen'/%3E%3C/filter%3E%3Crect width='80' height='80' filter='url(%23n)' opacity='0.022'/%3E%3Cline x1='0' y1='40' x2='80' y2='40' stroke='%23fff' stroke-width='0.4' stroke-opacity='0.014'/%3E%3Cline x1='40' y1='0' x2='40' y2='80' stroke='%23fff' stroke-width='0.4' stroke-opacity='0.014'/%3E%3Cline x1='0' y1='0' x2='80' y2='80' stroke='%23fff' stroke-width='0.35' stroke-opacity='0.009'/%3E%3Cline x1='80' y1='0' x2='0' y2='80' stroke='%23fff' stroke-width='0.35' stroke-opacity='0.009'/%3E%3C/svg%3E");
-    border: none;
-    box-shadow: none;
-  }
+.logo-header {
+background: var(--color-bg-dark);
+border: none;
+box-shadow: none;
+}
 }
 
 /* ────────────────────────────────────────────────────────────────
-   LOGO
+LOGO
 ──────────────────────────────────────────────────────────────── */
 .logo-header img {
-  height: 54px;
-  width: auto;
+height: 54px;
+width: auto;
 
-  object-fit: contain;
+object-fit: contain;
 
-  position: absolute;
-  left: 14px;
-  top: 50%;
+position: absolute;
+left: 14px;
+top: 50%;
 
-  transform: translate3d(0, -50%, 0);
+transform: translate3d(0, -50%, 0);
 
-  will-change: transform, opacity;
+will-change: transform, opacity;
 
-  backface-visibility: hidden;
-  -webkit-backface-visibility: hidden;
+backface-visibility: hidden;
+-webkit-backface-visibility: hidden;
 
-  transition:
-    opacity 0.2s ease,
-    transform 0.36s cubic-bezier(0.22, 1, 0.36, 1);
+transition:
+opacity 0.2s ease,
+transform 0.36s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 /* ────────────────────────────────────────────────────────────────
-   COLLAPSED
+COLLAPSED
 ──────────────────────────────────────────────────────────────── */
 .logo-header.collapsed {
-  transform: translate3d(0, -100%, 0);
-  opacity: 0;
-  pointer-events: none;
+transform: translate3d(0, -100%, 0);
+opacity: 0;
+pointer-events: none;
 }
 
 .logo-header.collapsed img {
-  transform: translate3d(0, -48%, 0);
-  opacity: 0;
+transform: translate3d(0, -48%, 0);
+opacity: 0;
 }
 
 /* ────────────────────────────────────────────────────────────────
-   HAMBURGER BUTTON (top-right)
+HAMBURGER BUTTON (top-right)
 ──────────────────────────────────────────────────────────────── */
 .hamburger-btn {
-  position: absolute;
-  right: 14px;
-  top: 50%;
+position: absolute;
+right: 14px;
+top: 50%;
 
-  transform: translate3d(0, -50%, 0);
+transform: translate3d(0, -50%, 0);
 
-  border: none;
-  background: transparent;
+border: none;
+background: transparent;
 
-  cursor: pointer;
+cursor: pointer;
 
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: flex-end;
+display: flex;
+flex-direction: column;
+justify-content: center;
+align-items: flex-end;
 
-  gap: 5.5px;
+gap: 5.5px;
 
-  width: 40px;
-  height: 40px;
-  padding: 8px;
+width: 40px;
+height: 40px;
+padding: 8px;
 
-  border-radius: 10px;
+border-radius: 10px;
 
-  transition:
-    background-color 0.16s ease,
-    opacity 0.16s ease;
+transition:
+background-color 0.16s ease,
+opacity 0.16s ease;
 }
 
 .hamburger-btn span {
-  display: block;
+display: block;
 
-  height: 1.5px;
-  border-radius: 99px;
+height: 1.5px;
+border-radius: 99px;
 
-  background: var(--color-text);
+background: var(--color-text);
 
-  transition:
-    width 0.16s ease,
-    opacity 0.16s ease;
+transition:
+width 0.16s ease,
+opacity 0.16s ease;
 }
 
 .hamburger-btn span:nth-child(1) { width: 22px; }
@@ -140,113 +135,113 @@
 .hamburger-btn span:nth-child(3) { width: 22px; }
 
 .hamburger-btn:active {
-  background: var(--color-press-light);
-  opacity: 0.72;
+background: var(--color-press-light);
+opacity: 0.72;
 }
 
 @media (prefers-color-scheme: dark) {
-  .hamburger-btn span {
-    background: var(--color-text-dark-alt);
-  }
+.hamburger-btn span {
+background: var(--color-text-dark-alt);
+}
 }
 
 /* ────────────────────────────────────────────────────────────────
-   NINE-DOT GRID BUTTON (top-left) — temporarily hidden
+NINE-DOT GRID BUTTON (top-left) — temporarily hidden
 ──────────────────────────────────────────────────────────────── */
 .dots-btn {
-  display: none;
+display: none;
 
-  position: absolute;
-  left: 14px;
-  top: 50%;
+position: absolute;
+left: 14px;
+top: 50%;
 
-  transform: translate3d(0, -50%, 0);
+transform: translate3d(0, -50%, 0);
 
-  border: none;
-  background: transparent;
+border: none;
+background: transparent;
 
-  cursor: pointer;
+cursor: pointer;
 
-  grid-template-columns: repeat(3, 4px);
-  gap: 4px;
+grid-template-columns: repeat(3, 4px);
+gap: 4px;
 
-  align-content: center;
-  justify-content: center;
+align-content: center;
+justify-content: center;
 
-  width: 40px;
-  height: 40px;
+width: 40px;
+height: 40px;
 
-  border-radius: 12px;
+border-radius: 12px;
 
-  transition:
-    background-color 0.16s ease,
-    opacity 0.16s ease;
+transition:
+background-color 0.16s ease,
+opacity 0.16s ease;
 }
 
 .dots-btn span {
-  display: block;
+display: block;
 
-  width: 4px;
-  height: 4px;
+width: 4px;
+height: 4px;
 
-  border-radius: 50%;
+border-radius: 50%;
 
-  background: var(--color-text);
+background: var(--color-text);
 
-  transition:
-    background-color 0.18s ease,
-    transform 0.18s ease;
+transition:
+background-color 0.18s ease,
+transform 0.18s ease;
 }
 
 .dots-btn:active {
-  background: var(--color-press-light);
-  opacity: 0.72;
+background: var(--color-press-light);
+opacity: 0.72;
 }
 
 .dots-btn:active span {
-  background: var(--color-primary);
+background: var(--color-primary);
 }
 
 @media (prefers-color-scheme: dark) {
-  .dots-btn span {
-    background: var(--color-text-dark-alt);
-  }
+.dots-btn span {
+background: var(--color-text-dark-alt);
+}
 }
 
 /* ────────────────────────────────────────────────────────────────
-   TAB BAR (in header.css — animation/transform only)
+TAB BAR
 ──────────────────────────────────────────────────────────────── */
 .tab-bar {
-  will-change: transform;
+will-change: transform;
 
-  transform: translate3d(0, 0, 0);
+transform: translate3d(0, 0, 0);
 
-  contain: layout style paint;
+contain: layout style paint;
 
-  backface-visibility: hidden;
-  -webkit-backface-visibility: hidden;
+backface-visibility: hidden;
+-webkit-backface-visibility: hidden;
 
-  transition:
-    transform 0.36s cubic-bezier(0.22, 1, 0.36, 1),
-    background-color 0.3s ease,
-    border-color 0.3s ease;
+transition:
+transform 0.36s cubic-bezier(0.22, 1, 0.36, 1),
+background-color 0.3s ease,
+border-color 0.3s ease;
 }
 
 .tab-bar.hide {
-  transform: translate3d(0, -100%, 0);
+transform: translate3d(0, -100%, 0);
 }
 
 /* ────────────────────────────────────────────────────────────────
-   REDUCED MOTION
+REDUCED MOTION
 ──────────────────────────────────────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {
-  .logo-header,
-  .logo-header img,
-  .tab-bar,
-  .hamburger-btn,
-  .dots-btn,
-  .hamburger-btn span,
-  .dots-btn span {
-    transition: none !important;
-  }
+.logo-header,
+.logo-header img,
+.tab-bar,
+.hamburger-btn,
+.dots-btn,
+.hamburger-btn span,
+.dots-btn span {
+transition: none !important;
+}
 }

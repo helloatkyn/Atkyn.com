@@ -1,73 +1,62 @@
 /* ════════════════════════════════════════════════════════════════
-   tabs.css — Tab bar (Answer / Web / Images / Videos / News …)
-   Sticky, GPU-composited for smooth hide/show on scroll.
+tabs.css — Tab bar (Answer / Web / Images / Videos / News …)
+Sticky, blurred, GPU-composited for smooth hide/show on scroll.
 ════════════════════════════════════════════════════════════════ */
 
 .tab-bar {
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  overflow-x: auto;
-  overflow-y: hidden;
-  padding: 0 14px;
-  gap: 6.5px;
-  height: 44px;
-  border-bottom: none;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: none;
-  position: sticky;
-  top: 0;
-  z-index: 20;
-
-  background-color: var(--color-tab-bar-bg);
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75 0.65' numOctaves='4' seed='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3CfeBlend in='SourceGraphic' mode='multiply'/%3E%3C/filter%3E%3Crect width='80' height='80' filter='url(%23n)' opacity='0.028'/%3E%3Cline x1='0' y1='40' x2='80' y2='40' stroke='%23000' stroke-width='0.4' stroke-opacity='0.018'/%3E%3Cline x1='40' y1='0' x2='40' y2='80' stroke='%23000' stroke-width='0.4' stroke-opacity='0.018'/%3E%3Cline x1='0' y1='0' x2='80' y2='80' stroke='%23000' stroke-width='0.35' stroke-opacity='0.012'/%3E%3Cline x1='80' y1='0' x2='0' y2='80' stroke='%23000' stroke-width='0.35' stroke-opacity='0.012'/%3E%3C/svg%3E");
-  background-size: 80px 80px;
-  background-repeat: repeat;
-
-  will-change: transform;
-  transform: translateZ(0);
-  backface-visibility: hidden;
-  -webkit-backface-visibility: hidden;
-  transition: transform 0.32s cubic-bezier(0.4, 0, 0.2, 1);
+flex-shrink: 0;
+display: flex;
+align-items: center;
+overflow-x: auto;
+overflow-y: hidden;
+padding: 0 14px;
+gap: 6.5px;
+height: 44px;
+border-bottom: none;
+-webkit-overflow-scrolling: touch;
+scrollbar-width: none;
+position: sticky;
+top: 0;
+z-index: 20;
+background: var(--color-tab-bar-bg);
+-webkit-backdrop-filter: blur(12px) saturate(1.4);
+backdrop-filter: blur(12px) saturate(1.4);
+will-change: transform;
+transform: translateZ(0);
+backface-visibility: hidden;
+-webkit-backface-visibility: hidden;
+transition: transform 0.32s cubic-bezier(0.4, 0, 0.2, 1);
 }
-
 .tab-bar::-webkit-scrollbar { display: none; }
-.tab-bar.hide     { transform: translateY(-100%) translateZ(0); }
-.tab-bar.scrolled { box-shadow: 0 1px 6px rgba(0, 0, 0, 0.08); }
-
+.tab-bar.hide    { transform: translateY(-100%) translateZ(0); }
+.tab-bar.scrolled{ box-shadow: 0 1px 6px rgba(0, 0, 0, 0.08); }
 @media (prefers-color-scheme: dark) {
-  .tab-bar {
-    background-color: var(--color-tab-bar-bg-dark);
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75 0.65' numOctaves='4' seed='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3CfeBlend in='SourceGraphic' mode='screen'/%3E%3C/filter%3E%3Crect width='80' height='80' filter='url(%23n)' opacity='0.022'/%3E%3Cline x1='0' y1='40' x2='80' y2='40' stroke='%23fff' stroke-width='0.4' stroke-opacity='0.014'/%3E%3Cline x1='40' y1='0' x2='40' y2='80' stroke='%23fff' stroke-width='0.4' stroke-opacity='0.014'/%3E%3Cline x1='0' y1='0' x2='80' y2='80' stroke='%23fff' stroke-width='0.35' stroke-opacity='0.009'/%3E%3Cline x1='80' y1='0' x2='0' y2='80' stroke='%23fff' stroke-width='0.35' stroke-opacity='0.009'/%3E%3C/svg%3E");
-  }
-  .tab-bar.scrolled { box-shadow: 0 1px 6px rgba(0, 0, 0, 0.3); }
+.tab-bar {
+background: var(--color-tab-bar-bg-dark);
+}
+.tab-bar.scrolled { box-shadow: 0 1px 6px rgba(0, 0, 0, 0.3); }
 }
 
-/* ────────────────────────────────────────────────────────────────
-   TABS
-──────────────────────────────────────────────────────────────── */
 .tab {
-  flex-shrink: 0;
-  height: 32px;
-  padding: 0 12px;
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--color-text-strong);
-  background: var(--color-bg-alt);
-  border-radius: 4px;
-  cursor: pointer;
-  white-space: nowrap;
-  border: none;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: background 0.15s, color 0.15s;
+flex-shrink: 0;
+height: 32px;
+padding: 0 12px;
+font-size: 14px;
+font-weight: 600;
+color: var(--color-text-strong);
+background: var(--color-bg-alt);
+border-radius: 4px;
+cursor: pointer;
+white-space: nowrap;
+border: none;
+display: flex;
+align-items: center;
+justify-content: center;
+transition: background 0.15s, color 0.15s;
 }
-
 .tab:active  { opacity: 0.75; }
 .tab.active  { background: var(--color-tab-active-bg); color: var(--color-bg); }
-
 @media (prefers-color-scheme: dark) {
-  .tab        { background: var(--color-bg-alt2-dark); color: var(--color-tab-active-bg-dark); }
-  .tab.active { background: var(--color-tab-active-bg-dark); color: var(--color-text-strong); }
+.tab        { background: var(--color-bg-alt2-dark); color: var(--color-tab-active-bg-dark); }
+.tab.active { background: var(--color-tab-active-bg-dark); color: var(--color-text-strong); }
 }

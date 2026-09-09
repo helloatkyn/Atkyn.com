@@ -1,130 +1,84 @@
 /* ════════════════════════════════════════════════════════════════
-   base.css — Reset · Body · Scroll host
+base.css — Reset · Body · Scroll host
 ════════════════════════════════════════════════════════════════ */
 
 *, *::before, *::after {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-  font-family: inherit;
-  -webkit-tap-highlight-color: transparent;
+box-sizing: border-box;
+margin: 0;
+padding: 0;
+font-family: inherit;
+-webkit-tap-highlight-color: transparent;
 }
 
 html {
-  height: 100%;
+height: 100%;
 }
 
 body {
-  position: fixed;
-  inset: 0;
-  height: 100%;
-  overflow: hidden;
-  overscroll-behavior: none;
+position: fixed;
+inset: 0;
+height: 100%;
+overflow: hidden;
+overscroll-behavior: none;
 
-  background: var(--color-bg);
-  color: var(--color-text);
+background: var(--color-bg);
+color: var(--color-text);
 
-  font-family: sans-serif;
+font-family: sans-serif;
 
-  font-size: 16px;
-  line-height: 1.6;
-  font-weight: 400;
+font-size: 16px;
+line-height: 1.6;
+font-weight: 400;
 
-  display: flex;
-  flex-direction: column;
+display: flex;
+flex-direction: column;
 
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  text-rendering: optimizeLegibility;
+-webkit-font-smoothing: antialiased;
+-moz-osx-font-smoothing: grayscale;
+text-rendering: optimizeLegibility;
 }
 
 @media (prefers-color-scheme: dark) {
-  body {
-    background: var(--color-bg-dark);
-    color: var(--color-text-dark);
-  }
+body {
+background: var(--color-bg-dark);
+color: var(--color-text-dark);
+}
 }
 
 /* ────────────────────────────────────────────────────────────────
-   GRID TEXTURE  — shared mixin via custom properties
-   Usage: add class .grid-texture to any element that needs it
-──────────────────────────────────────────────────────────────── */
-
-/*  Light-mode values  */
-:root {
-  --grid-major-color:    rgba(0, 0, 0, 0.06);
-  --grid-minor-color:    rgba(0, 0, 0, 0.025);
-  --grid-major-size:     72px;
-  --grid-minor-size:     18px;
-}
-
-/*  Dark-mode values  */
-@media (prefers-color-scheme: dark) {
-  :root {
-    --grid-major-color:  rgba(255, 255, 255, 0.055);
-    --grid-minor-color:  rgba(255, 255, 255, 0.018);
-  }
-}
-
-/*  Single class — apply anywhere  */
-.grid-texture {
-  background-image:
-    /* major grid — horizontal */
-    linear-gradient(var(--grid-major-color) 1px, transparent 1px),
-    /* major grid — vertical */
-    linear-gradient(90deg, var(--grid-major-color) 1px, transparent 1px),
-    /* minor grid — horizontal */
-    linear-gradient(var(--grid-minor-color) 1px, transparent 1px),
-    /* minor grid — vertical */
-    linear-gradient(90deg, var(--grid-minor-color) 1px, transparent 1px);
-  background-size:
-    var(--grid-major-size) var(--grid-major-size),
-    var(--grid-major-size) var(--grid-major-size),
-    var(--grid-minor-size) var(--grid-minor-size),
-    var(--grid-minor-size) var(--grid-minor-size);
-  background-position: -1px -1px, -1px -1px, -1px -1px, -1px -1px;
-  background-attachment: local; /* moves with scroll, not fixed behind */
-}
-
-/* ────────────────────────────────────────────────────────────────
-   SCROLL HOST
+SCROLL HOST
 ──────────────────────────────────────────────────────────────── */
 
 .scroll-host {
-  flex: 1;
-  min-height: 0;
+flex: 1;
+min-height: 0;
 
-  overflow-y: auto;
-  overflow-x: hidden;
+overflow-y: auto;
+overflow-x: hidden;
 
-  -webkit-overflow-scrolling: touch;
-  overscroll-behavior-y: none;
+-webkit-overflow-scrolling: touch;
+overscroll-behavior-y: none;
 
-  scroll-behavior: auto;
-}
+scroll-behavior: auto;
 
-.scroll-host::-webkit-scrollbar {
-  display: none;
-}
-
-/* ────────────────────────────────────────────────────────────────
-   CHATBAR WRAP
-   — fixed bar at the bottom; same grid texture as scroll host
-──────────────────────────────────────────────────────────────── */
-
-.chatbar-wrap {
-  flex-shrink: 0;            /* never squished by scroll-host */
-
-  /* subtle separator so it lifts off the content */
-  border-top: 1px solid var(--grid-major-color);
-
-  /* local background so the grid sits on top of --color-bg */
-  background-color: var(--color-bg);
+background-image:
+  linear-gradient(rgba(0,0,0,0.055) 1px, transparent 1px),
+  linear-gradient(90deg, rgba(0,0,0,0.055) 1px, transparent 1px),
+  linear-gradient(rgba(0,0,0,0.022) 1px, transparent 1px),
+  linear-gradient(90deg, rgba(0,0,0,0.022) 1px, transparent 1px);
+background-size: 80px 80px, 80px 80px, 16px 16px, 16px 16px;
+background-position: -1px -1px, -1px -1px, -1px -1px, -1px -1px;
 }
 
 @media (prefers-color-scheme: dark) {
-  .chatbar-wrap {
-    background-color: var(--color-bg-dark);
-    border-top-color: var(--grid-major-color); /* picks up the dark value auto */
-  }
+.scroll-host {
+background-image:
+  linear-gradient(rgba(255,255,255,0.055) 1px, transparent 1px),
+  linear-gradient(90deg, rgba(255,255,255,0.055) 1px, transparent 1px),
+  linear-gradient(rgba(255,255,255,0.022) 1px, transparent 1px),
+  linear-gradient(90deg, rgba(255,255,255,0.022) 1px, transparent 1px);
 }
+}
+
+.scroll-host::-webkit-scrollbar {
+display: none;}

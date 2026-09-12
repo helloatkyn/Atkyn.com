@@ -55,7 +55,13 @@ justify-content: center;
 transition: background 0.15s, color 0.15s;
 }
 .tab:active  { opacity: 0.75; }
-.tab.active  { background: var(--color-tab-active-bg); color: var(--color-bg); }
+.tab.active  {
+    background: var(--color-tab-active-bg);
+    color: var(--color-bg);
+    box-shadow:
+        inset 3px 3px 6px rgba(0,0,0,.18),
+        inset -3px -3px 6px rgba(255,255,255,.12);
+}
 @media (prefers-color-scheme: dark) {
 .tab        { background: var(--color-bg-alt2-dark); color: var(--color-tab-active-bg-dark); }
 .tab.active { background: var(--color-tab-active-bg-dark); color: var(--color-text-strong); }

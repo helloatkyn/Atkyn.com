@@ -1,22 +1,20 @@
-/* modules/news/news.js — News tab · Google RSS + OG images */
+/* modules/news/news.js — News tab · CF Worker RSS proxy + OG images */
 (function () {
   'use strict';
 
-  /* ── Config ─────────────────────────────────────────────── */
-  const RSS2JSON   = 'https://api.rss2json.com/v1/api.json';
-  const GOOGLE_RSS = 'https://news.google.com/rss/search?q={Q}&hl=en-IN&gl=IN&ceid=IN:en';
-
-  /*
-   * OG-proxy Worker URL — deploy workers/og-proxy.js to Cloudflare and put
-   * its URL here.  The Worker fetches the article page and returns JSON:
-   *   { og: "https://..." }
-   * If you haven't deployed it yet set OG_PROXY = '' to skip OG fetching.
-   */
-  const OG_PROXY = '/api/og-proxy';   /* your CF Worker route */
+  /* ── Config ─────────────────────────────────────────────────
+   * Both endpoints are served by the same Cloudflare Worker
+   * (workers/news-worker.js). Add these routes in your Pages
+   * project settings or wrangler.toml:
+   *   /api/news       → atkyn-news worker
+   *   /api/og-proxy   → atkyn-news worker
+   * ─────────────────────────────────────────────────────────── */
+  const NEWS_API  = '/api/news';
+  const OG_PROXY  = '/api/og-proxy';
 
   const MAX_RESULTS  = 20;
-  const OG_TIMEOUT   = 4000;          /* ms — skip slow pages */
-  const OG_BATCH     = 4;             /* parallel OG requests at a time */
+  const OG_TIMEOUT   = 4500;
+  const OG_BATCH     = 4;
 
   /* ── Helpers ─────────────────────────────────────────────── */
   function _esc(s) {
@@ -43,25 +41,10 @@
     try { return new URL(url).hostname.replace(/^www\./, ''); } catch (_) { return ''; }
   }
 
-  /*
-   * Google RSS item.enclosure sometimes carries an image; rss2json also
-   * exposes item.thumbnail.  Use those before hitting the OG proxy.
-   */
-  function _builtinImage(item) {
-    if (item.enclosure && item.enclosure.link && /\.(jpe?g|png|webp|gif)/i.test(item.enclosure.link)) {
-      return item.enclosure.link;
-    }
-    if (item.thumbnail && item.thumbnail.startsWith('http')) {
-      return item.thumbnail;
-    }
-    return null;
-  }
-
   /* ── OG image fetching ───────────────────────────────────── */
   async function _fetchOG(url) {
-    if (!OG_PROXY) return null;
     try {
-      const ctrl = new AbortController();
+      const ctrl  = new AbortController();
       const timer = setTimeout(() => ctrl.abort(), OG_TIMEOUT);
       const r = await fetch(
         `${OG_PROXY}?url=${encodeURIComponent(url)}`,
@@ -74,36 +57,57 @@
     } catch (_) { return null; }
   }
 
-  /* Run OG fetches in batches so we don't hammer the proxy */
   async function _batchOG(items, cardEls) {
     for (let i = 0; i < items.length; i += OG_BATCH) {
       const slice = items.slice(i, i + OG_BATCH);
       await Promise.all(slice.map(async (item, j) => {
         const idx  = i + j;
         const card = cardEls[idx];
-        if (!card) return;
+        if (!card || card.dataset.hasImg === '1') return;
 
-        /* Already has an image from RSS feed — skip proxy */
-        if (card.dataset.hasImg === '1') return;
-
-        const ogUrl = await _fetchOG(item.link);
+        const ogUrl = await _fetchOG(item.url);
         if (!ogUrl) return;
 
-        /* Inject thumb into the card */
-        const img  = document.createElement('img');
+        const img       = document.createElement('img');
         img.className   = 'news-thumb';
         img.loading     = 'lazy';
         img.decoding    = 'async';
         img.alt         = '';
         img.src         = ogUrl;
-        img.onerror     = function () { this.remove(); };
+        img.onerror     = function () {
+          this.parentElement.classList.remove('has-thumb');
+          this.remove();
+        };
         card.appendChild(img);
         card.classList.add('has-thumb');
       }));
     }
   }
 
-  /* ── Main render ─────────────────────────────────────────── */
+  /* ── Card builder ────────────────────────────────────────── */
+  function _buildCard(item) {
+    const card    = document.createElement('a');
+    card.className = 'news-card';
+    card.href      = item.url || '#';
+    card.target    = '_blank';
+    card.rel       = 'noopener noreferrer';
+
+    const host   = _hostname(item.url || '');
+    const source = item.source || host;
+    const ago    = _timeAgo(item.publishedDate || '');
+    const meta   = [source, ago].filter(Boolean).join(' · ');
+
+    card.innerHTML =
+      `<div class="news-card-body">` +
+        `<div class="news-meta">${_esc(meta)}</div>` +
+        `<div class="news-title">${_esc(item.title || '')}</div>` +
+        `<div class="news-snippet">${_esc(item.content || '')}</div>` +
+      `</div>`;
+
+    return card;
+  }
+
+  /* ── Main ────────────────────────────────────────────────── */
   window._atkynInit_news = function () {
     const q  = sessionStorage.getItem('atkyn_last_query') || '';
     const pc = window._atkynPageContent;
@@ -115,7 +119,6 @@
       return;
     }
 
-    /* Skeleton */
     pc.innerHTML =
       '<div class="tab-skeleton">' +
         '<div class="sk-line"></div>' +
@@ -124,46 +127,18 @@
         '<div class="sk-line sk-short"></div>' +
       '</div>';
 
-    const rssUrl = GOOGLE_RSS.replace('{Q}', encodeURIComponent(q));
-    const apiUrl = `${RSS2JSON}?rss_url=${encodeURIComponent(rssUrl)}&count=${MAX_RESULTS}`;
-
-    fetch(apiUrl)
-      .then(r => r.ok ? r.json() : Promise.reject('fetch-failed'))
+    fetch(`${NEWS_API}?q=${encodeURIComponent(q)}`)
+      .then(r => r.ok ? r.json() : Promise.reject(`status ${r.status}`))
       .then(data => {
-        const items = (data.items || []).slice(0, MAX_RESULTS);
+        const items = (data.results || []).slice(0, MAX_RESULTS);
         if (!items.length) throw new Error('empty');
 
-        const list    = document.createElement('div');
+        const list     = document.createElement('div');
         list.className = 'news-list';
-
-        const cardEls = [];
+        const cardEls  = [];
 
         items.forEach(item => {
-          const card    = document.createElement('a');
-          card.className = 'news-card';
-          card.href      = item.link || '#';
-          card.target    = '_blank';
-          card.rel       = 'noopener noreferrer';
-
-          const host    = _hostname(item.link || '');
-          const ago     = _timeAgo(item.pubDate || '');
-          const builtIn = _builtinImage(item);
-
-          let thumbHtml = '';
-          if (builtIn) {
-            thumbHtml = `<img class="news-thumb" src="${_esc(builtIn)}" loading="lazy" decoding="async" alt="" onerror="this.parentElement.classList.remove('has-thumb');this.remove()">`;
-            card.dataset.hasImg = '1';
-            card.classList.add('has-thumb');
-          }
-
-          card.innerHTML = `
-            <div class="news-card-body">
-              <div class="news-meta">${_esc(host)}${ago ? ` · ${ago}` : ''}</div>
-              <div class="news-title">${_esc(item.title || '')}</div>
-              <div class="news-snippet">${_esc(item.description || item.content || '')}</div>
-            </div>
-            ${thumbHtml}`;
-
+          const card = _buildCard(item);
           list.appendChild(card);
           cardEls.push(card);
         });
@@ -174,12 +149,11 @@
           window._atkynAnimateIn();
         }
 
-        /* Fire OG fetches in the background after paint */
-        requestAnimationFrame(() => {
-          _batchOG(items, cardEls);
-        });
+        /* OG images in background after paint */
+        requestAnimationFrame(() => _batchOG(items, cardEls));
       })
-      .catch(() => {
+      .catch(err => {
+        console.error('[news]', err);
         if (pc) {
           pc.innerHTML =
             '<div class="tab-empty"><p>Could not load news</p></div>';
@@ -189,3 +163,4 @@
 
   window._atkynInit_news();
 }());
+          

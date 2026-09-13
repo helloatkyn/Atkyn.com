@@ -1,0 +1,149 @@
+/* modules/news/news.css — News tab styles */
+
+/* ── List wrapper ── */
+.news-list {
+  display: flex;
+  flex-direction: column;
+  padding: 12px 0 24px;
+}
+
+/* ── Card ── */
+.news-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 16px;
+  text-decoration: none;
+  color: inherit;
+  border-bottom: 1px solid #f0f0f0;
+  transition: background 0.15s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.news-card:first-child {
+  border-top: 1px solid #f0f0f0;
+}
+
+.news-card:active {
+  background: #f7f7f7;
+}
+
+/* ── Text body ── */
+.news-card-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.news-meta {
+  font-size: 11.5px;
+  color: #888;
+  margin-bottom: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.news-title {
+  font-size: 14.5px;
+  font-weight: 600;
+  line-height: 1.35;
+  color: #111;
+  margin-bottom: 4px;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.news-snippet {
+  font-size: 12.5px;
+  color: #555;
+  line-height: 1.45;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* ── Thumbnail (OG / RSS) ── */
+.news-thumb {
+  flex-shrink: 0;
+  width: 80px;
+  height: 80px;
+  object-fit: cover;
+  border-radius: 8px;
+  background: #ececec;
+  display: block;
+  /* hidden by default — shown when card gets .has-thumb */
+  display: none;
+}
+
+.news-card.has-thumb .news-thumb {
+  display: block;
+}
+
+/* ── Empty state ── */
+.tab-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 64px 24px;
+  text-align: center;
+}
+
+.tab-empty p {
+  font-size: 14px;
+  color: #aaa;
+  margin: 0;
+}
+
+/* ── Skeleton loader ── */
+.tab-skeleton {
+  padding: 20px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.sk-line {
+  height: 14px;
+  border-radius: 6px;
+  background: linear-gradient(90deg, #ececec 25%, #f5f5f5 50%, #ececec 75%);
+  background-size: 200% 100%;
+  animation: sk-shimmer 1.4s ease infinite;
+}
+
+.sk-line.sk-short {
+  width: 60%;
+}
+
+@keyframes sk-shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* ── Dark mode ── */
+@media (prefers-color-scheme: dark) {
+  .news-card {
+    border-bottom-color: #222;
+  }
+  .news-card:first-child {
+    border-top-color: #222;
+  }
+  .news-card:active {
+    background: #1a1a1a;
+  }
+  .news-title {
+    color: #f0f0f0;
+  }
+  .news-snippet {
+    color: #999;
+  }
+  .news-thumb {
+    background: #2a2a2a;
+  }
+  .sk-line {
+    background: linear-gradient(90deg, #222 25%, #2e2e2e 50%, #222 75%);
+    background-size: 200% 100%;
+  }
+}

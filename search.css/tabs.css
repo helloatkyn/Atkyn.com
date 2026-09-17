@@ -10,7 +10,7 @@
   overflow-x: auto;
   overflow-y: hidden;
   padding: 0 14px;
-  gap: 10px;
+  gap: 5px;
   height: 44px;
   border-bottom: none;
   -webkit-overflow-scrolling: touch;
@@ -28,22 +28,24 @@
   transition: transform 0.32s cubic-bezier(0.4, 0, 0.2, 1);
 }
 .tab-bar::-webkit-scrollbar { display: none; }
-.tab-bar.hide     { transform: translateY(-100%) translateZ(0); }
-.tab-bar.scrolled { box-shadow: 0 1px 6px rgba(0, 0, 0, 0.08); }
+.tab-bar.hide    { transform: translateY(-100%) translateZ(0); }
+.tab-bar.scrolled{ box-shadow: 0 1px 6px rgba(0, 0, 0, 0.08); }
 @media (prefers-color-scheme: dark) {
-  .tab-bar          { background: var(--color-tab-bar-bg-dark); }
+  .tab-bar {
+    background: var(--color-tab-bar-bg-dark);
+  }
   .tab-bar.scrolled { box-shadow: 0 1px 6px rgba(0, 0, 0, 0.3); }
 }
 
 .tab {
   flex-shrink: 0;
-  height: 42px;
-  padding: 0 16px;
-  font-size: 13px;
-  font-weight: 500;
-  color: #6B6A65;
-  background: #EEEDE9;
-  border-radius: 12px;
+  height: 32px;
+  padding: 0 12px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text-strong);
+  background: var(--color-bg-alt);
+  border-radius: 4px;
   cursor: pointer;
   white-space: nowrap;
   border: none;
@@ -52,13 +54,9 @@
   justify-content: center;
   transition: background 0.15s, color 0.15s;
 }
-.tab:active { opacity: 0.75; }
-.tab.active {
-  background: #1A1A1A;
-  color: #ffffff;
-  font-weight: 600;
-}
+.tab:active  { opacity: 0.75; }
+.tab.active  { background: var(--color-tab-active-bg); color: var(--color-bg); }
 @media (prefers-color-scheme: dark) {
-  .tab        { background: #2C2C2E; color: #8E8E93; }
-  .tab.active { background: #E5E5EA; color: #1A1A1A; }
+  .tab        { background: var(--color-bg-alt2-dark); color: var(--color-tab-active-bg-dark); }
+  .tab.active { background: var(--color-tab-active-bg-dark); color: var(--color-text-strong); }
 }

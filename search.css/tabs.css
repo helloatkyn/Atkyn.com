@@ -10,7 +10,7 @@
   overflow-x: auto;
   overflow-y: hidden;
   padding: 0 14px;
-  gap: 5px;
+  gap: 10px;
   height: 44px;
   border-bottom: none;
   -webkit-overflow-scrolling: touch;
@@ -31,20 +31,19 @@
 .tab-bar.hide     { transform: translateY(-100%) translateZ(0); }
 .tab-bar.scrolled { box-shadow: 0 1px 6px rgba(0, 0, 0, 0.08); }
 @media (prefers-color-scheme: dark) {
-  .tab-bar { background: var(--color-tab-bar-bg-dark); }
+  .tab-bar          { background: var(--color-tab-bar-bg-dark); }
   .tab-bar.scrolled { box-shadow: 0 1px 6px rgba(0, 0, 0, 0.3); }
 }
 
-/* ── Tab chip ── */
 .tab {
   flex-shrink: 0;
-  height: 32px;               /* Flutter: 42px SizedBox — web thoda compact */
-  padding: 0 16px;            /* Flutter: horizontal: 16 */
-  font-size: 13px;            /* Flutter: 13px */
-  font-weight: 500;           /* Flutter: w500 unselected */
-  color: #6B6A65;             /* Flutter: Color(0xFF6B6A65) */
-  background: #EFEEE A;       /* Flutter: _chipBase = Color(0xFFEFEEEA) */
-  border-radius: 12px;        /* Flutter: BorderRadius.circular(12) */
+  height: 42px;
+  padding: 0 16px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #6B6A65;
+  background: #EEEDE9;
+  border-radius: 12px;
   cursor: pointer;
   white-space: nowrap;
   border: none;
@@ -54,10 +53,12 @@
   transition: background 0.15s, color 0.15s;
 }
 .tab:active { opacity: 0.75; }
-
-/* ── Active state ── */
 .tab.active {
-  background: #1A1A1A;        /* Flutter: Color(0xFF1A1A1A) */
-  color: #ffffff;             /* Flutter: Colors.white */
-  font-weight: 600;           /* Flutter: w600 active */
+  background: #1A1A1A;
+  color: #ffffff;
+  font-weight: 600;
+}
+@media (prefers-color-scheme: dark) {
+  .tab        { background: #2C2C2E; color: #8E8E93; }
+  .tab.active { background: #E5E5EA; color: #1A1A1A; }
 }

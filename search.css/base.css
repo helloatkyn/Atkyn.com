@@ -3,12 +3,12 @@ base.css — Reset · Body · Scroll host
 ════════════════════════════════════════════════════════════════ */
 
 :root {
-  --color-dot: rgba(0, 0, 0, 0.22);
+  --color-dot: rgba(0, 0, 0, 0.10);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --color-dot: rgba(255, 255, 255, 0.14);
+    --color-dot: rgba(255, 255, 255, 0.07);
   }
 }
 

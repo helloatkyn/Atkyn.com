@@ -17,7 +17,7 @@ padding: 8px 18px;
 height: 62px;
 
 overflow: hidden;
-background: var(--color-bg);
+background: transparent;
 
 border: none;
 outline: none;
@@ -39,7 +39,7 @@ backface-visibility: hidden;
 
 @media (prefers-color-scheme: dark) {
 .logo-header {
-background: var(--color-bg-dark);
+background: transparent;
 border: none;
 box-shadow: none;
 }

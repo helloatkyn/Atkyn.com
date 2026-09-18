@@ -2,16 +2,6 @@
 base.css — Reset · Body · Scroll host
 ════════════════════════════════════════════════════════════════ */
 
-:root {
-  --color-dot: rgba(0, 0, 0, 0.055);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --color-dot: rgba(255, 255, 255, 0.04);
-  }
-}
-
 *, *::before, *::after {
   box-sizing: border-box;
   margin: 0;
@@ -32,7 +22,6 @@ body {
   overscroll-behavior: none;
 
   background-color: var(--color-bg);
-
   color: var(--color-text);
 
   font-family: sans-serif;
@@ -48,9 +37,17 @@ body {
   text-rendering: optimizeLegibility;
 }
 
+@media (prefers-color-scheme: dark) {
+  body {
+    background-color: var(--color-bg-dark);
+    color: var(--color-text-dark);
+  }
+}
+
 /* ────────────────────────────────────────────────────────────────
    GRAIN / NOISE TEXTURE OVERLAY
-   Exactly like OpenAI blog — fine scattered particles over white
+   grainy-gradients.vercel.app/noise.svg — same technique as
+   OpenAI blog / premium editorial sites
 ──────────────────────────────────────────────────────────────── */
 
 body::before {
@@ -60,27 +57,20 @@ body::before {
   z-index: 0;
   pointer-events: none;
 
-  /* SVG feTurbulence noise rendered as data URI */
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.72' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23noise)' opacity='0.035'/%3E%3C/svg%3E");
+  background-image: url('https://grainy-gradients.vercel.app/noise.svg');
   background-repeat: repeat;
-  background-size: 300px 300px;
+  background-size: 200px 200px;
 
-  opacity: 1;
+  opacity: 0.28;
 }
 
-/* Dark mode — slightly more visible grain */
 @media (prefers-color-scheme: dark) {
-  body {
-    background-color: var(--color-bg-dark);
-    color: var(--color-text-dark);
-  }
-
   body::before {
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.72' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23noise)' opacity='0.055'/%3E%3C/svg%3E");
+    opacity: 0.18;
   }
 }
 
-/* All direct children of body must sit above grain layer */
+/* All body children sit above grain layer */
 body > * {
   position: relative;
   z-index: 1;

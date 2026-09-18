@@ -45,33 +45,21 @@ body {
 }
 
 /* ────────────────────────────────────────────────────────────────
-   GRAIN / NOISE TEXTURE OVERLAY
-   grainy-gradients.vercel.app/noise.svg — same technique as
-   OpenAI blog / premium editorial sites
+   GRAIN CANVAS — generated via JS in index.html
+   Canvas sits at z-index 0, everything else above it
 ──────────────────────────────────────────────────────────────── */
 
-body::before {
-  content: '';
+#grain-canvas {
   position: fixed;
   inset: 0;
-  z-index: 0;
+  width: 100%;
+  height: 100%;
   pointer-events: none;
-
-  background-image: url('https://grainy-gradients.vercel.app/noise.svg');
-  background-repeat: repeat;
-  background-size: 200px 200px;
-
-  opacity: 0.28;
-}
-
-@media (prefers-color-scheme: dark) {
-  body::before {
-    opacity: 0.18;
-  }
+  z-index: 0;
 }
 
 /* All body children sit above grain layer */
-body > * {
+body > *:not(#grain-canvas) {
   position: relative;
   z-index: 1;
 }

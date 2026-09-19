@@ -24,10 +24,10 @@
   top: 0;
   z-index: 20;
 
-  background: var(--color-tab-bar-bg);
+  background: var(--color-bg);
 
-  -webkit-backdrop-filter: blur(16px) saturate(1.35);
-  backdrop-filter: blur(16px) saturate(1.35);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
 
   will-change: transform;
   transform: translateZ(0);
@@ -36,7 +36,7 @@
 
   transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
 
-  border-bottom: 1px solid rgba(0, 0, 0, 0.18);
+  border-bottom: 1px solid var(--color-border-medium);
 }
 
 /* ────────────────────────────────────────────────────────────────
@@ -44,7 +44,7 @@
 ──────────────────────────────────────────────────────────────── */
 @media (prefers-color-scheme: dark) {
   .tab-bar {
-    background: var(--color-tab-bar-bg-dark);
+    background: var(--color-bg-dark);
     border-bottom-color: rgba(255, 255, 255, 0.16);
   }
 }

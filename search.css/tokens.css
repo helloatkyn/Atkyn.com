@@ -20,13 +20,13 @@ Change a value here → updates everywhere automatically.
 --color-text-placeholder: #b0bec5;
 
 /* ── Surfaces (light) ──────────────────────────────────────── */
---color-bg:             #ffffff;
+--color-bg:             #FCFCFB;
 --color-bg-alt:         #F0F0F0;   /* user bubble — Gemini exact match */
 --color-bg-card:        #F1F3F4;
 --color-bg-card-active: #F8F8F8;
 --color-bg-code:        #fafafa;
 --color-bg-thumb:       #E0E0E0;
---color-bg-favicon:     #ffffff;
+--color-bg-favicon:     #FCFCFB;
 
 /* ── Surfaces (dark) ────────────────────────────────────────── */
 --color-bg-dark:        #1c1c1e;

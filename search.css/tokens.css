@@ -75,7 +75,7 @@ Change a value here → updates everywhere automatically.
 --color-glass-bg:       rgba(255, 255, 255, 0.72);
 --color-glass-border:   rgba(255, 255, 255, 0.55);
 --color-glass-border-dark: rgba(255, 255, 255, 0.10);
---color-tab-bar-bg:     rgba(255, 255, 255, 0.95);
+--color-tab-bar-bg:     rgba(251, 249, 246, 0.95);
 --color-tab-bar-bg-dark:rgba(28, 28, 30, 0.95);
 
 /* ── Scrollbar / misc ───────────────────────────────────────── */
@@ -132,4 +132,4 @@ Change a value here → updates everywhere automatically.
 --color-code-content:   #0d0d0d;
 --color-inline-code-bg: #F0F0F0;   /* inline code — same as user bubble, Gemini style */
 
-}
+  }

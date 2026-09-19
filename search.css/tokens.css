@@ -20,13 +20,13 @@ Change a value here → updates everywhere automatically.
 --color-text-placeholder: #b0bec5;
 
 /* ── Surfaces (light) ──────────────────────────────────────── */
---color-bg:             #FCFBF7;
+--color-bg:             #FAF9F5;
 --color-bg-alt:         #EDE8DF;   /* user bubble — warm sand */
 --color-bg-card:        #F1F3F4;
 --color-bg-card-active: #F8F8F8;
 --color-bg-code:        #fafafa;
 --color-bg-thumb:       #E0E0E0;
---color-bg-favicon:     #FCFBF7;
+--color-bg-favicon:     #FAF9F5;
 
 /* ── Surfaces (dark) ────────────────────────────────────────── */
 --color-bg-dark:        #1c1c1e;
@@ -75,7 +75,7 @@ Change a value here → updates everywhere automatically.
 --color-glass-bg:       rgba(255, 255, 255, 0.72);
 --color-glass-border:   rgba(255, 255, 255, 0.55);
 --color-glass-border-dark: rgba(255, 255, 255, 0.10);
---color-tab-bar-bg:     rgba(252, 251, 247, 0.95);
+--color-tab-bar-bg:     rgba(250, 249, 245, 0.95);
 --color-tab-bar-bg-dark:rgba(28, 28, 30, 0.95);
 
 /* ── Scrollbar / misc ───────────────────────────────────────── */

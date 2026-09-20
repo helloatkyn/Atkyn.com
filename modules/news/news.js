@@ -1,15 +1,9 @@
-/* modules/news/news.js — News tab · Cloudflare Worker backend */
+/* modules/news/news.js — Google News RSS via rss2json (no API key, no worker) */
 (function () {
   'use strict';
 
-  /* Worker routes — deploy workers/news-worker.js → atkyn-news
-     Pages route:  /api/news     → atkyn-news
-                   /api/og-proxy → atkyn-news               */
-  var NEWS_API  = '/api/news';
-  var OG_PROXY  = '/api/og-proxy';
-  var MAX       = 20;
-  var OG_TO     = 4500;
-  var OG_BATCH  = 4;
+  var RSS2JSON = 'https://api.rss2json.com/v1/api.json?rss_url=';
+  var MAX      = 20;
 
   /* ── helpers ─────────────────────────────────────────────── */
   function esc(s) {
@@ -37,112 +31,109 @@
     catch(_) { return ''; }
   }
 
-  /* ── OG proxy ────────────────────────────────────────────── */
-  function fetchOG(url) {
-    var ctrl  = new AbortController();
-    var timer = setTimeout(function() { ctrl.abort(); }, OG_TO);
-    return fetch(OG_PROXY + '?url=' + encodeURIComponent(url), { signal: ctrl.signal })
-      .then(function(r) { clearTimeout(timer); return r.ok ? r.json() : null; })
-      .then(function(d) { return (d && d.og && d.og.startsWith('http')) ? d.og : null; })
-      .catch(function() { return null; });
+  function stripTags(s) {
+    return String(s).replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
   }
 
-  function batchOG(results, cardEls) {
-    var i = 0;
-    function next() {
-      if (i >= results.length) return;
-      var slice = results.slice(i, i + OG_BATCH);
-      i += OG_BATCH;
-      return Promise.all(slice.map(function(item, j) {
-        var card = cardEls[i - OG_BATCH + j];
-        if (!card || card.dataset.hasImg === '1') return Promise.resolve();
-        return fetchOG(item.url).then(function(og) {
-          if (!og) return;
-          var img = document.createElement('img');
-          img.className = 'news-thumb'; img.loading = 'lazy';
-          img.decoding  = 'async'; img.alt = ''; img.src = og;
-          img.onerror = function() {
-            this.parentElement.classList.remove('has-thumb'); this.remove();
-          };
-          card.appendChild(img);
-          card.classList.add('has-thumb');
-        });
-      })).then(next);
-    }
-    return next();
+  /* ── Extract thumbnail from RSS item ─────────────────────── */
+  function extractThumb(item) {
+    /* rss2json puts og image here sometimes */
+    if (item.thumbnail && item.thumbnail.startsWith('http')) return item.thumbnail;
+    if (item.enclosure && item.enclosure.link && item.enclosure.link.startsWith('http')) return item.enclosure.link;
+    /* try extracting from content/description */
+    var html = item.content || item.description || '';
+    var m = html.match(/<img[^>]+src=["']([^"']+)["']/i);
+    if (m && m[1] && m[1].startsWith('http')) return m[1];
+    return '';
   }
 
-  /* ── card ────────────────────────────────────────────────── */
+  /* ── Card ────────────────────────────────────────────────── */
   function buildCard(item) {
     var card       = document.createElement('a');
     card.className = 'news-card';
-    card.href      = item.url || '#';
+    card.href      = item.link || '#';
     card.target    = '_blank';
     card.rel       = 'noopener noreferrer';
 
-    var host  = item.source || hostname(item.url || '');
-    var ago   = timeAgo(item.publishedDate || '');
-    var meta  = [host, ago].filter(Boolean).join(' · ');
+    var host    = item.source_name || hostname(item.link || '');
+    var ago     = timeAgo(item.pubDate || '');
+    var meta    = [host, ago].filter(Boolean).join(' · ');
+    var snippet = stripTags(item.description || item.content || '');
+    var thumb   = extractThumb(item);
 
-    var thumb = item.img_src || '';
-    var tHtml = '';
-    if (thumb && thumb.startsWith('http')) {
-      tHtml = '<img class="news-thumb" src="' + esc(thumb) + '" '
-        + 'loading="lazy" decoding="async" alt="" '
-        + 'onerror="this.parentElement.classList.remove(\'has-thumb\');this.remove()">';
+    if (thumb) {
       card.dataset.hasImg = '1';
       card.classList.add('has-thumb');
     }
 
     card.innerHTML =
       '<div class="news-card-body">'
-      + '<div class="news-meta">'    + esc(meta)              + '</div>'
-      + '<div class="news-title">'   + esc(item.title || '')  + '</div>'
-      + '<div class="news-snippet">' + esc(item.content || '') + '</div>'
-      + '</div>' + tHtml;
+      + '<div class="news-meta">'    + esc(meta)                  + '</div>'
+      + '<div class="news-title">'   + esc(item.title || '')      + '</div>'
+      + '<div class="news-snippet">' + esc(snippet)               + '</div>'
+      + '</div>'
+      + (thumb
+          ? '<img class="news-thumb" src="' + esc(thumb) + '" loading="lazy" decoding="async" alt=""'
+            + ' onerror="this.parentElement.classList.remove(\'has-thumb\');this.remove()">'
+          : '');
 
     return card;
   }
 
-  /* ── main ────────────────────────────────────────────────── */
+  /* ── Skeleton ────────────────────────────────────────────── */
+  function showSkeleton(pc) {
+    var html = '<div class="tab-skeleton">';
+    for (var i = 0; i < 5; i++) {
+      html += '<div class="sk-card">'
+        + '<div class="sk-line"></div>'
+        + '<div class="sk-line"></div>'
+        + '<div class="sk-line sk-short"></div>'
+        + '</div>';
+    }
+    html += '</div>';
+    pc.innerHTML = html;
+  }
+
+  /* ── Main ────────────────────────────────────────────────── */
   window._atkynInit_news = function () {
     var q  = sessionStorage.getItem('atkyn_last_query') || '';
     var pc = window._atkynPageContent;
     if (!pc) return;
 
-    if (!q) {
-      pc.innerHTML = '<div class="tab-empty"><p>Search something to see news</p></div>';
-      return;
+    showSkeleton(pc);
+
+    /* Build Google News RSS URL */
+    var rssUrl;
+    if (q) {
+      rssUrl = 'https://news.google.com/rss/search?q='
+        + encodeURIComponent(q)
+        + '&hl=en-IN&gl=IN&ceid=IN:en';
+    } else {
+      rssUrl = 'https://news.google.com/rss?hl=en-IN&gl=IN&ceid=IN:en';
     }
 
-    pc.innerHTML = '<div class="tab-skeleton">'
-      + '<div class="sk-line"></div><div class="sk-line sk-short"></div>'
-      + '<div class="sk-line"></div><div class="sk-line sk-short"></div>'
-      + '</div>';
+    var apiUrl = RSS2JSON + encodeURIComponent(rssUrl) + '&count=' + MAX;
 
-    fetch(NEWS_API + '?q=' + encodeURIComponent(q))
+    fetch(apiUrl)
       .then(function(r) {
         if (!r.ok) throw new Error('HTTP ' + r.status);
         return r.json();
       })
       .then(function(data) {
-        var results = (data.results || []).slice(0, MAX);
-        if (!results.length) throw new Error('empty');
+        if (data.status !== 'ok') throw new Error('rss2json error');
+        var items = (data.items || []).slice(0, MAX);
+        if (!items.length) throw new Error('empty');
 
         var list = document.createElement('div');
         list.className = 'news-list';
-        var cardEls = [];
 
-        results.forEach(function(item) {
-          var card = buildCard(item);
-          list.appendChild(card);
-          cardEls.push(card);
+        items.forEach(function(item) {
+          list.appendChild(buildCard(item));
         });
 
         pc.innerHTML = '';
         pc.appendChild(list);
         if (typeof window._atkynAnimateIn === 'function') window._atkynAnimateIn();
-        requestAnimationFrame(function() { batchOG(results, cardEls); });
       })
       .catch(function(err) {
         console.error('[atkyn news]', err);
@@ -152,4 +143,3 @@
 
   window._atkynInit_news();
 }());
-  

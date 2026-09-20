@@ -1,11 +1,10 @@
-/* modules/news/news.js — Google News RSS via rss2json (no API key, no worker) */
+/* modules/news/news.js — Google News RSS via vercel serverless proxy */
 (function () {
   'use strict';
 
-  var RSS2JSON = 'https://api.rss2json.com/v1/api.json?rss_url=';
-  var MAX      = 20;
+  var PROXY = 'https://rss-to-json-serverless-api.vercel.app/rssToJson?feedURL=';
+  var MAX   = 20;
 
-  /* ── helpers ─────────────────────────────────────────────── */
   function esc(s) {
     return String(s)
       .replace(/&/g,'&amp;').replace(/</g,'&lt;')
@@ -35,19 +34,15 @@
     return String(s).replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
   }
 
-  /* ── Extract thumbnail from RSS item ─────────────────────── */
   function extractThumb(item) {
-    /* rss2json puts og image here sometimes */
     if (item.thumbnail && item.thumbnail.startsWith('http')) return item.thumbnail;
     if (item.enclosure && item.enclosure.link && item.enclosure.link.startsWith('http')) return item.enclosure.link;
-    /* try extracting from content/description */
     var html = item.content || item.description || '';
     var m = html.match(/<img[^>]+src=["']([^"']+)["']/i);
     if (m && m[1] && m[1].startsWith('http')) return m[1];
     return '';
   }
 
-  /* ── Card ────────────────────────────────────────────────── */
   function buildCard(item) {
     var card       = document.createElement('a');
     card.className = 'news-card';
@@ -55,7 +50,7 @@
     card.target    = '_blank';
     card.rel       = 'noopener noreferrer';
 
-    var host    = item.source_name || hostname(item.link || '');
+    var host    = hostname(item.link || '');
     var ago     = timeAgo(item.pubDate || '');
     var meta    = [host, ago].filter(Boolean).join(' · ');
     var snippet = stripTags(item.description || item.content || '');
@@ -68,9 +63,9 @@
 
     card.innerHTML =
       '<div class="news-card-body">'
-      + '<div class="news-meta">'    + esc(meta)                  + '</div>'
-      + '<div class="news-title">'   + esc(item.title || '')      + '</div>'
-      + '<div class="news-snippet">' + esc(snippet)               + '</div>'
+      + '<div class="news-meta">'    + esc(meta)             + '</div>'
+      + '<div class="news-title">'   + esc(item.title || '') + '</div>'
+      + '<div class="news-snippet">' + esc(snippet)          + '</div>'
       + '</div>'
       + (thumb
           ? '<img class="news-thumb" src="' + esc(thumb) + '" loading="lazy" decoding="async" alt=""'
@@ -80,10 +75,9 @@
     return card;
   }
 
-  /* ── Skeleton ────────────────────────────────────────────── */
   function showSkeleton(pc) {
     var html = '<div class="tab-skeleton">';
-    for (var i = 0; i < 5; i++) {
+    for (var i = 0; i < 6; i++) {
       html += '<div class="sk-card">'
         + '<div class="sk-line"></div>'
         + '<div class="sk-line"></div>'
@@ -94,7 +88,6 @@
     pc.innerHTML = html;
   }
 
-  /* ── Main ────────────────────────────────────────────────── */
   window._atkynInit_news = function () {
     var q  = sessionStorage.getItem('atkyn_last_query') || '';
     var pc = window._atkynPageContent;
@@ -102,17 +95,11 @@
 
     showSkeleton(pc);
 
-    /* Build Google News RSS URL */
-    var rssUrl;
-    if (q) {
-      rssUrl = 'https://news.google.com/rss/search?q='
-        + encodeURIComponent(q)
-        + '&hl=en-IN&gl=IN&ceid=IN:en';
-    } else {
-      rssUrl = 'https://news.google.com/rss?hl=en-IN&gl=IN&ceid=IN:en';
-    }
+    var rssUrl = q
+      ? 'https://news.google.com/rss/search?q=' + encodeURIComponent(q) + '&hl=en-IN&gl=IN&ceid=IN:en'
+      : 'https://news.google.com/rss?hl=en-IN&gl=IN&ceid=IN:en';
 
-    var apiUrl = RSS2JSON + encodeURIComponent(rssUrl) + '&count=' + MAX;
+    var apiUrl = PROXY + encodeURIComponent(rssUrl);
 
     fetch(apiUrl)
       .then(function(r) {
@@ -120,13 +107,12 @@
         return r.json();
       })
       .then(function(data) {
-        if (data.status !== 'ok') throw new Error('rss2json error');
+        /* vercel proxy returns { items: [...] } */
         var items = (data.items || []).slice(0, MAX);
         if (!items.length) throw new Error('empty');
 
         var list = document.createElement('div');
         list.className = 'news-list';
-
         items.forEach(function(item) {
           list.appendChild(buildCard(item));
         });

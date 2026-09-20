@@ -14,7 +14,7 @@ const TOOLS = [
     type: 'function',  
     function: {  
       name: 'web_search',  
-      description: 'Search the web for real-time facts, recent events, or specific URLs. Do NOT use for general knowledge, math, or coding.',  
+      description: 'Search the web for information whose correctness depends on current external reality. Do not use for timeless conceptual knowledge answerable from training data alone.',  
       parameters: {  
         type: 'object',  
         properties: {  
@@ -36,19 +36,6 @@ const TOOLS = [
           symbol: { type: 'string', description: 'Stock ticker symbol only (e.g., AAPL, TSLA, RELIANCE.NS). Do not include company names.' },  
         },  
         required: ['symbol'],  
-        additionalProperties: false,  
-      },  
-    },  
-  },  
-  {  
-    type: 'function',  
-    function: {  
-      name: 'datetime_tool',  
-      description: 'Returns the current UTC date and time. Use this when the query depends on knowing today\'s date, current time, day of week, month, or year.',  
-      parameters: {  
-        type: 'object',  
-        properties: {},  
-        required: [],  
         additionalProperties: false,  
       },  
     },  
@@ -84,10 +71,6 @@ function validateToolArgs(toolName, rawArgs) {
       }  
     }  
     return { symbol: cleanSymbol };  
-  }  
-
-  if (toolName === 'datetime_tool') {  
-    return {};  
   }  
   
   throw new Error(`Unknown tool: ${toolName}`);  
@@ -219,10 +202,14 @@ export async function onRequestPost(context) {
       status: 400,  
       headers: { 'Content-Type': 'application/json' },  
     });  
-  }  
+  }
+
+  // Inject current date so LLM always knows today's date for search queries
+  const now = new Date();
+  const currentDateStr = now.toUTCString();
   
   const baseMessages = [  
-    { role: 'system', content: SYSTEM_PROMPT + '\n\nCRITICAL: You have a limited output token budget. Always complete your response fully within it. Never truncate mid-sentence. If space is tight, summarise — never cut off.' },  
+    { role: 'system', content: SYSTEM_PROMPT + `\n\nCURRENT DATE & TIME (UTC): ${currentDateStr}\nAlways use this date as ground truth when forming search queries or reasoning about recency. Never assume a different date.\n\nCRITICAL: You have a limited output token budget. Always complete your response fully within it. Never truncate mid-sentence. If space is tight, summarise — never cut off.` },  
     ...(Array.isArray(history) ? history.slice(-10) : []),  
     { role: 'user', content: query },  
   ];  
@@ -319,9 +306,6 @@ export async function onRequestPost(context) {
           frontendEvent = 'stock';  
           frontendData  = data;  
         }  
-      } else if (functionName === 'datetime_tool') {  
-        const now = new Date();  
-        toolResultContent = `Current datetime: ${now.toISOString()} (UTC). Day: ${now.toUTCString().split(',')[0]}.`;  
       }  
   
       // Emit frontend event before streaming answer  
@@ -403,5 +387,4 @@ export async function onRequestOptions() {
       'Access-Control-Allow-Headers': 'Content-Type, Authorization',  
     },  
   });  
-     }
-            
+                                            }

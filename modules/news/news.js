@@ -1,4 +1,4 @@
-/* modules/news/news.js — Serper news via /api/news */
+/* modules/news/news.js — Masonry grid news layout */
 (function () {
   'use strict';
 
@@ -32,36 +32,34 @@
     card.target = '_blank';
     card.rel    = 'noopener noreferrer';
 
-    var meta = [item.source, timeAgo(item.publishedDate)].filter(Boolean).join(' · ');
     var thumb = item.img_src || '';
-
-    if (thumb) {
-      card.dataset.hasImg = '1';
-      card.classList.add('has-thumb');
-    }
+    var ago   = timeAgo(item.publishedDate || '');
 
     card.innerHTML =
-      '<div class="news-card-body">'
-      + '<div class="news-meta">'    + esc(meta)              + '</div>'
-      + '<div class="news-title">'   + esc(item.title  || '') + '</div>'
-      + '<div class="news-snippet">' + esc(item.snippet || '') + '</div>'
-      + '</div>'
-      + (thumb
-          ? '<img class="news-thumb" src="' + esc(thumb) + '" loading="lazy" decoding="async" alt=""'
-            + ' onerror="this.parentElement.classList.remove(\'has-thumb\');this.remove()">'
-          : '');
+      (thumb
+        ? '<div class="news-img-wrap"><img class="news-img" src="' + esc(thumb)
+          + '" alt="" loading="lazy" decoding="async"'
+          + ' onerror="this.closest(\'.news-img-wrap\').remove()"></div>'
+        : '')
+      + '<div class="news-body">'
+      + (item.source ? '<span class="news-source">' + esc(item.source) + '</span>' : '')
+      + '<div class="news-title">' + esc(item.title || '') + '</div>'
+      + (ago ? '<div class="news-time">' + esc(ago) + '</div>' : '')
+      + '</div>';
 
     return card;
   }
 
   function showSkeleton(pc) {
-    var html = '<div class="tab-skeleton">';
+    var html = '<div class="news-grid">';
     for (var i = 0; i < 6; i++) {
-      html += '<div class="sk-card">'
-        + '<div class="sk-line"></div>'
+      html += '<div class="news-card sk-card">'
+        + '<div class="sk-img"></div>'
+        + '<div class="news-body">'
+        + '<div class="sk-line sk-src"></div>'
         + '<div class="sk-line"></div>'
         + '<div class="sk-line sk-short"></div>'
-        + '</div>';
+        + '</div></div>';
     }
     pc.innerHTML = html + '</div>';
   }
@@ -89,12 +87,12 @@
         var results = (data.results || []).slice(0, MAX);
         if (!results.length) throw new Error('empty');
 
-        var list = document.createElement('div');
-        list.className = 'news-list';
-        results.forEach(function(item) { list.appendChild(buildCard(item)); });
+        var grid = document.createElement('div');
+        grid.className = 'news-grid';
+        results.forEach(function(item) { grid.appendChild(buildCard(item)); });
 
         pc.innerHTML = '';
-        pc.appendChild(list);
+        pc.appendChild(grid);
         if (typeof window._atkynAnimateIn === 'function') window._atkynAnimateIn();
       })
       .catch(function(err) {

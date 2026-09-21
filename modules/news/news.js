@@ -1,4 +1,4 @@
-/* modules/news/news.js — Google News style layout */
+/* modules/news/news.js — Atkyn News — professional redesign */
 (function () {
   'use strict';
 
@@ -25,7 +25,7 @@
     } catch(_) { return dateStr || ''; }
   }
 
-  /* Hero — first item, full width */
+  /* ── Hero — full width, image uncropped ── */
   function buildHero(item) {
     var a = document.createElement('a');
     a.className = 'news-hero';
@@ -36,10 +36,24 @@
     var thumb = item.img_src || '';
     var ago   = timeAgo(item.publishedDate || '');
 
+    /* Use highest-res image URL if possible.
+       Many APIs return a resized URL with width param — strip/max it out. */
+    var imgSrc = thumb
+      ? thumb
+          .replace(/[?&]w=\d+/g, '')       /* strip width param */
+          .replace(/[?&]width=\d+/g, '')
+          .replace(/[?&]resize=\d+/g, '')
+          .replace(/=s\d+-/, '=s1200-')    /* Google/Blogger size token */
+      : '';
+
     a.innerHTML =
-      (thumb
-        ? '<img class="news-hero-img" src="' + esc(thumb) + '" alt="" loading="eager" decoding="async"'
-          + ' onerror="this.style.display=\'none\'">'
+      (imgSrc
+        ? '<div class="news-hero-img-wrap">'
+          + '<img class="news-hero-img" src="' + esc(imgSrc) + '" alt=""'
+          + ' loading="eager" decoding="async"'
+          + ' onerror="this.closest(\'.news-hero-img-wrap\').style.display=\'none\'">'
+          + '</div>'
+          + '<div class="news-hero-bar"></div>'
         : '')
       + '<div class="news-hero-body">'
       + (item.source ? '<span class="news-source">' + esc(item.source) + '</span>' : '')
@@ -50,7 +64,7 @@
     return a;
   }
 
-  /* Regular card — thumbnail right */
+  /* ── Regular card — text left, thumb right, uncropped ── */
   function buildCard(item) {
     var a = document.createElement('a');
     a.className = 'news-card';
@@ -61,36 +75,89 @@
     var thumb = item.img_src || '';
     var ago   = timeAgo(item.publishedDate || '');
 
+    /* Same max-res trick for thumbnails */
+    var imgSrc = thumb
+      ? thumb
+          .replace(/[?&]w=\d+/g, '')
+          .replace(/[?&]width=\d+/g, '')
+          .replace(/[?&]resize=\d+/g, '')
+          .replace(/=s\d+-/, '=s400-')
+      : '';
+
     a.innerHTML =
       '<div class="news-card-body">'
       + (item.source ? '<span class="news-source">' + esc(item.source) + '</span>' : '')
       + '<div class="news-title">' + esc(item.title || '') + '</div>'
       + (ago ? '<div class="news-time">' + esc(ago) + '</div>' : '')
       + '</div>'
+      + (imgSrc
+          ? '<div class="news-thumb-wrap">'
+            + '<img class="news-thumb" src="' + esc(imgSrc) + '" alt=""'
+            + ' loading="lazy" decoding="async"'
+            + ' onerror="this.closest(\'.news-thumb-wrap\').style.display=\'none\'">'
+            + '</div>'
+          : '');
+
+    return a;
+  }
+
+  /* ── Ad card — clearly badged as Sponsored ── */
+  function buildAdCard(item) {
+    var a = document.createElement('a');
+    a.className = 'news-ad-card';
+    a.href   = item.url || '#';
+    a.target = '_blank';
+    a.rel    = 'noopener noreferrer';
+
+    var thumb = item.img_src || '';
+
+    a.innerHTML =
+      '<div class="news-ad-badge">Ad</div>'
+      + '<div class="news-ad-body">'
+      + (item.source ? '<span class="news-source">' + esc(item.source) + '</span>' : '')
+      + '<div class="news-title">' + esc(item.title || '') + '</div>'
+      + '</div>'
       + (thumb
-          ? '<img class="news-thumb" src="' + esc(thumb) + '" alt="" loading="lazy" decoding="async"'
+          ? '<img class="news-ad-thumb" src="' + esc(thumb) + '" alt=""'
+            + ' loading="lazy" decoding="async"'
             + ' onerror="this.remove()">'
           : '');
 
     return a;
   }
 
+  /* ── Skeleton loader ── */
   function showSkeleton(pc) {
     var html =
       '<div class="tab-skeleton">'
-      + '<div class="sk-hero"><div class="sk-hero-img"></div>'
-      + '<div class="sk-hero-body"><div class="sk-line sk-src"></div>'
-      + '<div class="sk-line"></div><div class="sk-line sk-short"></div></div></div>';
+      /* Hero skeleton */
+      + '<div class="sk-hero">'
+      + '<div class="sk-hero-img"></div>'
+      + '<div class="sk-hero-bar"></div>'
+      + '<div class="sk-hero-body">'
+      + '<div class="sk-line sk-src"></div>'
+      + '<div class="sk-line"></div>'
+      + '<div class="sk-line"></div>'
+      + '<div class="sk-line sk-short"></div>'
+      + '</div></div>'
+      /* Card group skeleton */
+      + '<div class="sk-group">';
 
     for (var i = 0; i < 5; i++) {
       html += '<div class="sk-card">'
-        + '<div class="sk-card-body"><div class="sk-line sk-src"></div>'
-        + '<div class="sk-line"></div><div class="sk-line sk-short"></div></div>'
-        + '<div class="sk-thumb"></div></div>';
+        + '<div class="sk-card-body">'
+        + '<div class="sk-line sk-src"></div>'
+        + '<div class="sk-line"></div>'
+        + '<div class="sk-line sk-short"></div>'
+        + '</div>'
+        + '<div class="sk-thumb"></div>'
+        + '</div>';
     }
-    pc.innerHTML = html + '</div>';
+
+    pc.innerHTML = html + '</div></div>';
   }
 
+  /* ── Main init ── */
   window._atkynInit_news = function () {
     var pc = window._atkynPageContent;
     if (!pc) return;
@@ -117,22 +184,39 @@
         var list = document.createElement('div');
         list.className = 'news-list';
 
-        /* First item with image → hero */
+        /* Pick first item with an image as hero (search within first 4) */
         var heroIdx = -1;
         for (var i = 0; i < Math.min(results.length, 4); i++) {
           if (results[i].img_src) { heroIdx = i; break; }
         }
 
+        /* Hero */
+        if (heroIdx !== -1) {
+          list.appendChild(buildHero(results[heroIdx]));
+        }
+
+        /* Section label */
+        if (results.length > 1) {
+          var lbl = document.createElement('div');
+          lbl.className = 'news-section-label';
+          lbl.textContent = 'More stories';
+          list.appendChild(lbl);
+        }
+
+        /* Remaining cards wrapped in a group */
+        var group = document.createElement('div');
+        group.className = 'news-card-group';
+
         results.forEach(function(item, idx) {
-          if (idx === heroIdx) {
-            list.appendChild(buildHero(item));
-            var div = document.createElement('div');
-            div.className = 'news-divider';
-            list.appendChild(div);
-          } else {
-            list.appendChild(buildCard(item));
+          if (idx === heroIdx) return;          /* skip hero */
+          if (item._isAd) {                     /* standalone ad card */
+            list.appendChild(buildAdCard(item));
+            return;
           }
+          group.appendChild(buildCard(item));
         });
+
+        if (group.children.length) list.appendChild(group);
 
         pc.innerHTML = '';
         pc.appendChild(list);
@@ -146,3 +230,4 @@
 
   window._atkynInit_news();
 }());
+      

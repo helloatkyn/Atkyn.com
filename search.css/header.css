@@ -10,7 +10,7 @@ LOGO HEADER
 flex-shrink: 0;
 display: flex;
 align-items: center;
-justify-content: center;
+justify-content: flex-start;
 position: relative;
 
 padding: 8px 18px;
@@ -55,10 +55,10 @@ width: auto;
 object-fit: contain;
 
 position: absolute;
-left: 50%;
+left: 62px;
 top: 50%;
 
-transform: translate3d(-50%, -50%, 0);
+transform: translate3d(0, -50%, 0);
 
 will-change: transform, opacity;
 
@@ -80,12 +80,12 @@ pointer-events: none;
 }
 
 .logo-header.collapsed img {
-transform: translate3d(-50%, -48%, 0);
+transform: translate3d(0, -48%, 0);
 opacity: 0;
 }
 
 /* ────────────────────────────────────────────────────────────────
-HAMBURGER BUTTON (top-left) ← swapped
+HAMBURGER BUTTON (top-left)
 ──────────────────────────────────────────────────────────────── */
 .hamburger-btn {
 position: absolute;
@@ -148,7 +148,7 @@ background: var(--color-text-dark-alt);
 }
 
 /* ────────────────────────────────────────────────────────────────
-PENCIL / NEW CHAT BUTTON (top-right) ← swapped
+PENCIL / NEW CHAT BUTTON (top-right)
 ──────────────────────────────────────────────────────────────── */
 .pencil-btn {
 position: absolute;
@@ -234,4 +234,4 @@ REDUCED MOTION
 .hamburger-btn span {
 transition: none !important;
 }
-  }
+}

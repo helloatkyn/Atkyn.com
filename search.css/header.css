@@ -55,7 +55,7 @@ width: auto;
 object-fit: contain;
 
 position: absolute;
-left: 14px;
+left: 20px;
 top: 50%;
 
 transform: translate3d(0, -50%, 0);
@@ -243,4 +243,4 @@ REDUCED MOTION
 .hamburger-btn span {
 transition: none !important;
 }
-  }
+}

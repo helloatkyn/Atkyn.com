@@ -21,7 +21,7 @@ Change a value here → updates everywhere automatically.
 
 /* ── Surfaces (light) ──────────────────────────────────────── */
 --color-bg:             #ffffff;
---color-bg-alt:         #f0ece9;   /* user bubble + unselected tab */
+--color-bg-alt:         #F0F0F0;   /* user bubble — Gemini exact match */
 --color-bg-card:        #F1F3F4;
 --color-bg-card-active: #F8F8F8;
 --color-bg-code:        #fafafa;
@@ -55,7 +55,6 @@ Change a value here → updates everywhere automatically.
 --color-tab-active-text:#ffffff;
 --color-tab-active-bg-dark:  #f1f1f1;
 --color-tab-active-text-dark:#111111;
---color-tab-inactive-bg: #f0ece9;  /* unselected tab bg */
 
 /* ── Dividers & borders ─────────────────────────────────────── */
 --color-border-subtle:       rgba(0, 0, 0, 0.08);
@@ -131,6 +130,6 @@ Change a value here → updates everywhere automatically.
 --color-code-num:       rgba(0, 0, 0, 0.26);
 --color-code-num-dark:  rgba(255, 255, 255, 0.24);
 --color-code-content:   #0d0d0d;
---color-inline-code-bg: #f0ece9;   /* inline code — pill-matched warm white */
+--color-inline-code-bg: #F0F0F0;   /* inline code — same as user bubble, Gemini style */
 
 }

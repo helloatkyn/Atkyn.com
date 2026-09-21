@@ -3,19 +3,19 @@
   'use strict';
 
   var NEWS_API = '/api/news';
+  var OG_API   = '/api/newsog';   /* /functions/api/newsog.js → /api/newsog */
 
-  /* IMPORTANT:
-     /functions/api/og.js maps to /api/og on Cloudflare Pages. */
-  var OG_API   = '/api/og';
+  var MAX = 20;
 
-  var MAX      = 20;
-
+  /* ──────────────────────────────────────────────────────────────
+     UTILS
+  ────────────────────────────────────────────────────────────── */
   function esc(s) {
     return String(s)
-      .replace(/&/g,'&amp;')
-      .replace(/</g,'&lt;')
-      .replace(/>/g,'&gt;')
-      .replace(/"/g,'&quot;');
+      .replace(/&/g,  '&amp;')
+      .replace(/</g,  '&lt;')
+      .replace(/>/g,  '&gt;')
+      .replace(/"/g,  '&quot;');
   }
 
   function timeAgo(dateStr) {
@@ -26,16 +26,13 @@
       if (isNaN(d)) return dateStr || '';
 
       var diff = Date.now() - d.getTime();
-
       if (diff < 0) return 'just now';
 
       var m = Math.floor(diff / 60000);
-
       if (m < 1)  return 'just now';
       if (m < 60) return m + 'm ago';
 
       var h = Math.floor(m / 60);
-
       if (h < 24) return h + 'h ago';
 
       return Math.floor(h / 24) + 'd ago';
@@ -50,9 +47,7 @@
   var _ogCache = {};
 
   function fetchOg(articleUrl) {
-    if (!articleUrl) {
-      return Promise.resolve(null);
-    }
+    if (!articleUrl) return Promise.resolve(null);
 
     if (_ogCache[articleUrl] !== undefined) {
       return Promise.resolve(_ogCache[articleUrl]);
@@ -61,23 +56,18 @@
     return fetch(
       OG_API + '?url=' + encodeURIComponent(articleUrl),
       {
-        method: 'GET',
+        method:      'GET',
         credentials: 'same-origin',
-        cache: 'default'
+        cache:       'default',
       }
     )
       .then(function (r) {
-        if (!r.ok) {
-          throw new Error('OG HTTP ' + r.status);
-        }
-
+        if (!r.ok) throw new Error('OG HTTP ' + r.status);
         return r.json();
       })
       .then(function (data) {
         var img = (data && data.og) ? String(data.og) : null;
-
         _ogCache[articleUrl] = img;
-
         return img;
       })
       .catch(function () {
@@ -89,11 +79,15 @@
   /* ──────────────────────────────────────────────────────────────
      HYDRATE OG IMAGE
 
-     The wrapper reserves the space immediately.
-     The actual image becomes visible only after successful load.
+     - wrap starts hidden (display:none)
+     - shown only after image successfully loads
+     - removed if no OG url or image errors
   ────────────────────────────────────────────────────────────── */
   function hydrateImg(imgEl, wrapEl) {
     var articleUrl = imgEl.dataset.url;
+
+    /* Reserve nothing until we know there's a real image */
+    wrapEl.style.display = 'none';
 
     fetchOg(articleUrl).then(function (ogSrc) {
       if (!imgEl.parentNode || !wrapEl.parentNode) return;
@@ -105,14 +99,12 @@
 
       imgEl.onload = function () {
         if (!wrapEl.parentNode) return;
-
-        wrapEl.classList.add('loaded');
+        wrapEl.style.display = '';          /* reveal the wrapper */
+        wrapEl.classList.add('loaded');     /* trigger CSS fade-in */
       };
 
       imgEl.onerror = function () {
-        if (wrapEl.parentNode) {
-          wrapEl.remove();
-        }
+        if (wrapEl.parentNode) wrapEl.remove();
       };
 
       imgEl.src = ogSrc;
@@ -124,11 +116,9 @@
   ────────────────────────────────────────────────────────────── */
   function buildMeta(item) {
     var source = item.source ? esc(item.source) : '';
-    var ago = timeAgo(item.publishedDate || '');
+    var ago    = timeAgo(item.publishedDate || '');
 
-    if (!source && !ago) {
-      return '';
-    }
+    if (!source && !ago) return '';
 
     var html = '<div class="news-meta">';
 
@@ -156,10 +146,9 @@
     var a = document.createElement('a');
 
     a.className = 'news-card' + (isLead ? ' news-card--lead' : '');
-
-    a.href = item.url || '#';
-    a.target = '_blank';
-    a.rel = 'noopener noreferrer';
+    a.href      = item.url || '#';
+    a.target    = '_blank';
+    a.rel       = 'noopener noreferrer';
 
     /* ── Text body ── */
     var body = document.createElement('div');
@@ -167,9 +156,7 @@
 
     body.innerHTML =
       buildMeta(item) +
-      '<div class="news-title">' +
-      esc(item.title || '') +
-      '</div>';
+      '<div class="news-title">' + esc(item.title || '') + '</div>';
 
     a.appendChild(body);
 
@@ -179,17 +166,13 @@
       wrap.className = 'news-thumb-wrap';
 
       var img = document.createElement('img');
-
-      img.className = 'news-thumb';
-      img.alt = '';
-
-      img.loading = 'lazy';
-      img.decoding = 'async';
+      img.className      = 'news-thumb';
+      img.alt            = '';
+      img.loading        = 'lazy';
+      img.decoding       = 'async';
       img.referrerPolicy = 'no-referrer';
-
-      img.style.display = 'block';
-
-      img.dataset.url = item.url;
+      img.style.display  = 'block';
+      img.dataset.url    = item.url;
 
       wrap.appendChild(img);
       a.appendChild(wrap);
@@ -207,48 +190,33 @@
     var a = document.createElement('a');
 
     a.className = 'news-ad-card';
-
-    a.href = item.url || '#';
-    a.target = '_blank';
-    a.rel = 'noopener noreferrer';
+    a.href      = item.url || '#';
+    a.target    = '_blank';
+    a.rel       = 'noopener noreferrer';
 
     var badge = document.createElement('div');
-
-    badge.className = 'news-ad-badge';
+    badge.className  = 'news-ad-badge';
     badge.textContent = 'Ad';
-
     a.appendChild(badge);
 
     var body = document.createElement('div');
-
     body.className = 'news-ad-body';
 
     body.innerHTML =
       buildMeta(item) +
-      '<div class="news-title">' +
-      esc(item.title || '') +
-      '</div>';
+      '<div class="news-title">' + esc(item.title || '') + '</div>';
 
     a.appendChild(body);
 
     if (item.img_src) {
       var img = document.createElement('img');
-
-      img.className = 'news-ad-thumb';
-
-      img.alt = '';
-
-      img.loading = 'lazy';
-      img.decoding = 'async';
-
+      img.className      = 'news-ad-thumb';
+      img.alt            = '';
+      img.loading        = 'lazy';
+      img.decoding       = 'async';
       img.referrerPolicy = 'no-referrer';
-
-      img.src = item.img_src;
-
-      img.onerror = function () {
-        img.remove();
-      };
-
+      img.src            = item.img_src;
+      img.onerror        = function () { img.remove(); };
       a.appendChild(img);
     }
 
@@ -275,7 +243,6 @@
     }
 
     html += '</div>';
-
     pc.innerHTML = html;
   }
 
@@ -284,7 +251,6 @@
   ────────────────────────────────────────────────────────────── */
   window._atkynInit_news = function () {
     var pc = window._atkynPageContent;
-
     if (!pc) return;
 
     var q = '';
@@ -295,10 +261,7 @@
 
     if (!q) {
       pc.innerHTML =
-        '<div class="tab-empty">' +
-          '<p>Search something to see news</p>' +
-        '</div>';
-
+        '<div class="tab-empty"><p>Search something to see news</p></div>';
       return;
     }
 
@@ -307,32 +270,26 @@
     fetch(
       NEWS_API + '?q=' + encodeURIComponent(q),
       {
-        method: 'GET',
+        method:      'GET',
         credentials: 'same-origin',
-        cache: 'default'
+        cache:       'default',
       }
     )
       .then(function (r) {
-        if (!r.ok) {
-          throw new Error('HTTP ' + r.status);
-        }
-
+        if (!r.ok) throw new Error('HTTP ' + r.status);
         return r.json();
       })
       .then(function (data) {
         var results = (data.results || []).slice(0, MAX);
 
-        if (!results.length) {
-          throw new Error('empty');
-        }
+        if (!results.length) throw new Error('empty');
 
         var list = document.createElement('div');
-
         list.className = 'news-list';
 
         /*
-          First NON-AD story becomes the editorial lead.
-          Ads never consume the featured-story position.
+          First NON-AD story = editorial lead.
+          Ads never take the lead position.
         */
         var leadUsed = false;
 
@@ -343,10 +300,7 @@
           }
 
           var isLead = !leadUsed;
-
-          if (isLead) {
-            leadUsed = true;
-          }
+          if (isLead) leadUsed = true;
 
           list.appendChild(buildCard(item, isLead));
         });
@@ -354,9 +308,7 @@
         pc.innerHTML = '';
         pc.appendChild(list);
 
-        if (
-          typeof window._atkynAnimateIn === 'function'
-        ) {
+        if (typeof window._atkynAnimateIn === 'function') {
           window._atkynAnimateIn();
         }
       })
@@ -364,9 +316,7 @@
         console.error('[atkyn news]', err);
 
         pc.innerHTML =
-          '<div class="tab-empty">' +
-            '<p>Could not load news</p>' +
-          '</div>';
+          '<div class="tab-empty"><p>Could not load news</p></div>';
       });
   };
 

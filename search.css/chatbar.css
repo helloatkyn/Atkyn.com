@@ -1,0 +1,58 @@
+.search-wrap { width: 100%; max-width: 640px; position: relative; }
+
+.search-pill, .overlay-pill {
+  display: flex; align-items: center; gap: 10px;
+  height: 54px; padding: 0 16px 0 20px;
+  border: 1px solid #d1d5db; border-radius: 9999px;
+  background: #fff; transition: border-color 0.15s, box-shadow 0.15s;
+}
+.search-pill { cursor: text; }
+
+.search-pill:hover, .overlay-pill:focus-within {
+  border-color: rgba(10,102,194,0.4);
+  box-shadow: 0 0 0 3px rgba(10,102,194,0.08);
+}
+
+.ico-search, .ico-camera {
+  flex-shrink: 0; display: flex; color: #9ca3af;
+}
+.ico-camera {
+  background: none; border: none; cursor: pointer;
+  padding: 4px; border-radius: 50%;
+}
+.ico-search svg, .ico-camera svg { width: 22px; height: 22px; }
+
+.search-pill:hover .ico-search,
+.overlay-pill:focus-within .ico-search,
+.ico-camera:hover { color: #0A66C2; }
+.ico-camera:active { background: rgba(10,102,194,0.10); }
+
+.shimmer-home { flex: 1; overflow: hidden; pointer-events: none; color: #9ca3af; font-size: 1rem; }
+.shimmer-home span { white-space: nowrap; letter-spacing: 0.01em; }
+
+.overlay-input-wrap { flex: 1; position: relative; height: 100%; display: flex; align-items: center; }
+
+.search-input {
+  position: absolute; inset: 0; width: 100%;
+  border: none; outline: none; background: transparent;
+  font-size: 1rem; color: #1f2937; caret-color: #0A66C2;
+  font-family: inherit; z-index: 2;
+}
+.search-input::placeholder { color: transparent; }
+
+.shimmer-overlay {
+  position: absolute; inset: 0; display: flex; align-items: center;
+  pointer-events: none; overflow: hidden; z-index: 1; color: #9ca3af; font-size: 1rem;
+}
+.shimmer-overlay span { white-space: nowrap; letter-spacing: 0.01em; }
+.search-input:not(:placeholder-shown) + .shimmer-overlay { display: none; }
+
+@media (prefers-color-scheme: dark) {
+  .search-pill, .overlay-pill { background: #2c2c2e; border-color: #3a3a3c; }
+  .search-pill:hover, .overlay-pill:focus-within {
+    border-color: #0a2a4a;
+    box-shadow: 0 0 0 3px rgba(10,102,194,0.15);
+  }
+  .search-input { color: #e5e5e7; }
+  .shimmer-home, .shimmer-overlay, .ico-search, .ico-camera { color: #6b7280; }
+}

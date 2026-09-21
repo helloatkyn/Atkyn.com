@@ -79,28 +79,34 @@
   /* ──────────────────────────────────────────────────────────────
      HYDRATE OG IMAGE
 
-     - wrap starts hidden (display:none)
-     - shown only after image successfully loads
-     - removed if no OG url or image errors
+     - wrap starts visibility:hidden  →  grid column space reserved,
+       no layout shift, no skeleton flash
+     - revealed (visibility:visible) only after image loads
+     - removed entirely if no OG url found or image errors
   ────────────────────────────────────────────────────────────── */
   function hydrateImg(imgEl, wrapEl) {
     var articleUrl = imgEl.dataset.url;
 
-    /* Reserve nothing until we know there's a real image */
-    wrapEl.style.display = 'none';
+    /*
+      visibility:hidden keeps the 112×78 grid cell intact
+      so the text column does not expand prematurely.
+      display:none would collapse the column.
+    */
+    wrapEl.style.visibility = 'hidden';
 
     fetchOg(articleUrl).then(function (ogSrc) {
       if (!imgEl.parentNode || !wrapEl.parentNode) return;
 
       if (!ogSrc) {
+        /* No image — collapse the column so text uses full width */
         wrapEl.remove();
         return;
       }
 
       imgEl.onload = function () {
         if (!wrapEl.parentNode) return;
-        wrapEl.style.display = '';          /* reveal the wrapper */
-        wrapEl.classList.add('loaded');     /* trigger CSS fade-in */
+        wrapEl.style.visibility = '';       /* restore visibility   */
+        wrapEl.classList.add('loaded');     /* CSS opacity 0 → 1    */
       };
 
       imgEl.onerror = function () {

@@ -3,176 +3,370 @@
   'use strict';
 
   var NEWS_API = '/api/news';
-  var OG_API   = '/api/news-og';
+
+  /* IMPORTANT:
+     /functions/api/og.js maps to /api/og on Cloudflare Pages. */
+  var OG_API   = '/api/og';
+
   var MAX      = 20;
 
   function esc(s) {
     return String(s)
-      .replace(/&/g,'&amp;').replace(/</g,'&lt;')
-      .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+      .replace(/&/g,'&amp;')
+      .replace(/</g,'&lt;')
+      .replace(/>/g,'&gt;')
+      .replace(/"/g,'&quot;');
   }
 
   function timeAgo(dateStr) {
     try {
+      if (!dateStr) return '';
+
       var d = new Date(dateStr);
       if (isNaN(d)) return dateStr || '';
+
       var diff = Date.now() - d.getTime();
+
+      if (diff < 0) return 'just now';
+
       var m = Math.floor(diff / 60000);
+
       if (m < 1)  return 'just now';
       if (m < 60) return m + 'm ago';
+
       var h = Math.floor(m / 60);
+
       if (h < 24) return h + 'h ago';
+
       return Math.floor(h / 24) + 'd ago';
-    } catch(_) { return dateStr || ''; }
+    } catch (_) {
+      return dateStr || '';
+    }
   }
 
-  /* ── OG fetch — in-memory cache per session ── */
+  /* ──────────────────────────────────────────────────────────────
+     OG CACHE — in-memory per session
+  ────────────────────────────────────────────────────────────── */
   var _ogCache = {};
 
   function fetchOg(articleUrl) {
-    if (!articleUrl) return Promise.resolve(null);
-    if (_ogCache[articleUrl] !== undefined) return Promise.resolve(_ogCache[articleUrl]);
-    return fetch(OG_API + '?url=' + encodeURIComponent(articleUrl))
-      .then(function(r) { return r.ok ? r.json() : { og: null }; })
-      .then(function(data) {
-        var img = (data && data.og) ? data.og : null;
+    if (!articleUrl) {
+      return Promise.resolve(null);
+    }
+
+    if (_ogCache[articleUrl] !== undefined) {
+      return Promise.resolve(_ogCache[articleUrl]);
+    }
+
+    return fetch(
+      OG_API + '?url=' + encodeURIComponent(articleUrl),
+      {
+        method: 'GET',
+        credentials: 'same-origin',
+        cache: 'default'
+      }
+    )
+      .then(function (r) {
+        if (!r.ok) {
+          throw new Error('OG HTTP ' + r.status);
+        }
+
+        return r.json();
+      })
+      .then(function (data) {
+        var img = (data && data.og) ? String(data.og) : null;
+
         _ogCache[articleUrl] = img;
+
         return img;
       })
-      .catch(function() { _ogCache[articleUrl] = null; return null; });
+      .catch(function () {
+        _ogCache[articleUrl] = null;
+        return null;
+      });
   }
 
-  /* ── Hydrate img.src with OG once fetched ──
-     Shows nothing until OG arrives — no low-res placeholder flash.
-     If OG fails, removes the img element entirely.              */
-  function hydrateImg(imgEl) {
+  /* ──────────────────────────────────────────────────────────────
+     HYDRATE OG IMAGE
+
+     The wrapper reserves the space immediately.
+     The actual image becomes visible only after successful load.
+  ────────────────────────────────────────────────────────────── */
+  function hydrateImg(imgEl, wrapEl) {
     var articleUrl = imgEl.dataset.url;
-    fetchOg(articleUrl).then(function(ogSrc) {
-      if (!imgEl.parentNode) return;      /* card already removed */
-      if (!ogSrc) { imgEl.remove(); return; }
-      imgEl.onerror = function() { imgEl.remove(); };
+
+    fetchOg(articleUrl).then(function (ogSrc) {
+      if (!imgEl.parentNode || !wrapEl.parentNode) return;
+
+      if (!ogSrc) {
+        wrapEl.remove();
+        return;
+      }
+
+      imgEl.onload = function () {
+        if (!wrapEl.parentNode) return;
+
+        wrapEl.classList.add('loaded');
+      };
+
+      imgEl.onerror = function () {
+        if (wrapEl.parentNode) {
+          wrapEl.remove();
+        }
+      };
+
       imgEl.src = ogSrc;
     });
   }
 
-  /* ── Build a news card ── */
-  function buildCard(item) {
-    var a = document.createElement('a');
-    a.className = 'news-card';
-    a.href   = item.url || '#';
-    a.target = '_blank';
-    a.rel    = 'noopener noreferrer';
-
+  /* ──────────────────────────────────────────────────────────────
+     META ROW
+  ────────────────────────────────────────────────────────────── */
+  function buildMeta(item) {
+    var source = item.source ? esc(item.source) : '';
     var ago = timeAgo(item.publishedDate || '');
 
-    /* Text body */
+    if (!source && !ago) {
+      return '';
+    }
+
+    var html = '<div class="news-meta">';
+
+    if (source) {
+      html += '<span class="news-source">' + source + '</span>';
+    }
+
+    if (source && ago) {
+      html += '<span class="news-meta-dot" aria-hidden="true"></span>';
+    }
+
+    if (ago) {
+      html += '<span class="news-time">' + esc(ago) + '</span>';
+    }
+
+    html += '</div>';
+
+    return html;
+  }
+
+  /* ──────────────────────────────────────────────────────────────
+     BUILD NEWS CARD
+  ────────────────────────────────────────────────────────────── */
+  function buildCard(item, isLead) {
+    var a = document.createElement('a');
+
+    a.className = 'news-card' + (isLead ? ' news-card--lead' : '');
+
+    a.href = item.url || '#';
+    a.target = '_blank';
+    a.rel = 'noopener noreferrer';
+
+    /* ── Text body ── */
     var body = document.createElement('div');
     body.className = 'news-card-body';
+
     body.innerHTML =
-      (item.source ? '<span class="news-source">' + esc(item.source) + '</span>' : '')
-      + '<div class="news-title">' + esc(item.title || '') + '</div>'
-      + (ago ? '<div class="news-time">' + esc(ago) + '</div>' : '');
+      buildMeta(item) +
+      '<div class="news-title">' +
+      esc(item.title || '') +
+      '</div>';
+
     a.appendChild(body);
 
-    /* Thumbnail — starts hidden, shown only after OG loads */
+    /* ── OG image wrapper ── */
     if (item.url) {
+      var wrap = document.createElement('div');
+      wrap.className = 'news-thumb-wrap';
+
       var img = document.createElement('img');
+
       img.className = 'news-thumb';
-      img.alt     = '';
+      img.alt = '';
+
       img.loading = 'lazy';
       img.decoding = 'async';
       img.referrerPolicy = 'no-referrer';
-      img.style.display = 'none';           /* hidden until OG arrives */
+
+      img.style.display = 'block';
+
       img.dataset.url = item.url;
-      a.appendChild(img);
 
-      /* Show once loaded so no layout shift */
-      img.onload = function() { img.style.display = 'block'; };
-      img.onerror = function() { img.remove(); };
+      wrap.appendChild(img);
+      a.appendChild(wrap);
 
-      hydrateImg(img);
+      hydrateImg(img, wrap);
     }
 
     return a;
   }
 
-  /* ── Ad card ── */
+  /* ──────────────────────────────────────────────────────────────
+     AD CARD
+  ────────────────────────────────────────────────────────────── */
   function buildAdCard(item) {
     var a = document.createElement('a');
-    a.className = 'news-ad-card';
-    a.href   = item.url || '#';
-    a.target = '_blank';
-    a.rel    = 'noopener noreferrer';
 
-    a.innerHTML =
-      '<div class="news-ad-badge">Ad</div>'
-      + '<div class="news-ad-body">'
-      + (item.source ? '<span class="news-source">' + esc(item.source) + '</span>' : '')
-      + '<div class="news-title">' + esc(item.title || '') + '</div>'
-      + '</div>'
-      + (item.img_src
-          ? '<img class="news-ad-thumb" src="' + esc(item.img_src) + '"'
-            + ' loading="lazy" decoding="async" onerror="this.remove()">'
-          : '');
+    a.className = 'news-ad-card';
+
+    a.href = item.url || '#';
+    a.target = '_blank';
+    a.rel = 'noopener noreferrer';
+
+    var badge = document.createElement('div');
+
+    badge.className = 'news-ad-badge';
+    badge.textContent = 'Ad';
+
+    a.appendChild(badge);
+
+    var body = document.createElement('div');
+
+    body.className = 'news-ad-body';
+
+    body.innerHTML =
+      buildMeta(item) +
+      '<div class="news-title">' +
+      esc(item.title || '') +
+      '</div>';
+
+    a.appendChild(body);
+
+    if (item.img_src) {
+      var img = document.createElement('img');
+
+      img.className = 'news-ad-thumb';
+
+      img.alt = '';
+
+      img.loading = 'lazy';
+      img.decoding = 'async';
+
+      img.referrerPolicy = 'no-referrer';
+
+      img.src = item.img_src;
+
+      img.onerror = function () {
+        img.remove();
+      };
+
+      a.appendChild(img);
+    }
+
     return a;
   }
 
-  /* ── Skeleton ── */
+  /* ──────────────────────────────────────────────────────────────
+     SKELETON
+  ────────────────────────────────────────────────────────────── */
   function showSkeleton(pc) {
     var html = '<div class="tab-skeleton">';
+
     for (var i = 0; i < 6; i++) {
-      html += '<div class="sk-card">'
-        + '<div class="sk-card-body">'
-        + '<div class="sk-line sk-src"></div>'
-        + '<div class="sk-line"></div>'
-        + '<div class="sk-line"></div>'
-        + '<div class="sk-line sk-short"></div>'
-        + '</div>'
-        + '<div class="sk-thumb"></div>'
-        + '</div>';
+      html +=
+        '<div class="sk-card">' +
+          '<div class="sk-card-body">' +
+            '<div class="sk-line sk-src"></div>' +
+            '<div class="sk-line"></div>' +
+            '<div class="sk-line"></div>' +
+            '<div class="sk-line sk-short"></div>' +
+          '</div>' +
+          '<div class="sk-thumb"></div>' +
+        '</div>';
     }
-    pc.innerHTML = html + '</div>';
+
+    html += '</div>';
+
+    pc.innerHTML = html;
   }
 
-  /* ── Main init ── */
+  /* ──────────────────────────────────────────────────────────────
+     MAIN INIT
+  ────────────────────────────────────────────────────────────── */
   window._atkynInit_news = function () {
     var pc = window._atkynPageContent;
+
     if (!pc) return;
 
     var q = '';
-    try { q = sessionStorage.getItem('atkyn_last_query') || ''; } catch(_) {}
+
+    try {
+      q = sessionStorage.getItem('atkyn_last_query') || '';
+    } catch (_) {}
 
     if (!q) {
-      pc.innerHTML = '<div class="tab-empty"><p>Search something to see news</p></div>';
+      pc.innerHTML =
+        '<div class="tab-empty">' +
+          '<p>Search something to see news</p>' +
+        '</div>';
+
       return;
     }
 
     showSkeleton(pc);
 
-    fetch(NEWS_API + '?q=' + encodeURIComponent(q))
-      .then(function(r) {
-        if (!r.ok) throw new Error('HTTP ' + r.status);
+    fetch(
+      NEWS_API + '?q=' + encodeURIComponent(q),
+      {
+        method: 'GET',
+        credentials: 'same-origin',
+        cache: 'default'
+      }
+    )
+      .then(function (r) {
+        if (!r.ok) {
+          throw new Error('HTTP ' + r.status);
+        }
+
         return r.json();
       })
-      .then(function(data) {
+      .then(function (data) {
         var results = (data.results || []).slice(0, MAX);
-        if (!results.length) throw new Error('empty');
+
+        if (!results.length) {
+          throw new Error('empty');
+        }
 
         var list = document.createElement('div');
+
         list.className = 'news-list';
 
-        results.forEach(function(item) {
-          if (item._isAd) { list.appendChild(buildAdCard(item)); return; }
-          list.appendChild(buildCard(item));
+        /*
+          First NON-AD story becomes the editorial lead.
+          Ads never consume the featured-story position.
+        */
+        var leadUsed = false;
+
+        results.forEach(function (item) {
+          if (item._isAd) {
+            list.appendChild(buildAdCard(item));
+            return;
+          }
+
+          var isLead = !leadUsed;
+
+          if (isLead) {
+            leadUsed = true;
+          }
+
+          list.appendChild(buildCard(item, isLead));
         });
 
         pc.innerHTML = '';
         pc.appendChild(list);
-        if (typeof window._atkynAnimateIn === 'function') window._atkynAnimateIn();
+
+        if (
+          typeof window._atkynAnimateIn === 'function'
+        ) {
+          window._atkynAnimateIn();
+        }
       })
-      .catch(function(err) {
+      .catch(function (err) {
         console.error('[atkyn news]', err);
-        pc.innerHTML = '<div class="tab-empty"><p>Could not load news</p></div>';
+
+        pc.innerHTML =
+          '<div class="tab-empty">' +
+            '<p>Could not load news</p>' +
+          '</div>';
       });
   };
 

@@ -4,7 +4,12 @@ Single source of truth for all colours in the Atkyn Search PWA.
 Change a value here → updates everywhere automatically.
 ════════════════════════════════════════════════════════════════ */
 
+@import url('https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&display=swap');
+
 :root {
+
+/* ── Typography ─────────────────────────────────────────────── */
+--font-primary: 'Google Sans', sans-serif;
 
 /* ── Brand ─────────────────────────────────────────────────── */
 --color-primary:        #0077B5;

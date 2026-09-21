@@ -178,14 +178,12 @@ background-color 0.16s ease,
 opacity 0.16s ease;
 }
 
-.pencil-btn svg {
-width: 22px;
-height: 22px;
-stroke: var(--color-text);
-stroke-width: 1.8;
-stroke-linecap: round;
-stroke-linejoin: round;
-fill: none;
+.pencil-btn i {
+font-size: 22px;
+line-height: 1;
+color: var(--color-text);
+
+transition: color 0.16s ease;
 }
 
 .pencil-btn:active {
@@ -194,8 +192,8 @@ opacity: 0.72;
 }
 
 @media (prefers-color-scheme: dark) {
-.pencil-btn svg {
-stroke: var(--color-text-dark-alt);
+.pencil-btn i {
+color: var(--color-text-dark-alt);
 }
 }
 

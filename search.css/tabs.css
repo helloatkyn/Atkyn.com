@@ -80,18 +80,10 @@
 
   padding: 0 6px;
 
-  font-family:
-    -apple-system,
-    BlinkMacSystemFont,
-    'Segoe UI',
-    Roboto,
-    Arial,
-    sans-serif;
-
-  font-size: 18px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+  font-size: 14px;
   font-weight: 500;
-
-  letter-spacing: -0.01em;
+  letter-spacing: 0.01em;
 
   color: var(--color-text-muted);
 
@@ -127,7 +119,7 @@
    ACTIVE
 ──────────────────────────────────────────────────────────────── */
 .tab.active {
-  font-weight: 600;
+  font-weight: 700;
   color: var(--color-text-strong);
 }
 
@@ -144,11 +136,11 @@
 ──────────────────────────────────────────────────────────────── */
 @media (prefers-color-scheme: dark) {
   .tab {
-    color: rgba(255, 255, 255, 0.52);
+    color: rgba(255, 255, 255, 0.48);
   }
 
   .tab:hover {
-    color: rgba(255, 255, 255, 0.88);
+    color: rgba(255, 255, 255, 0.92);
   }
 
   .tab.active {

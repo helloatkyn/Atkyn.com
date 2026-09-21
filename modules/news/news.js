@@ -3,7 +3,7 @@
   'use strict';
 
   var NEWS_API = '/api/news';
-  var OG_API   = '/api/og';
+  var OG_API   = '/api/news-og';
   var MAX      = 20;
 
   function esc(s) {
@@ -269,4 +269,3 @@
 
   window._atkynInit_news();
 }());
-      

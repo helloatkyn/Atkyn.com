@@ -1,5 +1,6 @@
 /* ════════════════════════════════════════════════════════════════
-   tabs.css — Tab bar
+   tabs.css — Google AI Mode style tab bar
+   [CLEAN · SPACED · NATIVE · GOOGLE-STYLE]
 ════════════════════════════════════════════════════════════════ */
 
 /* ────────────────────────────────────────────────────────────────
@@ -7,14 +8,17 @@
 ──────────────────────────────────────────────────────────────── */
 .tab-bar {
   flex-shrink: 0;
+
   display: flex;
   align-items: center;
+
   overflow-x: auto;
   overflow-y: hidden;
 
-  padding: 0 12px;
-  gap: 0;
-  height: 40px;
+  padding: 0 18px;
+  gap: 18px;
+
+  height: 58px;
 
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
@@ -26,20 +30,25 @@
   background: var(--color-bg);
 
   will-change: transform;
-  transform: translateZ(0);
+  transform: translate3d(0, 0, 0);
+
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
 
-  transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+  transition:
+    transform 0.28s cubic-bezier(0.4, 0, 0.2, 1),
+    background-color 0.3s ease,
+    border-color 0.3s ease;
 
   border-bottom: 1px solid var(--color-border-medium);
-  margin-bottom: 3px;
+
+  margin-bottom: 0;
 }
 
 @media (prefers-color-scheme: dark) {
   .tab-bar {
     background: var(--color-bg-dark);
-    border-bottom-color: rgba(255, 255, 255, 0.16);
+    border-bottom-color: rgba(255, 255, 255, 0.13);
   }
 }
 
@@ -47,14 +56,18 @@
   display: none;
 }
 
+/* Keep a little breathing room after the last tab */
 .tab-bar::after {
   content: '';
   flex-shrink: 0;
-  width: 12px;
+  width: 4px;
 }
 
+/* ────────────────────────────────────────────────────────────────
+   HIDDEN STATE
+──────────────────────────────────────────────────────────────── */
 .tab-bar.hide {
-  transform: translateY(-100%) translateZ(0);
+  transform: translate3d(0, -100%, 0);
 }
 
 /* ────────────────────────────────────────────────────────────────
@@ -64,16 +77,26 @@
   flex-shrink: 0;
 
   height: 100%;
-  padding: 0 14px;
 
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
-  font-size: 14px;
+  padding: 0 6px;
+
+  font-family:
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    Roboto,
+    Arial,
+    sans-serif;
+
+  font-size: 18px;
   font-weight: 500;
-  letter-spacing: 0.01em;
+
+  letter-spacing: -0.01em;
 
   color: var(--color-text-muted);
 
   background: transparent;
+
   border: 0;
   border-radius: 0;
 
@@ -93,30 +116,52 @@
   -webkit-tap-highlight-color: transparent;
 }
 
+/* ────────────────────────────────────────────────────────────────
+   HOVER
+──────────────────────────────────────────────────────────────── */
 .tab:hover {
   color: var(--color-text-strong);
 }
 
+/* ────────────────────────────────────────────────────────────────
+   ACTIVE
+──────────────────────────────────────────────────────────────── */
 .tab.active {
-  font-weight: 700;
+  font-weight: 600;
   color: var(--color-text-strong);
 }
 
+/* ────────────────────────────────────────────────────────────────
+   PRESS
+──────────────────────────────────────────────────────────────── */
 .tab:active {
-  opacity: 0.65;
-  transform: scale(0.98);
+  opacity: 0.62;
+  transform: none;
 }
 
+/* ────────────────────────────────────────────────────────────────
+   DARK MODE
+──────────────────────────────────────────────────────────────── */
 @media (prefers-color-scheme: dark) {
   .tab {
-    color: rgba(255, 255, 255, 0.48);
+    color: rgba(255, 255, 255, 0.52);
   }
 
   .tab:hover {
-    color: rgba(255, 255, 255, 0.92);
+    color: rgba(255, 255, 255, 0.88);
   }
 
   .tab.active {
     color: rgba(255, 255, 255, 0.96);
+  }
+}
+
+/* ────────────────────────────────────────────────────────────────
+   REDUCED MOTION
+──────────────────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .tab-bar,
+  .tab {
+    transition: none !important;
   }
 }

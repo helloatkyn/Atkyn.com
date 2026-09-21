@@ -1,159 +1,125 @@
 /* ════════════════════════════════════════════════════════════════
-   tabs.css — Google AI Mode style tab bar
-   [CLEAN · SPACED · NATIVE · GOOGLE-STYLE]
+tabs.css — Tab bar
 ════════════════════════════════════════════════════════════════ */
 
 /* ────────────────────────────────────────────────────────────────
-   TAB BAR
+TAB BAR
 ──────────────────────────────────────────────────────────────── */
 .tab-bar {
-  flex-shrink: 0;
+flex-shrink: 0;
+display: flex;
+align-items: center;
+overflow-x: auto;
+overflow-y: hidden;
 
-  display: flex;
-  align-items: center;
+padding: 0 12px;
+gap: 0;
+height: 40px;
 
-  overflow-x: auto;
-  overflow-y: hidden;
+-webkit-overflow-scrolling: touch;
+scrollbar-width: none;
 
-  padding: 0 18px;
-  gap: 18px;
+position: sticky;
+top: 0;
+z-index: 20;
 
-  height: 48px;
+background: var(--color-bg);
 
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: none;
+will-change: transform;
+transform: translateZ(0);
+backface-visibility: hidden;
+-webkit-backface-visibility: hidden;
 
-  position: sticky;
-  top: 0;
-  z-index: 20;
+transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
 
-  background: var(--color-bg);
+border-bottom: 1px solid rgba(0, 0, 0, 0.10);
+margin-bottom: 3px;
 
-  will-change: transform;
-  transform: translate3d(0, 0, 0);
-
-  backface-visibility: hidden;
-  -webkit-backface-visibility: hidden;
-
-  transition:
-    transform 0.28s cubic-bezier(0.4, 0, 0.2, 1),
-    background-color 0.3s ease,
-    border-color 0.3s ease;
-
-  border-bottom: 1px solid var(--color-border-medium);
-
-  margin-bottom: 0;
+box-shadow: none;
 }
 
 @media (prefers-color-scheme: dark) {
-  .tab-bar {
-    background: var(--color-bg-dark);
-    border-bottom-color: rgba(255, 255, 255, 0.13);
-  }
+.tab-bar {
+background: var(--color-bg-dark);
+border-bottom-color: rgba(255, 255, 255, 0.12);
+box-shadow: none;
+}
 }
 
 .tab-bar::-webkit-scrollbar {
-  display: none;
+display: none;
 }
 
-/* Keep a little breathing room after the last tab */
 .tab-bar::after {
-  content: '';
-  flex-shrink: 0;
-  width: 4px;
+content: '';
+flex-shrink: 0;
+width: 12px;
 }
 
-/* ────────────────────────────────────────────────────────────────
-   HIDDEN STATE
-──────────────────────────────────────────────────────────────── */
 .tab-bar.hide {
-  transform: translate3d(0, -100%, 0);
+transform: translateY(-100%) translateZ(0);
 }
 
 /* ────────────────────────────────────────────────────────────────
-   TAB
+TAB
 ──────────────────────────────────────────────────────────────── */
 .tab {
-  flex-shrink: 0;
+flex-shrink: 0;
 
-  height: 100%;
+height: 100%;
+padding: 0 14px;
 
-  padding: 0 6px;
+font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+font-size: 14px;
+font-weight: 500;
+letter-spacing: 0.01em;
 
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
-  font-size: 14px;
-  font-weight: 500;
-  letter-spacing: 0.01em;
+color: var(--color-text-muted);
 
-  color: var(--color-text-muted);
+background: transparent;
+border: 0;
+border-radius: 0;
 
-  background: transparent;
+cursor: pointer;
+white-space: nowrap;
 
-  border: 0;
-  border-radius: 0;
+display: flex;
+align-items: center;
+justify-content: center;
 
-  cursor: pointer;
-  white-space: nowrap;
+margin: 0;
 
-  display: flex;
-  align-items: center;
-  justify-content: center;
+transition:
+color 0.16s ease,
+opacity 0.16s ease;
 
-  margin: 0;
-
-  transition:
-    color 0.16s ease,
-    opacity 0.16s ease;
-
-  -webkit-tap-highlight-color: transparent;
+-webkit-tap-highlight-color: transparent;
 }
 
-/* ────────────────────────────────────────────────────────────────
-   HOVER
-──────────────────────────────────────────────────────────────── */
 .tab:hover {
-  color: var(--color-text-strong);
+color: var(--color-text-strong);
 }
 
-/* ────────────────────────────────────────────────────────────────
-   ACTIVE
-──────────────────────────────────────────────────────────────── */
 .tab.active {
-  font-weight: 700;
-  color: var(--color-text-strong);
+font-weight: 700;
+color: var(--color-text-strong);
 }
 
-/* ────────────────────────────────────────────────────────────────
-   PRESS
-──────────────────────────────────────────────────────────────── */
 .tab:active {
-  opacity: 0.62;
-  transform: none;
+opacity: 0.65;
+transform: scale(0.98);
 }
 
-/* ────────────────────────────────────────────────────────────────
-   DARK MODE
-──────────────────────────────────────────────────────────────── */
 @media (prefers-color-scheme: dark) {
-  .tab {
-    color: rgba(255, 255, 255, 0.48);
-  }
-
-  .tab:hover {
-    color: rgba(255, 255, 255, 0.92);
-  }
-
-  .tab.active {
-    color: rgba(255, 255, 255, 0.96);
-  }
+.tab {
+color: rgba(255, 255, 255, 0.48);
 }
 
-/* ────────────────────────────────────────────────────────────────
-   REDUCED MOTION
-──────────────────────────────────────────────────────────────── */
-@media (prefers-reduced-motion: reduce) {
-  .tab-bar,
-  .tab {
-    transition: none !important;
-  }
+.tab:hover {
+color: rgba(255, 255, 255, 0.92);
+}
+
+.tab.active {
+color: rgba(255, 255, 255, 0.96);
+}
 }

@@ -56,9 +56,8 @@ WORDMARK
 
   font-family: 'Google Sans', sans-serif;
   font-weight: 500;
-  font-size: 22px;
+  font-size: 24px;
   letter-spacing: -0.2px;
-  color: var(--color-text);
 
   user-select: none;
   -webkit-user-select: none;
@@ -72,10 +71,8 @@ WORDMARK
     transform 0.36s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-@media (prefers-color-scheme: dark) {
-  .logo-wordmark {
-    color: var(--color-text-dark-alt);
-  }
+.logo-wordmark span {
+  display: inline;
 }
 
 /* ────────────────────────────────────────────────────────────────

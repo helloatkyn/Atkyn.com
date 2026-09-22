@@ -1,8 +1,10 @@
 /* ATKYN — CHATBAR */
 
 .chatbar-wrap {
-  flex-shrink: 0;
-  position: relative;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
   z-index: 10;
   width: 100%;
   box-sizing: border-box;
@@ -256,4 +258,4 @@
 @media (prefers-reduced-motion: reduce) {
   .overlay-pill, .ico-plus, .ico-wave, .send-btn, .plus-menu { transition: none; }
   .shimmer-overlay span { animation: none; color: #6b7280; }
-                                          }
+}

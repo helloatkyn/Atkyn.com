@@ -25,7 +25,7 @@
 ──────────────────────────────────────────────────────────────── */
 .news-card {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 104px;
+  grid-template-columns: minmax(0, 1fr) 100px;
   align-items: center;
   column-gap: 12px;
   padding: 14px 16px;
@@ -40,7 +40,7 @@
   background: var(--color-press-light);
 }
 
-/* ── no image → full width block ── */
+/* no-image → full-width block */
 .news-card.news-card--no-image {
   display: block;
   padding: 15px 16px 18px;
@@ -49,21 +49,56 @@
 .news-card.news-card--no-image .news-title {
   font-size: 15px;
   font-weight: 600;
-  line-height: 1.42;
+  line-height: 1.44;
   -webkit-line-clamp: 5;
 }
 
 /* ────────────────────────────────────────────────────────────────
-   HERO CARD — ONE at top, full-width image + large title
+   CARD OUTER WRAPPERS
+   Hero and featured cards sit inside an outer div that adds
+   horizontal margin so the card appears as a rounded panel
+   floating inside the feed — not edge-to-edge.
+──────────────────────────────────────────────────────────────── */
+.news-card-outer {
+  padding: 10px 12px;
+  background: var(--color-bg);
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+
+.news-card-outer--hero {
+  padding-top: 10px;
+  padding-bottom: 4px;
+}
+
+.news-card-outer--featured {
+  padding-top: 10px;
+  padding-bottom: 4px;
+}
+
+/* ────────────────────────────────────────────────────────────────
+   HERO CARD — top card, one per feed
 ──────────────────────────────────────────────────────────────── */
 .news-card--hero {
   display: flex;
   flex-direction: column;
   padding: 0;
-  border-bottom: 3px solid var(--color-border-subtle);
+  border: none;
+  border-radius: 14px;
+  overflow: hidden;
+  background: var(--color-bg-alt);
+
+  /* subtle card shadow */
+  box-shadow:
+    0 1px 3px rgba(0,0,0,0.08),
+    0 4px 14px rgba(0,0,0,0.06);
 }
 
-/* hero image */
+.news-card--hero:active {
+  opacity: 0.92;
+  background: var(--color-bg-alt);
+}
+
+/* hero image wrapper */
 .news-card--hero .news-thumb-wrap {
   width: 100%;
   height: auto;
@@ -71,34 +106,79 @@
   border-radius: 0;
   border: none;
   background: var(--color-bg-alt);
-  /* no fixed height */
 }
 
-/* hero no-image: hide the empty wrap, show body full width */
-.news-card--hero.news-card--no-image {
-  display: block;
-}
-
+/* hero no-image */
 .news-card--hero.news-card--no-image .news-thumb-wrap {
   display: none;
 }
 
-/* hero body */
+/* hero text body */
 .news-card--hero .news-card-body {
-  padding: 13px 16px 18px;
+  padding: 13px 14px 16px;
 }
 
 .news-card--hero .news-title {
-  font-size: 22px;
-  font-weight: 740;
-  line-height: 1.27;
-  letter-spacing: -0.024em;
+  font-size: 20px;
+  font-weight: 720;
+  line-height: 1.28;
+  letter-spacing: -0.022em;
   -webkit-line-clamp: 5;
   margin-top: 5px;
 }
 
 /* ────────────────────────────────────────────────────────────────
-   CARD BODY
+   MID FEATURED CARD — appears 1–2 times in feed
+──────────────────────────────────────────────────────────────── */
+.news-card--featured {
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  border: none;
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--color-bg-alt);
+
+  box-shadow:
+    0 1px 3px rgba(0,0,0,0.07),
+    0 3px 10px rgba(0,0,0,0.05);
+}
+
+.news-card--featured:active {
+  opacity: 0.92;
+}
+
+/* featured image */
+.news-card--featured .news-thumb-wrap {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 16 / 9;
+  border-radius: 0;
+  border: none;
+  background: var(--color-bg-alt);
+}
+
+/* featured no-image */
+.news-card--featured.news-card--no-image .news-thumb-wrap {
+  display: none;
+}
+
+/* featured text */
+.news-card--featured .news-card-body {
+  padding: 12px 14px 15px;
+}
+
+.news-card--featured .news-title {
+  font-size: 17px;
+  font-weight: 680;
+  line-height: 1.3;
+  letter-spacing: -0.016em;
+  -webkit-line-clamp: 4;
+  margin-top: 5px;
+}
+
+/* ────────────────────────────────────────────────────────────────
+   CARD BODY (shared)
 ──────────────────────────────────────────────────────────────── */
 .news-card-body {
   min-width: 0;
@@ -165,12 +245,12 @@
 }
 
 /* ────────────────────────────────────────────────────────────────
-   THUMBNAIL
+   THUMBNAIL (standard cards)
 ──────────────────────────────────────────────────────────────── */
 .news-thumb-wrap {
   position: relative;
-  width: 104px;
-  height: 72px;
+  width: 100px;
+  height: 70px;
   flex-shrink: 0;
   overflow: hidden;
   border-radius: 8px;
@@ -208,7 +288,7 @@
   display: flex;
   flex-direction: column;
   gap: 10px;
-  padding: 14px 16px 16px;
+  padding: 13px 16px 15px;
   border-bottom: 1px solid var(--color-border-subtle);
   background: var(--color-bg);
 }
@@ -219,13 +299,13 @@
   text-transform: uppercase;
   letter-spacing: 0.07em;
   color: var(--color-text-subtle);
-  opacity: 0.7;
+  opacity: 0.65;
 }
 
 .news-suggestions-scroll {
   display: flex;
   flex-wrap: nowrap;
-  gap: 8px;
+  gap: 7px;
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
@@ -236,24 +316,26 @@
   display: none;
 }
 
+/* ── RECTANGULAR chips ── */
 .news-suggestion-chip {
   flex-shrink: 0;
   display: inline-flex;
   align-items: center;
-  height: 32px;
-  padding: 0 13px;
-  font-size: 13px;
+  height: 30px;
+  padding: 0 11px;
+  font-size: 12.5px;
   font-weight: 500;
   font-family: inherit;
   color: var(--color-text-strong);
   background: var(--color-bg-alt);
   border: 1px solid var(--color-border-subtle);
-  border-radius: 999px;
+  border-radius: 5px;          /* rectangular — just a tiny softness */
   cursor: pointer;
   white-space: nowrap;
   -webkit-tap-highlight-color: transparent;
-  transition: background-color 0.1s ease, border-color 0.1s ease;
+  transition: background-color 0.1s ease;
   outline: none;
+  letter-spacing: 0.01em;
 }
 
 .news-suggestion-chip:active {
@@ -305,7 +387,7 @@
 }
 
 /* ────────────────────────────────────────────────────────────────
-   LOADING — three dots
+   LOADING
 ──────────────────────────────────────────────────────────────── */
 .news-loading {
   display: flex;
@@ -356,15 +438,12 @@
    REDUCED MOTION
 ──────────────────────────────────────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {
-  .news-card,
-  .news-ad-card,
-  .news-thumb,
-  .news-suggestion-chip,
-  .news-loading span {
+  .news-card, .news-ad-card, .news-thumb,
+  .news-suggestion-chip, .news-loading span {
     transition: none !important;
     animation: none !important;
   }
-  .news-thumb { opacity: 1 !important; }
+  .news-thumb        { opacity: 1 !important; }
   .news-loading span { opacity: 0.5 !important; }
 }
 
@@ -372,36 +451,41 @@
    DARK MODE
 ──────────────────────────────────────────────────────────────── */
 @media (prefers-color-scheme: dark) {
-  .news-list { background: var(--color-bg-dark); }
+  .news-list,
+  .news-card-outer  { background: var(--color-bg-dark); }
 
   .news-card,
   .news-ad-card,
-  .news-suggestions {
-    border-bottom-color: var(--color-border-dark-subtle);
-    background: var(--color-bg-dark);
-  }
+  .news-card-outer,
+  .news-suggestions { border-bottom-color: var(--color-border-dark-subtle); }
 
-  .news-card--hero {
-    border-bottom-color: var(--color-border-dark-subtle);
-    border-bottom-width: 3px;
+  .news-card--hero,
+  .news-card--featured {
+    background: var(--color-bg-alt2-dark);
+    box-shadow:
+      0 1px 3px rgba(0,0,0,0.28),
+      0 4px 14px rgba(0,0,0,0.22);
   }
 
   .news-card:active,
   .news-ad-card:active { background: var(--color-press-dark); }
 
+  .news-card--hero:active,
+  .news-card--featured:active { opacity: 0.88; }
+
   .news-source,
-  .news-time { color: rgba(255,255,255,0.48); }
-  .news-meta-dot { background: rgba(255,255,255,0.38); }
+  .news-time { color: rgba(255,255,255,0.46); }
+  .news-meta-dot { background: rgba(255,255,255,0.36); }
   .news-title { color: var(--color-text-dark); }
 
   .news-thumb-wrap {
     background: var(--color-bg-alt2-dark);
     border-color: rgba(255,255,255,0.07);
   }
-  .news-thumb-wrap::after {
-    box-shadow: inset 0 0 0 1px rgba(255,255,255,0.05);
-  }
   .news-thumb { background: var(--color-bg-alt2-dark); }
+  .news-thumb-wrap::after { box-shadow: inset 0 0 0 1px rgba(255,255,255,0.05); }
+
+  .news-suggestions { background: var(--color-bg-dark); }
 
   .news-suggestion-chip {
     color: var(--color-text-dark);
@@ -412,5 +496,4 @@
 
   .news-ad-badge { color: #e6c700; background: rgba(255,230,0,0.13); }
   .news-ad-thumb { border-color: rgba(255,255,255,0.07); }
-   }
-                        
+}

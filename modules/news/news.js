@@ -34,8 +34,66 @@
   }
 
   /* ──────────────────────────────────────────────────────────────
-     EXTRACT SUGGESTION TOPICS FROM RESULTS
-     Pull 2-word phrases from titles — deduplicate — cap at 8
+     FEATURED INDEX PICKER
+     Rules:
+     - Index 0 (hero) always featured
+     - After hero, pick random non-ad indices for mid-feed
+       featured cards, but enforce min gap of 2 standard cards
+       between any two featured cards
+     - Total featured = 1 hero + 1 or 2 mid cards (random)
+  ────────────────────────────────────────────────────────────── */
+  function buildRenderPlan(results) {
+    /* plan[i] = 'hero' | 'featured' | 'standard' | 'ad' */
+    var plan          = [];
+    var nonAdIndices  = [];
+
+    results.forEach(function (item, i) {
+      if (item._isAd) {
+        plan[i] = 'ad';
+      } else {
+        plan[i] = 'standard';
+        nonAdIndices.push(i);
+      }
+    });
+
+    if (nonAdIndices.length === 0) return plan;
+
+    /* First non-ad = hero */
+    plan[nonAdIndices[0]] = 'hero';
+
+    /* Pick 1-2 more mid-featured from the rest,
+       ensuring >= 2 standard-card gap between featured cards */
+    var midCount        = 1 + Math.floor(Math.random() * 2); /* 1 or 2 */
+    var lastFeaturedPos = nonAdIndices[0];                    /* position in nonAdIndices array */
+    var picked          = 0;
+
+    /* Shuffle remaining non-ad positions */
+    var rest = nonAdIndices.slice(1);
+    for (var i = rest.length - 1; i > 0; i--) {
+      var j   = Math.floor(Math.random() * (i + 1));
+      var tmp = rest[i]; rest[i] = rest[j]; rest[j] = tmp;
+    }
+    rest.sort(function (a, b) { return a - b; }); /* keep order in feed */
+
+    for (var k = 0; k < rest.length && picked < midCount; k++) {
+      var idx      = rest[k];
+      /* Count standard (non-featured, non-ad) cards between last featured and this */
+      var gapCount = 0;
+      for (var g = lastFeaturedPos + 1; g < idx; g++) {
+        if (plan[g] === 'standard') gapCount++;
+      }
+      if (gapCount >= 2) {
+        plan[idx]       = 'featured';
+        lastFeaturedPos = idx;
+        picked++;
+      }
+    }
+
+    return plan;
+  }
+
+  /* ──────────────────────────────────────────────────────────────
+     SUGGESTION TOPICS
   ────────────────────────────────────────────────────────────── */
   var STOP_WORDS = {
     'the':1,'a':1,'an':1,'and':1,'or':1,'but':1,'in':1,'on':1,'at':1,
@@ -51,15 +109,11 @@
   function extractSuggestions(results, baseQuery) {
     var seen    = {};
     var phrases = [];
-
-    /* Base query words always go first */
-    var qWords = baseQuery.trim().toLowerCase().split(/\s+/);
+    var qWords  = baseQuery.trim().toLowerCase().split(/\s+/);
     qWords.forEach(function (w) { seen[w] = true; });
 
     results.forEach(function (item) {
       if (!item.title) return;
-
-      /* Clean title → word array */
       var words = item.title
         .replace(/[''""'"\-–—:,\.!?]/g, ' ')
         .split(/\s+/)
@@ -67,8 +121,6 @@
           var lw = w.toLowerCase();
           return w.length > 2 && !STOP_WORDS[lw];
         });
-
-      /* Single meaningful words */
       words.forEach(function (w) {
         var key = w.toLowerCase();
         if (!seen[key] && phrases.length < 8) {
@@ -103,15 +155,10 @@
       btn.type        = 'button';
 
       btn.addEventListener('click', function () {
-        try {
-          sessionStorage.setItem('atkyn_last_query', term);
-        } catch (_) {}
-
-        /* Re-run search with new query */
+        try { sessionStorage.setItem('atkyn_last_query', term); } catch (_) {}
         if (typeof window._atkynSearch === 'function') {
           window._atkynSearch(term);
         } else {
-          /* Fallback: dispatch a search event */
           window.dispatchEvent(
             new CustomEvent('atkyn:search', { detail: { q: term } })
           );
@@ -132,56 +179,40 @@
 
   function fetchOg(articleUrl) {
     if (!articleUrl) return Promise.resolve(null);
-    if (_ogCache[articleUrl] !== undefined) {
-      return Promise.resolve(_ogCache[articleUrl]);
-    }
+    if (_ogCache[articleUrl] !== undefined) return Promise.resolve(_ogCache[articleUrl]);
     return fetch(
       OG_API + '?url=' + encodeURIComponent(articleUrl),
       { method: 'GET', credentials: 'same-origin', cache: 'default' }
     )
-      .then(function (r) {
-        if (!r.ok) throw new Error('OG HTTP ' + r.status);
-        return r.json();
-      })
+      .then(function (r) { if (!r.ok) throw new Error('OG HTTP ' + r.status); return r.json(); })
       .then(function (data) {
         var img = (data && data.og) ? String(data.og) : null;
         _ogCache[articleUrl] = img;
         return img;
       })
-      .catch(function () {
-        _ogCache[articleUrl] = null;
-        return null;
-      });
+      .catch(function () { _ogCache[articleUrl] = null; return null; });
   }
 
   /* ──────────────────────────────────────────────────────────────
      HYDRATE OG IMAGE
-     Featured: image on top, text below
-     Standard: text left, thumb right
-     No-image: full-width text, no thumb column
   ────────────────────────────────────────────────────────────── */
   function hydrateImg(cardEl, imgEl, wrapEl) {
     var articleUrl = imgEl.dataset.url;
-
     fetchOg(articleUrl).then(function (ogSrc) {
       if (!cardEl.parentNode) return;
-
       if (!ogSrc) {
         cardEl.classList.add('news-card--no-image');
         if (wrapEl && wrapEl.parentNode) wrapEl.remove();
         return;
       }
-
       imgEl.onload = function () {
         if (!wrapEl || !wrapEl.parentNode) return;
         wrapEl.classList.add('loaded');
       };
-
       imgEl.onerror = function () {
         cardEl.classList.add('news-card--no-image');
         if (wrapEl && wrapEl.parentNode) wrapEl.remove();
       };
-
       imgEl.src = ogSrc;
     });
   }
@@ -193,7 +224,6 @@
     var source = item.source ? esc(item.source) : '';
     var ago    = timeAgo(item.publishedDate || '');
     if (!source && !ago) return '';
-
     var html = '<div class="news-meta">';
     if (source) html += '<span class="news-source">' + source + '</span>';
     if (source && ago) html += '<span class="news-meta-dot" aria-hidden="true"></span>';
@@ -203,16 +233,20 @@
   }
 
   /* ──────────────────────────────────────────────────────────────
-     BUILD HERO CARD (index 0 — always one, always full-width)
+     BUILD HERO CARD
+     - First card only
+     - Rounded card, image on top 16:9, title below, mx padding
   ────────────────────────────────────────────────────────────── */
   function buildHeroCard(item) {
+    var outer = document.createElement('div');
+    outer.className = 'news-card-outer news-card-outer--hero';
+
     var a = document.createElement('a');
     a.className = 'news-card news-card--hero';
     a.href      = item.url || '#';
     a.target    = '_blank';
     a.rel       = 'noopener noreferrer';
 
-    /* Image — top */
     var wrap = document.createElement('div');
     wrap.className = 'news-thumb-wrap';
 
@@ -223,11 +257,9 @@
     img.decoding       = 'async';
     img.referrerPolicy = 'no-referrer';
     img.dataset.url    = item.url;
-
     wrap.appendChild(img);
     a.appendChild(wrap);
 
-    /* Text — below */
     var body = document.createElement('div');
     body.className = 'news-card-body';
     body.innerHTML =
@@ -235,8 +267,48 @@
       '<div class="news-title">' + esc(item.title || '') + '</div>';
     a.appendChild(body);
 
+    outer.appendChild(a);
     hydrateImg(a, img, wrap);
-    return a;
+    return outer;
+  }
+
+  /* ──────────────────────────────────────────────────────────────
+     BUILD MID FEATURED CARD
+     - Rounded card with margin, image on top, title below
+  ────────────────────────────────────────────────────────────── */
+  function buildFeaturedCard(item) {
+    var outer = document.createElement('div');
+    outer.className = 'news-card-outer news-card-outer--featured';
+
+    var a = document.createElement('a');
+    a.className = 'news-card news-card--featured';
+    a.href      = item.url || '#';
+    a.target    = '_blank';
+    a.rel       = 'noopener noreferrer';
+
+    var wrap = document.createElement('div');
+    wrap.className = 'news-thumb-wrap';
+
+    var img = document.createElement('img');
+    img.className      = 'news-thumb';
+    img.alt            = '';
+    img.loading        = 'lazy';
+    img.decoding       = 'async';
+    img.referrerPolicy = 'no-referrer';
+    img.dataset.url    = item.url;
+    wrap.appendChild(img);
+    a.appendChild(wrap);
+
+    var body = document.createElement('div');
+    body.className = 'news-card-body';
+    body.innerHTML =
+      buildMeta(item) +
+      '<div class="news-title">' + esc(item.title || '') + '</div>';
+    a.appendChild(body);
+
+    outer.appendChild(a);
+    hydrateImg(a, img, wrap);
+    return outer;
   }
 
   /* ──────────────────────────────────────────────────────────────
@@ -249,7 +321,6 @@
     a.target    = '_blank';
     a.rel       = 'noopener noreferrer';
 
-    /* Text */
     var body = document.createElement('div');
     body.className = 'news-card-body';
     body.innerHTML =
@@ -257,7 +328,6 @@
       '<div class="news-title">' + esc(item.title || '') + '</div>';
     a.appendChild(body);
 
-    /* Thumb */
     if (item.url) {
       var wrap = document.createElement('div');
       wrap.className = 'news-thumb-wrap';
@@ -269,7 +339,6 @@
       img.decoding       = 'async';
       img.referrerPolicy = 'no-referrer';
       img.dataset.url    = item.url;
-
       wrap.appendChild(img);
       a.appendChild(wrap);
 
@@ -317,7 +386,7 @@
   }
 
   /* ──────────────────────────────────────────────────────────────
-     LOADING STATE
+     LOADING
   ────────────────────────────────────────────────────────────── */
   function showLoading(pc) {
     pc.innerHTML =
@@ -327,14 +396,10 @@
   }
 
   /* ──────────────────────────────────────────────────────────────
-     INSERT SUGGESTION STRIPS BETWEEN CARDS
-     Insert after card 3 and card 7 (if enough results)
-  ────────────────────────────────────────────────────────────── */
-  var SUGGESTION_POSITIONS = [3, 7];
-
-  /* ──────────────────────────────────────────────────────────────
      MAIN INIT
   ────────────────────────────────────────────────────────────── */
+  var SUGGESTION_POSITIONS = [3, 8]; /* after 3rd and 8th non-ad card */
+
   window._atkynInit_news = function () {
     var pc = window._atkynPageContent;
     if (!pc) return;
@@ -343,8 +408,7 @@
     try { q = sessionStorage.getItem('atkyn_last_query') || ''; } catch (_) {}
 
     if (!q) {
-      pc.innerHTML =
-        '<div class="tab-empty"><p>Search something to see news</p></div>';
+      pc.innerHTML = '<div class="tab-empty"><p>Search something to see news</p></div>';
       return;
     }
 
@@ -354,42 +418,38 @@
       NEWS_API + '?q=' + encodeURIComponent(q),
       { method: 'GET', credentials: 'same-origin', cache: 'default' }
     )
-      .then(function (r) {
-        if (!r.ok) throw new Error('HTTP ' + r.status);
-        return r.json();
-      })
+      .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
       .then(function (data) {
         var results = (data.results || []).slice(0, MAX);
         if (!results.length) throw new Error('empty');
 
-        /* Extract suggestions from ALL results */
+        var plan        = buildRenderPlan(results);
         var suggestions = extractSuggestions(results, q);
+        var list        = document.createElement('div');
+        list.className  = 'news-list';
 
-        var list = document.createElement('div');
-        list.className = 'news-list';
-
-        var nonAdCount = 0;  /* track non-ad card position for suggestions */
+        var nonAdCount = 0;
 
         results.forEach(function (item, i) {
-          if (item._isAd) {
+          var type = plan[i];
+
+          if (type === 'ad') {
             list.appendChild(buildAdCard(item));
             return;
           }
 
-          /* Hero = very first non-ad card */
-          if (nonAdCount === 0) {
+          if (type === 'hero') {
             list.appendChild(buildHeroCard(item));
+          } else if (type === 'featured') {
+            list.appendChild(buildFeaturedCard(item));
           } else {
             list.appendChild(buildCard(item));
           }
 
           nonAdCount++;
 
-          /* Insert suggestion strip at defined positions */
-          if (
-            suggestions.length > 0 &&
-            SUGGESTION_POSITIONS.indexOf(nonAdCount) !== -1
-          ) {
+          /* Suggestion strip */
+          if (suggestions.length > 0 && SUGGESTION_POSITIONS.indexOf(nonAdCount) !== -1) {
             list.appendChild(buildSuggestionStrip(suggestions));
           }
         });
@@ -397,16 +457,14 @@
         pc.innerHTML = '';
         pc.appendChild(list);
 
-        if (typeof window._atkynAnimateIn === 'function') {
-          window._atkynAnimateIn();
-        }
+        if (typeof window._atkynAnimateIn === 'function') window._atkynAnimateIn();
       })
       .catch(function (err) {
         console.error('[atkyn news]', err);
-        pc.innerHTML =
-          '<div class="tab-empty"><p>Could not load news</p></div>';
+        pc.innerHTML = '<div class="tab-empty"><p>Could not load news</p></div>';
       });
   };
 
   window._atkynInit_news();
 }());
+        

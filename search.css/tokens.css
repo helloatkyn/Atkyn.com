@@ -26,7 +26,7 @@ Change a value here → updates everywhere automatically.
 
 /* ── Surfaces (light) ──────────────────────────────────────── */
 --color-bg:             #ffffff;
---color-bg-alt:         #F0F0F0;   /* user bubble — Gemini exact match */
+--color-bg-alt:         #F0F0F0;
 --color-bg-card:        #F1F3F4;
 --color-bg-card-active: #F8F8F8;
 --color-bg-code:        #fafafa;
@@ -34,14 +34,14 @@ Change a value here → updates everywhere automatically.
 --color-bg-favicon:     #ffffff;
 
 /* ── Surfaces (dark) ────────────────────────────────────────── */
---color-bg-dark:        #1c1c1e;
---color-bg-alt-dark:    #2c2c2e;
---color-bg-alt2-dark:   #272727;
---color-bg-code-dark:   #2f2f2f;
---color-bg-favicon-dark:#3a3a3c;
---color-bg-thumb-dark:  #3a3a3c;
---color-bg-card-active-dark: #28282A;
---color-bg-plus-menu-dark: rgba(36, 36, 40, 0.78);
+--color-bg-dark:        #111113;
+--color-bg-alt-dark:    #1e1e21;
+--color-bg-alt2-dark:   #181819;
+--color-bg-code-dark:   #161618;
+--color-bg-favicon-dark:#252528;
+--color-bg-thumb-dark:  #252528;
+--color-bg-card-active-dark: #1a1a1d;
+--color-bg-plus-menu-dark: rgba(20, 20, 24, 0.82);
 
 /* ── Dark text ─────────────────────────────────────────────── */
 --color-text-dark:      #f0f0f2;
@@ -81,7 +81,7 @@ Change a value here → updates everywhere automatically.
 --color-glass-border:   rgba(255, 255, 255, 0.55);
 --color-glass-border-dark: rgba(255, 255, 255, 0.10);
 --color-tab-bar-bg:     rgba(255, 255, 255, 0.95);
---color-tab-bar-bg-dark:rgba(28, 28, 30, 0.95);
+--color-tab-bar-bg-dark:rgba(14, 14, 16, 0.97);
 
 /* ── Scrollbar / misc ───────────────────────────────────────── */
 --color-scrollbar-thumb: rgba(128, 128, 128, 0.3);
@@ -135,6 +135,6 @@ Change a value here → updates everywhere automatically.
 --color-code-num:       rgba(0, 0, 0, 0.26);
 --color-code-num-dark:  rgba(255, 255, 255, 0.24);
 --color-code-content:   #0d0d0d;
---color-inline-code-bg: #F0F0F0;   /* inline code — same as user bubble, Gemini style */
+--color-inline-code-bg: #F0F0F0;
 
 }

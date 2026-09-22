@@ -430,14 +430,13 @@ const themeMQ = window.matchMedia('(prefers-color-scheme: dark)');
 const reducedMotionMQ = window.matchMedia('(prefers-reduced-motion: reduce)');
 const _onThemeChange = () => {
 /*
-* Disable the freeze window. The previous 350ms freeze blocked legitimate
-* keyboard open/close events and caused the chatbar to become permanently
-* stuck if the initial double-RAF measurement was incorrect. The VisualViewport
-* API is the source of truth; any transient glitches will be self-corrected
-* by subsequent vvp.resize events.
+* Freeze window disabled. The previous 350ms freeze blocked legitimate
+* vvp.resize corrections after theme switch, causing _stableKbH to
+* become permanently stale when the keyboard closed during the freeze.
+* The snapshot logic below still protects against the initial repaint
+* glitch; subsequent vvp.resize events now self-correct immediately.
 */
 _themeFreezeUntil = 0;
-
 if (_vvpDebounce) {
 cancelAnimationFrame(_vvpDebounce);
 _vvpDebounce = 0;
@@ -453,7 +452,8 @@ _themeRefreshRaf = 0;
 /*
 * Snapshot the keyboard state BEFORE the double-RAF so that if the
 * theme repaint causes the VisualViewport to briefly report inconsistent
-* geometry, we do not discard the valid, stable keyboard height.
+* geometry (rawKb → 0 while the keyboard is still physically open),
+* we do not discard the valid, stable keyboard height.
 */
 const kbSnapshot = _stableKbH;
 _themeRefreshRaf = requestAnimationFrame(() => {
@@ -463,20 +463,21 @@ if (chatbarWrap) {
 _barHeight = chatbarWrap.offsetHeight;
 }
 /*
-* Measure the current viewport geometry after repaint. If the keyboard
-* was open before the theme change (kbSnapshot > 0) but the fresh
-* measurement differs from the snapshot — a transient artefact of the
-* theme repaint — keep the snapshot so the chatbar stays correctly
-* positioned. A real keyboard event will arrive via the normal
-* VisualViewport 'resize' path and win.
+* Measure the current viewport geometry after repaint.  If the
+* keyboard was open before the theme change (kbSnapshot > 0) but
+* the fresh measurement looks like zero — a transient artefact of
+* the theme repaint — keep the snapshot so the chatbar stays above
+* the keyboard.  A real keyboard-close event will arrive via the
+* normal VisualViewport 'resize' path and win immediately since
+* the freeze window is now disabled.
 */
 if (vvp) {
 const rawKb = Math.max(0, window.innerHeight - vvp.height - vvp.offsetTop);
 const freshKb = rawKb > 50 ? Math.round(rawKb) : 0;
-if (kbSnapshot > 0 && freshKb !== kbSnapshot) {
+if (kbSnapshot > 0 && freshKb === 0) {
 /*
-* Transient glitch during theme repaint: preserve the valid
-* keyboard state. Only refresh the spacer and reapply the
+* Transient zero during theme repaint: preserve the valid
+* keyboard state.  Only refresh the spacer and reapply the
 * correct transform without touching _stableKbH or
 * _keyboardOpen.
 */
@@ -512,8 +513,8 @@ return;
 }
 /*
 * Either the keyboard was already closed, or the fresh measurement
-* matches the snapshot (theme repaint did not disturb the viewport
-* geometry). Let the normal force-apply path handle everything.
+* is non-zero (theme repaint did not disturb the viewport geometry).
+* Let the normal force-apply path handle everything.
 */
 _setSpacerHeight(_barHeight + _stableKbH);
 _applyViewport(true);

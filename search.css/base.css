@@ -1,81 +1,69 @@
 /* ════════════════════════════════════════════════════════════════
-   base.css — Reset · Body · Scroll host
-   Native browser URL/address bar behavior preserved
+base.css — Reset · Body · Scroll host
 ════════════════════════════════════════════════════════════════ */
 
 *, *::before, *::after {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-  font-family: inherit;
-  -webkit-tap-highlight-color: transparent;
+box-sizing: border-box;
+margin: 0;
+padding: 0;
+font-family: inherit;
+-webkit-tap-highlight-color: transparent;
 }
 
 html {
-  height: 100%;
+height: 100%;
 }
 
 body {
-  position: fixed;
-  inset: 0;
-  height: 100%;
-  overflow: hidden;
-  overscroll-behavior: none;
+position: fixed;
+inset: 0;
+height: 100%;
+overflow: hidden;
+overscroll-behavior: none;
 
-  background: var(--color-bg);
-  color: var(--color-text);
+background: var(--color-bg);
+color: var(--color-text);
 
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
-    Roboto, Helvetica, Arial, sans-serif;
+/* Normal system/default font — no Google Sans */
+font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+Roboto, Helvetica, Arial, sans-serif;
 
-  font-size: 16px;
-  line-height: 1.6;
-  font-weight: 400;
+font-size: 16px;
+line-height: 1.6;
+font-weight: 400;
 
-  display: flex;
-  flex-direction: column;
+display: flex;
+flex-direction: column;
 
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  text-rendering: optimizeLegibility;
+-webkit-font-smoothing: antialiased;
+-moz-osx-font-smoothing: grayscale;
+text-rendering: optimizeLegibility;
 }
 
 @media (prefers-color-scheme: dark) {
-  body {
-    background: var(--color-bg-dark);
-    color: var(--color-text-dark);
-  }
+body {
+background: var(--color-bg-dark);
+color: var(--color-text-dark);
+}
 }
 
 /* ────────────────────────────────────────────────────────────────
-   SCROLL HOST
-   The application scrolls inside this container.
-   Do not use viewport/fullscreen hacks here.
+SCROLL HOST
 ──────────────────────────────────────────────────────────────── */
 
 .scroll-host {
-  flex: 1;
-  min-height: 0;
-  min-width: 0;
+flex: 1;
+min-height: 0;
 
-  overflow-y: auto;
-  overflow-x: hidden;
+overflow-y: auto;
+overflow-x: hidden;
 
-  /*
-   * Keep scrolling as a normal webpage interaction.
-   * Do not attempt to manipulate browser chrome/address-bar state.
-   */
-  -webkit-overflow-scrolling: touch;
+-webkit-overflow-scrolling: touch;
+overscroll-behavior-y: none;
 
-  overscroll-behavior-y: none;
-
-  /*
-   * Do not use smooth scrolling here.
-   * Keyboard/viewport transitions need immediate geometry updates.
-   */
-  scroll-behavior: auto;
+scroll-behavior: auto;
 }
 
 .scroll-host::-webkit-scrollbar {
-  display: none;
+display: none;
 }

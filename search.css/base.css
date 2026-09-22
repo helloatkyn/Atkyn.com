@@ -1,5 +1,6 @@
 /* ════════════════════════════════════════════════════════════════
    base.css — Reset · Body · Scroll host
+   Native browser URL/address bar behavior preserved
 ════════════════════════════════════════════════════════════════ */
 
 *, *::before, *::after {
@@ -24,7 +25,6 @@ body {
   background: var(--color-bg);
   color: var(--color-text);
 
-  /* Normal system/default font — no Google Sans */
   font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
     Roboto, Helvetica, Arial, sans-serif;
 
@@ -49,18 +49,30 @@ body {
 
 /* ────────────────────────────────────────────────────────────────
    SCROLL HOST
+   The application scrolls inside this container.
+   Do not use viewport/fullscreen hacks here.
 ──────────────────────────────────────────────────────────────── */
 
 .scroll-host {
   flex: 1;
   min-height: 0;
+  min-width: 0;
 
   overflow-y: auto;
   overflow-x: hidden;
 
+  /*
+   * Keep scrolling as a normal webpage interaction.
+   * Do not attempt to manipulate browser chrome/address-bar state.
+   */
   -webkit-overflow-scrolling: touch;
+
   overscroll-behavior-y: none;
 
+  /*
+   * Do not use smooth scrolling here.
+   * Keyboard/viewport transitions need immediate geometry updates.
+   */
   scroll-behavior: auto;
 }
 

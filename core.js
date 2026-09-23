@@ -1,7 +1,6 @@
 /* ═══════════════════════════════════════════════════════════════════
-   core.js — Atkyn shared UI logic [PRODUCTION]
-   scroll · header animation · keyboard positioning · theme refresh
-   chatbar entrance · plus menu · tab navigation
+   core.js — Atkyn shared UI logic [PRODUCTION HARDENED]
+   scroll · header animation · smart viewport tracking · tab navigation
    ════════════════════════════════════════════════════════════════════ */
 
 'use strict';
@@ -69,43 +68,18 @@ function resetScrollAccum() {
    KEYBOARD / VIEWPORT STATE
 ════════════════════════════════ */
 
-/* Public: read by input pointerdown handler. */
 let _keyboardOpen = false;
-
-/* Last committed keyboard inset in px. */
-let _stableKbH = 0;
-
-/* Chatbar height; updated by ResizeObserver. */
-let _barHeight = chatbarWrap ? chatbarWrap.offsetHeight : 0;
-
-/* Last transform written to chatbarWrap; skip-identical guard. */
+let _stableKbH    = 0;
+let _barHeight    = chatbarWrap ? chatbarWrap.offsetHeight : 0;
+let _lastSpacerH  = -1;
 let _lastCbTransform = '';
 
-/* Spacer skip-identical guard. */
-let _lastSpacerH = -1;
-
-/* VisualViewport RAF gate. */
+/* Viewport rendering state */
 let _vvpDirty = false;
 let _vvpRafId = 0;
-
-/*
- * Keyboard animation lifecycle.
- * _kbAnimating     — true from direction commit until transitionend/cancel or snap.
- * _kbSettleHandler — single active transitionend+cancel listener.
- * _kbDirection     — 'open' | 'close' | null.
- */
-let _kbAnimating     = false;
-let _kbSettleHandler = null;
-let _kbDirection     = null;
-
-/*
- * Entrance animation: opacity only.
- * Never touches transform, keyboard state, or will-change.
- */
-let _entranceOpacity       = false;
-let _entranceSettleHandler = null;
-
-/* ─── Helpers ─── */
+let _lastVvpTime = 0;
+let _cbTransitionTimer = null;
+let _entranceOpacity = false;
 
 function _setSpacerHeight(h) {
   if (!chatSpacer || h === _lastSpacerH) return;
@@ -126,79 +100,48 @@ function getViewportState() {
   return { keyboardInset, keyboardOpen: keyboardInset > 0 };
 }
 
-function _removeKbSettleHandler() {
-  if (!chatbarWrap || !_kbSettleHandler) return;
-  chatbarWrap.removeEventListener('transitionend',    _kbSettleHandler);
-  chatbarWrap.removeEventListener('transitioncancel', _kbSettleHandler);
-  _kbSettleHandler = null;
-}
-
-function _removeEntranceSettleHandler() {
-  if (!chatbarWrap || !_entranceSettleHandler) return;
-  chatbarWrap.removeEventListener('transitionend',    _entranceSettleHandler);
-  chatbarWrap.removeEventListener('transitioncancel', _entranceSettleHandler);
-  _entranceSettleHandler = null;
-}
-
-function _buildTransition(kbLeg, withOpacity) {
-  const legs = [];
-  if (kbLeg) legs.push(kbLeg);
-  if (withOpacity) legs.push('opacity 0.35s ease-out');
-  return legs.join(', ');
-}
-
-/* ─── _applyViewport — sole writer of chatbarWrap transform/transition/willChange ─── */
-
+/* ─── HARDENED _applyViewport: Zero Clipping & iOS Lag Fix ─── */
 function _applyViewport(opts) {
   if (!chatbarWrap) return;
 
   const { keyboardInset, keyboardOpen } = getViewportState();
-
-  const wasOpen = _keyboardOpen;
-  _stableKbH    = keyboardInset;
-  _keyboardOpen  = keyboardOpen;
-
   const targetTransform = keyboardInset > 0
     ? `translateY(-${keyboardInset}px) translateZ(0)`
     : 'translateZ(0)';
 
-  const force   = opts?.force   ?? false;
-  const instant = opts?.instant ?? _prefersReducedMotion;
+  const force = opts?.force ?? false;
+  let instant = opts?.instant ?? _prefersReducedMotion;
+
+  /* 
+   * SMART TRACKING: iOS updates the visualViewport frame-by-frame during keyboard 
+   * animation and page scrolling. Applying a CSS transition during these updates 
+   * causes extreme lag/clipping. If the jump is small (< 150px), it's a stream, 
+   * so we snap it instantly to match native speed perfectly.
+   */
+  const now = performance.now();
+  const insetDelta = Math.abs(keyboardInset - _stableKbH);
+  _lastVvpTime = now;
+
+  if (!instant && insetDelta > 0 && insetDelta < 150) {
+    instant = true;
+  }
+
+  const wasOpen = _keyboardOpen;
+  _stableKbH    = keyboardInset;
+  _keyboardOpen = keyboardOpen;
+  
+  _setSpacerHeight(_barHeight + keyboardInset);
 
   const transformChanged = targetTransform !== _lastCbTransform;
 
-  _setSpacerHeight(_barHeight + keyboardInset);
-
-  if (!transformChanged) {
-    /* No geometry change: handle entrance if pending, leave keyboard state alone. */
-    if (_entranceOpacity && !_entranceSettleHandler && !_kbAnimating && keyboardInset === 0) {
-      chatbarWrap.style.transition = _buildTransition('', true);
-      _startEntranceAnimation();
-    }
-    /*
-     * force+instant with no transform change (e.g. theme snap at same keyboard geometry).
-     * Snap-write the transform for DOM consistency, but do NOT touch keyboard lifecycle
-     * state (_kbAnimating, _kbDirection, _kbSettleHandler) — a keyboard animation may
-     * still be in flight. Only clear transition/willChange when no kb animation is active.
-     */
-    if (force && instant) {
-      if (_entranceOpacity) {
-        _entranceOpacity = false;
-        _removeEntranceSettleHandler();
-        chatbarWrap.style.opacity = '';
-      }
-      if (!_kbAnimating) {
-        _setWillChange(false);
-        chatbarWrap.style.transition = '';
-      }
-      chatbarWrap.style.transform = targetTransform;
-    }
+  if (!transformChanged && !force) {
+    if (_entranceOpacity && keyboardInset === 0) _runEntranceAnimation();
     return;
   }
 
   _lastCbTransform = targetTransform;
 
-  /* Scroll anchor when keyboard first opens. */
+  /* Scroll anchor when keyboard first opens */
   if (!wasOpen && keyboardOpen && scrollHost) {
     const chatVisible = !chatArea || chatArea.style.display !== 'none';
     if (chatVisible) {
@@ -207,115 +150,70 @@ function _applyViewport(opts) {
       scrollHost.scrollTop = anchor
         ? Math.max(0, anchor.offsetTop - 16)
         : scrollHost.scrollHeight;
+        
+      requestAnimationFrame(() => {
+        if (scrollHost) _lastScrollY = scrollHost.scrollTop;
+        resetScrollAccum();
+        _programmaticScroll = false;
+      });
     }
   }
 
-  requestAnimationFrame(() => {
-    if (scrollHost) _lastScrollY = scrollHost.scrollTop;
-    resetScrollAccum();
-    _programmaticScroll = false;
-  });
+  if (_cbTransitionTimer) {
+    clearTimeout(_cbTransitionTimer);
+    _cbTransitionTimer = null;
+  }
 
-  /* ── INSTANT SNAP ── */
+  /* ── INSTANT SNAP (Stream, Theme Switch, Reduced Motion) ── */
   if (instant) {
-    _kbAnimating = false;
-    _kbDirection = null;
-    _removeKbSettleHandler();
-
-    if (_entranceOpacity) {
-      _entranceOpacity = false;
-      _removeEntranceSettleHandler();
-      chatbarWrap.style.opacity = '';
-    }
-
+    _entranceOpacity = false;
     _setWillChange(false);
     chatbarWrap.style.transition = '';
-    chatbarWrap.style.transform  = targetTransform;
-    return;
-  }
-
-  /* ── ANIMATED UPDATE ── */
-
-  /* Entrance-only path: keyboard closed, no kb animation. Opacity only. */
-  if (keyboardInset === 0 && !_kbAnimating && _entranceOpacity) {
-    chatbarWrap.style.transition = _buildTransition('', true);
-    chatbarWrap.style.transform  = targetTransform;
-    if (!_entranceSettleHandler) _startEntranceAnimation();
-    return;
-  }
-
-  const newDirection    = keyboardInset > 0 ? 'open' : 'close';
-  const directionChanged = newDirection !== _kbDirection;
-
-  if (_kbAnimating && !directionChanged) {
-    /* Same-direction update: move target only; existing lifecycle stays. */
+    chatbarWrap.style.opacity = '';
     chatbarWrap.style.transform = targetTransform;
-    if (_entranceOpacity && !_entranceSettleHandler) {
-      const kbLeg = `transform ${keyboardInset > 0 ? '0.35s' : '0.28s'} ${EASE.keyboardMove}`;
-      chatbarWrap.style.transition = _buildTransition(kbLeg, true);
-      _startEntranceAnimation();
-    }
     return;
   }
 
-  /* New direction: replace previous lifecycle entirely. */
-  _kbDirection = newDirection;
-  _kbAnimating = true;
+  /* ── ANIMATED PATH (Android snap-jump > 150px) ── */
+  const durMs = keyboardInset > 0 ? 350 : 280;
+  const durS = (durMs / 1000).toFixed(2);
+  let trans = `transform ${durS}s ${EASE.keyboardMove}`;
 
-  _removeKbSettleHandler();
-
-  const dur   = keyboardInset > 0 ? '0.35s' : '0.28s';
-  const kbLeg = `transform ${dur} ${EASE.keyboardMove}`;
-
-  chatbarWrap.style.transition = _buildTransition(kbLeg, _entranceOpacity);
-  _setWillChange(true);
-  chatbarWrap.style.transform  = targetTransform;
-
-  const settle = (e) => {
-    if (e.target !== chatbarWrap || e.propertyName !== 'transform') return;
-    if (_kbSettleHandler !== settle) return;
-    _removeKbSettleHandler();
-    _kbAnimating = false;
-    _kbDirection = null;
-    chatbarWrap.style.transition = _buildTransition('', _entranceOpacity);
-    _setWillChange(false);
-  };
-
-  _kbSettleHandler = settle;
-  chatbarWrap.addEventListener('transitionend',    settle);
-  chatbarWrap.addEventListener('transitioncancel', settle);
-
-  if (_entranceOpacity && !_entranceSettleHandler) {
-    _startEntranceAnimation();
+  if (_entranceOpacity) {
+    trans += `, opacity 0.35s ease-out`;
+    chatbarWrap.style.opacity = '1';
+    _entranceOpacity = false;
   }
+
+  _setWillChange(true);
+  chatbarWrap.style.transition = trans;
+  chatbarWrap.style.transform = targetTransform;
+
+  _cbTransitionTimer = setTimeout(() => {
+    chatbarWrap.style.transition = '';
+    chatbarWrap.style.opacity = '';
+    _setWillChange(false);
+    _cbTransitionTimer = null;
+  }, durMs + 50);
 }
 
-function _startEntranceAnimation() {
+function _runEntranceAnimation() {
   if (!chatbarWrap || !_entranceOpacity) return;
+  _entranceOpacity = false;
 
+  if (_cbTransitionTimer) clearTimeout(_cbTransitionTimer);
+
+  chatbarWrap.style.transition = 'opacity 0.35s ease-out';
   chatbarWrap.style.opacity = '1';
 
-  const onEnd = (e) => {
-    if (e.target !== chatbarWrap || e.propertyName !== 'opacity') return;
-    if (_entranceSettleHandler !== onEnd) return;
-
-    _removeEntranceSettleHandler();
-    _entranceOpacity = false;
+  _cbTransitionTimer = setTimeout(() => {
+    chatbarWrap.style.transition = '';
     chatbarWrap.style.opacity = '';
-
-    const kbLeg = _kbAnimating
-      ? `transform ${_kbDirection === 'open' ? '0.35s' : '0.28s'} ${EASE.keyboardMove}`
-      : '';
-    chatbarWrap.style.transition = _buildTransition(kbLeg, false);
-  };
-
-  _entranceSettleHandler = onEnd;
-  chatbarWrap.addEventListener('transitionend',    onEnd);
-  chatbarWrap.addEventListener('transitioncancel', onEnd);
+    _cbTransitionTimer = null;
+  }, 400);
 }
 
 /* ─── fixViewport — single RAF gate ─── */
-
 function fixViewport() {
   if (!vvp || _vvpDirty) return;
   _vvpDirty = true;
@@ -327,7 +225,6 @@ function fixViewport() {
 }
 
 /* ─── VisualViewport wiring ─── */
-
 if (vvp) {
   vvp.addEventListener('resize', fixViewport, { passive: true });
   vvp.addEventListener('scroll', fixViewport, { passive: true });
@@ -344,13 +241,12 @@ if (vvp) {
 }
 
 /* ─── ResizeObserver ─── */
-
 if (chatbarWrap && typeof ResizeObserver === 'function') {
   new ResizeObserver((entries) => {
     if (_plusOpen) return;
     const entry = entries[entries.length - 1];
     if (!entry) return;
-    const bs   = entry.borderBoxSize;
+    const bs = entry.borderBoxSize;
     const barH = bs
       ? (bs[0] ? bs[0].blockSize : bs.blockSize)
       : entry.contentRect.height;
@@ -362,7 +258,6 @@ if (chatbarWrap && typeof ResizeObserver === 'function') {
 /* ════════════════════════════════
    CHATBAR ENTRANCE
 ════════════════════════════════ */
-
 (function _chatbarEntrance() {
   if (!chatbarWrap || _prefersReducedMotion) return;
   _entranceOpacity = true;
@@ -376,28 +271,20 @@ if (chatbarWrap && typeof ResizeObserver === 'function') {
 /* ════════════════════════════════
    THEME / PREFERENCE CHANGE
 ════════════════════════════════ */
-
 if (window.matchMedia) {
-  const themeMQ         = window.matchMedia('(prefers-color-scheme: dark)');
+  const themeMQ = window.matchMedia('(prefers-color-scheme: dark)');
   const reducedMotionMQ = window.matchMedia('(prefers-reduced-motion: reduce)');
 
   const _onThemeChange = () => {
-    /* Cancel any pending viewport RAF so we own the next measurement. */
     if (_vvpDirty) {
       cancelAnimationFrame(_vvpRafId);
       _vvpRafId = 0;
       _vvpDirty = false;
     }
-    /*
-     * Two RAFs: the first lets the browser apply the new theme colors and
-     * recalculate layout; the second reads VisualViewport after it has
-     * settled to the post-theme geometry (Android Chrome updates VVP on a
-     * separate cycle from the color-scheme repaint).
-     */
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
         if (chatbarWrap) _barHeight = chatbarWrap.offsetHeight;
-        _lastCbTransform = '';   /* force geometry re-evaluation */
+        _lastCbTransform = ''; 
         _applyViewport({ force: true, instant: true });
       });
     });
@@ -406,33 +293,24 @@ if (window.matchMedia) {
   const _onReducedMotionChange = (e) => {
     _prefersReducedMotion = e.matches;
     if (_prefersReducedMotion && _plusOpen && plusMenu) {
-      _cancelPlusAnimation();
+      if (_plusMenuTimer) clearTimeout(_plusMenuTimer);
       plusMenu.style.transition = 'none';
       plusMenu.style.transform  = '';
       plusMenu.style.opacity    = '';
-      plusMenu.classList.add('open');
-      plusBackdrop?.classList.add('open');
     }
     _applyViewport({ force: true, instant: true });
   };
 
-  if (themeMQ.addEventListener) {
-    themeMQ.addEventListener('change', _onThemeChange);
-  } else if (themeMQ.addListener) {
-    themeMQ.addListener(_onThemeChange);
-  }
+  if (themeMQ.addEventListener) themeMQ.addEventListener('change', _onThemeChange);
+  else if (themeMQ.addListener) themeMQ.addListener(_onThemeChange);
 
-  if (reducedMotionMQ.addEventListener) {
-    reducedMotionMQ.addEventListener('change', _onReducedMotionChange);
-  } else if (reducedMotionMQ.addListener) {
-    reducedMotionMQ.addListener(_onReducedMotionChange);
-  }
+  if (reducedMotionMQ.addEventListener) reducedMotionMQ.addEventListener('change', _onReducedMotionChange);
+  else if (reducedMotionMQ.addListener) reducedMotionMQ.addListener(_onReducedMotionChange);
 }
 
 /* ════════════════════════════════
    SEND BUTTON MODE
 ════════════════════════════════ */
-
 let _sendMode = 'send';
 
 function _setSendMode(mode) {
@@ -460,7 +338,6 @@ if (sendBtn) {
 /* ════════════════════════════════
    SCROLL TO MSG
 ════════════════════════════════ */
-
 window._lastUserMsgEl = null;
 
 function scrollToMsg(el) {
@@ -506,7 +383,6 @@ window.scrollToMsg = scrollToMsg;
 /* ════════════════════════════════
    HEADER / TAB SCROLL ANIMATION
 ════════════════════════════════ */
-
 const HIDE_ACCUM  = 40;
 const SHOW_ACCUM  = 55;
 const LOGO_THRESH = 10;
@@ -521,7 +397,7 @@ function updateHeader(now) {
     return;
   }
 
-  const sy    = scrollHost.scrollTop;
+  const sy = scrollHost.scrollTop;
   const delta = sy - _lastScrollY;
   if (delta === 0) return;
 
@@ -532,7 +408,7 @@ function updateHeader(now) {
     ? delta / dt
     : _velocityEMA * (1 - VELOCITY_ALPHA) + (delta / dt) * VELOCITY_ALPHA;
 
-  _lastScrollY    = sy;
+  _lastScrollY = sy;
   _lastScrollTime = now;
 
   if (sy <= LOGO_THRESH) {
@@ -583,7 +459,6 @@ if (scrollHost) {
 /* ════════════════════════════════
    INPUT & PILL
 ════════════════════════════════ */
-
 if (pill && input) {
   pill.addEventListener('pointerdown', (e) => {
     const target = e.target instanceof Element ? e.target : null;
@@ -614,68 +489,16 @@ if (pill && input) {
 }
 
 /* ════════════════════════════════
-   PLUS MENU
+   PLUS MENU - Hardened 
 ════════════════════════════════ */
-
-let _plusAnimationToken       = 0;
-let _plusAnimFrame            = 0;
-let _plusCloseFallbackTimer   = 0;
-let _plusTransitionEndHandler = null;
-let _plusMenuBaseStyles       = null;
-
-function _capturePlusMenuBaseStyles() {
-  if (!plusMenu || _plusMenuBaseStyles) return;
-  _plusMenuBaseStyles = {
-    transition: plusMenu.style.transition,
-    transform:  plusMenu.style.transform,
-    opacity:    plusMenu.style.opacity
-  };
-}
-
-function _restorePlusMenuBaseStyles() {
-  if (!plusMenu || !_plusMenuBaseStyles) return;
-  plusMenu.style.transition = _plusMenuBaseStyles.transition;
-  plusMenu.style.transform  = _plusMenuBaseStyles.transform;
-  plusMenu.style.opacity    = _plusMenuBaseStyles.opacity;
-  _plusMenuBaseStyles = null;
-}
-
-function _removePlusTransitionListener() {
-  if (!plusMenu || !_plusTransitionEndHandler) return;
-  plusMenu.removeEventListener('transitionend', _plusTransitionEndHandler);
-  _plusTransitionEndHandler = null;
-}
-
-function _cancelPlusAnimation() {
-  _plusAnimationToken += 1;
-  if (_plusAnimFrame)          { cancelAnimationFrame(_plusAnimFrame); _plusAnimFrame = 0; }
-  if (_plusCloseFallbackTimer) { clearTimeout(_plusCloseFallbackTimer); _plusCloseFallbackTimer = 0; }
-  _removePlusTransitionListener();
-}
-
-function _finishPlusOpen(token) {
-  if (!plusMenu || token !== _plusAnimationToken || !_plusOpen) return;
-  _removePlusTransitionListener();
-  plusMenu.style.transition = '';
-  plusMenu.style.transform  = '';
-  plusMenu.style.opacity    = '';
-}
-
-function _finishPlusClose(token) {
-  if (!plusMenu || token !== _plusAnimationToken || _plusOpen) return;
-  _removePlusTransitionListener();
-  if (_plusCloseFallbackTimer) { clearTimeout(_plusCloseFallbackTimer); _plusCloseFallbackTimer = 0; }
-  plusMenu.classList.remove('open');
-  _restorePlusMenuBaseStyles();
-}
+let _plusMenuTimer = null;
 
 function openPlusMenu() {
   if (!plusBtn || !plusMenu || !plusBackdrop || _plusOpen) return;
 
-  _capturePlusMenuBaseStyles();
-  _cancelPlusAnimation();
-
   _plusOpen = true;
+  if (_plusMenuTimer) { clearTimeout(_plusMenuTimer); _plusMenuTimer = null; }
+
   plusBackdrop.classList.add('open');
   plusMenu.classList.add('open');
 
@@ -686,40 +509,37 @@ function openPlusMenu() {
     return;
   }
 
-  const token = _plusAnimationToken;
-
+  // Prep for transition
   plusMenu.style.transition = 'none';
   plusMenu.style.transform  = 'scale(0.88) translateY(10px)';
   plusMenu.style.opacity    = '0';
 
-  _plusAnimFrame = requestAnimationFrame(() => {
-    _plusAnimFrame = 0;
-    if (token !== _plusAnimationToken || !_plusOpen) return;
+  // Force reflow immediately (fail-safe over RAF)
+  void plusMenu.offsetWidth;
 
-    plusMenu.style.transition = `transform 0.3s ${EASE.menuOpen}, opacity 0.2s ease-out`;
-    plusMenu.style.transform  = 'scale(1) translateY(0)';
-    plusMenu.style.opacity    = '1';
+  plusMenu.style.transition = `transform 0.3s ${EASE.menuOpen}, opacity 0.2s ease-out`;
+  plusMenu.style.transform  = 'scale(1) translateY(0)';
+  plusMenu.style.opacity    = '1';
 
-    const onOpen = (e) => {
-      if (e.target !== plusMenu || e.propertyName !== 'opacity' || token !== _plusAnimationToken) return;
-      _finishPlusOpen(token);
-    };
-    _plusTransitionEndHandler = onOpen;
-    plusMenu.addEventListener('transitionend', onOpen);
-  });
+  _plusMenuTimer = setTimeout(() => {
+    if (!_plusOpen) return;
+    plusMenu.style.transition = '';
+    plusMenu.style.transform  = '';
+    plusMenu.style.opacity    = '';
+    _plusMenuTimer = null;
+  }, 350);
 }
 
 function closePlusMenu() {
   if (!_plusOpen || !plusMenu || !plusBackdrop) return;
 
-  _cancelPlusAnimation();
   _plusOpen = false;
+  if (_plusMenuTimer) { clearTimeout(_plusMenuTimer); _plusMenuTimer = null; }
+
   plusBackdrop.classList.remove('open');
 
-  const token = _plusAnimationToken;
-
   if (_prefersReducedMotion) {
-    _finishPlusClose(token);
+    plusMenu.classList.remove('open');
     return;
   }
 
@@ -727,23 +547,14 @@ function closePlusMenu() {
   plusMenu.style.transform  = 'scale(0.88) translateY(10px)';
   plusMenu.style.opacity    = '0';
 
-  const onClose = (e) => {
-    if (
-      e.target !== plusMenu ||
-      e.propertyName !== 'opacity' ||
-      token !== _plusAnimationToken ||
-      _plusOpen
-    ) return;
-    _finishPlusClose(token);
-  };
-  _plusTransitionEndHandler = onClose;
-  plusMenu.addEventListener('transitionend', onClose);
-
-  _plusCloseFallbackTimer = window.setTimeout(() => {
-    _plusCloseFallbackTimer = 0;
-    if (token !== _plusAnimationToken || _plusOpen) return;
-    _finishPlusClose(token);
-  }, 320);
+  _plusMenuTimer = setTimeout(() => {
+    if (_plusOpen) return;
+    plusMenu.classList.remove('open');
+    plusMenu.style.transition = '';
+    plusMenu.style.transform  = '';
+    plusMenu.style.opacity    = '';
+    _plusMenuTimer = null;
+  }, 250);
 }
 
 if (plusBtn) {
@@ -753,9 +564,7 @@ if (plusBtn) {
   });
 }
 
-if (plusBackdrop) {
-  plusBackdrop.addEventListener('click', closePlusMenu);
-}
+if (plusBackdrop) plusBackdrop.addEventListener('click', closePlusMenu);
 
 if (plusMenu || plusBtn) {
   document.addEventListener('click', (e) => {
@@ -779,7 +588,6 @@ document.addEventListener('keydown', (e) => {
 /* ════════════════════════════════
    TAB BAR
 ════════════════════════════════ */
-
 let _currentTabKey = (() => {
   if (!tabBar) return 'ai';
   const a = tabBar.querySelector('.tab.active');
@@ -792,8 +600,7 @@ const _scriptLoadPromises = {};
 let _tabLoadRequestId     = 0;
 
 function _nextTabLoadRequestId() {
-  _tabLoadRequestId += 1;
-  return _tabLoadRequestId;
+  return ++_tabLoadRequestId;
 }
 
 function _isCurrentTabRequest(key, requestId) {
@@ -857,9 +664,9 @@ function _loadModuleCSS(key) {
   const id = `_atkyn_css_${key}`;
   if (document.getElementById(id)) return;
   const link = document.createElement('link');
-  link.id    = id;
-  link.rel   = 'stylesheet';
-  link.href  = `modules/${key}/${key}.css`;
+  link.id   = id;
+  link.rel  = 'stylesheet';
+  link.href = `modules/${key}/${key}.css`;
   document.head.appendChild(link);
 }
 
@@ -879,66 +686,43 @@ function _loadScript(src) {
   return _scriptLoadPromises[src];
 }
 
-/* ── Content swap animation ── */
-
-let _contentAnimRaf  = 0;
-let _contentAnimEnd  = null;
-let _contentAnimBase = null;
-
-function _clearContentAnimation() {
-  if (!pageContent) return;
-  if (_contentAnimRaf) { cancelAnimationFrame(_contentAnimRaf); _contentAnimRaf = 0; }
-  if (_contentAnimEnd) { pageContent.removeEventListener('transitionend', _contentAnimEnd); _contentAnimEnd = null; }
-  if (_contentAnimBase) {
-    pageContent.style.opacity    = _contentAnimBase.opacity;
-    pageContent.style.transform  = _contentAnimBase.transform;
-    pageContent.style.transition = _contentAnimBase.transition;
-    _contentAnimBase = null;
-  }
-}
+/* ── Content swap animation (Hardened) ── */
+let _contentAnimTimer = null;
 
 function _animateContentIn() {
   if (!pageContent) return;
-  _clearContentAnimation();
-  if (_prefersReducedMotion) return;
+  
+  if (_contentAnimTimer) { 
+    clearTimeout(_contentAnimTimer); 
+    _contentAnimTimer = null; 
+  }
 
-  _contentAnimBase = {
-    opacity:    pageContent.style.opacity,
-    transform:  pageContent.style.transform,
-    transition: pageContent.style.transition
-  };
+  if (_prefersReducedMotion) {
+    pageContent.style.opacity    = '';
+    pageContent.style.transform  = '';
+    pageContent.style.transition = '';
+    return;
+  }
 
+  pageContent.style.transition = 'none';
   pageContent.style.opacity    = '0';
   pageContent.style.transform  = 'translateY(8px)';
-  pageContent.style.transition = 'none';
 
-  _contentAnimRaf = requestAnimationFrame(() => {
-    _contentAnimRaf = 0;
+  void pageContent.offsetWidth; // Force Reflow
 
-    pageContent.style.transition = `opacity 0.22s ease-out, transform 0.28s ${EASE.contentSwap}`;
-    pageContent.style.opacity    = '1';
-    pageContent.style.transform  = 'translateY(0)';
+  pageContent.style.transition = `opacity 0.22s ease-out, transform 0.28s ${EASE.contentSwap}`;
+  pageContent.style.opacity    = '1';
+  pageContent.style.transform  = 'translateY(0)';
 
-    const onEnd = (e) => {
-      if (e.target !== pageContent || e.propertyName !== 'opacity') return;
-      if (_contentAnimEnd !== onEnd) return;
-      pageContent.removeEventListener('transitionend', onEnd);
-      _contentAnimEnd = null;
-      if (_contentAnimBase) {
-        pageContent.style.opacity    = _contentAnimBase.opacity;
-        pageContent.style.transform  = _contentAnimBase.transform;
-        pageContent.style.transition = _contentAnimBase.transition;
-        _contentAnimBase = null;
-      }
-    };
-
-    _contentAnimEnd = onEnd;
-    pageContent.addEventListener('transitionend', onEnd);
-  });
+  _contentAnimTimer = setTimeout(() => {
+    pageContent.style.transition = '';
+    pageContent.style.opacity    = '';
+    pageContent.style.transform  = '';
+    _contentAnimTimer = null;
+  }, 320);
 }
 
 /* ── Tab-bar click handler ── */
-
 let _activeTabEl = tabBar ? tabBar.querySelector('.tab.active') : null;
 
 if (tabBar) {
@@ -1011,7 +795,6 @@ if (tabBar) {
 /* ════════════════════════════════
    PUBLIC API
 ════════════════════════════════ */
-
 window._atkynModuleCache = _moduleCache;
 window._atkynPageContent = pageContent;
 window._atkynAnimateIn   = _animateContentIn;

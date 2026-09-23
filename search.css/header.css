@@ -49,7 +49,7 @@ box-shadow: none;
 LOGO
 ──────────────────────────────────────────────────────────────── */
 .logo-header img {
-height: 60px;          /* was 54px — slightly larger */
+height: 36px;          /* was 60px — reduced to fit header cleanly */
 width: auto;
 
 object-fit: contain;

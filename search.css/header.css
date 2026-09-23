@@ -49,13 +49,13 @@ box-shadow: none;
 LOGO
 ──────────────────────────────────────────────────────────────── */
 .logo-header img {
-height: 54px;
+height: 60px;          /* was 54px — slightly larger */
 width: auto;
 
 object-fit: contain;
 
 position: absolute;
-left: 22px;
+left: 28px;            /* was 22px — shifted right */
 top: 50%;
 
 transform: translate3d(0, -50%, 0);

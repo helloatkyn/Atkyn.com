@@ -8,7 +8,11 @@
   box-sizing: border-box;
   padding: 10px 18px calc(12px + env(safe-area-inset-bottom));
   background: transparent;
-  will-change: transform;
+  /* will-change: transform — REMOVED.
+     core.js applies transform directly when keyboard is active, which promotes
+     the element on-demand. A permanent compositor layer here is wasteful and
+     on some mobile WebKit builds causes the outer focus box-shadow on #pill
+     to clip at the layer paint boundary. No static hint needed. */
 }
 
 .overlay-pill {
@@ -256,4 +260,4 @@
 @media (prefers-reduced-motion: reduce) {
   .overlay-pill, .ico-plus, .ico-wave, .send-btn, .plus-menu { transition: none; }
   .shimmer-overlay span { animation: none; color: #6b7280; }
-}
+  }

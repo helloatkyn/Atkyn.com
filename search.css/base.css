@@ -1,0 +1,95 @@
+/* ════════════════════════════════════════════════════════════════
+base.css — Reset · Body · Scroll host
+════════════════════════════════════════════════════════════════ */
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  font-family: inherit;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html {
+  height: 100%;
+}
+
+/*
+ * ── Safe-area variables ──────────────────────────────────────
+ * Defined once here; referenced everywhere (chatbar, modules, sheets).
+ * env() fallback of 0px means no-op on non-notched devices.
+ */
+:root {
+  --sat: env(safe-area-inset-top,    0px);
+  --sar: env(safe-area-inset-right,  0px);
+  --sab: env(safe-area-inset-bottom, 0px);
+  --sal: env(safe-area-inset-left,   0px);
+}
+
+body {
+  position: fixed;
+  inset: 0;
+  height: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
+
+  background: var(--color-bg);
+  color: var(--color-text);
+
+  /* Normal system/default font — no Google Sans */
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Roboto, Helvetica, Arial, sans-serif;
+
+  font-size: 16px;
+  line-height: 1.6;
+  font-weight: 400;
+
+  display: flex;
+  flex-direction: column;
+
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+/*
+ * ── Dark mode — dual selector pattern ───────────────────────
+ *
+ * Responds to BOTH signals independently:
+ *   1. OS dark preference  (when no explicit app theme is active)
+ *   2. Explicit app theme  (core.js sets [data-theme="dark"] + .dark on <html>)
+ *
+ * The :not([data-theme="light"]) guard stops the media query firing
+ * when the user has explicitly chosen light mode on a dark-mode OS.
+ */
+@media (prefers-color-scheme: dark) {
+  html:not([data-theme="light"]) body {
+    background: var(--color-bg-dark);
+    color: var(--color-text-dark);
+  }
+}
+:is(html[data-theme="dark"], html.dark) body {
+  background: var(--color-bg-dark);
+  color: var(--color-text-dark);
+}
+
+/* ────────────────────────────────────────────────────────────────
+SCROLL HOST
+──────────────────────────────────────────────────────────────── */
+
+.scroll-host {
+  flex: 1;
+  min-height: 0;
+
+  overflow-y: auto;
+  overflow-x: hidden;
+
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: none;
+
+  scroll-behavior: auto;
+}
+
+.scroll-host::-webkit-scrollbar {
+  display: none;
+}

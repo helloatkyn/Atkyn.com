@@ -114,7 +114,18 @@ transform: scale(0.98);
 TAB SEPARATORS
 ──────────────────────────────────────────────────────────────── */
 .tab + .tab {
-border-left: 1px solid rgba(0, 0, 0, 0.10);
+position: relative;
+}
+
+.tab + .tab::before {
+content: '';
+position: absolute;
+left: 0;
+top: 50%;
+transform: translateY(-50%);
+height: 16px;
+width: 1px;
+background: rgba(0, 0, 0, 0.18);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -130,7 +141,7 @@ color: rgba(255, 255, 255, 0.92);
 color: rgba(255, 255, 255, 0.96);
 }
 
-.tab + .tab {
-border-left-color: rgba(255, 255, 255, 0.12);
+.tab + .tab::before {
+background: rgba(255, 255, 255, 0.18);
 }
 }

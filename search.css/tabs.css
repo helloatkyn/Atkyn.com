@@ -32,7 +32,7 @@ backface-visibility: hidden;
 
 transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
 
-border-bottom: 1.5px solid rgba(0, 0, 0, 0.15);
+border-bottom: 1px solid rgba(0, 0, 0, 0.10);
 margin-bottom: 3px;
 
 box-shadow: none;
@@ -41,7 +41,7 @@ box-shadow: none;
 @media (prefers-color-scheme: dark) {
 .tab-bar {
 background: var(--color-bg-dark);
-border-bottom-color: rgba(255, 255, 255, 0.18);
+border-bottom-color: rgba(255, 255, 255, 0.12);
 box-shadow: none;
 }
 }
@@ -110,24 +110,6 @@ opacity: 0.65;
 transform: scale(0.98);
 }
 
-/* ────────────────────────────────────────────────────────────────
-TAB SEPARATORS
-──────────────────────────────────────────────────────────────── */
-.tab + .tab {
-position: relative;
-}
-
-.tab + .tab::before {
-content: '';
-position: absolute;
-left: 0;
-top: 50%;
-transform: translateY(-50%);
-height: 16px;
-width: 1.5px;
-background: rgba(0, 0, 0, 0.25);
-}
-
 @media (prefers-color-scheme: dark) {
 .tab {
 color: rgba(255, 255, 255, 0.48);
@@ -139,9 +121,5 @@ color: rgba(255, 255, 255, 0.92);
 
 .tab.active {
 color: rgba(255, 255, 255, 0.96);
-}
-
-.tab + .tab::before {
-background: rgba(255, 255, 255, 0.25);
 }
 }

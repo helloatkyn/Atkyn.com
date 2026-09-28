@@ -453,11 +453,15 @@ function _commitViewport(now) {
       chatSpacer.style.height   = spacerH + 'px';
     }
 
-    // Then the purely cosmetic scroll anchor.
-    if (transformChanged && inset > 0 && _renderState.appliedInset === inset) {
-      _maybeAnchorOnKeyboardOpen(now);
-    }
+    // Then the purely cosmetic scroll anchor. It runs AFTER the geometry
+    // write, so no scroll bookkeeping can ever delay the visual correction.
+    if (inset > 0) _maybeAnchorOnKeyboardOpen(now);
   }
+
+  // The bar is back at its CSS baseline: re-arm the anchor for the next
+  // keyboard-open episode. Kept here (not in a second event listener) so there
+  // is exactly one owner of this state and no duplicate observers.
+  if (inset === 0) _clearAnchorLatch();
 
   _renderState.barHeight    = bar.height;
   _renderState.baseBottom   = bar.baseBottom;
@@ -1194,14 +1198,6 @@ if (tabBar) {
   }, { passive: true });
 }
 
-/* Keep the anchor latch in step with the rendered baseline. Checked outside
-   the commit's write path so it can never affect geometry. */
-if (vvp) {
-  vvp.addEventListener('resize', () => {
-    if (_renderState.appliedInset === 0) _clearAnchorLatch();
-  }, { passive: true });
-}
-
 /* ════════════════════════════════
    PUBLIC API
 ════════════════════════════════ */
@@ -1217,7 +1213,9 @@ window._atkynViewportDebug = () => ({
   appliedInset    : _renderState.appliedInset,
   appliedTransform: _renderState.appliedTransform,
   domTransform    : chatbarWrap ? chatbarWrap.style.transform : null,
-  stateMatchesDom : chatbarWrap ? (chatbarWrap.style.transform === _renderState.appliedTransform) : null,
+  stateMatchesDom : chatbarWrap
+    ? (_normalizeTransform(chatbarWrap.style.transform) === _renderState.appliedTransform)
+    : null,
   kbOpen          : _keyboardActive(),
   baseBottom      : _renderState.baseBottom,
   visualBottom    : _renderState.visualBottom,

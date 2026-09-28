@@ -60,8 +60,11 @@ function _commitViewport() {
     ? _barHeight
     : (_barHeight = Math.max(0, Math.round(chatbarWrap.offsetHeight)));
 
-  const rect       = chatbarWrap.getBoundingClientRect();
-  const baseBottom = rect.bottom + _appliedInset;
+  /* Direct untransformed bottom derivation (invariant to CSS transform & past state history) */
+  const parentTop = chatbarWrap.offsetParent
+    ? chatbarWrap.offsetParent.getBoundingClientRect().top
+    : 0;
+  const baseBottom = parentTop + chatbarWrap.offsetTop + height;
 
   const layoutH      = document.documentElement ? document.documentElement.clientHeight : (window.innerHeight || 0);
   const visualBottom = vvp ? (vvp.offsetTop + vvp.height) : layoutH;
@@ -89,10 +92,11 @@ function _commitViewport() {
   }
 }
 
-/* Re-measure after the browser applies theme CSS rules */
+/* Two-pass theme switch handler to ensure geometry settles post-reflow */
 function _onThemeChange() {
   _barHeight      = -1;
   _appliedSpacerH = -1;
+  _scheduleVP();
   _raf(() => {
     _barHeight = -1;
     _scheduleVP();
@@ -613,3 +617,4 @@ window._atkynModuleCache = _moduleCache;
 window._atkynPageContent = pageContent;
 window._atkynAnimateIn   = _animateContentIn;
 window._atkynLoadTab     = _loadTab;
+                        

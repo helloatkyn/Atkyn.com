@@ -54,7 +54,6 @@ let _isTabHidden = false;
 let _isTabScrolled = false;
 let _scrollRafId = null;
 let _programmaticScroll = false;
-let _plusOpen = false;
 let _programmaticScrollToken = 0;
 
 /* ── Velocity EMA ── */
@@ -65,26 +64,27 @@ const VELOCITY_ALPHA = 0.3;
 /* ── Keyboard / viewport state ── */
 let _cleanupRafId = 0;
 let _stableKbH = 0;
-let _kbAnimFrame = null;
 let _vvpDebounce = 0;
 let _barHeight = chatbarWrap ? chatbarWrap.offsetHeight : 0;
 let _lastChatbarTransform = '';
+let _keyboardStyleRestoreRaf = 0;
+let _keyboardStyleToken = 0;
+let _resizeObserverRaf = 0;
 
 /* ── Chatbar transition ownership ── */
 let _chatbarTransitionOwner = null;
-let _chatbarKeyboardTransitionToken = 0;
-let _chatbarKeyboardTransitionCleanup = null;
 let _chatbarEntranceActive = false;
 let _chatbarEntranceRaf = 0;
+let _chatbarEntranceFallbackTimer = 0;
 let _chatbarEntranceCleanup = null;
 let _chatbarEntranceBaseStyles = null;
 
 /* ── Spacer guard ── */
 let _lastSpacerH = -1;
 
-/* ── Theme-freeze window ── */
-let _themeFreezeUntil = 0;
+/* ── Theme refresh scheduling ── */
 let _themeRefreshRaf = 0;
+let _themeRefreshToken = 0;
 
 /* ── Public: last user message element ── */
 window._lastUserMsgEl = null;
@@ -121,6 +121,100 @@ function _nextTabLoadRequestId() {
 
 function _isCurrentTabRequest(key, requestId) {
   return requestId === _tabLoadRequestId && _currentTabKey === key;
+}
+
+/*
+ * The layout viewport and visual viewport are different coordinate spaces.
+ * `offsetTop` places the visual viewport inside the layout viewport, so
+ * `offsetTop + height` is the visual-viewport bottom in layout-viewport
+ * coordinates.  `documentElement.clientHeight` is the layout-viewport
+ * height and is preferred over window.innerHeight because innerHeight can
+ * remain stale in some mobile/WebView configurations.
+ *
+ * With interactive-widget=resizes-content, the layout viewport itself is
+ * reduced by the IME, so the two bottoms converge and this returns ~0.
+ * Where the browser only resizes the visual viewport, the difference is
+ * the portion of the layout viewport hidden by the keyboard.
+ */
+function _getLayoutViewportHeight() {
+  const docHeight = document.documentElement ? document.documentElement.clientHeight : 0;
+  if (Number.isFinite(docHeight) && docHeight > 0) return docHeight;
+
+  const innerHeight = window.innerHeight;
+  return Number.isFinite(innerHeight) && innerHeight > 0 ? innerHeight : 0;
+}
+
+function _isEditableElement(el) {
+  if (!el || !(el instanceof Element)) return false;
+  if (el.isContentEditable) return true;
+  if (el instanceof HTMLTextAreaElement) return true;
+  if (el instanceof HTMLInputElement) {
+    const type = (el.type || 'text').toLowerCase();
+    return !['button', 'checkbox', 'color', 'file', 'hidden', 'image', 'radio', 'range', 'reset', 'submit'].includes(type);
+  }
+  return false;
+}
+
+function _hasRelevantKeyboardFocus() {
+  const active = document.activeElement;
+  return _isEditableElement(active);
+}
+
+function _measureKeyboardInset() {
+  if (!vvp || !chatbarWrap) return 0;
+
+  const layoutHeight = _getLayoutViewportHeight();
+  if (!(layoutHeight > 0)) return 0;
+
+  const vvHeight = Number(vvp.height);
+  const vvOffsetTop = Number(vvp.offsetTop);
+  if (!Number.isFinite(vvHeight) || !Number.isFinite(vvOffsetTop) || vvHeight < 0) {
+    return 0;
+  }
+
+  const visualBottom = Math.max(0, vvOffsetTop) + vvHeight;
+  const rawInset = Math.max(0, layoutHeight - visualBottom);
+
+  /*
+   * When closed, require a meaningful geometry delta before declaring an
+   * IME inset.  This prevents ordinary browser-UI movement from being
+   * promoted to keyboard state. Once the keyboard is already considered
+   * open, keep tracking every positive pixel until the geometry reaches 0;
+   * this prevents the final keyboard-closing frames from clipping the pill.
+   */
+  if (_stableKbH <= 0) {
+    if (!_hasRelevantKeyboardFocus() || rawInset <= 50) return 0;
+  } else if (rawInset <= 0.5) {
+    return 0;
+  }
+
+  return Math.max(0, Math.ceil(rawInset));
+}
+
+function _cancelKeyboardRestoreRaf() {
+  if (_keyboardStyleRestoreRaf) {
+    cancelAnimationFrame(_keyboardStyleRestoreRaf);
+    _keyboardStyleRestoreRaf = 0;
+  }
+}
+
+function _scheduleKeyboardTransitionRestore(token) {
+  _cancelKeyboardRestoreRaf();
+
+  _keyboardStyleRestoreRaf = requestAnimationFrame(() => {
+    _keyboardStyleRestoreRaf = 0;
+
+    if (
+      token !== _keyboardStyleToken ||
+      _keyboardOpen ||
+      !chatbarWrap
+    ) {
+      return;
+    }
+
+    chatbarWrap.style.transition = '';
+    _chatbarTransitionOwner = null;
+  });
 }
 
 /* ════════════════════════════════
@@ -219,6 +313,11 @@ function _cancelChatbarEntrance() {
     _chatbarEntranceRaf = 0;
   }
 
+  if (_chatbarEntranceFallbackTimer) {
+    clearTimeout(_chatbarEntranceFallbackTimer);
+    _chatbarEntranceFallbackTimer = 0;
+  }
+
   if (_chatbarEntranceCleanup) {
     _chatbarEntranceCleanup();
     _chatbarEntranceCleanup = null;
@@ -237,29 +336,42 @@ function _cancelChatbarEntrance() {
 }
 
 function _setSpacerHeight(h) {
-  if (!chatSpacer || h === _lastSpacerH) return;
-  _lastSpacerH = h;
-  chatSpacer.style.height = h + 'px';
+  if (!chatSpacer || !Number.isFinite(h)) return;
+
+  const safeH = Math.max(0, Math.ceil(h));
+  if (safeH === _lastSpacerH) return;
+
+  _lastSpacerH = safeH;
+  chatSpacer.style.height = safeH + 'px';
 }
 
 if (chatbarWrap) {
   const _barResizeObserver = typeof ResizeObserver === 'function'
     ? new ResizeObserver((entries) => {
-      if (performance.now() < _themeFreezeUntil) return;
-      /* Do not let plus-menu DOM changes trigger a spacer recalculation.
-         The chatbar height never changes when the plus menu opens or closes. */
-      if (_plusOpen) return;
-
       const entry = entries[entries.length - 1];
       if (!entry) return;
 
       const borderBoxSize = entry.borderBoxSize;
-      const barH = borderBoxSize
+      const measuredH = borderBoxSize
         ? (borderBoxSize[0] ? borderBoxSize[0].blockSize : borderBoxSize.blockSize)
         : entry.contentRect.height;
 
-      _barHeight = Math.round(barH);
-      _setSpacerHeight(_barHeight + _stableKbH);
+      if (!Number.isFinite(measuredH)) return;
+
+      /*
+       * Measure here, but defer the spacer write to the next frame.  The
+       * observer must never synchronously write layout in the same delivery
+       * phase that produced the measurement; doing so can create feedback
+       * loops when the wrapper participates in the same layout tree.
+       */
+      _barHeight = Math.max(0, Math.ceil(measuredH));
+
+      if (_resizeObserverRaf) return;
+
+      _resizeObserverRaf = requestAnimationFrame(() => {
+        _resizeObserverRaf = 0;
+        _setSpacerHeight(_barHeight + _stableKbH);
+      });
     })
     : null;
 
@@ -293,6 +405,11 @@ if (chatbarWrap) {
     _chatbarEntranceActive = false;
     _chatbarEntranceRaf = 0;
 
+    if (_chatbarEntranceFallbackTimer) {
+      clearTimeout(_chatbarEntranceFallbackTimer);
+      _chatbarEntranceFallbackTimer = 0;
+    }
+
     if (_chatbarEntranceCleanup) {
       _chatbarEntranceCleanup();
       _chatbarEntranceCleanup = null;
@@ -324,9 +441,17 @@ if (chatbarWrap) {
     finish();
   };
 
+  const onTransitionCancel = (e) => {
+    if (e.target !== chatbarWrap || e.propertyName !== 'transform' || ended) return;
+    ended = true;
+    finish();
+  };
+
   chatbarWrap.addEventListener('transitionend', onTransitionEnd);
+  chatbarWrap.addEventListener('transitioncancel', onTransitionCancel);
   _chatbarEntranceCleanup = () => {
     chatbarWrap.removeEventListener('transitionend', onTransitionEnd);
+    chatbarWrap.removeEventListener('transitioncancel', onTransitionCancel);
   };
 
   _chatbarEntranceRaf = requestAnimationFrame(() => {
@@ -344,7 +469,8 @@ if (chatbarWrap) {
    * transitionend is the primary completion signal. A conservative fallback
    * handles environments where a transform transition is interrupted early.
    */
-  window.setTimeout(() => {
+  _chatbarEntranceFallbackTimer = window.setTimeout(() => {
+    _chatbarEntranceFallbackTimer = 0;
     if (_chatbarEntranceActive && !_keyboardOpen && ended === false) {
       finish();
     }
@@ -352,68 +478,31 @@ if (chatbarWrap) {
 })();
 
 /* ── Keyboard / VisualViewport positioning ── */
-function _clearKeyboardTransitionListener() {
-  if (_chatbarKeyboardTransitionCleanup) {
-    _chatbarKeyboardTransitionCleanup();
-    _chatbarKeyboardTransitionCleanup = null;
-  }
-}
-
-function _watchKeyboardTransition(token, expectedTransform) {
-  if (!chatbarWrap) return;
-
-  _clearKeyboardTransitionListener();
-
-  const finish = () => {
-    if (
-      token !== _chatbarKeyboardTransitionToken ||
-      _chatbarTransitionOwner !== 'keyboard'
-    ) {
-      return;
-    }
-
-    _clearKeyboardTransitionListener();
-    chatbarWrap.style.transition = '';
-    _chatbarTransitionOwner = null;
-  };
-
-  const onEnd = (e) => {
-    if (
-      e.target === chatbarWrap &&
-      e.propertyName === 'transform' &&
-      chatbarWrap.style.transform === expectedTransform
-    ) {
-      finish();
-    }
-  };
-
-  const onCancel = (e) => {
-    if (e.target === chatbarWrap && e.propertyName === 'transform') {
-      finish();
-    }
-  };
-
-  chatbarWrap.addEventListener('transitionend', onEnd);
-  chatbarWrap.addEventListener('transitioncancel', onCancel);
-
-  _chatbarKeyboardTransitionCleanup = () => {
-    chatbarWrap.removeEventListener('transitionend', onEnd);
-    chatbarWrap.removeEventListener('transitioncancel', onCancel);
-  };
-}
-
 function _applyViewport(force = false) {
   if (!vvp || !chatbarWrap) return;
-  if (!force && performance.now() < _themeFreezeUntil) return;
 
-  const rawKb = Math.max(0, window.innerHeight - vvp.height - vvp.offsetTop);
-  const kbHeight = rawKb > 50 ? Math.round(rawKb) : 0;
-
-  if (!force && kbHeight === _stableKbH) return;
-
+  const kbHeight = _measureKeyboardInset();
   const wasOpen = _stableKbH > 0;
 
-  if (_chatbarEntranceActive) {
+  /*
+   * During the initial/normal entrance animation, a closed viewport must not
+   * steal transform ownership from the entrance system.  A real keyboard
+   * inset is different: it immediately becomes the authoritative owner.
+   */
+  if (_chatbarEntranceActive && kbHeight === 0) {
+    _stableKbH = 0;
+    _keyboardOpen = false;
+    _setSpacerHeight(_barHeight);
+    return;
+  }
+
+  if (!force && kbHeight === _stableKbH) {
+    _keyboardOpen = kbHeight > 0;
+    _setSpacerHeight(_barHeight + kbHeight);
+    return;
+  }
+
+  if (kbHeight > 0 && _chatbarEntranceActive) {
     _cancelChatbarEntrance();
   }
 
@@ -424,45 +513,24 @@ function _applyViewport(force = false) {
     ? `translateY(-${kbHeight}px) translateZ(0)`
     : 'translateZ(0)';
 
-  if (force || transform !== _lastChatbarTransform) {
-    if (_kbAnimFrame) {
-      cancelAnimationFrame(_kbAnimFrame);
-      _kbAnimFrame = null;
-    }
+  if (force || transform !== _lastChatbarTransform || wasOpen !== _keyboardOpen) {
+    _cancelKeyboardRestoreRaf();
+    _keyboardStyleToken += 1;
+    _chatbarTransitionOwner = 'keyboard';
 
-    _chatbarKeyboardTransitionToken += 1;
-    const transitionToken = _chatbarKeyboardTransitionToken;
-    _clearKeyboardTransitionListener();
-
-    if (force || _prefersReducedMotion) {
-      _chatbarTransitionOwner = 'keyboard';
-      chatbarWrap.style.transition = 'none';
-      chatbarWrap.style.transform = transform;
-
-      _kbAnimFrame = requestAnimationFrame(() => {
-        _kbAnimFrame = null;
-
-        if (
-          transitionToken === _chatbarKeyboardTransitionToken &&
-          _stableKbH === kbHeight &&
-          _chatbarTransitionOwner === 'keyboard'
-        ) {
-          chatbarWrap.style.transition = '';
-          _chatbarTransitionOwner = null;
-        }
-      });
-    } else {
-      _chatbarTransitionOwner = 'keyboard';
-
-      const dur = kbHeight > 0 ? '0.35s' : '0.28s';
-      const ease = kbHeight > 0 ? EASE.keyboardUp : EASE.keyboardDown;
-
-      chatbarWrap.style.transition = `transform ${dur} ${ease}`;
-      chatbarWrap.style.transform = transform;
-      _watchKeyboardTransition(transitionToken, transform);
-    }
-
+    /*
+     * VisualViewport can report many intermediate values while the OSK is
+     * moving.  A CSS transition here would animate toward obsolete values
+     * and visibly lag behind the physical keyboard.  Geometry tracking must
+     * therefore be instantaneous; the OSK supplies the native motion itself.
+     */
+    chatbarWrap.style.transition = 'none';
+    chatbarWrap.style.transform = transform;
     _lastChatbarTransform = transform;
+
+    if (kbHeight === 0) {
+      _scheduleKeyboardTransitionRestore(_keyboardStyleToken);
+    }
   }
 
   _setSpacerHeight(_barHeight + kbHeight);
@@ -490,13 +558,43 @@ function _applyViewport(force = false) {
   });
 }
 
-function fixViewport() {
-  if (!vvp || _vvpDebounce) return;
-  if (performance.now() < _themeFreezeUntil) return;
+function fixViewport(force = false) {
+  if (!vvp || !chatbarWrap) return;
+
+  if (_vvpDebounce) {
+    if (force) {
+      cancelAnimationFrame(_vvpDebounce);
+      _vvpDebounce = 0;
+    } else {
+      return;
+    }
+  }
+
+  if (force) {
+    _applyViewport(true);
+    return;
+  }
 
   _vvpDebounce = requestAnimationFrame(() => {
     _vvpDebounce = 0;
     _applyViewport(false);
+  });
+}
+
+function _recoverViewportAfterLifecycle() {
+  if (!vvp || !chatbarWrap || document.visibilityState === 'hidden') return;
+
+  if (_vvpDebounce) {
+    cancelAnimationFrame(_vvpDebounce);
+    _vvpDebounce = 0;
+  }
+
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      if (document.visibilityState !== 'hidden') {
+        _applyViewport(true);
+      }
+    });
   });
 }
 
@@ -519,6 +617,58 @@ if (vvp) {
   _setSpacerHeight(_barHeight);
 }
 
+/* Window resize complements VisualViewport events for orientation/layout changes. */
+window.addEventListener('resize', () => {
+  if (vvp) fixViewport();
+}, { passive: true });
+
+window.addEventListener('orientationchange', () => {
+  if (vvp) fixViewport();
+}, { passive: true });
+
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') {
+    _recoverViewportAfterLifecycle();
+  }
+}, { passive: true });
+
+window.addEventListener('pageshow', _recoverViewportAfterLifecycle, { passive: true });
+
+window.addEventListener('pagehide', () => {
+  if (_vvpDebounce) {
+    cancelAnimationFrame(_vvpDebounce);
+    _vvpDebounce = 0;
+  }
+
+  if (_keyboardStyleRestoreRaf) {
+    cancelAnimationFrame(_keyboardStyleRestoreRaf);
+    _keyboardStyleRestoreRaf = 0;
+  }
+
+  if (_themeRefreshRaf) {
+    cancelAnimationFrame(_themeRefreshRaf);
+    _themeRefreshRaf = 0;
+  }
+  _themeRefreshToken += 1;
+
+  if (_cleanupRafId) {
+    cancelAnimationFrame(_cleanupRafId);
+    _cleanupRafId = 0;
+  }
+
+  if (_chatbarEntranceActive) {
+    _cancelChatbarEntrance();
+  } else if (_chatbarEntranceFallbackTimer) {
+    clearTimeout(_chatbarEntranceFallbackTimer);
+    _chatbarEntranceFallbackTimer = 0;
+  }
+
+  if (_resizeObserverRaf) {
+    cancelAnimationFrame(_resizeObserverRaf);
+    _resizeObserverRaf = 0;
+  }
+}, { passive: true });
+
 /* ════════════════════════════════
 THEME / PREFERENCE CHANGE DETECTION
 ════════════════════════════════ */
@@ -526,23 +676,15 @@ THEME / PREFERENCE CHANGE DETECTION
 /*
  * Theme CSS remains owned by the existing theme system. core.js only
  * refreshes viewport-owned geometry after a system color-scheme change.
+ * Geometry is never frozen: VisualViewport events remain authoritative even
+ * while the browser is repainting the new theme.
  */
 if (window.matchMedia) {
   const themeMQ = window.matchMedia('(prefers-color-scheme: dark)');
   const reducedMotionMQ = window.matchMedia('(prefers-reduced-motion: reduce)');
 
   const _onThemeChange = () => {
-    _themeFreezeUntil = performance.now() + 350;
-
-    if (_vvpDebounce) {
-      cancelAnimationFrame(_vvpDebounce);
-      _vvpDebounce = 0;
-    }
-
-    if (_kbAnimFrame) {
-      cancelAnimationFrame(_kbAnimFrame);
-      _kbAnimFrame = null;
-    }
+    const token = ++_themeRefreshToken;
 
     if (_themeRefreshRaf) {
       cancelAnimationFrame(_themeRefreshRaf);
@@ -550,81 +692,23 @@ if (window.matchMedia) {
     }
 
     /*
-     * Snapshot the keyboard state BEFORE the double-RAF so that if the
-     * theme repaint causes the VisualViewport to briefly report inconsistent
-     * geometry (rawKb → 0 while the keyboard is still physically open),
-     * we do not discard the valid, stable keyboard height.
+     * Do not snapshot or replay keyboard geometry.  The latest viewport
+     * measurement is the only authoritative state after the theme repaint.
      */
-    const kbSnapshot = _stableKbH;
-
     _themeRefreshRaf = requestAnimationFrame(() => {
       _themeRefreshRaf = requestAnimationFrame(() => {
         _themeRefreshRaf = 0;
 
+        if (token !== _themeRefreshToken) return;
         if (chatbarWrap) {
-          _barHeight = chatbarWrap.offsetHeight;
-        }
-
-        /*
-         * Measure the current viewport geometry after repaint.  If the
-         * keyboard was open before the theme change (kbSnapshot > 0) but
-         * the fresh measurement looks like zero — a transient artefact of
-         * the theme repaint — keep the snapshot so the chatbar stays above
-         * the keyboard.  A real keyboard-close event will arrive via the
-         * normal VisualViewport 'resize' path and win as soon as the
-         * freeze window expires.
-         */
-        if (vvp) {
-          const rawKb = Math.max(0, window.innerHeight - vvp.height - vvp.offsetTop);
-          const freshKb = rawKb > 50 ? Math.round(rawKb) : 0;
-
-          if (kbSnapshot > 0 && freshKb === 0) {
-            /*
-             * Transient zero during theme repaint: preserve the valid
-             * keyboard state.  Only refresh the spacer and reapply the
-             * correct transform without touching _stableKbH or
-             * _keyboardOpen.
-             */
-            _setSpacerHeight(_barHeight + kbSnapshot);
-
-            if (chatbarWrap) {
-              const safeTransform = `translateY(-${kbSnapshot}px) translateZ(0)`;
-
-              if (safeTransform !== _lastChatbarTransform) {
-                _chatbarKeyboardTransitionToken += 1;
-                _clearKeyboardTransitionListener();
-                _chatbarTransitionOwner = 'keyboard';
-                chatbarWrap.style.transition = 'none';
-                chatbarWrap.style.transform = safeTransform;
-                _lastChatbarTransform = safeTransform;
-
-                /*
-                 * Single RAF to clear the no-transition override; token
-                 * guards against a concurrent real keyboard event winning
-                 * the same slot.
-                 */
-                const snapToken = _chatbarKeyboardTransitionToken;
-                requestAnimationFrame(() => {
-                  if (
-                    snapToken === _chatbarKeyboardTransitionToken &&
-                    _chatbarTransitionOwner === 'keyboard'
-                  ) {
-                    chatbarWrap.style.transition = '';
-                    _chatbarTransitionOwner = null;
-                  }
-                });
-              }
-            }
-
-            return;
+          const measured = chatbarWrap.getBoundingClientRect().height;
+          if (Number.isFinite(measured) && measured > 0) {
+            _barHeight = Math.max(0, Math.ceil(measured));
+          } else {
+            _barHeight = chatbarWrap.offsetHeight;
           }
         }
 
-        /*
-         * Either the keyboard was already closed, or the fresh measurement
-         * is non-zero (theme repaint did not disturb the viewport geometry).
-         * Let the normal force-apply path handle everything.
-         */
         _setSpacerHeight(_barHeight + _stableKbH);
         _applyViewport(true);
       });
@@ -635,23 +719,30 @@ if (window.matchMedia) {
     _prefersReducedMotion = e.matches;
 
     if (_prefersReducedMotion) {
-      if (_kbAnimFrame) {
-        cancelAnimationFrame(_kbAnimFrame);
-        _kbAnimFrame = null;
-      }
+      /* Entrance animation is visual-only and must stop immediately. */
+      _cancelChatbarEntrance();
 
-      if (_plusOpen && plusMenu) {
+      if (_plusOpen || (plusMenu && plusMenu.classList.contains('open'))) {
         _plusAnimationToken += 1;
         if (_plusAnimFrame) {
           cancelAnimationFrame(_plusAnimFrame);
           _plusAnimFrame = 0;
         }
+        if (_plusCloseFallbackTimer) {
+          clearTimeout(_plusCloseFallbackTimer);
+          _plusCloseFallbackTimer = 0;
+        }
         _removePlusTransitionListener();
-        plusMenu.style.transition = 'none';
-        plusMenu.style.transform = '';
-        plusMenu.style.opacity = '';
-        plusMenu.classList.add('open');
-        plusBackdrop?.classList.add('open');
+
+        if (_plusOpen) {
+          plusMenu.style.transition = 'none';
+          plusMenu.style.transform = '';
+          plusMenu.style.opacity = '';
+          plusMenu.classList.add('open');
+          plusBackdrop?.classList.add('open');
+        } else {
+          _finishPlusClose(_plusAnimationToken);
+        }
       }
     }
 
@@ -757,7 +848,9 @@ function updateHeader(now) {
   }
 }
 
-const _scheduleHeaderUpdate = window.requestPostAnimationFrame || requestAnimationFrame;
+const _scheduleHeaderUpdate = typeof window.requestPostAnimationFrame === 'function'
+  ? window.requestPostAnimationFrame.bind(window)
+  : window.requestAnimationFrame.bind(window);
 
 if (scrollHost) {
   scrollHost.addEventListener('scroll', () => {
@@ -888,6 +981,7 @@ function _finishPlusClose(token) {
   }
 
   plusMenu.classList.remove('open');
+  plusBackdrop?.classList.remove('open');
   _restorePlusMenuBaseStyles();
 }
 

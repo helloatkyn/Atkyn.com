@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════════════
-core.js — Atkyn shared UI logic [PRODUCTION · NATIVE-SMOOTH v6]
+core.js — Atkyn shared UI logic [PRODUCTION · NATIVE-SMOOTH v7]
 scroll · header animation · keyboard positioning · theme refresh
 chatbar entrance · plus menu · tab navigation
 ════════════════════════════════════════════════════════════════════ */
@@ -74,12 +74,15 @@ const VELOCITY_ALPHA = 0.3;
 /* ── Keyboard / viewport state ── */
 let _cleanupRafId = 0;
 let _stableKbH = 0;
-let _vvpDebounce = 0;
 let _barHeight = chatbarWrap ? chatbarWrap.offsetHeight : 0;
 let _lastChatbarTransform = '';
 let _keyboardStyleRestoreRaf = 0;
 let _keyboardStyleToken = 0;
-let _resizeObserverRaf = 0;
+
+/* Single geometry writer: every trigger coalesces into one rAF */
+let _geomRaf = 0;
+let _geomForce = false;
+let _pendingSampleKey = '';
 
 /* ── Chatbar transition ownership ── */
 let _chatbarTransitionOwner = null;
@@ -88,10 +91,6 @@ let _chatbarEntranceAnims = null;
 
 /* ── Spacer guard ── */
 let _lastSpacerH = -1;
-
-/* ── Theme refresh scheduling ── */
-let _themeRefreshRaf = 0;
-let _themeRefreshToken = 0;
 
 /* ── Plus menu state ── */
 if (typeof _plusOpen === 'undefined') {
@@ -146,8 +145,8 @@ function _isCurrentTabRequest(key, requestId) {
  * Keyboard inset in layout-viewport px:
  *   kb = max(0, layoutHeight - (visualViewport.offsetTop + visualViewport.height))
  * The fixed chatbar's base bottom edge is at layoutHeight, so translateY(-kb)
- * lands it exactly on the visual viewport bottom. With resizes-content the
- * layout viewport shrinks too and kb resolves to ~0.
+ * lands it on the visual viewport bottom. With resizes-content the layout
+ * viewport shrinks too and kb resolves to ~0.
  */
 function _getLayoutViewportHeight() {
   const docHeight = document.documentElement ? document.documentElement.clientHeight : 0;
@@ -173,20 +172,25 @@ function _hasRelevantKeyboardFocus() {
   return _isEditableElement(active);
 }
 
-function _measureKeyboardInset() {
-  if (!vvp || !chatbarWrap) return 0;
+/* One read phase: layout viewport, visual viewport and bar height from the same frame */
+function _readViewportSample() {
+  const layoutH = _getLayoutViewportHeight();
+  const vvH = Number(vvp.height);
+  const vvTop = Math.max(0, Number(vvp.offsetTop) || 0);
 
-  const layoutHeight = _getLayoutViewportHeight();
-  if (!(layoutHeight > 0)) return 0;
+  const rectH = chatbarWrap.getBoundingClientRect().height;
+  const barH = Number.isFinite(rectH) && rectH > 0
+    ? Math.ceil(rectH)
+    : chatbarWrap.offsetHeight;
 
-  const vvHeight = Number(vvp.height);
-  const vvOffsetTop = Number(vvp.offsetTop);
-  if (!Number.isFinite(vvHeight) || !Number.isFinite(vvOffsetTop) || vvHeight < 0) {
-    return 0;
-  }
+  return { layoutH, vvH, vvTop, barH, key: layoutH + '|' + vvTop + '|' + vvH };
+}
 
-  const visualBottom = Math.max(0, vvOffsetTop) + vvHeight;
-  const rawInset = Math.max(0, layoutHeight - visualBottom);
+function _measureKeyboardInset(s) {
+  /* Unusable reading: keep the last committed inset */
+  if (!(s.layoutH > 0) || !Number.isFinite(s.vvH) || s.vvH < 0) return _stableKbH;
+
+  const rawInset = Math.max(0, s.layoutH - (s.vvTop + s.vvH));
 
   /* Closed: need a real delta. Open: track down to ~0 (1px dead-band absorbs rounding). */
   if (_stableKbH <= 0) {
@@ -341,29 +345,32 @@ function _setSpacerHeight(h) {
   chatSpacer.style.height = px;
 }
 
+/* ── Geometry scheduling: all triggers funnel into one rAF ── */
+function _scheduleGeometry(force) {
+  if (force === true) _geomForce = true;
+  if (_geomRaf) return;
+
+  _geomRaf = requestAnimationFrame(() => {
+    _geomRaf = 0;
+    const f = _geomForce;
+    _geomForce = false;
+    _applyViewport(f);
+  });
+}
+
+function _cancelGeometryRaf() {
+  if (_geomRaf) {
+    cancelAnimationFrame(_geomRaf);
+    _geomRaf = 0;
+  }
+  _geomForce = false;
+  _pendingSampleKey = '';
+}
+
+/* ResizeObserver is a trigger only; the bar height is read in the geometry frame */
 if (chatbarWrap) {
   const _barResizeObserver = typeof ResizeObserver === 'function'
-    ? new ResizeObserver((entries) => {
-      const entry = entries[entries.length - 1];
-      if (!entry) return;
-
-      const borderBoxSize = entry.borderBoxSize;
-      const measuredH = borderBoxSize
-        ? (borderBoxSize[0] ? borderBoxSize[0].blockSize : borderBoxSize.blockSize)
-        : entry.contentRect.height;
-
-      if (!Number.isFinite(measuredH)) return;
-
-      /* Measure here, write the spacer next frame */
-      _barHeight = Math.max(0, Math.ceil(measuredH));
-
-      if (_resizeObserverRaf) return;
-
-      _resizeObserverRaf = requestAnimationFrame(() => {
-        _resizeObserverRaf = 0;
-        _setSpacerHeight(_barHeight + _stableKbH);
-      });
-    })
+    ? new ResizeObserver(() => _scheduleGeometry())
     : null;
 
   if (_barResizeObserver) {
@@ -409,12 +416,46 @@ if (chatbarWrap) {
   move.oncancel = finish;
 })();
 
-/* ── Keyboard / VisualViewport positioning ── */
+/* Instant: geometry follows VisualViewport frame by frame, never animated */
+function _writeChatbarTransform(transform) {
+  _cancelKeyboardRestoreRaf();
+  _keyboardStyleToken += 1;
+  _chatbarTransitionOwner = 'keyboard';
+
+  chatbarWrap.style.transition = 'none';
+  chatbarWrap.style.transform = transform;
+  _lastChatbarTransform = chatbarWrap.style.transform;
+}
+
+/* ── Keyboard / VisualViewport positioning (the only writer of chatbar transform + spacer) ── */
 function _applyViewport(force = false) {
   if (!vvp || !chatbarWrap) return;
 
-  const kbHeight = _measureKeyboardInset();
+  /* Read phase */
+  const sample = _readViewportSample();
+  _barHeight = sample.barH;
+
+  let kbHeight = _measureKeyboardInset(sample);
   const wasOpen = _stableKbH > 0;
+
+  /*
+   * A closed → open jump is committed only when two consecutive frames report
+   * identical layout + visual viewport geometry, so a half-updated viewport
+   * (layout and visual viewport disagreeing mid-transition) is never latched.
+   */
+  if (!force && !wasOpen && kbHeight > 0) {
+    if (_pendingSampleKey === sample.key) {
+      _pendingSampleKey = '';
+    } else {
+      _pendingSampleKey = sample.key;
+      _scheduleGeometry();
+      kbHeight = 0;
+    }
+  } else {
+    _pendingSampleKey = '';
+  }
+
+  /* Write phase */
 
   /* Closed viewport must not touch the entrance; a real inset takes over */
   if (_chatbarEntranceActive && kbHeight === 0) {
@@ -426,6 +467,11 @@ function _applyViewport(force = false) {
 
   if (!force && kbHeight === _stableKbH) {
     _keyboardOpen = kbHeight > 0;
+
+    if (kbHeight > 0 && chatbarWrap.style.transform !== _lastChatbarTransform) {
+      _writeChatbarTransform(_lastChatbarTransform);
+    }
+
     _setSpacerHeight(_barHeight + kbHeight);
     return;
   }
@@ -437,23 +483,14 @@ function _applyViewport(force = false) {
   _stableKbH = kbHeight;
   _keyboardOpen = kbHeight > 0;
 
-  const transform = kbHeight > 0
-    ? `translateY(-${kbHeight}px) translateZ(0)`
-    : 'translateZ(0)';
+  _writeChatbarTransform(
+    kbHeight > 0
+      ? `translateY(-${kbHeight}px) translateZ(0)`
+      : 'translateZ(0)'
+  );
 
-  if (force || transform !== _lastChatbarTransform || wasOpen !== _keyboardOpen) {
-    _cancelKeyboardRestoreRaf();
-    _keyboardStyleToken += 1;
-    _chatbarTransitionOwner = 'keyboard';
-
-    /* Instant: geometry follows VisualViewport frame by frame, never animated */
-    chatbarWrap.style.transition = 'none';
-    chatbarWrap.style.transform = transform;
-    _lastChatbarTransform = transform;
-
-    if (kbHeight === 0) {
-      _scheduleKeyboardTransitionRestore(_keyboardStyleToken);
-    }
+  if (kbHeight === 0) {
+    _scheduleKeyboardTransitionRestore(_keyboardStyleToken);
   }
 
   _setSpacerHeight(_barHeight + kbHeight);
@@ -485,35 +522,20 @@ function fixViewport(force = false) {
   if (!vvp || !chatbarWrap) return;
 
   /* Listeners may pass an Event; only an explicit true forces */
-  force = force === true;
-
-  if (_vvpDebounce) {
-    if (force) {
-      cancelAnimationFrame(_vvpDebounce);
-      _vvpDebounce = 0;
-    } else {
-      return;
-    }
-  }
-
-  if (force) {
+  if (force === true) {
+    _cancelGeometryRaf();
     _applyViewport(true);
     return;
   }
 
-  _vvpDebounce = requestAnimationFrame(() => {
-    _vvpDebounce = 0;
-    _applyViewport(false);
-  });
+  _scheduleGeometry();
 }
 
+/* Resume: the viewport is republished a frame after visibility returns */
 function _recoverViewportAfterLifecycle() {
   if (!vvp || !chatbarWrap || document.visibilityState === 'hidden') return;
 
-  if (_vvpDebounce) {
-    cancelAnimationFrame(_vvpDebounce);
-    _vvpDebounce = 0;
-  }
+  _cancelGeometryRaf();
 
   requestAnimationFrame(() => {
     requestAnimationFrame(() => {
@@ -561,21 +583,8 @@ document.addEventListener('visibilitychange', () => {
 window.addEventListener('pageshow', _recoverViewportAfterLifecycle, { passive: true });
 
 window.addEventListener('pagehide', () => {
-  if (_vvpDebounce) {
-    cancelAnimationFrame(_vvpDebounce);
-    _vvpDebounce = 0;
-  }
-
-  if (_keyboardStyleRestoreRaf) {
-    cancelAnimationFrame(_keyboardStyleRestoreRaf);
-    _keyboardStyleRestoreRaf = 0;
-  }
-
-  if (_themeRefreshRaf) {
-    cancelAnimationFrame(_themeRefreshRaf);
-    _themeRefreshRaf = 0;
-  }
-  _themeRefreshToken += 1;
+  _cancelGeometryRaf();
+  _cancelKeyboardRestoreRaf();
 
   if (_cleanupRafId) {
     cancelAnimationFrame(_cleanupRafId);
@@ -584,49 +593,22 @@ window.addEventListener('pagehide', () => {
   }
 
   _cancelChatbarEntrance();
-
-  if (_resizeObserverRaf) {
-    cancelAnimationFrame(_resizeObserverRaf);
-    _resizeObserverRaf = 0;
-  }
 }, { passive: true });
 
 /* ════════════════════════════════
 THEME / PREFERENCE CHANGE DETECTION
 ════════════════════════════════ */
 
-/* Geometry is always re-read from the live viewport after a theme change */
+/*
+ * Theme change: MQ listeners run before rAF callbacks in the same frame, and the
+ * geometry read phase forces style + layout, so one scheduled frame already reads
+ * post-theme bar height and live viewport values.
+ */
 if (window.matchMedia) {
   const themeMQ = window.matchMedia('(prefers-color-scheme: dark)');
   const reducedMotionMQ = window.matchMedia('(prefers-reduced-motion: reduce)');
 
-  const _onThemeChange = () => {
-    const token = ++_themeRefreshToken;
-
-    if (_themeRefreshRaf) {
-      cancelAnimationFrame(_themeRefreshRaf);
-      _themeRefreshRaf = 0;
-    }
-
-    _themeRefreshRaf = requestAnimationFrame(() => {
-      _themeRefreshRaf = requestAnimationFrame(() => {
-        _themeRefreshRaf = 0;
-
-        if (token !== _themeRefreshToken) return;
-        if (chatbarWrap) {
-          const measured = chatbarWrap.getBoundingClientRect().height;
-          if (Number.isFinite(measured) && measured > 0) {
-            _barHeight = Math.max(0, Math.ceil(measured));
-          } else {
-            _barHeight = chatbarWrap.offsetHeight;
-          }
-        }
-
-        _setSpacerHeight(_barHeight + _stableKbH);
-        _applyViewport(true);
-      });
-    });
-  };
+  const _onThemeChange = () => _scheduleGeometry();
 
   /* Reduced motion */
   const _onReducedMotionChange = (e) => {
@@ -662,7 +644,7 @@ if (window.matchMedia) {
       }
     }
 
-    _applyViewport(true);
+    _scheduleGeometry(true);
   };
 
   if (themeMQ.addEventListener) {

@@ -5,7 +5,9 @@ chatbar entrance · plus menu · tab navigation
 ════════════════════════════════════════════════════════════════════ */
 
 /* ── Reduced-motion flag ── */
-let _prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+/* FIX (#9): matchMedia was called unguarded here while every later use is guarded. */
+let _prefersReducedMotion = typeof window.matchMedia === 'function' &&
+  window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 /* ── Easing constants ── */
 const EASE = {
@@ -36,7 +38,13 @@ const _msgWrap = document.getElementById('msgWrap');
 const chatSpacer = document.getElementById('chatSpacer');
 
 /* ── Cached layout metrics ── */
-const _tabBarHeight = tabBar ? tabBar.offsetHeight : 0;
+/*
+ * FIX (#12): was a const measured once at script evaluation; the tab bar height
+ * can change afterwards (font load, safe-area/orientation), which skewed
+ * scrollToMsg's target.  The name is kept (other modules may read it); it is
+ * re-measured where it is consumed.
+ */
+let _tabBarHeight = tabBar ? tabBar.offsetHeight : 0;
 const vvp = window.visualViewport;
 
 /* ── SVG constants ── */
@@ -55,6 +63,21 @@ let _isTabScrolled = false;
 let _scrollRafId = null;
 let _programmaticScroll = false;
 let _programmaticScrollToken = 0;
+
+/*
+ * FIX (#17): `_programmaticScroll` used to be a single boolean written by three
+ * independent systems (keyboard anchoring, scrollToMsg, tab switch), each of
+ * which cleared it unconditionally — so one system could switch off another
+ * system's guard mid-scroll (or leave it stuck on).  Each system now owns its
+ * own flag and `_programmaticScroll` is derived from them.
+ */
+const _scrollOwners = { keyboard: false, message: false, tab: false };
+
+function _setScrollOwner(owner, on) {
+  _scrollOwners[owner] = !!on;
+  _programmaticScroll =
+    _scrollOwners.keyboard || _scrollOwners.message || _scrollOwners.tab;
+}
 
 /* ── Velocity EMA ── */
 let _velocityEMA = 0;
@@ -85,6 +108,26 @@ let _lastSpacerH = -1;
 /* ── Theme refresh scheduling ── */
 let _themeRefreshRaf = 0;
 let _themeRefreshToken = 0;
+
+/* ── Plus menu state ── */
+/*
+ * FIX (#13/#18): `_plusOpen` was read (openPlusMenu, closePlusMenu, the plus
+ * button handler, the outside-tap handler, the Escape handler and the
+ * reduced-motion handler) but never declared anywhere in this file, so the very
+ * first read threw `ReferenceError: _plusOpen is not defined`.  The remaining
+ * plus state is hoisted here too so nothing above the plus section can ever hit
+ * a temporal-dead-zone read.  The typeof guard makes this safe even if another
+ * script already declares `_plusOpen` (a `let` here would then be a redeclaration
+ * SyntaxError that kills the whole file).
+ */
+if (typeof _plusOpen === 'undefined') {
+  globalThis._plusOpen = false;
+}
+let _plusAnimationToken = 0;
+let _plusAnimFrame = 0;
+let _plusCloseFallbackTimer = 0;
+let _plusTransitionEndHandler = null;
+let _plusMenuBaseStyles = null;
 
 /* ── Public: last user message element ── */
 window._lastUserMsgEl = null;
@@ -135,6 +178,14 @@ function _isCurrentTabRequest(key, requestId) {
  * reduced by the IME, so the two bottoms converge and this returns ~0.
  * Where the browser only resizes the visual viewport, the difference is
  * the portion of the layout viewport hidden by the keyboard.
+ *
+ * Coordinate equation (all values in layout-viewport CSS px):
+ *   L  = layout viewport height        (documentElement.clientHeight)
+ *   T  = visualViewport.offsetTop
+ *   H  = visualViewport.height
+ *   kb = max(0, L - (T + H))           (part of the layout viewport under the IME)
+ * The fixed chatbar's untransformed bottom edge is at L, so translateY(-kb)
+ * puts its bottom edge at L - kb = T + H, i.e. exactly on the visual bottom.
  */
 function _getLayoutViewportHeight() {
   const docHeight = document.documentElement ? document.documentElement.clientHeight : 0;
@@ -179,12 +230,21 @@ function _measureKeyboardInset() {
    * When closed, require a meaningful geometry delta before declaring an
    * IME inset.  This prevents ordinary browser-UI movement from being
    * promoted to keyboard state. Once the keyboard is already considered
-   * open, keep tracking every positive pixel until the geometry reaches 0;
-   * this prevents the final keyboard-closing frames from clipping the pill.
+   * open, keep tracking positive geometry until it reaches ~0; this prevents
+   * the final keyboard-closing frames from clipping the pill.
+   *
+   * FIX (#12): the exit threshold was 0.5px.  documentElement.clientHeight is
+   * an integer while visualViewport.height/offsetTop are fractional on
+   * fractional-DPR devices, so a fully closed keyboard can leave a residual of
+   * up to ~1px (e.g. L=812, T+H=811.3 → 0.7).  0.7 > 0.5 and Math.ceil made it
+   * 1, so `_stableKbH` stayed 1 forever: `_keyboardOpen` stuck true (which makes
+   * the pill pointerdown handler refuse to focus the input), a permanent 1px
+   * transform, and the "!wasOpen" anchoring never fired again.  A 1px dead-band
+   * on exit removes the rounding residual without affecting real inset frames.
    */
   if (_stableKbH <= 0) {
     if (!_hasRelevantKeyboardFocus() || rawInset <= 50) return 0;
-  } else if (rawInset <= 0.5) {
+  } else if (rawInset < 1) {
     return 0;
   }
 
@@ -271,15 +331,16 @@ function scrollToMsg(el) {
 
     if (requestToken !== _programmaticScrollToken) return;
 
-    _programmaticScroll = true;
+    _setScrollOwner('message', true);
 
+    if (tabBar) _tabBarHeight = tabBar.offsetHeight;
     const target = Math.max(0, el.offsetTop - _tabBarHeight - 8);
 
     if (_prefersReducedMotion) {
       scrollHost.scrollTop = target;
       _lastScrollY = target;
       resetScrollAccum();
-      _programmaticScroll = false;
+      _setScrollOwner('message', false);
       return;
     }
 
@@ -289,7 +350,7 @@ function scrollToMsg(el) {
 
     window.setTimeout(() => {
       if (requestToken !== _programmaticScrollToken) return;
-      _programmaticScroll = false;
+      _setScrollOwner('message', false);
       if (scrollHost) _lastScrollY = scrollHost.scrollTop;
       resetScrollAccum();
     }, 450);
@@ -335,14 +396,24 @@ function _cancelChatbarEntrance() {
   _chatbarEntranceBaseStyles = null;
 }
 
+/*
+ * The spacer height is derived from the chatbar height plus the keyboard
+ * inset.  FIX (#7): the write guard compared against a cached number
+ * (`_lastSpacerH`) that can disagree with the real DOM (style reset, element
+ * content re-rendered, another writer).  The guard now compares against the
+ * element's actual inline height (a CSSOM string read — no layout is forced),
+ * so the spacer self-heals instead of staying wrong until the value changes.
+ */
 function _setSpacerHeight(h) {
   if (!chatSpacer || !Number.isFinite(h)) return;
 
   const safeH = Math.max(0, Math.ceil(h));
-  if (safeH === _lastSpacerH) return;
+  const px = safeH + 'px';
 
   _lastSpacerH = safeH;
-  chatSpacer.style.height = safeH + 'px';
+  if (chatSpacer.style.height === px) return;
+
+  chatSpacer.style.height = px;
 }
 
 if (chatbarWrap) {
@@ -398,6 +469,16 @@ if (chatbarWrap) {
   chatbarWrap.style.transition = 'none';
   chatbarWrap.style.transform = 'translateY(24px) translateZ(0)';
   chatbarWrap.style.opacity = '0';
+
+  /*
+   * FIX (#19): commit the start state before the transition is armed.  The
+   * start values and the end values are otherwise applied before any style
+   * recalculation, and a CSS transition needs a computed "before" style.  The
+   * animation only played by accident, via the layout read inside
+   * _applyViewport (documentElement.clientHeight); on the no-visualViewport
+   * path nothing forced style, so the bar jumped instead of animating.
+   */
+  void chatbarWrap.offsetHeight;
 
   const finish = () => {
     if (!_chatbarEntranceActive) return;
@@ -468,13 +549,16 @@ if (chatbarWrap) {
   /*
    * transitionend is the primary completion signal. A conservative fallback
    * handles environments where a transform transition is interrupted early.
+   * FIX (#4): the fallback was 500ms against a 450ms transition that starts one
+   * frame late, so a single slow frame let the fallback cut the animation
+   * short; 650ms leaves real headroom and is still a pure safety net.
    */
   _chatbarEntranceFallbackTimer = window.setTimeout(() => {
     _chatbarEntranceFallbackTimer = 0;
     if (_chatbarEntranceActive && !_keyboardOpen && ended === false) {
       finish();
     }
-  }, 500);
+  }, 650);
 })();
 
 /* ── Keyboard / VisualViewport positioning ── */
@@ -539,7 +623,7 @@ function _applyViewport(force = false) {
     const chatVisible = !chatArea || chatArea.style.display !== 'none';
 
     if (chatVisible) {
-      _programmaticScroll = true;
+      _setScrollOwner('keyboard', true);
       const anchor = window._lastUserMsgEl;
 
       scrollHost.scrollTop = anchor
@@ -554,12 +638,30 @@ function _applyViewport(force = false) {
     _cleanupRafId = 0;
     if (scrollHost) _lastScrollY = scrollHost.scrollTop;
     resetScrollAccum();
-    _programmaticScroll = false;
+    /*
+     * FIX (#17): only release the guard this code path owns.  It used to write
+     * `_programmaticScroll = false`, which also cancelled an in-flight
+     * scrollToMsg smooth scroll or tab-switch guard on every keyboard frame.
+     */
+    _setScrollOwner('keyboard', false);
   });
 }
 
 function fixViewport(force = false) {
   if (!vvp || !chatbarWrap) return;
+
+  /*
+   * FIX (#1/#16): this function is registered as a visualViewport listener, and
+   * the DOM passes the Event as the first argument — an object is truthy, so
+   * every resize/scroll event ran as `force = true`: it skipped the RAF
+   * coalescing, rewrote transform + `transition: none` on every event even with
+   * an unchanged inset (interrupting any CSS transition on the wrapper for a
+   * frame), and ran the scroll-cleanup (resetScrollAccum) on each event, which
+   * kept the header hide/show accumulators from ever building up while the
+   * browser toolbar was animating.  Force is now honoured only for an explicit
+   * `true`.
+   */
+  force = force === true;
 
   if (_vvpDebounce) {
     if (force) {
@@ -599,8 +701,8 @@ function _recoverViewportAfterLifecycle() {
 }
 
 if (vvp) {
-  vvp.addEventListener('resize', fixViewport, { passive: true });
-  vvp.addEventListener('scroll', fixViewport, { passive: true });
+  vvp.addEventListener('resize', () => fixViewport(), { passive: true });
+  vvp.addEventListener('scroll', () => fixViewport(), { passive: true });
 
   _setSpacerHeight(_barHeight);
   _applyViewport(true);
@@ -654,6 +756,12 @@ window.addEventListener('pagehide', () => {
   if (_cleanupRafId) {
     cancelAnimationFrame(_cleanupRafId);
     _cleanupRafId = 0;
+    /*
+     * FIX (#12/#20): the cancelled cleanup RAF was the only thing that released
+     * the keyboard scroll guard, so a pagehide/bfcache round-trip while it was
+     * pending left the header logic frozen after restore.
+     */
+    _setScrollOwner('keyboard', false);
   }
 
   if (_chatbarEntranceActive) {
@@ -723,6 +831,13 @@ if (window.matchMedia) {
       _cancelChatbarEntrance();
 
       if (_plusOpen || (plusMenu && plusMenu.classList.contains('open'))) {
+        /*
+         * FIX (#13): capture the pristine inline styles before this handler
+         * mutates them; otherwise `transition: none` written below is later
+         * "restored" as if it were the base.
+         */
+        _capturePlusMenuBaseStyles();
+
         _plusAnimationToken += 1;
         if (_plusAnimFrame) {
           cancelAnimationFrame(_plusAnimFrame);
@@ -787,7 +902,13 @@ function updateHeader(now) {
   if (delta === 0) return;
 
   now = now || performance.now();
-  const dt = Math.max(1, now - _lastScrollTime);
+  /*
+   * FIX (#17): after every resetScrollAccum() `_lastScrollTime` is 0, so the
+   * first sample computed dt = now - 0 (seconds of "elapsed time") and a
+   * velocity of ~0, which seeded the EMA near zero and discarded the first
+   * delta from the hide/show accumulators.  Seed with one frame instead.
+   */
+  const dt = _lastScrollTime ? Math.max(1, now - _lastScrollTime) : 16;
 
   _velocityEMA = _velocityEMA === 0
     ? delta / dt
@@ -913,11 +1034,7 @@ if (pill && input) {
 PLUS MENU
 ════════════════════════════════ */
 
-let _plusAnimationToken = 0;
-let _plusAnimFrame = 0;
-let _plusCloseFallbackTimer = 0;
-let _plusTransitionEndHandler = null;
-let _plusMenuBaseStyles = null;
+/* (state declarations hoisted to the top of the file — see "Plus menu state") */
 
 function _capturePlusMenuBaseStyles() {
   if (!plusMenu || _plusMenuBaseStyles) return;
@@ -1239,6 +1356,8 @@ function _loadScript(src) {
     s.onerror = (error) => {
       cleanup();
       delete _scriptLoadPromises[src];
+      /* FIX (#16): don't leave the failed <script> node behind; a retry appends a fresh one. */
+      if (s.parentNode) s.parentNode.removeChild(s);
       reject(error);
     };
 
@@ -1382,16 +1501,26 @@ if (tabBar) {
      * bounce during rapid tab changes.
      */
     if (scrollHost) {
+      /* Invalidate any pending/in-flight scrollToMsg and release its guard. */
       ++_programmaticScrollToken;
-      _programmaticScroll = true;
+      _scrollOwners.message = false;
+      _setScrollOwner('tab', true);
       scrollHost.scrollTop = 0;
       _lastScrollY = 0;
       resetScrollAccum();
 
+      /*
+       * FIX (#17): this RAF was gated on `requestId === _tabLoadRequestId`.
+       * The public _atkynLoadTab() also bumps that counter, so a direct call in
+       * the same frame made the RAF bail out and `_programmaticScroll` stayed
+       * true — the header/tab-bar scroll logic was frozen until an unrelated
+       * keyboard event happened to clear it.  The tab guard is now released
+       * unconditionally in the next frame (two rapid clicks simply release it
+       * twice in the same frame, which is harmless).
+       */
       requestAnimationFrame(() => {
-        if (requestId !== _tabLoadRequestId) return;
-        _programmaticScroll = false;
-        _lastScrollY = scrollHost.scrollTop;
+        _setScrollOwner('tab', false);
+        if (scrollHost) _lastScrollY = scrollHost.scrollTop;
       });
     }
 
@@ -1414,7 +1543,17 @@ if (tabBar) {
 
     if (!_isCurrentTabRequest(key, requestId)) return;
 
-    _animateContentIn();
+    /*
+     * FIX (#19): the 'ai' tab hides pageContent (display:none).  Animating a
+     * hidden element never fires transitionend, so the old code left the
+     * listener attached and the inline opacity/transform/transition written
+     * until the next tab switch.  Release the animation state instead.
+     */
+    if (key === 'ai') {
+      _clearContentAnimation();
+    } else {
+      _animateContentIn();
+    }
   }, { passive: true });
 }
 

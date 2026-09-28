@@ -1,26 +1,30 @@
 /* ═══════════════════════════════════════════════════════════════════
-core.js — Atkyn shared UI logic [PRODUCTION · NATIVE-SMOOTH v7]
-scroll · header animation · keyboard positioning · theme refresh
-chatbar entrance · plus menu · tab navigation
-════════════════════════════════════════════════════════════════════ */
+   core.js — Atkyn shared UI logic [PRODUCTION · NATIVE-SMOOTH v8]
+   scroll · header · keyboard · theme · chatbar entrance · plus menu · tabs
+   ═══════════════════════════════════════════════════════════════════ */
 
-/* ── Reduced-motion flag ── */
+/* Reduced motion */
 let _prefersReducedMotion = typeof window.matchMedia === 'function' &&
   window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-/* ── Easing constants ── */
+/* Easing / timing */
 const EASE = {
-  keyboardUp: 'cubic-bezier(0.32, 0.72, 0, 1)',
-  keyboardDown: 'cubic-bezier(0.32, 0.72, 0, 1)',
-  headerHide: 'cubic-bezier(0.4, 0, 1, 1)',
-  headerShow: 'cubic-bezier(0, 0, 0.2, 1)',
   chatbarEnter: 'cubic-bezier(0.16, 1, 0.3, 1)',
   menuOpen: 'cubic-bezier(0.34, 1.56, 0.64, 1)',
   menuClose: 'cubic-bezier(0.4, 0, 1, 1)',
   contentSwap: 'cubic-bezier(0.16, 1, 0.3, 1)'
 };
 
-/* ── Stable DOM references ── */
+const PLUS_HIDDEN = 'scale(0.88) translateY(10px)';
+const PLUS_SHOWN = 'scale(1) translateY(0)';
+const PLUS_OPEN_MS = 300;
+const PLUS_CLOSE_MS = 220;
+const PLUS_OPEN_TRANSITION = `transform ${PLUS_OPEN_MS}ms ${EASE.menuOpen}, opacity 200ms ease-out`;
+const PLUS_CLOSE_TRANSITION = `transform ${PLUS_CLOSE_MS}ms ${EASE.menuClose}, opacity 180ms ease-in`;
+
+const TRANSFORM_REST = 'translateZ(0)';
+
+/* DOM */
 const scrollHost = document.getElementById('scrollHost');
 const logoHeader = document.querySelector('.logo-header');
 const tabBar = document.getElementById('tabBar');
@@ -36,94 +40,104 @@ const chatArea = document.getElementById('chatArea');
 const _msgWrap = document.getElementById('msgWrap');
 const chatSpacer = document.getElementById('chatSpacer');
 
-/* ── Cached layout metrics ── */
-let _tabBarHeight = tabBar ? tabBar.offsetHeight : 0;
+/* Plus menu rest styles (captured once, while idle) */
+const _plusMenuBase = plusMenu ? {
+  transition: plusMenu.style.transition,
+  transform: plusMenu.style.transform,
+  opacity: plusMenu.style.opacity,
+  pointerEvents: plusMenu.style.pointerEvents
+} : null;
+
 const vvp = window.visualViewport;
 
-/* ── SVG constants ── */
+/* SVG */
 const SVG_SEND = '<svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="20" x2="12" y2="4"/><polyline points="5 11 12 4 19 11"/></svg>';
 const SVG_CROSS = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
 
-/* ── Scroll / header state ── */
+/* ── State ── */
+
+/* Scroll / header */
+let _tabBarHeight = tabBar ? tabBar.offsetHeight : 0;
 let _rafPending = false;
+let _headerRafId = 0;
 let _lastScrollY = 0;
 let _accumDown = 0;
 let _accumUp = 0;
-let _keyboardOpen = false;
 let _isLogoCollapsed = false;
 let _isTabHidden = false;
 let _isTabScrolled = false;
 let _scrollRafId = null;
+let _tabScrollRafId = 0;
+let _msgScrollCleanup = null;
 let _programmaticScroll = false;
 let _programmaticScrollToken = 0;
-
-/* Each system owns its own programmatic-scroll guard */
 const _scrollOwners = { keyboard: false, message: false, tab: false };
+
+let _velocityEMA = 0;
+let _lastScrollTime = 0;
+const VELOCITY_ALPHA = 0.3;
+
+/* Keyboard / viewport */
+let _keyboardOpen = false;
+let _cleanupRafId = 0;
+let _stableKbH = 0;
+let _barHeight = chatbarWrap ? chatbarWrap.offsetHeight : 0;
+let _rawTransform = '';
+let _lastChatbarTransform = '';
+let _keyboardStyleRestoreRaf = 0;
+let _keyboardStyleToken = 0;
+let _geomRaf = 0;
+let _geomForce = false;
+let _pendingSampleKey = '';
+let _recoverRaf = 0;
+let _barRO = null;
+
+/* Chatbar entrance */
+let _chatbarTransitionOwner = null;
+let _entranceMove = null;
+let _entranceFade = null;
+
+/* Plus menu */
+if (typeof _plusOpen === 'undefined') {
+  globalThis._plusOpen = false;
+}
+let _plusAnimationToken = 0;
+let _plusFallbackTimer = 0;
+let _plusTransitionEndHandler = null;
+
+/* Content transition */
+let _contentAnimations = [];
+let _contentFallback = null;
+
+/* Chat persistence */
+let _chatSavePending = false;
+let _chatSaveScroll = 0;
+let _chatSaveHandle = 0;
+
+/* Public */
+window._lastUserMsgEl = null;
+
+/* Tabs */
+let _currentTabKey = (() => {
+  if (!tabBar) return 'ai';
+  const a = tabBar.querySelector('.tab.active');
+  return a ? a.getAttribute('data-tab') : 'ai';
+})();
+const _moduleCache = {};
+const _moduleLoadPromises = {};
+const _scriptLoadPromises = {};
+const _cssPromises = {};
+let _tabLoadRequestId = 0;
+
+/* ════════════════════════════════
+   HELPERS
+   ════════════════════════════════ */
 
 function _setScrollOwner(owner, on) {
   _scrollOwners[owner] = !!on;
   _programmaticScroll =
     _scrollOwners.keyboard || _scrollOwners.message || _scrollOwners.tab;
 }
-
-/* ── Velocity EMA ── */
-let _velocityEMA = 0;
-let _lastScrollTime = 0;
-const VELOCITY_ALPHA = 0.3;
-
-/* ── Keyboard / viewport state ── */
-let _cleanupRafId = 0;
-let _stableKbH = 0;
-let _barHeight = chatbarWrap ? chatbarWrap.offsetHeight : 0;
-let _lastChatbarTransform = '';
-let _keyboardStyleRestoreRaf = 0;
-let _keyboardStyleToken = 0;
-
-/* Single geometry writer: every trigger coalesces into one rAF */
-let _geomRaf = 0;
-let _geomForce = false;
-let _pendingSampleKey = '';
-
-/* ── Chatbar transition ownership ── */
-let _chatbarTransitionOwner = null;
-let _chatbarEntranceActive = false;
-let _chatbarEntranceAnims = null;
-
-/* ── Spacer guard ── */
-let _lastSpacerH = -1;
-
-/* ── Plus menu state ── */
-if (typeof _plusOpen === 'undefined') {
-  globalThis._plusOpen = false;
-}
-let _plusAnimationToken = 0;
-let _plusAnimFrame = 0;
-let _plusCloseFallbackTimer = 0;
-let _plusTransitionEndHandler = null;
-let _plusMenuBaseStyles = null;
-
-/* ── Content transition state ── */
-let _contentAnimations = [];
-
-/* ── Public: last user message element ── */
-window._lastUserMsgEl = null;
-
-/* ── Current active tab key ── */
-let _currentTabKey = (() => {
-  if (!tabBar) return 'ai';
-  const a = tabBar.querySelector('.tab.active');
-  return a ? a.getAttribute('data-tab') : 'ai';
-})();
-
-/* ── Module cache / in-flight loads ── */
-const _moduleCache = {};
-const _moduleLoadPromises = {};
-const _scriptLoadPromises = {};
-let _tabLoadRequestId = 0;
-
-/* ════════════════════════════════
-HELPERS
-════════════════════════════════ */
 
 function resetScrollAccum() {
   _accumDown = 0;
@@ -141,12 +155,73 @@ function _isCurrentTabRequest(key, requestId) {
   return requestId === _tabLoadRequestId && _currentTabKey === key;
 }
 
+/* Style flush only (no layout): commits a start state before a transition is armed */
+function _flushStyle(el) {
+  return getComputedStyle(el).opacity;
+}
+
+/* Transform + opacity enter fallback for engines without Element.animate */
+function _cssEnter(el, y, moveMs, fadeMs, ease, onDone) {
+  let armRaf = 0;
+  let timer = 0;
+  let ended = false;
+
+  function onEnd(e) {
+    if (e.target === el && e.propertyName === 'transform') end();
+  }
+
+  function clear() {
+    if (armRaf) cancelAnimationFrame(armRaf);
+    armRaf = 0;
+    clearTimeout(timer);
+    el.removeEventListener('transitionend', onEnd);
+    el.style.transition = '';
+    el.style.opacity = '';
+    el.style.transform = '';
+  }
+
+  function end() {
+    if (ended) return;
+    ended = true;
+    clear();
+    if (onDone) onDone();
+  }
+
+  el.style.transition = 'none';
+  el.style.opacity = '0';
+  el.style.transform = `translateY(${y}px)`;
+
+  /* Two frames: start state must be painted before the transition is armed */
+  armRaf = requestAnimationFrame(() => {
+    armRaf = requestAnimationFrame(() => {
+      armRaf = 0;
+      el.style.transition = `transform ${moveMs}ms ${ease}, opacity ${fadeMs}ms ease-out`;
+      el.style.opacity = '';
+      el.style.transform = '';
+      el.addEventListener('transitionend', onEnd);
+    });
+  });
+
+  /* Watchdog: never leave the element hidden if no transition runs */
+  timer = window.setTimeout(end, moveMs + 120);
+
+  return {
+    cancel() {
+      if (ended) return;
+      ended = true;
+      clear();
+    }
+  };
+}
+
+/* ════════════════════════════════
+   VIEWPORT MEASUREMENT
+   ════════════════════════════════ */
+
 /*
- * Keyboard inset in layout-viewport px:
- *   kb = max(0, layoutHeight - (visualViewport.offsetTop + visualViewport.height))
- * The fixed chatbar's base bottom edge is at layoutHeight, so translateY(-kb)
- * lands it on the visual viewport bottom. With resizes-content the layout
- * viewport shrinks too and kb resolves to ~0.
+ * kb = max(0, layoutHeight - (visualViewport.offsetTop + visualViewport.height));
+ * the fixed chatbar's base bottom edge is layoutHeight, so translateY(-kb)
+ * lands it on the visual viewport bottom.
  */
 function _getLayoutViewportHeight() {
   const docHeight = document.documentElement ? document.documentElement.clientHeight : 0;
@@ -168,8 +243,14 @@ function _isEditableElement(el) {
 }
 
 function _hasRelevantKeyboardFocus() {
-  const active = document.activeElement;
-  return _isEditableElement(active);
+  return _isEditableElement(document.activeElement);
+}
+
+function _measureBarHeight() {
+  const rectH = chatbarWrap.getBoundingClientRect().height;
+  return Number.isFinite(rectH) && rectH > 0
+    ? Math.ceil(rectH)
+    : chatbarWrap.offsetHeight;
 }
 
 /* One read phase: layout viewport, visual viewport and bar height from the same frame */
@@ -178,12 +259,13 @@ function _readViewportSample() {
   const vvH = Number(vvp.height);
   const vvTop = Math.max(0, Number(vvp.offsetTop) || 0);
 
-  const rectH = chatbarWrap.getBoundingClientRect().height;
-  const barH = Number.isFinite(rectH) && rectH > 0
-    ? Math.ceil(rectH)
-    : chatbarWrap.offsetHeight;
-
-  return { layoutH, vvH, vvTop, barH, key: layoutH + '|' + vvTop + '|' + vvH };
+  return {
+    layoutH,
+    vvH,
+    vvTop,
+    barH: _measureBarHeight(),
+    key: layoutH + '|' + vvTop + '|' + vvH
+  };
 }
 
 function _measureKeyboardInset(s) {
@@ -202,35 +284,16 @@ function _measureKeyboardInset(s) {
   return Math.max(0, Math.ceil(rawInset));
 }
 
-function _cancelKeyboardRestoreRaf() {
-  if (_keyboardStyleRestoreRaf) {
-    cancelAnimationFrame(_keyboardStyleRestoreRaf);
-    _keyboardStyleRestoreRaf = 0;
-  }
-}
+function _setSpacerHeight(h) {
+  if (!chatSpacer || !Number.isFinite(h)) return;
 
-function _scheduleKeyboardTransitionRestore(token) {
-  _cancelKeyboardRestoreRaf();
-
-  _keyboardStyleRestoreRaf = requestAnimationFrame(() => {
-    _keyboardStyleRestoreRaf = 0;
-
-    if (
-      token !== _keyboardStyleToken ||
-      _keyboardOpen ||
-      !chatbarWrap
-    ) {
-      return;
-    }
-
-    chatbarWrap.style.transition = '';
-    _chatbarTransitionOwner = null;
-  });
+  const px = Math.max(0, Math.ceil(h)) + 'px';
+  if (chatSpacer.style.height !== px) chatSpacer.style.height = px;
 }
 
 /* ════════════════════════════════
-SEND BUTTON MODE
-════════════════════════════════ */
+   SEND BUTTON MODE
+   ════════════════════════════════ */
 
 let _sendMode = 'send';
 
@@ -260,92 +323,238 @@ if (sendBtn) {
 }
 
 /* ════════════════════════════════
-SCROLL TO MSG
-════════════════════════════════ */
+   SCROLL TO MSG
+   ════════════════════════════════ */
 
-function scrollToMsg(el) {
-  if (!el || !scrollHost) return;
+function _cancelMessageScroll() {
+  _programmaticScrollToken += 1;
 
   if (_scrollRafId !== null) {
     cancelAnimationFrame(_scrollRafId);
     _scrollRafId = null;
   }
 
-  const requestToken = ++_programmaticScrollToken;
+  if (_msgScrollCleanup) {
+    _msgScrollCleanup();
+    _msgScrollCleanup = null;
+  }
+
+  _setScrollOwner('message', false);
+}
+
+/* Resolves when a smooth scroll ends, is interrupted by the user, or stalls */
+function _watchScrollSettle(done) {
+  let raf = 0;
+  let timer = 0;
+  let still = 0;
+  let last = scrollHost.scrollTop;
+
+  function cleanup() {
+    if (raf) cancelAnimationFrame(raf);
+    raf = 0;
+    clearTimeout(timer);
+    scrollHost.removeEventListener('scrollend', finish);
+    scrollHost.removeEventListener('touchstart', finish);
+    scrollHost.removeEventListener('wheel', finish);
+  }
+
+  function finish() {
+    cleanup();
+    done();
+  }
+
+  scrollHost.addEventListener('touchstart', finish, { passive: true });
+  scrollHost.addEventListener('wheel', finish, { passive: true });
+
+  if ('onscrollend' in window) {
+    scrollHost.addEventListener('scrollend', finish, { passive: true });
+  } else {
+    const tick = () => {
+      const top = scrollHost.scrollTop;
+      still = top === last ? still + 1 : 0;
+      last = top;
+
+      if (still >= 4) {
+        finish();
+      } else {
+        raf = requestAnimationFrame(tick);
+      }
+    };
+    raf = requestAnimationFrame(tick);
+  }
+
+  /* Watchdog for a scroll that never starts or never reports its end */
+  timer = window.setTimeout(finish, 1500);
+
+  return cleanup;
+}
+
+function scrollToMsg(el) {
+  if (!el || !scrollHost) return;
+
+  _cancelMessageScroll();
+  const token = _programmaticScrollToken;
 
   _scrollRafId = requestAnimationFrame(() => {
     _scrollRafId = null;
 
-    if (requestToken !== _programmaticScrollToken) return;
+    if (token !== _programmaticScrollToken) return;
+
+    /* Read phase */
+    if (tabBar) _tabBarHeight = tabBar.offsetHeight;
+    const maxTop = Math.max(0, scrollHost.scrollHeight - scrollHost.clientHeight);
+    const target = Math.min(maxTop, Math.max(0, el.offsetTop - _tabBarHeight - 8));
+    const distance = Math.abs(target - scrollHost.scrollTop);
 
     _setScrollOwner('message', true);
 
-    if (tabBar) _tabBarHeight = tabBar.offsetHeight;
-    const target = Math.max(0, el.offsetTop - _tabBarHeight - 8);
-
-    if (_prefersReducedMotion) {
-      scrollHost.scrollTop = target;
-      _lastScrollY = target;
+    if (_prefersReducedMotion || distance < 1) {
+      if (distance >= 1) scrollHost.scrollTop = target;
+      _lastScrollY = scrollHost.scrollTop;
       resetScrollAccum();
       _setScrollOwner('message', false);
       return;
     }
 
     scrollHost.scrollTo({ top: target, behavior: 'smooth' });
-    _lastScrollY = target;
-    resetScrollAccum();
 
-    window.setTimeout(() => {
-      if (requestToken !== _programmaticScrollToken) return;
+    _msgScrollCleanup = _watchScrollSettle(() => {
+      _msgScrollCleanup = null;
+      if (token !== _programmaticScrollToken) return;
+
       _setScrollOwner('message', false);
-      if (scrollHost) _lastScrollY = scrollHost.scrollTop;
+      _lastScrollY = scrollHost.scrollTop;
       resetScrollAccum();
-    }, 450);
+    });
   });
 }
 
 window.scrollToMsg = scrollToMsg;
 
 /* ════════════════════════════════
-CHATBAR / KEYBOARD POSITIONING
-════════════════════════════════ */
+   CHATBAR ENTRANCE
+   ════════════════════════════════ */
 
-/* Stop the entrance; keepFade lets the opacity finish when the keyboard takes the transform */
-function _cancelChatbarEntrance(keepFade) {
-  if (!_chatbarEntranceActive) return;
+function _endEntranceMove() {
+  _entranceMove = null;
+  if (_chatbarTransitionOwner === 'entrance') _chatbarTransitionOwner = null;
+}
 
-  _chatbarEntranceActive = false;
+function _startChatbarEntrance() {
+  if (!chatbarWrap || _prefersReducedMotion) return;
 
-  if (_chatbarEntranceAnims) {
-    const [move, fade] = _chatbarEntranceAnims;
+  _chatbarTransitionOwner = 'entrance';
 
-    move.onfinish = null;
-    move.oncancel = null;
-    move.cancel();
-
-    if (!keepFade) {
-      fade.cancel();
-    }
-
-    _chatbarEntranceAnims = null;
+  if (typeof chatbarWrap.animate !== 'function') {
+    _entranceMove = _cssEnter(chatbarWrap, 24, 420, 300, EASE.chatbarEnter, _endEntranceMove);
+    return;
   }
 
-  _chatbarTransitionOwner = null;
+  /* 'backwards' fill: start state applies immediately, nothing is held after the end */
+  const move = chatbarWrap.animate(
+    [
+      { transform: 'translateY(24px) translateZ(0)' },
+      { transform: 'translateY(0) translateZ(0)' }
+    ],
+    { duration: 420, easing: EASE.chatbarEnter, fill: 'backwards' }
+  );
+
+  const fade = chatbarWrap.animate(
+    [{ opacity: 0 }, { opacity: 1 }],
+    { duration: 300, easing: 'ease-out', fill: 'backwards' }
+  );
+
+  move.onfinish = move.oncancel = () => {
+    if (_entranceMove === move) _endEntranceMove();
+  };
+
+  fade.onfinish = fade.oncancel = () => {
+    if (_entranceFade === fade) _entranceFade = null;
+  };
+
+  _entranceMove = move;
+  _entranceFade = fade;
 }
 
-function _setSpacerHeight(h) {
-  if (!chatSpacer || !Number.isFinite(h)) return;
+/* Keyboard takes the transform: keepFade lets the opacity finish */
+function _cancelChatbarEntrance(keepFade) {
+  const move = _entranceMove;
+  const fade = _entranceFade;
 
-  const safeH = Math.max(0, Math.ceil(h));
-  const px = safeH + 'px';
+  _entranceMove = null;
+  if (!keepFade) _entranceFade = null;
 
-  _lastSpacerH = safeH;
-  if (chatSpacer.style.height === px) return;
+  if (move) {
+    move.onfinish = move.oncancel = null;
+    move.cancel();
+  }
 
-  chatSpacer.style.height = px;
+  if (fade && !keepFade) {
+    fade.onfinish = fade.oncancel = null;
+    fade.cancel();
+  }
+
+  if (_chatbarTransitionOwner === 'entrance') _chatbarTransitionOwner = null;
 }
 
-/* ── Geometry scheduling: all triggers funnel into one rAF ── */
+/* ════════════════════════════════
+   CHATBAR / KEYBOARD POSITIONING
+   ════════════════════════════════ */
+
+function _cancelKeyboardRestoreRaf() {
+  if (_keyboardStyleRestoreRaf) {
+    cancelAnimationFrame(_keyboardStyleRestoreRaf);
+    _keyboardStyleRestoreRaf = 0;
+  }
+}
+
+/* Apply a pending transition restore immediately (used before lifecycle cancel) */
+function _flushKeyboardRestore() {
+  if (!_keyboardStyleRestoreRaf) return;
+
+  _cancelKeyboardRestoreRaf();
+
+  if (!_keyboardOpen && !_entranceMove && chatbarWrap) {
+    chatbarWrap.style.transition = '';
+    _chatbarTransitionOwner = null;
+  }
+}
+
+function _scheduleKeyboardTransitionRestore(token) {
+  _cancelKeyboardRestoreRaf();
+
+  _keyboardStyleRestoreRaf = requestAnimationFrame(() => {
+    _keyboardStyleRestoreRaf = 0;
+
+    if (token !== _keyboardStyleToken || _keyboardOpen || !chatbarWrap) return;
+
+    chatbarWrap.style.transition = '';
+    _chatbarTransitionOwner = null;
+  });
+}
+
+/* Instant: geometry follows VisualViewport frame by frame, never animated. Returns true when written. */
+function _writeChatbarTransform(transform) {
+  if (transform === _rawTransform && chatbarWrap.style.transform === _lastChatbarTransform) {
+    return false;
+  }
+
+  _cancelKeyboardRestoreRaf();
+  _keyboardStyleToken += 1;
+  _chatbarTransitionOwner = 'keyboard';
+
+  chatbarWrap.style.transition = 'none';
+  chatbarWrap.style.transform = transform;
+  _rawTransform = transform;
+  _lastChatbarTransform = chatbarWrap.style.transform;
+  return true;
+}
+
+function _keyboardTransform(kbHeight) {
+  return `translateY(-${kbHeight}px) translateZ(0)`;
+}
+
+/* Geometry scheduling: every trigger funnels into one rAF */
 function _scheduleGeometry(force) {
   if (force === true) _geomForce = true;
   if (_geomRaf) return;
@@ -367,67 +576,25 @@ function _cancelGeometryRaf() {
   _pendingSampleKey = '';
 }
 
-/* ResizeObserver is a trigger only; the bar height is read in the geometry frame */
-if (chatbarWrap) {
-  const _barResizeObserver = typeof ResizeObserver === 'function'
-    ? new ResizeObserver(() => _scheduleGeometry())
-    : null;
+/* Bar height → spacer in the same frame the bar resized (observer runs post-layout) */
+function _onBarResize() {
+  if (!chatbarWrap) return;
 
-  if (_barResizeObserver) {
-    _barResizeObserver.observe(chatbarWrap);
-  }
+  const h = _measureBarHeight();
+  if (!(h > 0) || h === _barHeight) return;
+
+  _barHeight = h;
+  _setSpacerHeight(_barHeight + _stableKbH);
 }
 
-/* ── Chatbar entrance ── */
-(function _chatbarEntrance() {
-  if (!chatbarWrap || _prefersReducedMotion || typeof chatbarWrap.animate !== 'function') return;
-
-  _chatbarEntranceActive = true;
-  _chatbarTransitionOwner = 'entrance';
-
-  /* 'backwards' fill: first keyframe applies immediately, nothing is held after the end */
-  const move = chatbarWrap.animate(
-    [
-      { transform: 'translateY(24px) translateZ(0)' },
-      { transform: 'translateY(0) translateZ(0)' }
-    ],
-    { duration: 450, easing: EASE.chatbarEnter, fill: 'backwards' }
-  );
-
-  const fade = chatbarWrap.animate(
-    [{ opacity: 0 }, { opacity: 1 }],
-    { duration: 350, easing: 'ease-out', fill: 'backwards' }
-  );
-
-  _chatbarEntranceAnims = [move, fade];
-
-  const finish = () => {
-    if (!_chatbarEntranceActive) return;
-
-    _chatbarEntranceActive = false;
-    _chatbarEntranceAnims = null;
-
-    if (_chatbarTransitionOwner === 'entrance') {
-      _chatbarTransitionOwner = null;
-    }
-  };
-
-  move.onfinish = finish;
-  move.oncancel = finish;
-})();
-
-/* Instant: geometry follows VisualViewport frame by frame, never animated */
-function _writeChatbarTransform(transform) {
-  _cancelKeyboardRestoreRaf();
-  _keyboardStyleToken += 1;
-  _chatbarTransitionOwner = 'keyboard';
-
-  chatbarWrap.style.transition = 'none';
-  chatbarWrap.style.transform = transform;
-  _lastChatbarTransform = chatbarWrap.style.transform;
+if (chatbarWrap && typeof ResizeObserver === 'function') {
+  _barRO = new ResizeObserver(_onBarResize);
+  _barRO.observe(chatbarWrap);
 }
 
-/* ── Keyboard / VisualViewport positioning (the only writer of chatbar transform + spacer) ── */
+_startChatbarEntrance();
+
+/* The only writer of chatbar transform + spacer during keyboard motion */
 function _applyViewport(force = false) {
   if (!vvp || !chatbarWrap) return;
 
@@ -438,11 +605,7 @@ function _applyViewport(force = false) {
   let kbHeight = _measureKeyboardInset(sample);
   const wasOpen = _stableKbH > 0;
 
-  /*
-   * A closed → open jump is committed only when two consecutive frames report
-   * identical layout + visual viewport geometry, so a half-updated viewport
-   * (layout and visual viewport disagreeing mid-transition) is never latched.
-   */
+  /* Closed → open commits only after two consecutive identical frames */
   if (!force && !wasOpen && kbHeight > 0) {
     if (_pendingSampleKey === sample.key) {
       _pendingSampleKey = '';
@@ -457,8 +620,8 @@ function _applyViewport(force = false) {
 
   /* Write phase */
 
-  /* Closed viewport must not touch the entrance; a real inset takes over */
-  if (_chatbarEntranceActive && kbHeight === 0) {
+  /* A closed viewport never touches the entrance */
+  if (_entranceMove && kbHeight === 0) {
     _stableKbH = 0;
     _keyboardOpen = false;
     _setSpacerHeight(_barHeight);
@@ -468,29 +631,23 @@ function _applyViewport(force = false) {
   if (!force && kbHeight === _stableKbH) {
     _keyboardOpen = kbHeight > 0;
 
-    if (kbHeight > 0 && chatbarWrap.style.transform !== _lastChatbarTransform) {
-      _writeChatbarTransform(_lastChatbarTransform);
-    }
+    if (kbHeight > 0) _writeChatbarTransform(_keyboardTransform(kbHeight));
 
     _setSpacerHeight(_barHeight + kbHeight);
     return;
   }
 
-  if (kbHeight > 0 && _chatbarEntranceActive) {
-    _cancelChatbarEntrance(true);
-  }
+  if (kbHeight > 0 && _entranceMove) _cancelChatbarEntrance(true);
 
   _stableKbH = kbHeight;
   _keyboardOpen = kbHeight > 0;
 
-  _writeChatbarTransform(
-    kbHeight > 0
-      ? `translateY(-${kbHeight}px) translateZ(0)`
-      : 'translateZ(0)'
-  );
-
-  if (kbHeight === 0) {
-    _scheduleKeyboardTransitionRestore(_keyboardStyleToken);
+  if (kbHeight > 0) {
+    _writeChatbarTransform(_keyboardTransform(kbHeight));
+  } else if (_rawTransform !== '') {
+    if (_writeChatbarTransform(TRANSFORM_REST)) {
+      _scheduleKeyboardTransitionRestore(_keyboardStyleToken);
+    }
   }
 
   _setSpacerHeight(_barHeight + kbHeight);
@@ -537,11 +694,12 @@ function _recoverViewportAfterLifecycle() {
 
   _cancelGeometryRaf();
 
-  requestAnimationFrame(() => {
-    requestAnimationFrame(() => {
-      if (document.visibilityState !== 'hidden') {
-        _applyViewport(true);
-      }
+  if (_recoverRaf) cancelAnimationFrame(_recoverRaf);
+
+  _recoverRaf = requestAnimationFrame(() => {
+    _recoverRaf = requestAnimationFrame(() => {
+      _recoverRaf = 0;
+      if (document.visibilityState !== 'hidden') _applyViewport(true);
     });
   });
 }
@@ -553,19 +711,19 @@ if (vvp) {
   _setSpacerHeight(_barHeight);
   _applyViewport(true);
 } else {
-  function _legacyFix() {
+  const _legacyFix = () => {
     const h = window.innerHeight + 'px';
     if (document.body.style.height !== h) {
       document.body.style.height = h;
     }
-  }
+  };
 
   window.addEventListener('resize', _legacyFix, { passive: true });
   _legacyFix();
   _setSpacerHeight(_barHeight);
 }
 
-/* Window resize complements VisualViewport for orientation/layout changes */
+/* Window resize / orientation complement VisualViewport */
 window.addEventListener('resize', () => {
   if (vvp) fixViewport();
 }, { passive: true });
@@ -574,17 +732,66 @@ window.addEventListener('orientationchange', () => {
   if (vvp) fixViewport();
 }, { passive: true });
 
+/* ════════════════════════════════
+   CHAT PERSISTENCE (off the tab-click path)
+   ════════════════════════════════ */
+
+function _flushChatSave() {
+  if (!_chatSavePending) return;
+  _chatSavePending = false;
+
+  try {
+    sessionStorage.setItem('atkyn_chat_html', _msgWrap.innerHTML);
+    sessionStorage.setItem('atkyn_chat_scroll', String(_chatSaveScroll));
+  } catch (_) {}
+}
+
+function _queueChatSave() {
+  if (!_msgWrap) return;
+
+  _chatSavePending = true;
+  _chatSaveScroll = scrollHost ? scrollHost.scrollTop : 0;
+
+  if (_chatSaveHandle) return;
+
+  const run = () => {
+    _chatSaveHandle = 0;
+    _flushChatSave();
+  };
+
+  _chatSaveHandle = typeof requestIdleCallback === 'function'
+    ? requestIdleCallback(run, { timeout: 800 })
+    : window.setTimeout(run, 120);
+}
+
+/* ════════════════════════════════
+   LIFECYCLE
+   ════════════════════════════════ */
+
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible') {
     _recoverViewportAfterLifecycle();
+  } else {
+    _flushChatSave();
   }
 }, { passive: true });
 
-window.addEventListener('pageshow', _recoverViewportAfterLifecycle, { passive: true });
+window.addEventListener('pageshow', (e) => {
+  if (!e.persisted) return;
+
+  if (_barRO && chatbarWrap) _barRO.observe(chatbarWrap);
+  _recoverViewportAfterLifecycle();
+}, { passive: true });
 
 window.addEventListener('pagehide', () => {
+  _flushChatSave();
   _cancelGeometryRaf();
-  _cancelKeyboardRestoreRaf();
+  _flushKeyboardRestore();
+
+  if (_recoverRaf) {
+    cancelAnimationFrame(_recoverRaf);
+    _recoverRaf = 0;
+  }
 
   if (_cleanupRafId) {
     cancelAnimationFrame(_cleanupRafId);
@@ -592,56 +799,44 @@ window.addEventListener('pagehide', () => {
     _setScrollOwner('keyboard', false);
   }
 
+  if (_headerRafId) {
+    cancelAnimationFrame(_headerRafId);
+    _headerRafId = 0;
+    _rafPending = false;
+  }
+
+  if (_tabScrollRafId) {
+    cancelAnimationFrame(_tabScrollRafId);
+    _tabScrollRafId = 0;
+    _setScrollOwner('tab', false);
+  }
+
+  _cancelMessageScroll();
   _cancelChatbarEntrance();
+  _clearContentAnimation();
+  _settlePlusMenu();
+
+  if (_barRO) _barRO.disconnect();
 }, { passive: true });
 
 /* ════════════════════════════════
-THEME / PREFERENCE CHANGE DETECTION
-════════════════════════════════ */
+   THEME / REDUCED-MOTION CHANGE
+   ════════════════════════════════ */
 
-/*
- * Theme change: MQ listeners run before rAF callbacks in the same frame, and the
- * geometry read phase forces style + layout, so one scheduled frame already reads
- * post-theme bar height and live viewport values.
- */
 if (window.matchMedia) {
   const themeMQ = window.matchMedia('(prefers-color-scheme: dark)');
   const reducedMotionMQ = window.matchMedia('(prefers-reduced-motion: reduce)');
 
+  /* The geometry read phase forces style + layout, so one frame reads post-theme values */
   const _onThemeChange = () => _scheduleGeometry();
 
-  /* Reduced motion */
   const _onReducedMotionChange = (e) => {
     _prefersReducedMotion = e.matches;
 
     if (_prefersReducedMotion) {
       _cancelChatbarEntrance();
       _clearContentAnimation();
-
-      if (_plusOpen || (plusMenu && plusMenu.classList.contains('open'))) {
-        _capturePlusMenuBaseStyles();
-
-        _plusAnimationToken += 1;
-        if (_plusAnimFrame) {
-          cancelAnimationFrame(_plusAnimFrame);
-          _plusAnimFrame = 0;
-        }
-        if (_plusCloseFallbackTimer) {
-          clearTimeout(_plusCloseFallbackTimer);
-          _plusCloseFallbackTimer = 0;
-        }
-        _removePlusTransitionListener();
-
-        if (_plusOpen) {
-          plusMenu.style.transition = 'none';
-          plusMenu.style.transform = '';
-          plusMenu.style.opacity = '';
-          plusMenu.classList.add('open');
-          plusBackdrop?.classList.add('open');
-        } else {
-          _finishPlusClose(_plusAnimationToken);
-        }
-      }
+      _settlePlusMenu();
     }
 
     _scheduleGeometry(true);
@@ -661,25 +856,29 @@ if (window.matchMedia) {
 }
 
 /* ════════════════════════════════
-HEADER / TAB SCROLL ANIMATION
-════════════════════════════════ */
+   HEADER / TAB SCROLL ANIMATION
+   ════════════════════════════════ */
 
 const HIDE_ACCUM = 40;
 const SHOW_ACCUM = 55;
 const LOGO_THRESH = 10;
+const VELOCITY_MIN = 0.05;
+const IDLE_GAP = 120;
 
 function updateHeader(now) {
   _rafPending = false;
+  _headerRafId = 0;
 
   if (!scrollHost || !logoHeader || !tabBar) return;
 
+  const sy = scrollHost.scrollTop;
+
   if (_programmaticScroll) {
-    _lastScrollY = scrollHost.scrollTop;
+    _lastScrollY = sy;
     resetScrollAccum();
     return;
   }
 
-  const sy = scrollHost.scrollTop;
   const delta = sy - _lastScrollY;
 
   if (delta === 0) return;
@@ -687,10 +886,12 @@ function updateHeader(now) {
   now = now || performance.now();
   /* First sample after a reset has no previous timestamp */
   const dt = _lastScrollTime ? Math.max(1, now - _lastScrollTime) : 16;
+  const v = delta / dt;
 
-  _velocityEMA = _velocityEMA === 0
-    ? delta / dt
-    : _velocityEMA * (1 - VELOCITY_ALPHA) + (delta / dt) * VELOCITY_ALPHA;
+  /* Reseed on first sample, idle gap, or direction reversal so stale velocity never leaks */
+  _velocityEMA = (_velocityEMA === 0 || dt > IDLE_GAP || (v > 0) !== (_velocityEMA > 0))
+    ? v
+    : _velocityEMA * (1 - VELOCITY_ALPHA) + v * VELOCITY_ALPHA;
 
   _lastScrollY = sy;
   _lastScrollTime = now;
@@ -726,30 +927,32 @@ function updateHeader(now) {
     _isTabScrolled = true;
   }
 
-  if (_velocityEMA > 0.05) {
-    _accumDown += delta;
-    if (_accumUp > 0) _accumUp = 0;
+  if (delta > 0) {
+    _accumUp = 0;
 
-    if (!_isTabHidden && _accumDown >= HIDE_ACCUM) {
-      tabBar.classList.add('hide');
-      _isTabHidden = true;
-      _accumDown = 0;
+    if (_velocityEMA > VELOCITY_MIN) {
+      _accumDown += delta;
+
+      if (!_isTabHidden && _accumDown >= HIDE_ACCUM) {
+        tabBar.classList.add('hide');
+        _isTabHidden = true;
+        _accumDown = 0;
+      }
     }
-  } else if (_velocityEMA < -0.05) {
-    _accumUp += -delta;
-    if (_accumDown > 0) _accumDown = 0;
+  } else {
+    _accumDown = 0;
 
-    if (_isTabHidden && _accumUp >= SHOW_ACCUM) {
-      tabBar.classList.remove('hide');
-      _isTabHidden = false;
-      _accumUp = 0;
+    if (_velocityEMA < -VELOCITY_MIN) {
+      _accumUp -= delta;
+
+      if (_isTabHidden && _accumUp >= SHOW_ACCUM) {
+        tabBar.classList.remove('hide');
+        _isTabHidden = false;
+        _accumUp = 0;
+      }
     }
   }
 }
-
-const _scheduleHeaderUpdate = typeof window.requestPostAnimationFrame === 'function'
-  ? window.requestPostAnimationFrame.bind(window)
-  : window.requestAnimationFrame.bind(window);
 
 if (scrollHost) {
   scrollHost.addEventListener('scroll', () => {
@@ -760,14 +963,14 @@ if (scrollHost) {
 
     if (!_rafPending) {
       _rafPending = true;
-      _scheduleHeaderUpdate(updateHeader);
+      _headerRafId = requestAnimationFrame(updateHeader);
     }
   }, { passive: true });
 }
 
 /* ════════════════════════════════
-INPUT & PILL
-════════════════════════════════ */
+   INPUT & PILL
+   ════════════════════════════════ */
 
 if (pill && input) {
   pill.addEventListener('pointerdown', (e) => {
@@ -809,129 +1012,119 @@ if (pill && input) {
 }
 
 /* ════════════════════════════════
-PLUS MENU
-════════════════════════════════ */
+   PLUS MENU
+   ════════════════════════════════ */
 
-function _capturePlusMenuBaseStyles() {
-  if (!plusMenu || _plusMenuBaseStyles) return;
+function _unwatchPlus() {
+  if (_plusFallbackTimer) {
+    clearTimeout(_plusFallbackTimer);
+    _plusFallbackTimer = 0;
+  }
 
-  _plusMenuBaseStyles = {
-    transition: plusMenu.style.transition,
-    transform: plusMenu.style.transform,
-    opacity: plusMenu.style.opacity
-  };
-}
-
-/* Restore base styles */
-function _restorePlusMenuBaseStyles() {
-  if (!plusMenu || !_plusMenuBaseStyles) return;
-
-  plusMenu.style.transition = _plusMenuBaseStyles.transition;
-  plusMenu.style.transform = _plusMenuBaseStyles.transform;
-  plusMenu.style.opacity = _plusMenuBaseStyles.opacity;
-  _plusMenuBaseStyles = null;
-}
-
-function _removePlusTransitionListener() {
-  if (!plusMenu || !_plusTransitionEndHandler) return;
-  plusMenu.removeEventListener('transitionend', _plusTransitionEndHandler);
-  _plusTransitionEndHandler = null;
+  if (plusMenu && _plusTransitionEndHandler) {
+    plusMenu.removeEventListener('transitionend', _plusTransitionEndHandler);
+    _plusTransitionEndHandler = null;
+  }
 }
 
 function _cancelPlusAnimation() {
   _plusAnimationToken += 1;
+  _unwatchPlus();
+}
 
-  if (_plusAnimFrame) {
-    cancelAnimationFrame(_plusAnimFrame);
-    _plusAnimFrame = 0;
-  }
+/* Finish on the transform transition; watchdog covers a transition that never runs */
+function _watchPlusTransition(token, done, ms) {
+  const finish = () => done(token);
 
-  if (_plusCloseFallbackTimer) {
-    clearTimeout(_plusCloseFallbackTimer);
-    _plusCloseFallbackTimer = 0;
-  }
+  _plusTransitionEndHandler = (e) => {
+    if (e.target === plusMenu && e.propertyName === 'transform') finish();
+  };
 
-  _removePlusTransitionListener();
+  plusMenu.addEventListener('transitionend', _plusTransitionEndHandler);
+  _plusFallbackTimer = window.setTimeout(finish, ms + 80);
+}
+
+function _applyPlusRest() {
+  plusMenu.style.transition = _plusMenuBase.transition;
+  plusMenu.style.transform = _plusMenuBase.transform;
+  plusMenu.style.opacity = _plusMenuBase.opacity;
+  plusMenu.style.pointerEvents = _plusMenuBase.pointerEvents;
 }
 
 function _finishPlusOpen(token) {
   if (!plusMenu || token !== _plusAnimationToken || !_plusOpen) return;
 
-  _removePlusTransitionListener();
-  plusMenu.style.transition = '';
-  plusMenu.style.transform = '';
-  plusMenu.style.opacity = '';
+  _unwatchPlus();
+  _applyPlusRest();
 }
 
 function _finishPlusClose(token) {
   if (!plusMenu || token !== _plusAnimationToken || _plusOpen) return;
 
-  _removePlusTransitionListener();
+  _unwatchPlus();
 
-  if (_plusCloseFallbackTimer) {
-    clearTimeout(_plusCloseFallbackTimer);
-    _plusCloseFallbackTimer = 0;
-  }
+  const instant = _prefersReducedMotion;
+  if (instant) plusMenu.style.transition = 'none';
 
   plusMenu.classList.remove('open');
   plusBackdrop?.classList.remove('open');
-  _restorePlusMenuBaseStyles();
+
+  if (instant) _flushStyle(plusMenu);
+  _applyPlusRest();
+}
+
+/* Jump to the final state of the current intent (reduced motion, pagehide) */
+function _settlePlusMenu() {
+  if (!plusMenu || !plusBackdrop) return;
+
+  _cancelPlusAnimation();
+
+  if (_plusOpen) {
+    plusMenu.classList.add('open');
+    plusBackdrop.classList.add('open');
+    _applyPlusRest();
+    if (_prefersReducedMotion) plusMenu.style.transition = 'none';
+  } else if (plusMenu.classList.contains('open')) {
+    _finishPlusClose(_plusAnimationToken);
+  }
 }
 
 function openPlusMenu() {
   if (!plusBtn || !plusMenu || !plusBackdrop) return;
   if (_plusOpen) return;
 
-  _capturePlusMenuBaseStyles();
-  _cancelPlusAnimation();
+  /* Menu still carries 'open' only while a close is in flight */
+  const resuming = plusMenu.classList.contains('open');
 
+  _cancelPlusAnimation();
   const token = _plusAnimationToken;
 
   _plusOpen = true;
   plusBackdrop.classList.add('open');
 
-  plusMenu.classList.add('open');
-
   if (_prefersReducedMotion) {
-    plusMenu.style.transition = '';
-    plusMenu.style.transform = '';
-    plusMenu.style.opacity = '';
+    plusMenu.classList.add('open');
+    _applyPlusRest();
+    plusMenu.style.transition = 'none';
     return;
   }
 
-  plusMenu.style.transition = 'none';
-  plusMenu.style.transform = 'scale(0.88) translateY(10px)';
-  plusMenu.style.opacity = '0';
+  plusMenu.style.pointerEvents = _plusMenuBase.pointerEvents;
 
-  /* Two frames: the start state must be rendered before the transition is armed */
-  _plusAnimFrame = requestAnimationFrame(() => {
-    _plusAnimFrame = requestAnimationFrame(() => {
-      _plusAnimFrame = 0;
+  if (!resuming) {
+    plusMenu.classList.add('open');
+    plusMenu.style.transition = 'none';
+    plusMenu.style.transform = PLUS_HIDDEN;
+    plusMenu.style.opacity = '0';
+    _flushStyle(plusMenu);
+  }
 
-      if (token !== _plusAnimationToken || !_plusOpen) return;
+  /* Resuming retargets from the current in-flight value: no pop */
+  plusMenu.style.transition = PLUS_OPEN_TRANSITION;
+  plusMenu.style.transform = PLUS_SHOWN;
+  plusMenu.style.opacity = '1';
 
-      plusMenu.style.transition =
-        `transform 0.3s ${EASE.menuOpen}, opacity 0.2s ease-out`;
-      plusMenu.style.transform = 'scale(1) translateY(0)';
-      plusMenu.style.opacity = '1';
-
-      /* Transform is the longest transition; finish on it */
-      const onOpen = (e) => {
-        if (
-          e.target !== plusMenu ||
-          e.propertyName !== 'transform' ||
-          token !== _plusAnimationToken
-        ) {
-          return;
-        }
-
-        _finishPlusOpen(token);
-      };
-
-      _plusTransitionEndHandler = onOpen;
-      plusMenu.addEventListener('transitionend', onOpen);
-    });
-  });
+  _watchPlusTransition(token, _finishPlusOpen, PLUS_OPEN_MS);
 }
 
 function closePlusMenu() {
@@ -949,34 +1142,13 @@ function closePlusMenu() {
     return;
   }
 
-  plusMenu.style.transition =
-    `transform 0.22s ${EASE.menuClose}, opacity 0.18s ease-in`;
-  plusMenu.style.transform = 'scale(0.88) translateY(10px)';
+  /* Closing menu must not take taps */
+  plusMenu.style.pointerEvents = 'none';
+  plusMenu.style.transition = PLUS_CLOSE_TRANSITION;
+  plusMenu.style.transform = PLUS_HIDDEN;
   plusMenu.style.opacity = '0';
 
-  const onClose = (e) => {
-    if (
-      e.target !== plusMenu ||
-      e.propertyName !== 'transform' ||
-      token !== _plusAnimationToken ||
-      _plusOpen
-    ) {
-      return;
-    }
-
-    _finishPlusClose(token);
-  };
-
-  _plusTransitionEndHandler = onClose;
-  plusMenu.addEventListener('transitionend', onClose);
-
-  /* Fallback if transitionend never fires */
-  _plusCloseFallbackTimer = window.setTimeout(() => {
-    _plusCloseFallbackTimer = 0;
-
-    if (token !== _plusAnimationToken || _plusOpen) return;
-    _finishPlusClose(token);
-  }, 320);
+  _watchPlusTransition(token, _finishPlusClose, PLUS_CLOSE_MS);
 }
 
 if (plusBtn) {
@@ -998,12 +1170,7 @@ if (plusMenu || plusBtn) {
     const target = e.target instanceof Element ? e.target : null;
     if (!target) return;
 
-    if (
-      plusMenu?.contains(target) ||
-      plusBtn?.contains(target)
-    ) {
-      return;
-    }
+    if (plusMenu?.contains(target) || plusBtn?.contains(target)) return;
 
     closePlusMenu();
   });
@@ -1022,8 +1189,64 @@ document.addEventListener('keydown', (e) => {
 });
 
 /* ════════════════════════════════
-TAB BAR — race-safe content swap
-════════════════════════════════ */
+   CONTENT TRANSITION
+   ════════════════════════════════ */
+
+function _clearContentAnimation() {
+  if (_contentFallback) {
+    _contentFallback.cancel();
+    _contentFallback = null;
+  }
+
+  if (!_contentAnimations.length) return;
+
+  const list = _contentAnimations;
+  _contentAnimations = [];
+
+  list.forEach((anim) => {
+    anim.onfinish = anim.oncancel = null;
+    anim.cancel();
+  });
+}
+
+function _animateContentIn() {
+  if (!pageContent) return;
+
+  _clearContentAnimation();
+
+  if (_prefersReducedMotion || pageContent.style.display === 'none') return;
+
+  if (typeof pageContent.animate !== 'function') {
+    _contentFallback = _cssEnter(pageContent, 8, 280, 220, EASE.contentSwap, () => {
+      _contentFallback = null;
+    });
+    return;
+  }
+
+  const track = (anim) => {
+    anim.onfinish = anim.oncancel = () => {
+      const i = _contentAnimations.indexOf(anim);
+      if (i !== -1) _contentAnimations.splice(i, 1);
+    };
+    return anim;
+  };
+
+  /* 'backwards' fill: start state applies immediately, nothing is held after the end */
+  _contentAnimations = [
+    track(pageContent.animate(
+      [{ transform: 'translateY(8px)' }, { transform: 'translateY(0)' }],
+      { duration: 280, easing: EASE.contentSwap, fill: 'backwards' }
+    )),
+    track(pageContent.animate(
+      [{ opacity: 0 }, { opacity: 1 }],
+      { duration: 220, easing: 'ease-out', fill: 'backwards' }
+    ))
+  ];
+}
+
+/* ════════════════════════════════
+   TAB BAR — race-safe content swap
+   ════════════════════════════════ */
 
 async function _loadTab(key, requestId = null) {
   if (!pageContent) return;
@@ -1067,7 +1290,7 @@ async function _loadTab(key, requestId = null) {
     '</div>';
 
   try {
-    _loadModuleCSS(key);
+    const cssReady = _loadModuleCSS(key);
 
     if (!_moduleLoadPromises[key]) {
       _moduleLoadPromises[key] = _loadScript(`modules/${key}/${key}.js`)
@@ -1081,7 +1304,8 @@ async function _loadTab(key, requestId = null) {
         });
     }
 
-    await _moduleLoadPromises[key];
+    /* Styles settle with the script so the entrance never plays on unstyled content */
+    await Promise.all([_moduleLoadPromises[key], cssReady]);
 
     if (!_isCurrentTabRequest(key, requestId)) return;
   } catch (_) {
@@ -1091,16 +1315,32 @@ async function _loadTab(key, requestId = null) {
   }
 }
 
+/* Resolves on load or error: a missing stylesheet must not block the tab */
 function _loadModuleCSS(key) {
+  if (_cssPromises[key]) return _cssPromises[key];
+
   const id = `_atkyn_css_${key}`;
-  if (document.getElementById(id)) return;
 
-  const link = document.createElement('link');
-  link.id = id;
-  link.rel = 'stylesheet';
-  link.href = `modules/${key}/${key}.css`;
+  if (document.getElementById(id)) {
+    _cssPromises[key] = Promise.resolve();
+    return _cssPromises[key];
+  }
 
-  document.head.appendChild(link);
+  _cssPromises[key] = new Promise((resolve) => {
+    const link = document.createElement('link');
+    link.id = id;
+    link.rel = 'stylesheet';
+    link.href = `modules/${key}/${key}.css`;
+
+    link.onload = link.onerror = () => {
+      link.onload = link.onerror = null;
+      resolve();
+    };
+
+    document.head.appendChild(link);
+  });
+
+  return _cssPromises[key];
 }
 
 function _loadScript(src) {
@@ -1134,34 +1374,6 @@ function _loadScript(src) {
   return _scriptLoadPromises[src];
 }
 
-/* ── Content transition ── */
-function _clearContentAnimation() {
-  if (!_contentAnimations.length) return;
-
-  _contentAnimations.forEach((anim) => anim.cancel());
-  _contentAnimations = [];
-}
-
-function _animateContentIn() {
-  if (!pageContent) return;
-
-  _clearContentAnimation();
-
-  if (_prefersReducedMotion || typeof pageContent.animate !== 'function') return;
-
-  /* 'backwards' fill: start state applies immediately, nothing is held after the end */
-  _contentAnimations = [
-    pageContent.animate(
-      [{ transform: 'translateY(8px)' }, { transform: 'translateY(0)' }],
-      { duration: 280, easing: EASE.contentSwap, fill: 'backwards' }
-    ),
-    pageContent.animate(
-      [{ opacity: 0 }, { opacity: 1 }],
-      { duration: 220, easing: 'ease-out', fill: 'backwards' }
-    )
-  ];
-}
-
 let _activeTabEl = tabBar ? tabBar.querySelector('.tab.active') : null;
 
 if (tabBar) {
@@ -1176,15 +1388,10 @@ if (tabBar) {
 
     const requestId = _nextTabLoadRequestId();
 
-    if (_currentTabKey === 'ai' && _msgWrap) {
-      try {
-        sessionStorage.setItem('atkyn_chat_html', _msgWrap.innerHTML);
-        sessionStorage.setItem(
-          'atkyn_chat_scroll',
-          String(scrollHost ? scrollHost.scrollTop : 0)
-        );
-      } catch (_) {}
-    }
+    /* Scroll position is captured now; serialization runs off the click path */
+    if (_currentTabKey === 'ai') _queueChatSave();
+
+    _clearContentAnimation();
 
     if (_activeTabEl) _activeTabEl.classList.remove('active');
     tab.classList.add('active');
@@ -1221,14 +1428,16 @@ if (tabBar) {
 
     /* Instant scroll reset; smooth scrolling here would queue bouncing animations */
     if (scrollHost) {
-      ++_programmaticScrollToken;
-      _scrollOwners.message = false;
+      _cancelMessageScroll();
       _setScrollOwner('tab', true);
       scrollHost.scrollTop = 0;
       _lastScrollY = 0;
       resetScrollAccum();
 
-      requestAnimationFrame(() => {
+      if (_tabScrollRafId) cancelAnimationFrame(_tabScrollRafId);
+
+      _tabScrollRafId = requestAnimationFrame(() => {
+        _tabScrollRafId = 0;
         _setScrollOwner('tab', false);
         if (scrollHost) _lastScrollY = scrollHost.scrollTop;
       });

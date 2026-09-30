@@ -1,20 +1,23 @@
 /* ATKYN — focus border sweep (800ms, single pass). Link AFTER chatbar-motion.css.
-   Sirf border stroke animate hota hai; pill ka andar solid white rehta hai. */
+   Rules: andar solid white, koi blur/gradient andar nahi. Sirf 1.5px border line + bahar ka glow (max 8px). */
 
 @property --fs-a { syntax: "<angle>"; inherits: false; initial-value: 225deg; }
 
-.overlay-pill { --fs-grad: conic-gradient(from var(--fs-a),
-  transparent 0deg, #EA4335 20deg, #FBBC05 55deg, #34A853 90deg,
-  #00E5FF 125deg, #A142F4 160deg, transparent 200deg, transparent 360deg); }
+/* Purana glow ring (::after) focus pe band — blob bleed yahin se ho raha tha */
+.chatbar-wrap .overlay-pill.overlay-pill:focus-within::after { opacity: 0; filter: none; }
 
-/* Sharp stroke: sirf 2px ring (mask se andar cut) */
+.overlay-pill { background: #ffffff; }
+
+/* 1.5px border-only ring (mask se andar ka hissa cut) */
 .overlay-pill::before {
   content: "";
   position: absolute;
   inset: -1px;
-  padding: 2px;
+  padding: 1.5px;
   border-radius: inherit;
-  background: var(--fs-grad);
+  background: conic-gradient(from var(--fs-a),
+    transparent 0%, #ff4b4b 15%, #ffc700 30%, #00e676 45%,
+    #00b0ff 60%, #d500f9 75%, transparent 90%);
   -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
   -webkit-mask-composite: xor;
           mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
@@ -23,28 +26,31 @@
   z-index: 3;
 }
 
-/* Outer glow: pill ke peeche blur (andar white pill isko cover karta hai) */
-.chatbar-wrap .overlay-pill.overlay-pill:focus-within::after {
-  inset: -2px;
-  background: var(--fs-grad);
-  box-shadow: 0 0 12px rgba(255, 255, 255, 0);
-  filter: blur(12px);
-  opacity: 0;
-  animation: fs-sweep 800ms cubic-bezier(.4, 0, .2, 1) 1 forwards;
-}
 .overlay-pill:focus-within::before {
   animation: fs-sweep 800ms cubic-bezier(.4, 0, .2, 1) 1 forwards;
 }
 
-/* Bottom-left (225deg) se start → poora 360° ghoomta hai, end me fade out */
+/* Outer glow: pill ka apna box-shadow (sirf bahar, max 8px) — opacity pill pe nahi, sirf shadow color me */
+.overlay-pill:focus-within {
+  animation: fs-glow 800ms cubic-bezier(.4, 0, .2, 1) 1 forwards;
+}
+
 @keyframes fs-sweep {
   0%   { --fs-a: 225deg; opacity: 0; }
-  12%  { opacity: 1; }
-  65%  { opacity: 1; }
+  20%  { opacity: 1; }
+  80%  { opacity: 1; }
   100% { --fs-a: 585deg; opacity: 0; }
 }
 
+@keyframes fs-glow {
+  0%   { box-shadow: 0 0 0 rgba(255, 75, 75, 0); }
+  20%  { box-shadow: 0 0 8px rgba(255, 75, 75, .35); }
+  40%  { box-shadow: 0 0 8px rgba(255, 199, 0, .35); }
+  60%  { box-shadow: 0 0 8px rgba(0, 230, 118, .30); }
+  80%  { box-shadow: 0 0 8px rgba(0, 176, 255, .30); }
+  100% { box-shadow: 0 0 0 rgba(213, 0, 249, 0); }
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .overlay-pill:focus-within::before,
-  .chatbar-wrap .overlay-pill.overlay-pill:focus-within::after { animation: none; }
+  .overlay-pill:focus-within, .overlay-pill:focus-within::before { animation: none; }
 }

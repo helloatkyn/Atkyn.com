@@ -56,8 +56,13 @@
 
 /* ── Strong / Emphasis ──────────────────────────────────────── */
 
-.msg.bot .bubble strong { font-weight: 680; }
-.msg.bot .bubble em     { font-style: italic; }
+.msg.bot .bubble strong {
+  font-weight: 680;
+}
+
+.msg.bot .bubble em {
+  font-style: italic;
+}
 
 
 /* ── List System ────────────────────────────────────────────── */
@@ -187,11 +192,21 @@
 
 /* ── Ordered — nested ───────────────────────────────────────── */
 
+/*
+   ONLY the nested <ol> indentation is reduced.
+   First-level and second-level list geometry remain unchanged.
+
+   The negative margin removes part of the cumulative nesting
+   indentation while padding-left preserves a proper hanging
+   marker/text relationship.
+*/
+
 .msg.bot .bubble li > ol {
   margin-top: 5px;
   margin-bottom: 6px;
-  margin-left: 0 !important;
+  margin-left: -10px !important;
   padding-left: 20px !important;
+  list-style-position: outside;
 }
 
 .msg.bot .bubble li > ol > li {
@@ -255,8 +270,13 @@
   transition: opacity 0.15s ease, border-color 0.15s ease;
 }
 
-.msg.bot .bubble a:hover  { border-bottom-color: rgba(0, 102, 204, 0.55); }
-.msg.bot .bubble a:active { opacity: 0.7; }
+.msg.bot .bubble a:hover {
+  border-bottom-color: rgba(0, 102, 204, 0.55);
+}
+
+.msg.bot .bubble a:active {
+  opacity: 0.7;
+}
 
 @media (prefers-color-scheme: dark) {
   .msg.bot .bubble a {
@@ -431,9 +451,13 @@
     padding-left: 2px;
   }
 
+
+  /* ── Mobile nested ordered list — ONLY indentation fix ───── */
+
   .msg.bot .bubble li > ol {
-    margin-left: 0 !important;
+    margin-left: -10px !important;
     padding-left: 19px !important;
+    list-style-position: outside;
   }
 
   .msg.bot .bubble li > ol > li {

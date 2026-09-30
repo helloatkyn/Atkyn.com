@@ -21,7 +21,6 @@
 
 .overlay-pill {
   position: relative;
-
   width: 100%;
   min-height: 60px;
 
@@ -30,22 +29,10 @@
   align-items: center;
 
   box-sizing: border-box;
-
   padding: 0 10px 0 12px;
 
-  /*
-   * Large radius guarantees a proper capsule on the normal
-   * single-line composer while still allowing the pill to grow
-   * naturally when attachments are present.
-   */
   border-radius: 999px;
-
   background: #ffffff;
-
-  /*
-   * Extremely subtle border.
-   * Avoids the heavy outlined appearance from the screenshot.
-   */
   border: 1px solid rgba(17, 17, 17, 0.10);
 
   box-shadow:
@@ -61,10 +48,6 @@
 }
 
 
-/*
- * When the pill grows because of attachments, keep the
- * outer shape clean instead of forcing a weird capsule.
- */
 .overlay-pill.has-attach,
 .overlay-pill.has-notice {
   border-radius: 28px;
@@ -89,12 +72,10 @@
   min-width: 0;
 
   position: relative;
-
   height: 58px;
 
   display: flex;
   align-items: center;
-
   order: 0;
 }
 
@@ -112,9 +93,7 @@
 
   border: 0;
   outline: 0;
-
   background: transparent;
-
   box-sizing: border-box;
 
   font-family:
@@ -127,12 +106,10 @@
 
   font-size: 16px;
   font-weight: 400;
-
   letter-spacing: -0.01em;
   line-height: 1.35;
 
   color: #1f2937;
-
   caret-color: #0A66C2;
 
   z-index: 2;
@@ -166,9 +143,7 @@
   align-items: center;
 
   overflow: hidden;
-
   pointer-events: none;
-
   z-index: 1;
 }
 
@@ -184,13 +159,10 @@
 
   font-size: 16px;
   font-weight: 400;
-
   letter-spacing: -0.01em;
-
   line-height: 1.35;
 
   white-space: nowrap;
-
   color: #9ca3af;
 }
 
@@ -224,7 +196,6 @@
   outline: 0;
 
   background: transparent;
-
   border-radius: 50%;
 
   cursor: pointer;
@@ -237,27 +208,13 @@
 }
 
 
-/* Plus / wave colours */
-
 .ico-plus,
 .ico-wave {
   color: #5f6368;
 }
 
 
-.ico-plus svg {
-  width: 25px;
-  height: 25px;
-
-  stroke: currentColor;
-  stroke-width: 1.65;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-
-  fill: none;
-}
-
-
+.ico-plus svg,
 .ico-wave svg {
   width: 25px;
   height: 25px;
@@ -271,8 +228,6 @@
 }
 
 
-/* Optical centering */
-
 .ico-plus {
   margin-left: -2px;
 }
@@ -282,8 +237,6 @@
   margin-right: -1px;
 }
 
-
-/* Press */
 
 .ico-plus:active,
 .ico-wave:active {
@@ -300,7 +253,6 @@
   display: none;
 
   background: #11110f;
-
   color: #ffffff;
 }
 
@@ -311,7 +263,6 @@
 
   stroke: currentColor;
   stroke-width: 1.8;
-
   stroke-linecap: round;
   stroke-linejoin: round;
 
@@ -350,7 +301,6 @@
 .send-btn.cross-mode svg {
   width: 22px;
   height: 22px;
-
   stroke-width: 1.7;
 }
 
@@ -362,9 +312,6 @@
 .attach-tray {
   order: -1;
 
-  /*
-   * Full pill width without creating horizontal misalignment.
-   */
   flex: 0 0 calc(100% + 24px);
 
   margin-left: -12px;
@@ -377,10 +324,6 @@
 
   visibility: hidden;
 
-  /*
-   * No artificial fixed height.
-   * Content determines the tray height.
-   */
   transition:
     grid-template-rows 0.26s cubic-bezier(0.22, 1, 0.36, 1),
     visibility 0s linear 0.26s;
@@ -390,16 +333,13 @@
 .overlay-pill.has-attach .attach-tray,
 .overlay-pill.has-notice .attach-tray {
   grid-template-rows: 1fr;
-
   visibility: visible;
-
   transition-delay: 0s;
 }
 
 
 .attach-tray-inner {
   min-height: 0;
-
   overflow: hidden;
 }
 
@@ -411,12 +351,8 @@
 .attach-list {
   display: flex;
   align-items: flex-start;
-
   gap: 8px;
 
-  /*
-   * Slight top breathing room for remove buttons.
-   */
   padding:
     12px
     12px
@@ -428,9 +364,7 @@
   overflow-y: hidden;
 
   overscroll-behavior-x: contain;
-
   scrollbar-width: none;
-
   -webkit-overflow-scrolling: touch;
 }
 
@@ -454,11 +388,7 @@
 
   flex: 0 0 auto;
 
-  /*
-   * Do NOT force image attachments into a square.
-   */
   min-width: 0;
-
   min-height: 56px;
 
   display: flex;
@@ -469,10 +399,6 @@
   border-radius: 14px;
 
   background: #f4f4f2;
-
-  /*
-   * Very subtle separator instead of a thick outline.
-   */
   border: 1px solid rgba(17, 17, 17, 0.055);
 
   box-shadow:
@@ -488,10 +414,6 @@
    ================================================================ */
 
 .attach-chip.is-image {
-  /*
-   * The width is controlled by the image itself.
-   * Max dimensions prevent a huge image from taking over the pill.
-   */
   width: auto;
   height: auto;
 
@@ -501,17 +423,10 @@
   padding: 0;
 
   overflow: visible;
-
   background: #f4f4f2;
 }
 
 
-/*
- * Image keeps its natural aspect ratio.
- *
- * contain = no cropping
- * auto width/height = natural aspect ratio
- */
 .attach-chip.is-image img {
   display: block;
 
@@ -522,22 +437,9 @@
   max-height: 96px;
 
   object-fit: contain;
-
   border-radius: 13px;
 
-  /*
-   * Prevents browser inline-image baseline behaviour.
-   */
   vertical-align: middle;
-}
-
-
-/*
- * If a very wide image arrives, constrain it horizontally
- * while still preserving its ratio.
- */
-.attach-chip.is-image img {
-  aspect-ratio: auto;
 }
 
 
@@ -555,9 +457,7 @@
   height: 21px;
 
   padding: 0;
-
   border: 0;
-
   border-radius: 50%;
 
   display: flex;
@@ -567,11 +467,9 @@
   box-sizing: border-box;
 
   background: rgba(25, 25, 25, 0.94);
-
   color: #ffffff;
 
   cursor: pointer;
-
   z-index: 5;
 
   -webkit-tap-highlight-color: transparent;
@@ -581,14 +479,10 @@
 }
 
 
-/*
- * Invisible larger touch target.
- */
 .attach-remove::after {
   content: "";
 
   position: absolute;
-
   inset: -8px;
 
   border-radius: 50%;
@@ -600,11 +494,8 @@
   height: 10px;
 
   stroke: currentColor;
-
   stroke-width: 2.4;
-
   stroke-linecap: round;
-
   stroke-linejoin: round;
 
   fill: none;
@@ -624,7 +515,6 @@
   gap: 10px;
 
   min-height: 56px;
-
   max-width: 220px;
 
   padding:
@@ -648,7 +538,6 @@
   justify-content: center;
 
   background: #0077b5;
-
   color: #ffffff;
 }
 
@@ -663,9 +552,7 @@
   height: 19px;
 
   stroke: currentColor;
-
   stroke-width: 1.8;
-
   stroke-linecap: round;
   stroke-linejoin: round;
 
@@ -678,7 +565,6 @@
 
   display: flex;
   flex-direction: column;
-
   gap: 2px;
 }
 
@@ -688,22 +574,18 @@
 
   font-size: 13px;
   font-weight: 500;
-
   line-height: 1.25;
 
   color: #1f2937;
 
   white-space: nowrap;
-
   overflow: hidden;
-
   text-overflow: ellipsis;
 }
 
 
 .attach-file-meta {
   font-size: 11px;
-
   line-height: 1.25;
 
   color: #6b7280;
@@ -807,7 +689,6 @@
 
 .plus-menu-backdrop {
   position: fixed;
-
   inset: 0;
 
   z-index: 100;
@@ -837,14 +718,14 @@
   box-sizing: border-box;
 
   background: #ffffff;
-
   border-radius: 22px;
 
-  box-shadow:
-    0 4px 24px rgba(0, 0, 0, 0.10);
+  /*
+   * Intentionally no shadow.
+   * Clean, flat, professional menu surface.
+   */
 
   overflow: hidden;
-
   padding: 6px;
 
   z-index: 101;
@@ -856,7 +737,6 @@
   transform-origin: bottom center;
 
   opacity: 0;
-
   pointer-events: none;
 
   transition:
@@ -871,7 +751,6 @@
     scale(1);
 
   opacity: 1;
-
   pointer-events: auto;
 }
 
@@ -881,7 +760,6 @@
   font-weight: 600;
 
   letter-spacing: 0.06em;
-
   text-transform: uppercase;
 
   color: #9ca3af;
@@ -900,7 +778,6 @@
   gap: 16px;
 
   width: 100%;
-
   box-sizing: border-box;
 
   padding:
@@ -908,7 +785,6 @@
     18px;
 
   border: 0;
-
   border-radius: 14px;
 
   background: transparent;
@@ -971,9 +847,7 @@
   height: 25px;
 
   stroke: #44433f;
-
   stroke-width: 1.55;
-
   stroke-linecap: round;
   stroke-linejoin: round;
 
@@ -986,7 +860,6 @@
   height: 42px;
 
   object-fit: contain;
-
   display: block;
 }
 
@@ -994,7 +867,6 @@
 .pm-label {
   display: flex;
   flex-direction: column;
-
   gap: 2px;
 }
 
@@ -1006,7 +878,6 @@
   color: #111110;
 
   letter-spacing: -0.01em;
-
   line-height: 1.2;
 }
 
@@ -1023,7 +894,6 @@
 
 .pm-chevron {
   margin-left: auto;
-
   flex-shrink: 0;
 
   color: #d1d5db;
@@ -1035,9 +905,7 @@
   height: 16px;
 
   stroke: currentColor;
-
   stroke-width: 1.8;
-
   stroke-linecap: round;
   stroke-linejoin: round;
 
@@ -1123,8 +991,7 @@
   .plus-menu {
     background: #1c1c1e;
 
-    box-shadow:
-      0 4px 24px rgba(0, 0, 0, 0.35);
+    /* No shadow in dark mode either. */
   }
 
 
@@ -1319,4 +1186,4 @@
     animation: none;
     color: #6b7280;
   }
-   }
+}

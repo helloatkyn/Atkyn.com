@@ -44,49 +44,12 @@
     return Math.floor(hours / 24) + 'd ago';
   }
 
-  function rand(min, max) {
-    return min + Math.floor(Math.random() * (max - min + 1));
-  }
-
   function makeSet(text) {
     var set = Object.create(null);
     text.split(/\s+/).forEach(function (word) {
       if (word) set[word] = true;
     });
     return set;
-  }
-
-  /* ══════════════════════════════════════════════════════════════
-     RENDER PLAN
-  ══════════════════════════════════════════════════════════════ */
-
-  function buildRenderPlan(results) {
-    var plan = [];
-    var nonAdIndexes = [];
-
-    results.forEach(function (item, index) {
-      if (item && item._isAd) {
-        plan[index] = 'ad';
-        return;
-      }
-      plan[index] = 'standard';
-      nonAdIndexes.push(index);
-    });
-
-    if (!nonAdIndexes.length) return plan;
-
-    plan[nonAdIndexes[0]] = 'hero';
-
-    var firstFeatured = rand(4, 6);
-    var secondFeatured = firstFeatured + rand(5, 7);
-
-    [firstFeatured, secondFeatured].forEach(function (position) {
-      if (position < nonAdIndexes.length) {
-        plan[nonAdIndexes[position]] = 'featured';
-      }
-    });
-
-    return plan;
   }
 
   /* ══════════════════════════════════════════════════════════════
@@ -383,8 +346,6 @@
   }
 
   function dropImage(card, wrap) {
-    if (!card) return;
-
     card.classList.add('news-card--no-image');
 
     if (wrap && wrap.parentNode) {
@@ -392,44 +353,44 @@
     }
   }
 
-  function hydrateImg(card, image, wrap) {
-    if (!card || !image || !image.dataset.url) {
-      dropImage(card, wrap);
-      return;
-    }
+  function setImage(card, media, src) {
+    media.img.onload = function () {
+      media.wrap.classList.add('loaded');
+    };
 
-    fetchOg(image.dataset.url).then(function (src) {
+    media.img.onerror = function () {
+      dropImage(card, media.wrap);
+    };
+
+    media.img.src = src;
+  }
+
+  function hydrateOg(card, media, articleUrl) {
+    fetchOg(articleUrl).then(function (src) {
       if (!card.parentNode) return;
 
-      if (!src) {
-        dropImage(card, wrap);
-        return;
+      if (src) {
+        setImage(card, media, src);
+      } else {
+        dropImage(card, media.wrap);
       }
-
-      image.onload = function () {
-        if (wrap && wrap.parentNode) wrap.classList.add('loaded');
-      };
-
-      image.onerror = function () {
-        dropImage(card, wrap);
-      };
-
-      image.src = src;
     });
   }
 
   /* ══════════════════════════════════════════════════════════════
-     DOM BUILDERS
+     ARTICLE CARD — one component for every article
+     variants: '' (default) · 'hero' · 'ad'
   ══════════════════════════════════════════════════════════════ */
 
-  function buildMeta(item) {
-    var source = item && item.source ? esc(item.source) : '';
-    var ago = item ? timeAgo(item.publishedDate) : '';
+  function buildMeta(item, isAd) {
+    var source = item.source ? esc(item.source) : '';
+    var ago = timeAgo(item.publishedDate);
 
-    if (!source && !ago) return '';
+    if (!isAd && !source && !ago) return '';
 
     var html = '<div class="news-meta">';
 
+    if (isAd) html += '<span class="news-ad-badge">Ad</span>';
     if (source) html += '<span class="news-source">' + source + '</span>';
 
     if (source && ago) {
@@ -441,127 +402,67 @@
     return html + '</div>';
   }
 
-  function buildBody(item) {
+  function buildBody(item, isAd) {
     var body = document.createElement('div');
 
     body.className = 'news-card-body';
     body.innerHTML =
-      buildMeta(item) +
-      '<div class="news-title">' +
-      esc(item && item.title ? item.title : '') +
-      '</div>';
+      buildMeta(item, isAd) +
+      '<div class="news-title">' + esc(item.title) + '</div>';
 
     return body;
   }
 
-  function buildLink(className, item) {
-    var link = document.createElement('a');
-
-    link.className = className;
-
-    /* No URL → inert anchor (no "#" opening a blank tab). */
-    if (item && item.url) {
-      link.href = item.url;
-      link.target = '_blank';
-      link.rel = 'noopener noreferrer';
-    }
-
-    return link;
-  }
-
-  function buildThumb(item, eager) {
+  function buildMedia(eager) {
     var wrap = document.createElement('div');
     wrap.className = 'news-thumb-wrap';
 
-    var image = document.createElement('img');
+    var img = document.createElement('img');
 
-    image.className = 'news-thumb';
-    image.alt = '';
-    image.loading = eager ? 'eager' : 'lazy';
-    image.decoding = 'async';
-    image.referrerPolicy = 'no-referrer';
-    image.dataset.url = item && item.url ? item.url : '';
+    img.className = 'news-thumb';
+    img.alt = '';
+    img.loading = eager ? 'eager' : 'lazy';
+    img.decoding = 'async';
+    img.referrerPolicy = 'no-referrer';
 
-    wrap.appendChild(image);
+    wrap.appendChild(img);
 
-    return { wrap: wrap, img: image };
+    return { wrap: wrap, img: img };
   }
 
-  /* ── Hero / featured ─────────────────────────────────────────── */
+  function buildArticle(item, variant) {
+    item = item || {};
 
-  function buildImageCard(item, type) {
-    var outer = document.createElement('div');
-    outer.className = 'news-card-outer';
+    var isAd = variant === 'ad';
+    var card = document.createElement('a');
 
-    var card = buildLink('news-card news-card--' + type, item);
+    card.className = 'news-card' + (variant ? ' news-card--' + variant : '');
 
-    if (!item || !item.url) {
-      card.classList.add('news-card--no-image');
-      card.appendChild(buildBody(item || {}));
-      outer.appendChild(card);
-      return outer;
+    /* No URL → inert anchor (no "#" opening a blank tab). */
+    if (item.url) {
+      card.href = item.url;
+      card.target = '_blank';
+      card.rel = 'noopener noreferrer';
     }
 
-    var thumb = buildThumb(item, type === 'hero');
+    var imageSource = isAd ? item.img_src : item.url;
+    var media = null;
 
-    card.appendChild(thumb.wrap);
-    card.appendChild(buildBody(item));
-    outer.appendChild(card);
-
-    hydrateImg(card, thumb.img, thumb.wrap);
-
-    return outer;
-  }
-
-  /* ── Standard row ────────────────────────────────────────────── */
-
-  function buildCard(item) {
-    var card = buildLink('news-card', item);
-
-    card.appendChild(buildBody(item || {}));
-
-    if (!item || !item.url) {
+    if (imageSource) {
+      media = buildMedia(variant === 'hero');
+      card.appendChild(media.wrap);
+    } else {
       card.classList.add('news-card--no-image');
-      return card;
     }
 
-    var thumb = buildThumb(item, false);
+    card.appendChild(buildBody(item, isAd));
 
-    card.appendChild(thumb.wrap);
-    hydrateImg(card, thumb.img, thumb.wrap);
-
-    return card;
-  }
-
-  /* ── Ad row ──────────────────────────────────────────────────── */
-
-  function buildAdCard(item) {
-    var card = buildLink('news-ad-card', item);
-
-    var badge = document.createElement('div');
-    badge.className = 'news-ad-badge';
-    badge.textContent = 'Ad';
-    card.appendChild(badge);
-
-    var body = buildBody(item || {});
-    body.className = 'news-ad-body';
-    card.appendChild(body);
-
-    if (item && item.img_src) {
-      var image = document.createElement('img');
-
-      image.className = 'news-ad-thumb';
-      image.alt = '';
-      image.loading = 'lazy';
-      image.decoding = 'async';
-      image.referrerPolicy = 'no-referrer';
-      image.src = item.img_src;
-
-      image.onerror = function () {
-        if (image.parentNode) image.parentNode.removeChild(image);
-      };
-
-      card.appendChild(image);
+    if (media) {
+      if (isAd) {
+        setImage(card, media, item.img_src);
+      } else {
+        hydrateOg(card, media, item.url);
+      }
     }
 
     return card;
@@ -614,7 +515,6 @@
 
         if (!results.length) throw new Error('empty');
 
-        var plan = buildRenderPlan(results);
         var terms = extractSuggestions(results, query);
 
         var list = document.createElement('div');
@@ -622,21 +522,14 @@
 
         var nonAdCount = 0;
 
-        results.forEach(function (item, index) {
-          var type = plan[index];
-
-          if (type === 'ad') {
-            list.appendChild(buildAdCard(item));
+        results.forEach(function (item) {
+          if (item && item._isAd) {
+            list.appendChild(buildArticle(item, 'ad'));
             return;
           }
 
-          if (type === 'hero' || type === 'featured') {
-            list.appendChild(buildImageCard(item, type));
-          } else {
-            list.appendChild(buildCard(item));
-          }
-
           nonAdCount++;
+          list.appendChild(buildArticle(item, nonAdCount === 1 ? 'hero' : ''));
 
           var slot = SUGGESTION_POSITIONS.indexOf(nonAdCount);
           if (slot === -1) return;
@@ -663,4 +556,4 @@
 
   window._atkynInit_news();
 }());
-       
+            

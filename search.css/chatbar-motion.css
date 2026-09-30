@@ -1,0 +1,66 @@
+/* ATKYN — composer motion layer. Link AFTER chatbar.css.
+   Compositor/paint-only: transform, opacity, filter, box-shadow, colour.
+   Never touches height/padding/bottom, so ResizeObserver and geometry stay quiet. */
+
+.overlay-pill { transform-origin: 50% 100%; }
+
+/* Google-gradient glow ring behind the pill */
+.overlay-pill::after {
+  content: "";
+  position: absolute;
+  inset: -3px;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #4285F4, #FBBC05, #EA4335, #34A853);
+  box-shadow: 0 0 16px rgba(66, 133, 244, 0.35);
+  opacity: 0;
+  filter: blur(0);
+  z-index: -1;
+  pointer-events: none;
+  transition: opacity 200ms ease-out, filter 200ms ease-out;
+}
+
+/* Background content fade hooks (add data-cm="heading" / data-cm="card") */
+[data-cm="heading"] {
+  transition: opacity 220ms ease-out, filter 220ms ease-out;
+}
+[data-cm="card"] {
+  transition: background-color 220ms ease-out, opacity 220ms ease-out;
+}
+
+/* ── OPEN (280ms) ── */
+.chatbar-wrap.composer--open .overlay-pill {
+  transform: translateZ(0) scale(1.012);
+  transition:
+    transform 280ms cubic-bezier(0.32, 0.72, 0, 1),
+    border-color 0.18s ease,
+    box-shadow 0.18s ease,
+    border-radius 0.18s ease;
+}
+.chatbar-wrap.composer--open .overlay-pill::after {
+  opacity: 0.8;
+  filter: blur(8px);
+}
+.cm-kb-open [data-cm="heading"] { opacity: 0.52; filter: blur(0.5px); transition-duration: 200ms; }
+.cm-kb-open [data-cm="card"]    { background-color: #F1F3F4; opacity: 0.6; }
+
+/* ── CLOSE (360ms, main bounce fix) ── */
+.chatbar-wrap.composer--closing .overlay-pill {
+  transform: translateZ(0);
+  transition:
+    transform 360ms cubic-bezier(0.32, 0.72, 0, 1),
+    opacity 200ms ease-out 150ms,
+    border-radius 300ms ease-out,
+    box-shadow 200ms ease-out,
+    border-color 0.18s ease;
+}
+.chatbar-wrap.composer--closing .overlay-pill::after {
+  opacity: 0;
+  filter: blur(0);
+  transition: opacity 200ms ease-out, filter 200ms ease-out;
+}
+html:not(.cm-kb-open) [data-cm="heading"] { transition: opacity 220ms ease-out, filter 220ms ease-out; }
+
+@media (prefers-reduced-motion: reduce) {
+  .overlay-pill, .overlay-pill::after,
+  [data-cm="heading"], [data-cm="card"] { transition: none !important; }
+}

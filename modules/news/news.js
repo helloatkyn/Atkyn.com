@@ -12,6 +12,7 @@
 
   var SUGGESTION_POSITIONS = [3, 9];
   var CHIPS_PER_STRIP = 5;
+  var MIN_CHIPS = 2;
   var MAX_SUGGESTIONS = SUGGESTION_POSITIONS.length * CHIPS_PER_STRIP;
 
   /* ══════════════════════════════════════════════════════════════
@@ -42,6 +43,22 @@
     if (hours < 24) return hours + 'h ago';
 
     return Math.floor(hours / 24) + 'd ago';
+  }
+
+  /* Drops repeated articles (same URL, else same title); never adds any. */
+  function dedupe(items) {
+    var seen = Object.create(null);
+
+    return items.filter(function (item) {
+      if (!item) return false;
+
+      var key = String(item.url || item.title || '').trim().toLowerCase();
+      if (!key) return true;
+      if (seen[key]) return false;
+
+      seen[key] = true;
+      return true;
+    });
   }
 
   function makeSet(text) {
@@ -267,8 +284,6 @@
   }
 
   function buildSuggestionStrip(terms) {
-    if (!terms || !terms.length) return null;
-
     var strip = document.createElement('div');
     strip.className = 'news-suggestions';
 
@@ -310,6 +325,18 @@
     strip.appendChild(group);
 
     return strip;
+  }
+
+  /* Only shown when there are at least MIN_CHIPS meaningful terms. */
+  function addSuggestions(list, terms, slot) {
+    var chips = terms.slice(
+      slot * CHIPS_PER_STRIP,
+      (slot + 1) * CHIPS_PER_STRIP
+    );
+
+    if (chips.length >= MIN_CHIPS) {
+      list.appendChild(buildSuggestionStrip(chips));
+    }
   }
 
   /* ══════════════════════════════════════════════════════════════
@@ -431,8 +458,6 @@
   }
 
   function buildArticle(item, variant) {
-    item = item || {};
-
     var isAd = variant === 'ad';
     var card = document.createElement('a');
 
@@ -510,7 +535,7 @@
       .then(function (data) {
         var results =
           data && Array.isArray(data.results)
-            ? data.results.slice(0, MAX_RESULTS)
+            ? dedupe(data.results).slice(0, MAX_RESULTS)
             : [];
 
         if (!results.length) throw new Error('empty');
@@ -523,7 +548,7 @@
         var nonAdCount = 0;
 
         results.forEach(function (item) {
-          if (item && item._isAd) {
+          if (item._isAd) {
             list.appendChild(buildArticle(item, 'ad'));
             return;
           }
@@ -532,14 +557,13 @@
           list.appendChild(buildArticle(item, nonAdCount === 1 ? 'hero' : ''));
 
           var slot = SUGGESTION_POSITIONS.indexOf(nonAdCount);
-          if (slot === -1) return;
-
-          var strip = buildSuggestionStrip(
-            terms.slice(slot * CHIPS_PER_STRIP, (slot + 1) * CHIPS_PER_STRIP)
-          );
-
-          if (strip) list.appendChild(strip);
+          if (slot !== -1) addSuggestions(list, terms, slot);
         });
+
+        /* Short feeds: related searches continue the feed after the last article. */
+        if (nonAdCount < SUGGESTION_POSITIONS[0]) {
+          addSuggestions(list, terms, 0);
+        }
 
         pageContent.innerHTML = '';
         pageContent.appendChild(list);
@@ -556,4 +580,4 @@
 
   window._atkynInit_news();
 }());
-            
+     

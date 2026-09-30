@@ -1,0 +1,50 @@
+/* ATKYN — focus border sweep (800ms, single pass). Link AFTER chatbar-motion.css.
+   Sirf border stroke animate hota hai; pill ka andar solid white rehta hai. */
+
+@property --fs-a { syntax: "<angle>"; inherits: false; initial-value: 225deg; }
+
+.overlay-pill { --fs-grad: conic-gradient(from var(--fs-a),
+  transparent 0deg, #EA4335 20deg, #FBBC05 55deg, #34A853 90deg,
+  #00E5FF 125deg, #A142F4 160deg, transparent 200deg, transparent 360deg); }
+
+/* Sharp stroke: sirf 2px ring (mask se andar cut) */
+.overlay-pill::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  padding: 2px;
+  border-radius: inherit;
+  background: var(--fs-grad);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+          mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+  opacity: 0;
+  pointer-events: none;
+  z-index: 3;
+}
+
+/* Outer glow: pill ke peeche blur (andar white pill isko cover karta hai) */
+.chatbar-wrap .overlay-pill.overlay-pill:focus-within::after {
+  inset: -2px;
+  background: var(--fs-grad);
+  box-shadow: 0 0 12px rgba(255, 255, 255, 0);
+  filter: blur(12px);
+  opacity: 0;
+  animation: fs-sweep 800ms cubic-bezier(.4, 0, .2, 1) 1 forwards;
+}
+.overlay-pill:focus-within::before {
+  animation: fs-sweep 800ms cubic-bezier(.4, 0, .2, 1) 1 forwards;
+}
+
+/* Bottom-left (225deg) se start → poora 360° ghoomta hai, end me fade out */
+@keyframes fs-sweep {
+  0%   { --fs-a: 225deg; opacity: 0; }
+  12%  { opacity: 1; }
+  65%  { opacity: 1; }
+  100% { --fs-a: 585deg; opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .overlay-pill:focus-within::before,
+  .chatbar-wrap .overlay-pill.overlay-pill:focus-within::after { animation: none; }
+}

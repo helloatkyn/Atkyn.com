@@ -1,7 +1,7 @@
 (() => {
   'use strict';
 
-  if (window.AtkynAnimation) return; /* no double init */
+  if (window.AtkynAnimation) return;
 
   const pill = document.getElementById('pill');
   const input = document.getElementById('cbInput');
@@ -20,10 +20,9 @@
     };
 
     if (mq.addEventListener) mq.addEventListener('change', onChange);
-    else if (mq.addListener) mq.addListener(onChange);
+    else if (mq.addListener) mq.addListener('change', onChange);
   }
 
-  /* Visual layers: behind content, pointer-events none (see CSS) */
   const mk = (cls, parent) => {
     const el = document.createElement('div');
     el.className = cls;
@@ -51,31 +50,26 @@
   pill.insertBefore(aurora, pill.firstChild);
   pill.insertBefore(fill, pill.firstChild);
 
-  const DUR = 2000;
+  const DUR = 650;
 
   let anims = [];
-  let run = 0; /* latest-wins token */
+  let run = 0;
   let fadeTimer = 0;
   let lastBurst = 0;
 
   function cancelAll() {
     run++;
-
     const list = anims;
     anims = [];
-
     clearTimeout(fadeTimer);
     pill.classList.remove('atk-animating');
 
     for (const a of list) {
-      try {
-        a.cancel();
-      } catch (_) {}
+      try { a.cancel(); } catch (_) {}
     }
   }
 
   function burst() {
-    /* dedupe: send + blur/close can fire together, don't restart mid-animation */
     const now =
       typeof performance !== 'undefined'
         ? performance.now()
@@ -84,16 +78,13 @@
     if (anims.length && now - lastBurst < 400) return;
 
     lastBurst = now;
-
     cancelAll();
 
     if (reduced || !aurora.animate) return;
 
     const my = run;
-
     pill.classList.add('atk-animating');
 
-    /* outline starts fading back in while aurora is still fading out */
     fadeTimer = setTimeout(() => {
       if (my === run) {
         pill.classList.remove('atk-animating');
@@ -108,7 +99,6 @@
 
         anims = anims.filter((x) => x !== a);
 
-        /* all aurora animations done -> outline comes back */
         if (anims.length === 0) {
           pill.classList.remove('atk-animating');
         }
@@ -117,7 +107,6 @@
       return a;
     };
 
-    /* opacity: smooth fade in → hold → long fade out */
     track(
       aurora.animate(
         [
@@ -149,7 +138,6 @@
       )
     );
 
-    /* angle sweep */
     track(
       aurora.animate(
         [
@@ -170,7 +158,6 @@
       )
     );
 
-    /* blur: 1 → 13 → 8 → 10 → 5 → 2 px */
     for (const b of blurs) {
       track(
         b.animate(
@@ -226,7 +213,7 @@
     pill.classList.remove('atk-expanded');
 
     if (wasExpanded) {
-      burst(); /* same aurora on close */
+      burst();
     } else {
       cancelAll();
     }
@@ -239,18 +226,14 @@
       const a = document.activeElement;
 
       if (a === input || (a && pill.contains(a))) return;
-
       if (input.value.trim() !== '') return;
 
       close();
     });
   });
 
-  /* Message send: aurora plays again */
   pill.addEventListener('click', (e) => {
-    const btn =
-      e.target.closest &&
-      e.target.closest('.send-btn');
+    const btn = e.target.closest && e.target.closest('.send-btn');
 
     if (btn && !btn.classList.contains('cross-mode')) {
       burst();
@@ -268,7 +251,6 @@
     }
   });
 
-  /* Page / URL load: aurora plays as the chatbar settles at the bottom */
   const onLoadBurst = () =>
     requestAnimationFrame(() =>
       requestAnimationFrame(burst)

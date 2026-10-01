@@ -1,0 +1,424 @@
+/* ════════════════════════════════════════════════════════════════
+   modules/news/news.css — ATKYN News
+   One article-card system · floating (web-card shadow) · no outline · no blur · no gradient
+════════════════════════════════════════════════════════════════ */
+
+.news-list {
+  --news-brand: var(--color-brand, #0072B1);
+  --news-brand-deep: var(--color-brand-deep, #005A8D);
+  --news-brand-label: var(--news-brand);
+
+  --news-ink: var(--color-ink, #0F172A);
+  --news-muted: var(--color-muted, #64748B);
+
+  --news-bg: #fff;
+  --news-surface: var(--color-surface, #F8FAFC);
+  --news-press: #f5f5f5;
+
+  /* Same shadow as .wc-card */
+  --news-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+
+  --news-line-strong: rgba(15, 23, 42, 0.14);
+
+  --news-r-sm: 8px;
+  --news-r-lg: 16px;
+
+  --news-pad-x: 16px;
+  --news-gap: 14px;
+
+  display: flex;
+  flex-direction: column;
+  gap: var(--news-gap);
+
+  width: 100%;
+  max-width: 720px;
+  min-width: 0;
+  margin: 0 auto;
+  padding: var(--news-gap) var(--news-pad-x) 56px;
+
+  color: var(--news-ink);
+  background: var(--news-bg);
+
+  font-family:
+    "Plus Jakarta Sans",
+    "Inter",
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    Roboto,
+    sans-serif;
+
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+.news-list *,
+.news-list *::before,
+.news-list *::after {
+  box-sizing: border-box;
+}
+
+.news-list a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.news-list button {
+  font: inherit;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   ARTICLE CARD — floating, no outline
+════════════════════════════════════════════════════════════════ */
+
+.news-card {
+  display: flex;
+  flex-direction: column;
+
+  width: 100%;
+  min-width: 0;
+  overflow: hidden;
+
+  color: var(--news-ink);
+  background: var(--news-bg);
+
+  border: none;
+  border-radius: var(--news-r-lg);
+  box-shadow: var(--news-shadow);
+
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.15s;
+}
+
+.news-card:active {
+  background: var(--news-press);
+}
+
+.news-card:focus-visible {
+  outline: 2px solid var(--news-brand);
+  outline-offset: 2px;
+}
+
+/* Image */
+
+.news-thumb-wrap {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+
+  background: var(--news-surface);
+}
+
+.news-thumb {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0;
+  transition: opacity 180ms cubic-bezier(0.2, 0.6, 0.2, 1);
+}
+
+.news-thumb-wrap.loaded .news-thumb {
+  opacity: 1;
+}
+
+/* Content */
+
+.news-card-body {
+  min-width: 0;
+  padding: 14px 16px 16px;
+}
+
+.news-meta {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  gap: 7px;
+  margin: 0 0 8px;
+  line-height: 1.2;
+}
+
+.news-source {
+  min-width: 0;
+  overflow: hidden;
+
+  color: var(--news-muted);
+
+  font-size: 10.5px;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: 0.055em;
+  text-transform: uppercase;
+
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.news-meta-dot {
+  flex: 0 0 auto;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: var(--news-muted);
+  opacity: 0.55;
+}
+
+.news-time {
+  flex: 0 0 auto;
+
+  color: var(--news-muted);
+
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.news-title {
+  display: -webkit-box;
+
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+
+  color: var(--news-ink);
+
+  font-size: 16px;
+  font-weight: 650;
+  line-height: 1.4;
+  letter-spacing: -0.014em;
+  word-break: break-word;
+
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+}
+
+/* Variant: no image */
+
+.news-card--no-image .news-title {
+  -webkit-line-clamp: 4;
+  line-clamp: 4;
+}
+
+/* Variant: hero (typography only) */
+
+.news-card--hero .news-title {
+  font-size: 21px;
+  font-weight: 700;
+  line-height: 1.32;
+  letter-spacing: -0.022em;
+  -webkit-line-clamp: 4;
+  line-clamp: 4;
+}
+
+/* Variant: ad (quieter, same structure) */
+
+.news-card--ad .news-title {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.news-ad-badge {
+  flex-shrink: 0;
+  padding: 3px 6px;
+
+  color: var(--news-muted);
+  border: 1px solid var(--news-line-strong);
+  border-radius: 6px;
+
+  font-size: 9.5px;
+  font-weight: 700;
+  line-height: 1.25;
+  letter-spacing: 0.045em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   RELATED SEARCHES — sits between cards, no container
+════════════════════════════════════════════════════════════════ */
+
+.news-suggestions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+
+  width: 100%;
+  min-width: 0;
+  padding: 4px 2px;
+}
+
+.news-suggestions-label {
+  color: var(--news-brand-label);
+
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.25;
+  letter-spacing: 0.055em;
+  text-transform: uppercase;
+}
+
+.news-suggestions-list {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+
+  width: 100%;
+  min-width: 0;
+}
+
+.news-suggestion-chip {
+  flex: 0 1 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  max-width: 100%;
+  min-height: 36px;
+  padding: 0 13px;
+  overflow: hidden;
+
+  color: #fff;
+  background: var(--news-brand);
+
+  border: 1px solid var(--news-brand);
+  border-radius: var(--news-r-sm);
+
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: -0.005em;
+
+  white-space: nowrap;
+  text-overflow: ellipsis;
+
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+
+  transition:
+    background-color 200ms cubic-bezier(0.2, 0.6, 0.2, 1),
+    border-color 200ms cubic-bezier(0.2, 0.6, 0.2, 1);
+}
+
+.news-suggestion-chip:active {
+  background: var(--news-brand-deep);
+  border-color: var(--news-brand-deep);
+}
+
+.news-suggestion-chip:focus-visible {
+  outline: 2px solid var(--news-brand);
+  outline-offset: 2px;
+}
+
+@media (hover: hover) {
+  .news-suggestion-chip:hover {
+    background: var(--news-brand-deep);
+    border-color: var(--news-brand-deep);
+  }
+}
+
+/* ════════════════════════════════════════════════════════════════
+   EMPTY / ERROR
+════════════════════════════════════════════════════════════════ */
+
+.tab-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  min-height: 48vh;
+  padding: 72px 24px;
+
+  text-align: center;
+}
+
+.tab-empty p {
+  max-width: 320px;
+  margin: 0;
+
+  color: var(--color-muted, #64748B);
+
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.55;
+  letter-spacing: -0.006em;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   RESPONSIVE
+════════════════════════════════════════════════════════════════ */
+
+@media (min-width: 640px) {
+  .news-list {
+    --news-pad-x: 20px;
+    --news-gap: 16px;
+  }
+
+  .news-card-body {
+    padding: 16px 20px 18px;
+  }
+
+  .news-card--hero .news-title {
+    font-size: 23px;
+  }
+}
+
+/* ════════════════════════════════════════════════════════════════
+   DARK MODE — tokens set once; titles restated explicitly
+════════════════════════════════════════════════════════════════ */
+
+@media (prefers-color-scheme: dark) {
+  .news-list {
+    --news-bg: #1B1C1E;
+    --news-surface: #202226;
+    --news-press: #2a2a2c;
+
+    /* Same shadow as dark .wc-card */
+    --news-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+
+    --news-ink: #F8FAFC;
+    --news-muted: #A8B3C2;
+
+    --news-brand-label: #1592D0;
+
+    --news-line-strong: rgba(255, 255, 255, 0.16);
+  }
+
+  .news-list .news-title,
+  .news-card--hero .news-title,
+  .news-card--ad .news-title {
+    color: #F8FAFC;
+  }
+
+  .news-list .news-source,
+  .news-list .news-time {
+    color: #A8B3C2;
+  }
+
+  .news-meta-dot {
+    background: #A8B3C2;
+    opacity: 0.65;
+  }
+
+  .tab-empty p {
+    color: #A8B3C2;
+  }
+}
+
+/* ════════════════════════════════════════════════════════════════
+   REDUCED MOTION
+════════════════════════════════════════════════════════════════ */
+
+@media (prefers-reduced-motion: reduce) {
+  .news-card,
+  .news-thumb,
+  .news-suggestion-chip {
+    transition: none;
+  }
+
+  .news-thumb {
+    opacity: 1;
+  }
+}

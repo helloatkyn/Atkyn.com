@@ -165,4 +165,3 @@
 
   window.AtkynAnimation = { open, close, burst, cancel: cancelAll };
 })();
- 

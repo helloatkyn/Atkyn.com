@@ -38,11 +38,19 @@
   pill.insertBefore(aurora, pill.firstChild);
   pill.insertBefore(fill, pill.firstChild);
 
-  const DUR = 1500;
+  const DUR = 1350;
   let anims = [];
   let run = 0; /* latest-wins token */
   let fadeTimer = 0;
   let lastBurst = 0;
+
+  /* Promote layers to the compositor only while animating (no first-frame jank, no idle memory cost) */
+  function setHints(on) {
+    try {
+      aurora.style.willChange = on ? 'opacity' : '';
+      for (const b of blurs) b.style.willChange = on ? 'filter' : '';
+    } catch (_) {}
+  }
 
   function cancelAll() {
     run++;
@@ -50,6 +58,7 @@
     anims = [];
     clearTimeout(fadeTimer);
     pill.classList.remove('atk-animating');
+    setHints(false);
     for (const a of list) { try { a.cancel(); } catch (_) {} }
   }
 
@@ -62,6 +71,7 @@
     if (reduced || !aurora.animate) return;
     const my = run;
     pill.classList.add('atk-animating'); /* outline hidden while aurora plays */
+    setHints(true);
     /* outline starts fading back in while aurora is still fading out (crossfade) */
     fadeTimer = setTimeout(() => {
       if (my === run) pill.classList.remove('atk-animating');
@@ -72,35 +82,43 @@
         if (my !== run) return; /* stale: newer run owns state */
         anims = anims.filter((x) => x !== a);
         /* all aurora animations done -> outline comes back */
-        if (anims.length === 0) pill.classList.remove('atk-animating');
+        if (anims.length === 0) {
+          pill.classList.remove('atk-animating');
+          setHints(false);
+        }
       };
       return a;
     };
 
-    /* opacity: smooth fade in (22%) → hold (42%) → long ease-in-out fade out */
-    track(aurora.animate([
-      { opacity: 0, offset: 0, easing: 'cubic-bezier(0.22,0.61,0.36,1)' },
-      { opacity: 1, offset: 0.22, easing: 'linear' },
-      { opacity: 1, offset: 0.42, easing: 'cubic-bezier(0.45,0,0.55,1)' },
-      { opacity: 0, offset: 1 }
-    ], { duration: DUR, easing: 'linear', fill: 'none' }));
-
-    /* angle sweep */
-    track(aurora.animate([
-      { '--atk-a-grad': '170deg', '--atk-a-mask': '-90deg' },
-      { '--atk-a-grad': '225deg', '--atk-a-mask': '200deg' }
-    ], { duration: DUR, easing: 'cubic-bezier(0.22,0.6,0.3,1)', fill: 'none' }));
-
-    /* blur: 1 → 13 → 8 → 10 → 5 → 2 px (soft, no sharp snap at the end) */
-    for (const b of blurs) {
-      track(b.animate([
-        { filter: 'blur(1px)', offset: 0, easing: 'ease-in-out' },
-        { filter: 'blur(13px)', offset: 0.14, easing: 'ease-in-out' },
-        { filter: 'blur(8px)', offset: 0.3, easing: 'ease-in-out' },
-        { filter: 'blur(10px)', offset: 0.5, easing: 'ease-in-out' },
-        { filter: 'blur(5px)', offset: 0.78, easing: 'ease-in-out' },
-        { filter: 'blur(2px)', offset: 1 }
+    try {
+      /* opacity: smooth fade in (22%) → hold (42%) → long ease-in-out fade out */
+      track(aurora.animate([
+        { opacity: 0, offset: 0, easing: 'cubic-bezier(0.22,0.61,0.36,1)' },
+        { opacity: 1, offset: 0.22, easing: 'linear' },
+        { opacity: 1, offset: 0.42, easing: 'cubic-bezier(0.45,0,0.55,1)' },
+        { opacity: 0, offset: 1 }
       ], { duration: DUR, easing: 'linear', fill: 'none' }));
+
+      /* angle sweep */
+      track(aurora.animate([
+        { '--atk-a-grad': '170deg', '--atk-a-mask': '-90deg' },
+        { '--atk-a-grad': '225deg', '--atk-a-mask': '200deg' }
+      ], { duration: DUR, easing: 'cubic-bezier(0.22,0.6,0.3,1)', fill: 'none' }));
+
+      /* blur: 1 → 13 → 8 → 10 → 5 → 2 px (soft, no sharp snap at the end) */
+      for (const b of blurs) {
+        track(b.animate([
+          { filter: 'blur(1px)', offset: 0, easing: 'ease-in-out' },
+          { filter: 'blur(13px)', offset: 0.14, easing: 'ease-in-out' },
+          { filter: 'blur(8px)', offset: 0.3, easing: 'ease-in-out' },
+          { filter: 'blur(10px)', offset: 0.5, easing: 'ease-in-out' },
+          { filter: 'blur(5px)', offset: 0.78, easing: 'ease-in-out' },
+          { filter: 'blur(2px)', offset: 1 }
+        ], { duration: DUR, easing: 'linear', fill: 'none' }));
+      }
+    } catch (_) {
+      /* animation API failed: never leave the outline hidden */
+      cancelAll();
     }
   }
 
@@ -147,3 +165,4 @@
 
   window.AtkynAnimation = { open, close, burst, cancel: cancelAll };
 })();
+ 

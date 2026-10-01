@@ -42,6 +42,7 @@
   let anims = [];
   let run = 0; /* latest-wins token */
   let fadeTimer = 0;
+  let lastBurst = 0;
 
   function cancelAll() {
     run++;
@@ -53,6 +54,10 @@
   }
 
   function burst() {
+    /* dedupe: send + blur/close can fire together, don't restart mid-animation */
+    const now = (typeof performance !== 'undefined' ? performance.now() : Date.now());
+    if (anims.length && now - lastBurst < 400) return;
+    lastBurst = now;
     cancelAll();
     if (reduced || !aurora.animate) return;
     const my = run;
@@ -105,8 +110,10 @@
   }
 
   function close() {
-    cancelAll();
+    const wasExpanded = pill.classList.contains('atk-expanded');
     pill.classList.remove('atk-expanded');
+    if (wasExpanded) burst(); /* same aurora on close */
+    else cancelAll();
   }
 
   input.addEventListener('focus', open);
@@ -119,7 +126,25 @@
     });
   });
 
+  /* Message send: aurora plays again */
+  pill.addEventListener('click', (e) => {
+    const btn = e.target.closest && e.target.closest('.send-btn');
+    if (btn && !btn.classList.contains('cross-mode')) burst();
+  });
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey && !e.isComposing && input.value.trim() !== '') burst();
+  });
+
+  /* Page / URL load: aurora plays as the chatbar settles at the bottom */
+  const onLoadBurst = () => requestAnimationFrame(() => requestAnimationFrame(burst));
+  if (document.readyState === 'complete') onLoadBurst();
+  else window.addEventListener('load', onLoadBurst, { once: true });
+  window.addEventListener('pageshow', (e) => { if (e.persisted) onLoadBurst(); });
+  window.addEventListener('popstate', onLoadBurst);
+  window.addEventListener('hashchange', onLoadBurst);
+
   if (document.activeElement === input) open();
 
-  window.AtkynAnimation = { open, close, cancel: cancelAll };
+  window.AtkynAnimation = { open, close, burst, cancel: cancelAll };
 })();
+        

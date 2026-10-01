@@ -38,7 +38,7 @@
   pill.insertBefore(aurora, pill.firstChild);
   pill.insertBefore(fill, pill.firstChild);
 
-  const DUR = 650;
+  const DUR = 850;
   let anims = [];
   let run = 0; /* latest-wins token */
 
@@ -80,13 +80,13 @@
       { '--atk-a-grad': '225deg', '--atk-a-mask': '200deg' }
     ], { duration: DUR, easing: 'cubic-bezier(0,0,0,1)', fill: 'none' }));
 
-    /* blur: 1 → 10 → 5 → 7 → 1 px */
+    /* blur: 1 → 13 → 7 → 9 → 1 px */
     for (const b of blurs) {
       track(b.animate([
         { filter: 'blur(1px)', offset: 0 },
-        { filter: 'blur(10px)', offset: 0.15 },
-        { filter: 'blur(5px)', offset: 0.25 },
-        { filter: 'blur(7px)', offset: 0.45 },
+        { filter: 'blur(13px)', offset: 0.15 },
+        { filter: 'blur(7px)', offset: 0.25 },
+        { filter: 'blur(9px)', offset: 0.45 },
         { filter: 'blur(1px)', offset: 1 }
       ], { duration: DUR, easing: 'linear', fill: 'none' }));
     }

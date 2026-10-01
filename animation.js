@@ -1,7 +1,14 @@
+/* ATKYN — isolated visual animation layer
+ *
+ * core.js owns keyboard/viewport geometry. This file owns visuals only:
+ * aurora burst (1.0s) + expanded/compact rim state on #pill.
+ * Never touches .chatbar-wrap, VisualViewport, spacer or keyboard state.
+ * Timing/keyframes ported from the Google Search capture.
+ */
 (() => {
   'use strict';
 
-  if (window.AtkynAnimation) return;
+  if (window.AtkynAnimation) return; /* no double init */
 
   const pill = document.getElementById('pill');
   const input = document.getElementById('cbInput');
@@ -20,9 +27,10 @@
     };
 
     if (mq.addEventListener) mq.addEventListener('change', onChange);
-    else if (mq.addListener) mq.addListener('change', onChange);
+    else if (mq.addListener) mq.addListener(onChange);
   }
 
+  /* Visual layers: behind content, pointer-events none (see CSS) */
   const mk = (cls, parent) => {
     const el = document.createElement('div');
     el.className = cls;
@@ -50,80 +58,61 @@
   pill.insertBefore(aurora, pill.firstChild);
   pill.insertBefore(fill, pill.firstChild);
 
-  const DUR = 650;
+  /* ATKYN animation duration */
+  const DUR = 1000;
 
   let anims = [];
-  let run = 0;
-  let fadeTimer = 0;
-  let lastBurst = 0;
+  let run = 0; /* latest-wins token */
 
   function cancelAll() {
     run++;
+
     const list = anims;
     anims = [];
-    clearTimeout(fadeTimer);
-    pill.classList.remove('atk-animating');
 
     for (const a of list) {
-      try { a.cancel(); } catch (_) {}
+      try {
+        a.cancel();
+      } catch (_) {}
     }
   }
 
   function burst() {
-    const now =
-      typeof performance !== 'undefined'
-        ? performance.now()
-        : Date.now();
-
-    if (anims.length && now - lastBurst < 400) return;
-
-    lastBurst = now;
     cancelAll();
 
     if (reduced || !aurora.animate) return;
 
     const my = run;
-    pill.classList.add('atk-animating');
-
-    fadeTimer = setTimeout(() => {
-      if (my === run) {
-        pill.classList.remove('atk-animating');
-      }
-    }, DUR * 0.75);
 
     const track = (a) => {
       anims.push(a);
 
       a.onfinish = a.oncancel = () => {
-        if (my !== run) return;
+        if (my !== run) return; /* stale: newer run owns state */
 
         anims = anims.filter((x) => x !== a);
-
-        if (anims.length === 0) {
-          pill.classList.remove('atk-animating');
-        }
       };
 
       return a;
     };
 
+    /* opacity: 0 → 1 (25%) → 1 (50%) → 0 */
     track(
       aurora.animate(
         [
           {
             opacity: 0,
             offset: 0,
-            easing: 'cubic-bezier(0.22,0.61,0.36,1)'
+            easing: 'cubic-bezier(0,0,0,1)'
           },
           {
             opacity: 1,
-            offset: 0.22,
-            easing: 'linear'
+            offset: 0.25
           },
           {
             opacity: 1,
-            offset: 0.42,
-            easing: 'cubic-bezier(0.45,0,0.55,1)'
+            offset: 0.5,
+            easing: 'cubic-bezier(0.3,0,0.8,0.15)'
           },
           {
             opacity: 0,
@@ -138,6 +127,7 @@
       )
     );
 
+    /* angle sweep */
     track(
       aurora.animate(
         [
@@ -152,43 +142,35 @@
         ],
         {
           duration: DUR,
-          easing: 'cubic-bezier(0.22,0.6,0.3,1)',
+          easing: 'cubic-bezier(0,0,0,1)',
           fill: 'none'
         }
       )
     );
 
+    /* blur: 1 → 10 → 5 → 7 → 1 px */
     for (const b of blurs) {
       track(
         b.animate(
           [
             {
               filter: 'blur(1px)',
-              offset: 0,
-              easing: 'ease-in-out'
-            },
-            {
-              filter: 'blur(13px)',
-              offset: 0.14,
-              easing: 'ease-in-out'
-            },
-            {
-              filter: 'blur(8px)',
-              offset: 0.3,
-              easing: 'ease-in-out'
+              offset: 0
             },
             {
               filter: 'blur(10px)',
-              offset: 0.5,
-              easing: 'ease-in-out'
+              offset: 0.15
             },
             {
               filter: 'blur(5px)',
-              offset: 0.78,
-              easing: 'ease-in-out'
+              offset: 0.25
             },
             {
-              filter: 'blur(2px)',
+              filter: 'blur(7px)',
+              offset: 0.45
+            },
+            {
+              filter: 'blur(1px)',
               offset: 1
             }
           ],
@@ -208,15 +190,8 @@
   }
 
   function close() {
-    const wasExpanded = pill.classList.contains('atk-expanded');
-
+    cancelAll();
     pill.classList.remove('atk-expanded');
-
-    if (wasExpanded) {
-      burst();
-    } else {
-      cancelAll();
-    }
   }
 
   input.addEventListener('focus', open);
@@ -226,59 +201,18 @@
       const a = document.activeElement;
 
       if (a === input || (a && pill.contains(a))) return;
-      if (input.value.trim() !== '') return;
+
+      if (input.value.trim() !== '') return; /* never collapse with typed text */
 
       close();
     });
   });
 
-  pill.addEventListener('click', (e) => {
-    const btn = e.target.closest && e.target.closest('.send-btn');
-
-    if (btn && !btn.classList.contains('cross-mode')) {
-      burst();
-    }
-  });
-
-  input.addEventListener('keydown', (e) => {
-    if (
-      e.key === 'Enter' &&
-      !e.shiftKey &&
-      !e.isComposing &&
-      input.value.trim() !== ''
-    ) {
-      burst();
-    }
-  });
-
-  const onLoadBurst = () =>
-    requestAnimationFrame(() =>
-      requestAnimationFrame(burst)
-    );
-
-  if (document.readyState === 'complete') {
-    onLoadBurst();
-  } else {
-    window.addEventListener('load', onLoadBurst, {
-      once: true
-    });
-  }
-
-  window.addEventListener('pageshow', (e) => {
-    if (e.persisted) onLoadBurst();
-  });
-
-  window.addEventListener('popstate', onLoadBurst);
-  window.addEventListener('hashchange', onLoadBurst);
-
-  if (document.activeElement === input) {
-    open();
-  }
+  if (document.activeElement === input) open();
 
   window.AtkynAnimation = {
     open,
     close,
-    burst,
     cancel: cancelAll
   };
 })();

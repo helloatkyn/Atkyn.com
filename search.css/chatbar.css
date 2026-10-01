@@ -1189,16 +1189,16 @@
   rotate: var(--atk-a-grad);
   transform: translateZ(0);
   backface-visibility: hidden;
-  /* Professional palette: blue -> indigo -> soft violet -> sky -> cyan -> blue */
+  /* Bold professional palette: royal blue -> indigo -> violet -> sky -> cyan -> blue */
   background: conic-gradient(
-    rgb(59, 130, 246) 34%, rgb(79, 110, 247) 38%, rgb(99, 102, 241) 42%,
-    rgb(129, 120, 244) 48%, rgb(99, 102, 241) 53%, rgb(59, 130, 246) 58%,
-    rgb(14, 165, 233) 64%, rgb(6, 182, 212) 70%, rgb(59, 130, 246) 73%,
-    rgb(59, 130, 246) 100%
+    rgb(37, 99, 235) 34%, rgb(67, 56, 202) 38%, rgb(79, 70, 229) 42%,
+    rgb(124, 58, 237) 48%, rgb(79, 70, 229) 53%, rgb(37, 99, 235) 58%,
+    rgb(2, 132, 199) 64%, rgb(6, 182, 212) 70%, rgb(37, 99, 235) 73%,
+    rgb(37, 99, 235) 100%
   );
 }
 
 @media (prefers-reduced-motion: reduce) {
   .atk-fill { transition: none; }
   .atk-aurora { display: none; }
-}
+  }

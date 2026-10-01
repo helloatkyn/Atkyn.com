@@ -77,30 +77,30 @@ if (anims.length === 0) pill.classList.remove('atk-animating');
 return a;
 };
 
-/* opacity: smooth fade in (22%) → hold (42%) → long ease-in-out fade out */  
-track(aurora.animate([  
-  { opacity: 0, offset: 0, easing: 'cubic-bezier(0.22,0.61,0.36,1)' },  
-  { opacity: 1, offset: 0.22, easing: 'linear' },  
-  { opacity: 1, offset: 0.42, easing: 'cubic-bezier(0.45,0,0.55,1)' },  
-  { opacity: 0, offset: 1 }  
-], { duration: DUR, easing: 'linear', fill: 'none' }));  
+/* opacity: smooth fade in (22%) → hold (42%) → long ease-in-out fade out */    
+track(aurora.animate([    
+  { opacity: 0, offset: 0, easing: 'cubic-bezier(0.22,0.61,0.36,1)' },    
+  { opacity: 1, offset: 0.22, easing: 'linear' },    
+  { opacity: 1, offset: 0.42, easing: 'cubic-bezier(0.45,0,0.55,1)' },    
+  { opacity: 0, offset: 1 }    
+], { duration: DUR, easing: 'linear', fill: 'none' }));    
 
-/* angle sweep */  
-track(aurora.animate([  
-  { '--atk-a-grad': '170deg', '--atk-a-mask': '-90deg' },  
-  { '--atk-a-grad': '225deg', '--atk-a-mask': '200deg' }  
-], { duration: DUR, easing: 'cubic-bezier(0.22,0.6,0.3,1)', fill: 'none' }));  
+/* angle sweep */    
+track(aurora.animate([    
+  { '--atk-a-grad': '170deg', '--atk-a-mask': '-90deg' },    
+  { '--atk-a-grad': '225deg', '--atk-a-mask': '200deg' }    
+], { duration: DUR, easing: 'cubic-bezier(0.22,0.6,0.3,1)', fill: 'none' }));    
 
-/* blur: 1 → 13 → 8 → 10 → 5 → 2 px (soft, no sharp snap at the end) */  
-for (const b of blurs) {  
-  track(b.animate([  
-    { filter: 'blur(1px)', offset: 0, easing: 'ease-in-out' },  
-    { filter: 'blur(13px)', offset: 0.14, easing: 'ease-in-out' },  
-    { filter: 'blur(8px)', offset: 0.3, easing: 'ease-in-out' },  
-    { filter: 'blur(10px)', offset: 0.5, easing: 'ease-in-out' },  
-    { filter: 'blur(5px)', offset: 0.78, easing: 'ease-in-out' },  
-    { filter: 'blur(2px)', offset: 1 }  
-  ], { duration: DUR, easing: 'linear', fill: 'none' }));  
+/* blur: 1 → 13 → 8 → 10 → 5 → 2 px (soft, no sharp snap at the end) */    
+for (const b of blurs) {    
+  track(b.animate([    
+    { filter: 'blur(1px)', offset: 0, easing: 'ease-in-out' },    
+    { filter: 'blur(13px)', offset: 0.14, easing: 'ease-in-out' },    
+    { filter: 'blur(8px)', offset: 0.3, easing: 'ease-in-out' },    
+    { filter: 'blur(10px)', offset: 0.5, easing: 'ease-in-out' },    
+    { filter: 'blur(5px)', offset: 0.78, easing: 'ease-in-out' },    
+    { filter: 'blur(2px)', offset: 1 }    
+  ], { duration: DUR, easing: 'linear', fill: 'none' }));    
 }
 
 }

@@ -38,7 +38,7 @@
   pill.insertBefore(aurora, pill.firstChild);
   pill.insertBefore(fill, pill.firstChild);
 
-  const DUR = 2000;
+  const DUR = 1200;
   let anims = [];
   let run = 0; /* latest-wins token */
   let fadeTimer = 0;

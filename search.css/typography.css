@@ -1,0 +1,432 @@
+/* ═══════════════════════════════════════════════════════════════
+   Bot bubble — markdown rendering
+   Font inherit hota hai (koi font-family change nahi)
+   ═══════════════════════════════════════════════════════════════ */
+
+.msg.bot .bubble {
+  /* external-link arrow (↗) — currentColor se theme follow karta hai */
+  --md-arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M7 17 17 7M8 7h9v9'/%3E%3C/svg%3E");
+  --md-rule: rgba(0, 0, 0, 0.08);
+  --md-tint: rgba(0, 0, 0, 0.035);
+}
+
+@media (prefers-color-scheme: dark) {
+  .msg.bot .bubble {
+    --md-rule: rgba(255, 255, 255, 0.09);
+    --md-tint: rgba(255, 255, 255, 0.045);
+  }
+}
+
+
+/* ── Paragraphs ─────────────────────────────────────────────── */
+
+.msg.bot .bubble p {
+  margin: 0 0 11px;
+  line-height: 1.62;
+}
+
+.msg.bot .bubble p:last-child {
+  margin-bottom: 0;
+}
+
+
+/* ── Headings ───────────────────────────────────────────────── */
+
+.msg.bot .bubble h1,
+.msg.bot .bubble h2,
+.msg.bot .bubble h3 {
+  font-size: 1.08rem;
+  font-weight: 700;
+  line-height: 1.4;
+  letter-spacing: -0.012em;
+  margin: 18px 0 7px;
+}
+
+.msg.bot .bubble h4 {
+  font-size: 1rem;
+  font-weight: 650;
+  line-height: 1.45;
+  letter-spacing: -0.008em;
+  margin: 15px 0 6px;
+}
+
+.msg.bot .bubble h5,
+.msg.bot .bubble h6 {
+  font-size: 0.94rem;
+  font-weight: 600;
+  line-height: 1.45;
+  color: var(--color-text-muted);
+  margin: 12px 0 5px;
+}
+
+.msg.bot .bubble > :is(h1, h2, h3, h4, h5, h6):first-child {
+  margin-top: 0;
+}
+
+@media (prefers-color-scheme: dark) {
+  .msg.bot .bubble :is(h1, h2, h3, h4) {
+    color: var(--color-text-dark);
+  }
+
+  .msg.bot .bubble :is(h5, h6) {
+    color: var(--color-text-dark-muted);
+  }
+}
+
+
+/* ── Inline text ────────────────────────────────────────────── */
+
+.msg.bot .bubble strong {
+  font-weight: 680;
+}
+
+.msg.bot .bubble del {
+  opacity: 0.6;
+}
+
+.msg.bot .bubble mark {
+  background: rgba(255, 214, 10, 0.28);
+  color: inherit;
+  padding: 0 3px;
+  border-radius: 3px;
+}
+
+.msg.bot .bubble sub,
+.msg.bot .bubble sup {
+  font-size: 0.75em;
+  line-height: 0;
+}
+
+.msg.bot .bubble kbd {
+  font-family: 'JetBrains Mono', 'SFMono-Regular', 'SF Mono', Menlo, Consolas, monospace;
+  font-size: 0.8em;
+  padding: 1px 6px;
+  border: 1px solid var(--md-rule);
+  border-bottom-width: 2px;
+  border-radius: 5px;
+  background: var(--md-tint);
+}
+
+
+/* ── Lists ──────────────────────────────────────────────────── */
+
+.msg.bot .bubble ul,
+.msg.bot .bubble ol {
+  margin: 7px 0 12px;
+}
+
+/* Unordered — top level: hollow circle */
+.msg.bot .bubble ul {
+  list-style: none;
+  padding-left: 0;
+}
+
+.msg.bot .bubble ul > li {
+  position: relative;
+  padding-left: 19.3px;
+  margin: 6px 0;
+  line-height: 1.58;
+}
+
+.msg.bot .bubble ul > li::before {
+  content: "";
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  left: 0.5px;
+  top: 0.72em;
+  box-sizing: border-box;
+  border: 1.5px solid currentColor;
+  border-radius: 50%;
+  color: var(--color-text-muted);
+  opacity: 0.82;
+}
+
+/* Unordered — nested (kisi bhi depth par): no marker, parent text ke saath aligned */
+.msg.bot .bubble li > ul {
+  margin: 5px 0 6px;
+  padding-left: 0;
+}
+
+.msg.bot .bubble li > ul > li {
+  padding-left: 0;
+  margin: 5px 0;
+  line-height: 1.56;
+}
+
+.msg.bot .bubble li > ul > li::before {
+  content: none;
+}
+
+/* Ordered — top level: filled dot */
+.msg.bot .bubble > ol {
+  list-style: disc outside;
+  padding-left: 22px;
+}
+
+.msg.bot .bubble > ol > li {
+  padding-left: 2px;
+  margin: 6px 0;
+  line-height: 1.6;
+}
+
+/* Ordered — nested: normal numbers */
+.msg.bot .bubble li > ol {
+  list-style: decimal outside;
+  margin: 5px 0 6px -10px;
+  padding-left: 20px;
+}
+
+.msg.bot .bubble li > ol > li {
+  padding-left: 2px;
+  margin: 5px 0;
+}
+
+/* List ke andar paragraph */
+.msg.bot .bubble li > p {
+  margin: 0 0 5px;
+  line-height: 1.58;
+}
+
+.msg.bot .bubble li > p:last-child {
+  margin-bottom: 0;
+}
+
+/* Task list  (- [ ] / - [x]) */
+.msg.bot .bubble li:has(> input[type="checkbox"])::before {
+  content: none;
+}
+
+.msg.bot .bubble li > input[type="checkbox"] {
+  margin: 0 8px 0 -19px;
+  vertical-align: -1px;
+  accent-color: var(--color-link, #0066cc);
+}
+
+
+/* ── Follow-up questions ────────────────────────────────────── */
+
+.msg.bot .bubble ul.followup-list {
+  margin: 12px 0 0;
+}
+
+.msg.bot .bubble ul.followup-list > li {
+  padding-left: 18px;
+  margin: 7px 0;
+}
+
+.msg.bot .bubble ul.followup-list > li::before {
+  border: 0;
+  background: currentColor;
+  opacity: 0.75;
+}
+
+@media (prefers-color-scheme: dark) {
+  .msg.bot .bubble ul.followup-list > li::before {
+    opacity: 0.65;
+  }
+}
+
+
+/* ── Links (external → ↗ arrow) ─────────────────────────────── */
+
+.msg.bot .bubble a {
+  color: var(--color-link, #0066cc);
+  text-decoration: underline;
+  text-decoration-color: rgba(0, 102, 204, 0.28);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+  overflow-wrap: anywhere;
+  transition: opacity 0.15s ease, text-decoration-color 0.15s ease;
+}
+
+.msg.bot .bubble a:hover {
+  text-decoration-color: rgba(0, 102, 204, 0.55);
+}
+
+.msg.bot .bubble a:active {
+  opacity: 0.7;
+}
+
+.msg.bot .bubble a:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+  border-radius: 3px;
+}
+
+.msg.bot .bubble :is(p, li, td, th, blockquote, h1, h2, h3, h4, h5, h6) a[href^="http"]:not(.no-arrow):not(:has(> img))::after {
+  content: "";
+  display: inline-block;
+  width: 0.78em;
+  height: 0.78em;
+  margin-left: 0.22em;
+  vertical-align: -0.03em;
+  background: currentColor;
+  opacity: 0.72;
+  -webkit-mask: var(--md-arrow) center / contain no-repeat;
+  mask: var(--md-arrow) center / contain no-repeat;
+  transition: transform 0.18s ease, opacity 0.18s ease;
+}
+
+.msg.bot .bubble :is(p, li, td, th, blockquote, h1, h2, h3, h4, h5, h6) a[href^="http"]:not(.no-arrow):hover::after {
+  opacity: 1;
+  transform: translate(1px, -1px);
+}
+
+@media (prefers-color-scheme: dark) {
+  .msg.bot .bubble a {
+    color: var(--color-link-dark, #4da3ff);
+    text-decoration-color: var(--color-link-border-dark);
+  }
+
+  .msg.bot .bubble a:hover {
+    text-decoration-color: currentColor;
+  }
+}
+
+
+/* ── Code ───────────────────────────────────────────────────── */
+
+/* Inline code only — .code-block / pre ke andar wala code untouched */
+.msg.bot .bubble :not(pre):not(.code-block) > code {
+  font-family: 'JetBrains Mono', 'SFMono-Regular', 'SF Mono', Menlo, Consolas, monospace;
+  font-size: 0.84em;
+  line-height: 1.45;
+  background: var(--color-bg-alt);
+  color: var(--color-text);
+  padding: 2px 6px;
+  border-radius: 5px;
+  white-space: break-spaces;
+}
+
+@media (prefers-color-scheme: dark) {
+  .msg.bot .bubble :not(pre):not(.code-block) > code {
+    background: var(--color-press-dark-md);
+    color: var(--color-text-dark-code);
+  }
+}
+
+
+/* ── Divider ────────────────────────────────────────────────── */
+
+.msg.bot .bubble hr.md-hr {
+  border: 0;
+  height: 1.5px;
+  background: var(--md-rule);
+  margin: 20px 0;
+}
+
+
+/* ── Blockquote ─────────────────────────────────────────────── */
+
+.msg.bot .bubble blockquote {
+  margin: 13px 0;
+  padding: 2px 0 2px 13px;
+  border-left: 3px solid var(--color-text-muted);
+  color: var(--color-text-muted);
+}
+
+.msg.bot .bubble blockquote > :last-child {
+  margin-bottom: 0;
+}
+
+@media (prefers-color-scheme: dark) {
+  .msg.bot .bubble blockquote {
+    color: var(--color-text-dark-muted);
+    border-left-color: var(--color-text-dark-muted);
+  }
+}
+
+
+/* ── Tables (mobile par horizontal scroll) ──────────────────── */
+
+.msg.bot .bubble table {
+  display: block;
+  width: max-content;
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border-collapse: collapse;
+  margin: 14px 0;
+  font-size: 0.94em;
+  line-height: 1.5;
+}
+
+.msg.bot .bubble th,
+.msg.bot .bubble td {
+  padding: 8px 10px;
+  text-align: left;
+  vertical-align: top;
+  border-bottom: 1px solid var(--md-rule);
+}
+
+.msg.bot .bubble th {
+  font-weight: 650;
+  background: var(--md-tint);
+  white-space: nowrap;
+}
+
+
+/* ── Media, details, math (CDN renderers) ───────────────────── */
+
+.msg.bot .bubble img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 8px;
+}
+
+.msg.bot .bubble details {
+  margin: 10px 0;
+}
+
+.msg.bot .bubble summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.msg.bot .bubble .katex-display {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 2px 0;
+}
+
+
+/* ── Mobile (≤ 600px) — sirf jo actually badalta hai ────────── */
+
+@media (max-width: 600px) {
+  .msg.bot .bubble :is(h1, h2, h3) {
+    font-size: 1.06rem;
+    margin: 17px 0 6px;
+  }
+
+  .msg.bot .bubble h4 {
+    font-size: 0.99rem;
+    margin: 14px 0 5px;
+  }
+
+  .msg.bot .bubble p {
+    line-height: 1.6;
+  }
+
+  .msg.bot .bubble ul > li {
+    margin: 5px 0;
+  }
+
+  .msg.bot .bubble > ol {
+    padding-left: 21px;
+  }
+
+  .msg.bot .bubble li > ol {
+    padding-left: 19px;
+  }
+}
+
+
+/* ── Reduced motion ─────────────────────────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  .msg.bot .bubble a,
+  .msg.bot .bubble a::after {
+    transition: none;
+  }
+  }

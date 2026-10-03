@@ -2,13 +2,14 @@
    web-cards.css — Web result cards
    Shadow wrap · Carousel · Preview · Card body ·
    Thumbnail · Title · Snippet · Favicon · Meta · Dark mode
-   (preview cards at the top: 240px · carousel cards at the bottom: 270px)
 ════════════════════════════════════════════════════════════════ */
 
 /* ── OUTER SHADOW WRAPPER ── */
 .web-cards-shadow-wrap {
   width: 100%;
   padding: 6px 0 18px;
+  overflow: visible;
+  background: none;
 }
 
 /* ── EDGE BLUR / FADE MASK (carousel only) ── */
@@ -24,6 +25,7 @@
 .web-results-preview,
 .web-results-carousel-wrap {
   overflow-x: auto;
+  overflow-y: visible;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
   overscroll-behavior-x: contain;
@@ -32,10 +34,14 @@
   flex-wrap: nowrap;
   gap: 12px;
   width: 100%;
+  padding: 0;
   will-change: scroll-position;
   transform: translateZ(0);
   backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
   contain: layout style;
+  background: none;
+  border: none;
 }
 .web-results-preview::-webkit-scrollbar,
 .web-results-carousel-wrap::-webkit-scrollbar { display: none; }
@@ -44,41 +50,61 @@
   scroll-snap-type: x proximity;
   scroll-behavior: smooth;
 }
+.web-results-carousel-wrap {
+  scroll-snap-type: none;
+  scroll-behavior: auto;
+}
 
+.web-results-preview       { animation: wcFadeIn 0.20s ease both; }
 .web-results-carousel-wrap { animation: wcFadeIn 0.22s ease both; }
 
-/* ── CARD (same size in preview + carousel) ── */
+/* ── PREVIEW BUBBLE OVERRIDE ── */
+.bubble.web-results-preview {
+  width: 100%;
+  max-width: 100%;
+  padding: 0;
+  background: none;
+  border: none;
+}
+
+/* ── CARD BASE ── */
 .web-card {
-  width: 240px;
-  flex: 0 0 240px;
+  width: 300px;
+  min-width: 300px;
+  max-width: 300px;
+  flex: 0 0 300px;
   scroll-snap-align: start;
   display: flex;
   flex-direction: column;
   text-decoration: none;
   box-sizing: border-box;
+  overflow: visible;
   background: var(--color-bg-card);
-  border-radius: 14px;
-  padding: 12px 14px;
+  border-radius: 18px;
+  padding: 16px;
   border: none;
   box-shadow: none;
   will-change: transform;
   transform: translate3d(0, 0, 0);
   backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
   contain: layout style;
 }
 .web-card:active { background: var(--color-bg-card-active); }
 
-/* ── CAROUSEL (bottom) cards: a step bigger than the preview (top) cards ── */
-.web-results-carousel-wrap .web-card {
-  width: 270px;
-  flex-basis: 270px;
-  padding: 14px 16px;
-  border-radius: 16px;
+/* ── PREVIEW COMPACT OVERRIDES ── */
+.web-results-preview .web-card {
+  width: 240px;
+  min-width: 240px;
+  max-width: 240px;
+  flex: 0 0 240px;
+  padding: 12px 14px;
+  border-radius: 14px;
 }
-.web-results-carousel-wrap .web-card-title   { font-size: 16px; }
-.web-results-carousel-wrap .web-card-snippet { font-size: 14px; }
-.web-results-carousel-wrap .web-card-meta    { margin-top: 10px; }
-.web-results-carousel-wrap .web-card-thumb   { width: 64px; height: 64px; border-radius: 12px; }
+.web-results-preview .web-card-title   { font-size: 15px; -webkit-line-clamp: 1; }
+.web-results-preview .web-card-snippet { font-size: 13px; -webkit-line-clamp: 2; }
+.web-results-preview .web-card-meta    { margin-top: 8px; }
+.web-results-preview .web-card-thumb   { display: none; }
 
 /* ── CARD BODY ── */
 .web-card-body {
@@ -87,6 +113,7 @@
   gap: 12px;
   flex: 1;
   min-height: 0;
+  overflow: visible;
   align-items: flex-start;
   contain: layout;
 }
@@ -100,26 +127,27 @@
   gap: 4px;
 }
 
-/* ── THUMBNAIL (added by search.js only when the OG image is ~square) ── */
+/* ── THUMBNAIL ── */
 .web-card-thumb {
   flex-shrink: 0;
-  width: 56px;
-  height: 56px;
-  border-radius: 10px;
+  width: 92px;
+  min-width: 92px;
+  height: 92px;
+  border-radius: 12px;
   object-fit: cover;
+  align-self: flex-start;
   display: block;
   background: var(--color-bg-thumb);
-  animation: wcFadeIn 0.2s ease both;
 }
 
 /* ── TITLE ── */
 .web-card-title {
-  font-size: 15px;
+  font-size: 18px;
   font-weight: 700;
   color: var(--color-web-title);
   line-height: 1.3;
   display: -webkit-box;
-  -webkit-line-clamp: 1;
+  -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
   word-break: break-word;
@@ -128,12 +156,12 @@
 
 /* ── SNIPPET ── */
 .web-card-snippet {
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 400;
   color: var(--color-text-strong);
   line-height: 1.55;
   display: -webkit-box;
-  -webkit-line-clamp: 2;
+  -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
   word-break: break-word;
@@ -146,7 +174,7 @@
   align-items: center;
   gap: 6px;
   min-width: 0;
-  margin-top: 8px;
+  margin-top: 10px;
   flex-shrink: 0;
   contain: layout;
 }
@@ -155,6 +183,7 @@
 .web-card-favicon-wrap {
   flex-shrink: 0;
   width: 22px;
+  min-width: 22px;
   height: 22px;
   border-radius: 50%;
   background: var(--color-bg);
@@ -233,7 +262,7 @@
 
 /* ── DARK MODE ── */
 @media (prefers-color-scheme: dark) {
-  .web-card              { background: var(--color-bg-alt-dark); }
+  .web-card              { background: var(--color-bg-alt-dark); border: none; box-shadow: none; }
   .web-card:active       { background: var(--color-bg-card-active-dark); }
   .web-card-title        { color: var(--color-web-title-dark); }
   .web-card-snippet      { color: var(--color-text-dark-dim); }

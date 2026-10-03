@@ -32,22 +32,23 @@
 
 /* ── Headings ───────────────────────────────────────────────── */
 
-.msg.bot .bubble h1,
-.msg.bot .bubble h2,
-.msg.bot .bubble h3 {
-  font-size: 1.08rem;
+.msg.bot .bubble :is(h1, h2, h3) {
   font-weight: 700;
-  line-height: 1.4;
-  letter-spacing: -0.012em;
-  margin: 18px 0 7px;
+  line-height: 1.35;
+  letter-spacing: -0.018em;
+  margin: 26px 0 9px;
 }
 
+.msg.bot .bubble h1 { font-size: 1.4rem; }
+.msg.bot .bubble h2 { font-size: 1.3rem; }
+.msg.bot .bubble h3 { font-size: 1.22rem; }
+
 .msg.bot .bubble h4 {
-  font-size: 1rem;
+  font-size: 1.08rem;
   font-weight: 650;
-  line-height: 1.45;
-  letter-spacing: -0.008em;
-  margin: 15px 0 6px;
+  line-height: 1.4;
+  letter-spacing: -0.01em;
+  margin: 20px 0 7px;
 }
 
 .msg.bot .bubble h5,
@@ -186,6 +187,14 @@
 .msg.bot .bubble li > p {
   margin: 0 0 10px;
   line-height: 1.58;
+}
+
+/* Item title: multi-paragraph item ka pehla bold paragraph */
+.msg.bot .bubble li:has(> p + p) > p:first-child:has(> strong:first-child) {
+  font-size: 1.07em;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  margin-bottom: 6px;
 }
 
 /* Multi-paragraph item: items ke beech zyada gap taaki alag-alag dikhein */
@@ -399,13 +408,16 @@
 
 @media (max-width: 600px) {
   .msg.bot .bubble :is(h1, h2, h3) {
-    font-size: 1.06rem;
-    margin: 17px 0 6px;
+    margin: 24px 0 8px;
   }
 
+  .msg.bot .bubble h1 { font-size: 1.32rem; }
+  .msg.bot .bubble h2 { font-size: 1.24rem; }
+  .msg.bot .bubble h3 { font-size: 1.18rem; }
+
   .msg.bot .bubble h4 {
-    font-size: 0.99rem;
-    margin: 14px 0 5px;
+    font-size: 1.06rem;
+    margin: 18px 0 6px;
   }
 
   .msg.bot .bubble p {
@@ -433,4 +445,4 @@
   .msg.bot .bubble a::after {
     transition: none;
   }
-}
+   }

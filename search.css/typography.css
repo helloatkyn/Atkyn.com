@@ -151,38 +151,31 @@
 }
 
 
-/* ── Ordered — top level ───────────────────────────────────── */
+/* ── Ordered — top level: filled dot ───────────────────────── */
 
-.msg.bot .bubble ol {
-  list-style: decimal;
+.msg.bot .bubble > ol {
+  list-style-type: disc;
+  list-style-position: outside;
   margin-left: 0;
   padding-left: 22px;
 }
 
-.msg.bot .bubble ol > li {
+.msg.bot .bubble > ol > li {
   padding-left: 2px;
   margin: 6px 0;
   line-height: 1.6;
 }
 
 
-/* ── Ordered — nested ───────────────────────────────────────── */
-
-/*
-   ONLY the nested <ol> indentation is reduced.
-   First-level and second-level list geometry remain unchanged.
-
-   The negative margin removes part of the cumulative nesting
-   indentation while padding-left preserves a proper hanging
-   marker/text relationship.
-*/
+/* ── Ordered — nested: normal numbers ───────────────────────── */
 
 .msg.bot .bubble li > ol {
+  list-style-type: decimal;
+  list-style-position: outside;
   margin-top: 5px;
   margin-bottom: 6px;
   margin-left: -10px !important;
   padding-left: 20px !important;
-  list-style-position: outside;
 }
 
 .msg.bot .bubble li > ol > li {
@@ -368,6 +361,9 @@
     margin-bottom: 5px;
   }
 
+
+  /* ── Unordered — first level remains hollow circle ───────── */
+
   .msg.bot .bubble ul > li {
     padding-left: 19.3px;
     margin: 5px 0;
@@ -382,7 +378,8 @@
     opacity: 0.82;
   }
 
-  /* ── Second level — same text start as first level ───────── */
+
+  /* ── Second level — exact first-level text alignment ─────── */
 
   .msg.bot .bubble li > ul {
     margin-left: 0 !important;
@@ -416,20 +413,22 @@
   }
 
 
-  /* ── Ordered lists ───────────────────────────────────────── */
+  /* ── Ordered — top level: filled dot ────────────────────── */
 
-  .msg.bot .bubble ol {
+  .msg.bot .bubble > ol {
+    list-style-type: disc;
     padding-left: 21px;
   }
 
-  .msg.bot .bubble ol > li {
+  .msg.bot .bubble > ol > li {
     padding-left: 2px;
   }
 
 
-  /* ── Mobile nested ordered list — ONLY indentation fix ──── */
+  /* ── Nested ordered list — normal numbers ───────────────── */
 
   .msg.bot .bubble li > ol {
+    list-style-type: decimal;
     margin-left: -10px !important;
     padding-left: 19px !important;
     list-style-position: outside;

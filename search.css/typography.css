@@ -184,8 +184,13 @@
 
 /* List ke andar paragraph */
 .msg.bot .bubble li > p {
-  margin: 0 0 5px;
+  margin: 0 0 10px;
   line-height: 1.58;
+}
+
+/* Multi-paragraph item: items ke beech zyada gap taaki alag-alag dikhein */
+.msg.bot .bubble li:has(> p + p) {
+  margin: 16px 0;
 }
 
 .msg.bot .bubble li > p:last-child {

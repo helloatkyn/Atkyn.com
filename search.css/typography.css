@@ -104,19 +104,19 @@
 }
 
 
-/* ── Unordered — second level: NO bullet ───────────────────── */
+/* ── Unordered — second level: no marker, aligned ──────────── */
 
 .msg.bot .bubble li > ul {
   list-style: none;
   margin-top: 5px;
   margin-bottom: 6px;
   margin-left: 0 !important;
-  padding-left: 8px !important;
+  padding-left: 0 !important;
 }
 
 .msg.bot .bubble li > ul > li {
   position: relative;
-  padding-left: 18px !important;
+  padding-left: 0 !important;
   margin: 5px 0;
   line-height: 1.56;
 }
@@ -127,7 +127,7 @@
 }
 
 
-/* ── Unordered — third level: no bullet ─────────────────────── */
+/* ── Unordered — third level: no bullet ────────────────────── */
 
 .msg.bot .bubble li > ul > li > ul,
 .msg.bot .bubble li > ol > li > ul {
@@ -151,7 +151,7 @@
 }
 
 
-/* ── Ordered — top level ────────────────────────────────────── */
+/* ── Ordered — top level ───────────────────────────────────── */
 
 .msg.bot .bubble ol {
   list-style: decimal;
@@ -382,15 +382,20 @@
     opacity: 0.82;
   }
 
+  /* ── Second level — same text start as first level ───────── */
+
   .msg.bot .bubble li > ul {
     margin-left: 0 !important;
-    padding-left: 8px !important;
+    padding-left: 0 !important;
   }
 
   .msg.bot .bubble li > ul > li {
-    padding-left: 17px !important;
+    padding-left: 0 !important;
     margin: 5px 0;
   }
+
+
+  /* ── Third level — no bullet ─────────────────────────────── */
 
   .msg.bot .bubble li > ul > li > ul,
   .msg.bot .bubble li > ol > li > ul {
@@ -410,6 +415,9 @@
     display: none !important;
   }
 
+
+  /* ── Ordered lists ───────────────────────────────────────── */
+
   .msg.bot .bubble ol {
     padding-left: 21px;
   }
@@ -419,7 +427,7 @@
   }
 
 
-  /* ── Mobile nested ordered list — ONLY indentation fix ───── */
+  /* ── Mobile nested ordered list — ONLY indentation fix ──── */
 
   .msg.bot .bubble li > ol {
     margin-left: -10px !important;

@@ -251,10 +251,9 @@
 .msg.bot .bubble a:focus-visible {
   outline: 2px solid currentColor;
   outline-offset: 2px;
-  border-radius: 3px;
 }
 
-.msg.bot .bubble :is(p, li, td, th, blockquote, h1, h2, h3, h4, h5, h6) a[href^="http"]:not(.no-arrow):not(:has(> img))::after {
+.msg.bot .bubble :is(p, li, td, th, blockquote, h1, h2, h3, h4, h5, h6) a[href^="http"]:not(.no-arrow):not(.web-card):not(:has(> img))::after {
   content: "";
   display: inline-block;
   width: 0.78em;
@@ -268,7 +267,7 @@
   transition: transform 0.18s ease, opacity 0.18s ease;
 }
 
-.msg.bot .bubble :is(p, li, td, th, blockquote, h1, h2, h3, h4, h5, h6) a[href^="http"]:not(.no-arrow):hover::after {
+.msg.bot .bubble :is(p, li, td, th, blockquote, h1, h2, h3, h4, h5, h6) a[href^="http"]:not(.no-arrow):not(.web-card):hover::after {
   opacity: 1;
   transform: translate(1px, -1px);
 }
@@ -429,4 +428,4 @@
   .msg.bot .bubble a::after {
     transition: none;
   }
-  }
+}

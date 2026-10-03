@@ -74,7 +74,7 @@
 }
 
 
-/* ── Unordered — top level ──────────────────────────────────── */
+/* ── Unordered — top level ─────────────────────────────────── */
 
 .msg.bot .bubble ul {
   list-style: none;
@@ -104,7 +104,7 @@
 }
 
 
-/* ── Unordered — nested ─────────────────────────────────────── */
+/* ── Unordered — second level: NO bullet ───────────────────── */
 
 .msg.bot .bubble li > ul {
   list-style: none;
@@ -122,17 +122,8 @@
 }
 
 .msg.bot .bubble li > ul > li::before {
-  content: "";
-  position: absolute;
-  width: 5.5px;
-  height: 5.5px;
-  left: 0.5px;
-  top: 0.72em;
-  box-sizing: border-box;
-  border: 1.4px solid currentColor;
-  border-radius: 50%;
-  color: var(--color-text-muted);
-  opacity: 0.68;
+  content: none !important;
+  display: none !important;
 }
 
 
@@ -157,21 +148,6 @@
 .msg.bot .bubble li > ol > li > ul > li::before {
   content: none !important;
   display: none !important;
-}
-
-
-/* ── Dark mode — list markers ───────────────────────────────── */
-
-@media (prefers-color-scheme: dark) {
-  .msg.bot .bubble ul > li::before {
-    color: var(--color-text-dark-muted);
-    opacity: 0.82;
-  }
-
-  .msg.bot .bubble li > ul > li::before {
-    color: var(--color-text-dark-muted);
-    opacity: 0.68;
-  }
 }
 
 
@@ -414,15 +390,6 @@
   .msg.bot .bubble li > ul > li {
     padding-left: 17px !important;
     margin: 5px 0;
-  }
-
-  .msg.bot .bubble li > ul > li::before {
-    width: 5.5px;
-    height: 5.5px;
-    left: 0.5px;
-    top: 0.72em;
-    border-width: 1.4px;
-    opacity: 0.68;
   }
 
   .msg.bot .bubble li > ul > li > ul,

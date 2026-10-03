@@ -1,8 +1,8 @@
 /* ════════════════════════════════════════════════════════════════
    web-cards.css — Web result cards
    Shadow wrap · Carousel · Preview · Card body ·
-   Title · Snippet · Favicon · Meta · Dark mode
-   (preview cards at the top and carousel cards at the bottom share ONE size)
+   Thumbnail · Title · Snippet · Favicon · Meta · Dark mode
+   (preview cards at the top: 240px · carousel cards at the bottom: 270px)
 ════════════════════════════════════════════════════════════════ */
 
 /* ── OUTER SHADOW WRAPPER ── */
@@ -68,6 +68,18 @@
 }
 .web-card:active { background: var(--color-bg-card-active); }
 
+/* ── CAROUSEL (bottom) cards: a step bigger than the preview (top) cards ── */
+.web-results-carousel-wrap .web-card {
+  width: 270px;
+  flex-basis: 270px;
+  padding: 14px 16px;
+  border-radius: 16px;
+}
+.web-results-carousel-wrap .web-card-title   { font-size: 16px; }
+.web-results-carousel-wrap .web-card-snippet { font-size: 14px; }
+.web-results-carousel-wrap .web-card-meta    { margin-top: 10px; }
+.web-results-carousel-wrap .web-card-thumb   { width: 64px; height: 64px; border-radius: 12px; }
+
 /* ── CARD BODY ── */
 .web-card-body {
   display: flex;
@@ -86,6 +98,18 @@
   min-width: 0;
   overflow: hidden;
   gap: 4px;
+}
+
+/* ── THUMBNAIL (added by search.js only when the OG image is ~square) ── */
+.web-card-thumb {
+  flex-shrink: 0;
+  width: 56px;
+  height: 56px;
+  border-radius: 10px;
+  object-fit: cover;
+  display: block;
+  background: var(--color-bg-thumb);
+  animation: wcFadeIn 0.2s ease both;
 }
 
 /* ── TITLE ── */
@@ -218,4 +242,5 @@
   .web-card-sep          { color: var(--color-card-meta-dark); }
   .web-card-url-text     { color: var(--color-card-url-dark); }
   .web-card-dots svg     { fill: var(--color-card-meta-dark); }
-                          }
+  .web-card-thumb        { background: var(--color-bg-thumb-dark); }
+}

@@ -752,12 +752,41 @@
 }
 
 
-/* Phosphor icon font (menu sheet only) */
-.pm-icon i {
-  font-size: 25px;
-  line-height: 1;
+/* Menu sheet icons: Iconoir SVGs used as a CSS mask (no container) */
+.pm-icon .pm-ico {
+  display: block;
 
-  color: #44433f;
+  width: 25px;
+  height: 25px;
+
+  background-color: #44433f;
+
+  -webkit-mask-image: var(--pm-ico);
+  mask-image: var(--pm-ico);
+
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+
+  -webkit-mask-position: center;
+  mask-position: center;
+
+  -webkit-mask-size: contain;
+  mask-size: contain;
+}
+
+
+.pm-ico-image {
+  --pm-ico: url("https://cdn.jsdelivr.net/npm/iconoir@7.11.0/icons/regular/media-image.svg");
+}
+
+
+.pm-ico-camera {
+  --pm-ico: url("https://cdn.jsdelivr.net/npm/iconoir@7.11.0/icons/regular/camera.svg");
+}
+
+
+.pm-ico-file {
+  --pm-ico: url("https://cdn.jsdelivr.net/npm/iconoir@7.11.0/icons/regular/page.svg");
 }
 
 
@@ -867,8 +896,8 @@
   }
 
 
-  .pm-icon i {
-    color: #9ca3af;
+  .pm-icon .pm-ico {
+    background-color: #9ca3af;
   }
 
 

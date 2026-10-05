@@ -631,8 +631,10 @@
 .plus-menu {
   position: fixed;
 
-  left: 14px;
-  right: 14px;
+  left: 18px;
+  right: auto;
+
+  width: min(264px, calc(100vw - 36px));
 
   bottom:
     calc(
@@ -685,14 +687,14 @@
   display: flex;
   align-items: center;
 
-  gap: 16px;
+  gap: 14px;
 
   width: 100%;
   box-sizing: border-box;
 
   padding:
-    14px
-    18px;
+    12px
+    14px;
 
   border: 0;
   border-radius: 14px;
@@ -743,8 +745,8 @@
 .pm-icon {
   flex-shrink: 0;
 
-  width: 28px;
-  height: 28px;
+  width: 30px;
+  height: 30px;
 
   display: flex;
   align-items: center;
@@ -752,14 +754,14 @@
 }
 
 
-/* Menu sheet icons: Iconoir SVGs used as a CSS mask (no container) */
+/* Menu sheet icons: Google Material Icons (outlined) used as a CSS mask, no container */
 .pm-icon .pm-ico {
   display: block;
 
-  width: 25px;
-  height: 25px;
+  width: 28px;
+  height: 28px;
 
-  background-color: #44433f;
+  background-color: #2b2a27;
 
   -webkit-mask-image: var(--pm-ico);
   mask-image: var(--pm-ico);
@@ -776,17 +778,17 @@
 
 
 .pm-ico-image {
-  --pm-ico: url("https://cdn.jsdelivr.net/npm/iconoir@7.11.0/icons/regular/media-image.svg");
+  --pm-ico: url("https://cdn.jsdelivr.net/npm/@material-design-icons/svg@0.14.15/outlined/photo_library.svg");
 }
 
 
 .pm-ico-camera {
-  --pm-ico: url("https://cdn.jsdelivr.net/npm/iconoir@7.11.0/icons/regular/camera.svg");
+  --pm-ico: url("https://cdn.jsdelivr.net/npm/@material-design-icons/svg@0.14.15/outlined/photo_camera.svg");
 }
 
 
 .pm-ico-file {
-  --pm-ico: url("https://cdn.jsdelivr.net/npm/iconoir@7.11.0/icons/regular/page.svg");
+  --pm-ico: url("https://cdn.jsdelivr.net/npm/@material-design-icons/svg@0.14.15/outlined/upload_file.svg");
 }
 
 
@@ -1008,8 +1010,8 @@
 
 
   .plus-menu {
-    left: 10px;
-    right: 10px;
+    left: 14px;
+    width: min(264px, calc(100vw - 28px));
   }
 }
 
@@ -1157,5 +1159,5 @@
 @media (prefers-reduced-motion: reduce) {
   .atk-fill { transition: none; }
   .atk-aurora { display: none; }
-  }
+    }
   

@@ -634,7 +634,7 @@
   left: 18px;
   right: auto;
 
-  width: min(172px, calc(100vw - 36px));
+  width: min(158px, calc(100vw - 36px));
 
   bottom:
     calc(
@@ -645,14 +645,20 @@
 
   box-sizing: border-box;
 
-  background: #faf6ec;
-  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.72);
+  -webkit-backdrop-filter: blur(18px) saturate(180%);
+  backdrop-filter: blur(18px) saturate(180%);
+  border-radius: 10px;
 
   /*
-   * Light mode: cream-white surface + 1px warm hairline ring (no drop shadow)
-   * so the sheet separates from the white page. Dark mode overrides below.
+   * Light mode: frosted white glass - translucent white + blur, a 1px
+   * hairline ring and a very soft shadow so it lifts off the white page.
+   * Dark mode overrides below.
    */
-  box-shadow: 0 0 0 1px rgba(70, 55, 30, 0.13);
+  box-shadow:
+    0 0 0 1px rgba(17, 17, 17, 0.08),
+    0 8px 24px rgba(17, 17, 17, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
 
   overflow: hidden;
   padding: 4px;
@@ -688,17 +694,17 @@
   display: flex;
   align-items: center;
 
-  gap: 12px;
+  gap: 10px;
 
   width: 100%;
   box-sizing: border-box;
 
   padding:
     10px
-    12px;
+    10px;
 
   border: 0;
-  border-radius: 3px;
+  border-radius: 6px;
 
   background: transparent;
 
@@ -734,12 +740,12 @@
 
 
 .pm-item:hover {
-  background: rgba(70, 55, 30, 0.07);
+  background: rgba(17, 17, 17, 0.05);
 }
 
 
 .pm-item:active {
-  background: rgba(70, 55, 30, 0.12);
+  background: rgba(17, 17, 17, 0.09);
 }
 
 
@@ -831,6 +837,8 @@
 
   letter-spacing: -0.005em;
   line-height: 1.2;
+
+  white-space: nowrap;
 }
 
 
@@ -1021,7 +1029,7 @@
 
   .plus-menu {
     left: 14px;
-    width: min(172px, calc(100vw - 28px));
+    width: min(158px, calc(100vw - 28px));
   }
 }
 
@@ -1174,5 +1182,4 @@
 @media (prefers-reduced-motion: reduce) {
   .atk-fill { transition: none; }
   .atk-aurora { display: none; }
-  }
-  
+    }

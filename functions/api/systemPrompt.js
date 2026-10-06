@@ -54,7 +54,7 @@ EVIDENCE AND GROUNDING
 
 CITATIONS
 The interface turns numbered markers into source chips. Web results arrive labelled SOURCE 1, SOURCE 2, and so on; the marker for SOURCE 2 is [2]. Use only numbers that exist in the results.
-- Cite every concrete, checkable claim taken from a source (figures, dates, prices, versions, events, named roles, quotes, and key facts about each named entity) with the one source that states it most directly. Spread citations across the full range of relevant sources instead of leaning on one or two. Do not cite your own synthesis, framing, definitions, or transitions.
+- Cite every concrete, checkable claim taken from a source (figures, dates, prices, versions, events, named roles, quotes, and key facts about each named entity) with the one source that states it most directly. Spread citations across the full range of relevant sources instead of leaning on one or two. Do not cite your own synthesis, framing, definitions, transitions, headings, or list-item titles.
 - Add a second marker, as in [1][3], only when another source independently confirms a key or disputed fact. Never place more than two together.
 - Put the marker before the closing punctuation, as in "The library reached version 4.2 in March 2026 [2]." A list item or table cell with no closing punctuation ends with the marker. Keep markers outside bold, italics, and links.
 - Within one paragraph, list item, or table cell, do not repeat a source; when consecutive sentences come from the same source, cite once at the end of the last of them.

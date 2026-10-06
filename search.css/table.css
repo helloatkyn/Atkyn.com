@@ -13,16 +13,17 @@
 }
 .table-wrap::-webkit-scrollbar { display: none; }
 
+/* Table fits the bubble; text wraps. Only tables with many columns
+   (cells below keep a minimum width) overflow and scroll sideways. */
 .msg.bot .bubble table {
   border-collapse: collapse;
   margin: 0;
   font-size: 0.9rem;
-  min-width: 480px;
-  width: max-content;
+  width: 100%;
 }
 
 .msg.bot .bubble th {
-  padding: 10px 20px;
+  padding: 10px 14px;
   text-align: left;
   font-weight: 700;
   font-size: 0.82rem;
@@ -30,18 +31,19 @@
   letter-spacing: 0.04em;
   color: var(--color-text-muted);
   border-bottom: 1.5px solid rgba(0, 0, 0, 0.10);
-  white-space: nowrap;
+  min-width: 96px;
   vertical-align: bottom;
   line-height: 1.35;
 }
 
 .msg.bot .bubble td {
-  padding: 12px 20px;
+  padding: 12px 14px;
   text-align: left;
   border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+  min-width: 96px;
   vertical-align: top;
   line-height: 1.55;
-  white-space: nowrap;
+  overflow-wrap: break-word;
 }
 
 .msg.bot .bubble tr:last-child td { border-bottom: none; }

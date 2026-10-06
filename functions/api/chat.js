@@ -21,10 +21,10 @@ const TOOLS = [
     function: {
       name: 'web_search',
       description:
-        'Search the web when the answer depends on current or recent real-world information, ' +
-        'such as news, events, releases, prices, or live data. ' +
-        'Do not use it for timeless knowledge, general reasoning, or questions that can be answered ' +
-        'from the conversation or the attached files.',
+        'Retrieve current evidence from the web. This is the default capability: use it for any request ' +
+        'about real-world entities, products, people, organizations, places, events, or facts, ' +
+        'including any question about what is newest, latest, or currently true. ' +
+        'Training knowledge is outdated, so do not answer such requests from memory.',
       parameters: {
         type: 'object',
         properties: {
@@ -55,6 +55,18 @@ const TOOLS = [
         required: ['symbol'],
         additionalProperties: false,
       },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'answer_directly',
+      description:
+        'Choose this only when the request can be answered completely and correctly without any external ' +
+        'information: working on text the user supplied or attached, calculation, code, creative writing, ' +
+        'translation, casual conversation, or timeless concepts. ' +
+        'Never choose it for a question about a real-world entity or about what is newest or current.',
+      parameters: { type: 'object', properties: {}, additionalProperties: false },
     },
   },
 ];
@@ -402,16 +414,37 @@ export async function onRequestPost({ request, env }) {
   const enc    = new TextEncoder();
   const send   = (text) => writer.write(enc.encode(text));
 
+  // Streams a model answer straight through to the client, then closes the stream.
+  const streamAnswer = async (messages, extraBody = {}) => {
+    const resp = await callQwen(
+      { messages, stream: true, temperature: 0.6, ...extraBody },
+      env.QWEN_API_KEY,
+      60_000,
+    );
+    if (!resp.ok) throw new Error(`Qwen answer error: ${resp.status} ${await resp.text()}`);
+
+    const reader = resp.body.getReader();
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      await writer.write(value);
+    }
+    await writer.close();
+  };
+
   (async () => {
     try {
       // ── Call 1: tool routing ────────────────────────────────────────────
       console.log(`[${requestId}] Call 1: tool routing`);
 
-      const call1Resp = await callQwen(
-        { messages: baseMessages, tools: TOOLS, tool_choice: 'auto', temperature: 0.1 },
-        env.QWEN_API_KEY,
-        30_000,
-      );
+      // A forced tool choice makes the model decide explicitly instead of drifting into
+      // a memory answer. If the endpoint rejects it, fall back to automatic selection.
+      const routingBody = { messages: baseMessages, tools: TOOLS, temperature: 0.1 };
+      let call1Resp = await callQwen({ ...routingBody, tool_choice: 'required' }, env.QWEN_API_KEY, 30_000);
+      if (call1Resp.status === 400) {
+        console.warn(`[${requestId}] tool_choice "required" rejected, retrying with "auto"`);
+        call1Resp = await callQwen({ ...routingBody, tool_choice: 'auto' }, env.QWEN_API_KEY, 30_000);
+      }
 
       if (!call1Resp.ok) {
         throw new Error(`Qwen Call 1 error: ${call1Resp.status} ${await call1Resp.text()}`);
@@ -436,6 +469,12 @@ export async function onRequestPost({ request, env }) {
       // ── Parse, validate, execute the tool ───────────────────────────────
       const functionName = toolCall.function?.name;
       console.log(`[${requestId}] Tool requested: ${functionName}`);
+
+      if (functionName === 'answer_directly') {
+        await streamAnswer(baseMessages);
+        console.log(`[${requestId}] Done`);
+        return;
+      }
 
       let toolResultContent = '';
       let frontendEvent     = null;
@@ -473,35 +512,16 @@ export async function onRequestPost({ request, env }) {
       // ── Call 2: final streamed answer ───────────────────────────────────
       console.log(`[${requestId}] Call 2: final answer`);
 
-      const call2Resp = await callQwen(
-        {
-          messages: [
-            ...baseMessages,
-            { role: 'assistant', content: assistantMsg.content ?? null, tool_calls: [toolCall] },
-            { role: 'tool', content: toolResultContent, tool_call_id: toolCall.id },
-          ],
-          tools:       TOOLS,
-          tool_choice: 'none',
-          stream:      true,
-          temperature: 0.6,
-        },
-        env.QWEN_API_KEY,
-        60_000,
+      await streamAnswer(
+        [
+          ...baseMessages,
+          { role: 'assistant', content: assistantMsg.content ?? null, tool_calls: [toolCall] },
+          { role: 'tool', content: toolResultContent, tool_call_id: toolCall.id },
+        ],
+        { tools: TOOLS, tool_choice: 'none' },
       );
 
-      if (!call2Resp.ok) {
-        throw new Error(`Qwen Call 2 error: ${call2Resp.status} ${await call2Resp.text()}`);
-      }
-
-      const reader = call2Resp.body.getReader();
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        await writer.write(value);
-      }
-
       console.log(`[${requestId}] Done`);
-      await writer.close();
     } catch (err) {
       console.error(`[${requestId}] Fatal: ${err.message}`);
       try {
@@ -520,4 +540,5 @@ export async function onRequestPost({ request, env }) {
       'Cache-Control': 'no-cache, no-transform',
     },
   });
-                                      }
+                       }
+                       

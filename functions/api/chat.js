@@ -62,10 +62,10 @@ const TOOLS = [
     function: {
       name: 'answer_directly',
       description:
-        'Choose this only when the request can be answered completely and correctly without any external ' +
-        'information: working on text the user supplied or attached, calculation, code, creative writing, ' +
-        'translation, casual conversation, or timeless concepts. ' +
-        'Never choose it for a question about a real-world entity or about what is newest or current.',
+        'Choose this only when the message is conversation rather than a query: a greeting, thanks, a ' +
+        'reaction, chit-chat, or a remark about the chat itself. Also choose it when the task only works on ' +
+        'material the user supplied or attached. Every other message is a query, including a follow-up that ' +
+        'asks for more about a topic, so never choose this for it.',
       parameters: { type: 'object', properties: {}, additionalProperties: false },
     },
   },
@@ -540,5 +540,5 @@ export async function onRequestPost({ request, env }) {
       'Cache-Control': 'no-cache, no-transform',
     },
   });
-                       }
-                       
+          }
+              

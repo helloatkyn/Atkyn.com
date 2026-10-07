@@ -1,35 +1,19 @@
-/* ═══════════════════════════════════════════════════════════════
-   functions/api/og.js — OG image fetcher
-   GET /api/og?url=<encoded-url>   →   { image, width?, height? }
-
-   • Reads every image the page declares (og:image + secure_url + size,
-     twitter:image, image_src, JSON-LD) and returns the LARGEST one.
-   • HTML entities in URLs are decoded (&amp; used to corrupt query strings).
-   • Only public http(s) pages / images are fetched or returned.
-   • Cache: found 7d at the edge (1d in the browser), "no image" 1d,
-     transient failures 5 min and never cached at the edge.
-   ═══════════════════════════════════════════════════════════════ */
-
-/* true  → any public https image host is accepted (news sites serve OG images from separate
-           domains: s.yimg.com, ichef.bbci.co.uk, i.guim.co.uk …)
-   false → old behaviour: same site, or a host in TRUSTED_CDN */
 const ALLOW_ANY_HTTPS_IMAGE_HOST = true;
 
 const CACHE_VERSION    = 'v2';        /* bump to invalidate every cached edge entry */
 const FETCH_TIMEOUT_MS = 5000;
 const MAX_HTML_BYTES   = 400_000;     /* read stops earlier at </head> */
-const WEAK_W = 600;                   /* a declared size below this is "probably a small thumb" */
+const WEAK_W = 600;                   /* below this is probably a small thumbnail */
 const WEAK_H = 315;
 
 const TTL = {
   found:     604800,   /* edge: 7 days */
   foundUser:  86400,   /* browser: 1 day */
-  empty:      86400,   /* page has no usable image / is not HTML / 404 / 410 */
+  empty:     86400,   /* no usable image / non-HTML / 404 / 410 */
   retry:       3600,   /* 403, other 4xx */
   transient:    300,   /* 429, 5xx, timeout, network error */
 };
 
-/* ── Trusted image CDNs (only used when ALLOW_ANY_HTTPS_IMAGE_HOST is false) ── */
 const TRUSTED_CDN = [
   'cloudfront.net', 'amazonaws.com', 'googleusercontent.com', 'imgix.net',
   'cloudinary.com', 'fastly.net', 'akamaized.net', 'cdn.shopify.com',
@@ -45,13 +29,11 @@ const TRUSTED_CDN = [
   'cloudflare.com', 'cloudflareinsights.com'
 ];
 
-/* two-label public suffixes, so "a.co.uk" and "b.co.uk" are not treated as one site */
 const MULTI_PART_SUFFIX = new Set([
   'co.uk', 'org.uk', 'ac.uk', 'gov.uk', 'com.au', 'net.au', 'org.au', 'co.in', 'net.in',
   'org.in', 'co.jp', 'com.br', 'co.nz', 'co.za', 'com.cn', 'com.hk', 'com.sg', 'com.tr', 'com.mx'
 ]);
 
-/* ═════════ URL safety ═════════ */
 function _isPublicHost(host) {
   if (!host || host.indexOf('.') === -1) return false;                /* localhost, intranet names */
   if (host.charAt(0) === '[' || host.indexOf(':') !== -1) return false; /* IPv6 literal */
@@ -60,7 +42,7 @@ function _isPublicHost(host) {
   return true;
 }
 
-/* → URL for a public http(s) address (no credentials, default port), else null */
+/* Return a public HTTP(S) URL with no credentials or non-default port. */
 function _parseUrl(value, base) {
   let u;
   try { u = new URL(value, base); } catch (_) { return null; }
@@ -92,7 +74,6 @@ function _isImageAllowed(imgHost, siteHosts) {
   return TRUSTED_CDN.some((cdn) => host === cdn || host.endsWith('.' + cdn));
 }
 
-/* ═════════ HTML parsing ═════════ */
 const NAMED_ENTITIES = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ' };
 
 function _decode(s) {
@@ -106,10 +87,10 @@ function _decode(s) {
   });
 }
 
-/* Linear tag scanner (no backtracking regexes: a hostile page must not be able to burn CPU).
-   A tag ends at the first ">" outside quotes; a raw "<" outside quotes or 8 KB without ">" means it is broken. */
+/* Reject malformed tags early to avoid pathological scanning. */
 const MAX_TAG_CHARS = 8000;
 
+/* A tag ends at ">" outside quotes; a raw "<" or 8 KB without ">" is treated as broken. */
 function _scanTags(html, lower, name, max) {
   const out = [];
   const needle = '<' + name;
@@ -158,7 +139,7 @@ const _dim = (v) => {
   return n > 0 && n < 100000 ? n : 0;
 };
 
-/* ── JSON-LD: only content types (never Organization logos) ── */
+/* JSON-LD image sources only; exclude Organization logos. */
 const LD_TYPE_RE = /Article|Posting|Product|Video|WebPage|Recipe|Event|ImageObject|Review|Movie|Book|Course/i;
 
 function _ldNum(v) {
@@ -190,7 +171,7 @@ function _collectLd(node, out, depth) {
   if (node.mainEntity && typeof node.mainEntity === 'object') _collectLd(node.mainEntity, out, depth + 1);
 }
 
-/* → candidates in priority order: og → twitter → image_src → JSON-LD */
+/* Candidate priority: og → twitter → image_src → JSON-LD */
 function _extractCandidates(html) {
   const og = [];
   const tw = [];
@@ -234,7 +215,7 @@ function _extractCandidates(html) {
     if (!/ld\+json/i.test(_attrs(t.text).type || '')) continue;
 
     const close = lower.indexOf('</script', t.end + 1);
-    if (close === -1) break;                         /* head was cut inside this script → nothing after it is complete */
+    if (close === -1) break;                         /* head was cut inside this script */
     if (++parsed > 6) break;
     if (close - t.end > 200000) continue;
 
@@ -244,7 +225,7 @@ function _extractCandidates(html) {
   return og.concat(tw, link, ld);
 }
 
-/* resolve, make https, drop unsafe / disallowed / duplicate; duplicates keep a known size */
+/* Resolve URLs, enforce safety/host policy, and deduplicate while retaining known sizes. */
 function _finalize(cands, base, siteHosts) {
   const seen = new Map();
   const list = [];
@@ -271,7 +252,7 @@ function _finalize(cands, base, siteHosts) {
   return list;
 }
 
-/* largest declared size wins; if that is only a small thumb and a candidate has no declared size, try that one */
+/* Largest declared size wins; unknown-size candidates can beat a small thumbnail. */
 function _pickBest(list) {
   if (!list.length) return null;
 
@@ -288,7 +269,6 @@ function _pickBest(list) {
   return best;
 }
 
-/* ═════════ network ═════════ */
 async function _readHead(resp) {
   if (!resp.body) return '';
 
@@ -309,7 +289,7 @@ async function _readHead(resp) {
       if (/<\/head\s*>/i.test(html.slice(from)) || bytes >= MAX_HTML_BYTES) break;
     }
   } catch (_) {
-    /* timeout / reset mid-body: keep what was read, the tags are usually already in it */
+    /* Keep partial HTML on timeout/reset; head metadata is often already available. */
   } finally {
     try { await reader.cancel(); } catch (_) {}
   }
@@ -323,7 +303,7 @@ function _result(data, browserTtl, edgeTtl) {
 async function _lookup(site) {
   const resp = await fetch(site.href, {
     headers: {
-      /* Modern Chrome UA avoids anti-bot blocks that Googlebot faces */
+      /* Chrome UA reduces anti-bot blocks. */
       'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
       'Accept':     'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
       'Accept-Language': 'en-US,en;q=0.5',
@@ -345,7 +325,7 @@ async function _lookup(site) {
     return _result({ image: null }, TTL.empty, TTL.empty);
   }
 
-  /* relative image paths resolve against the page we actually landed on (after redirects) */
+  /* Resolve relative images against the final redirected URL. */
   const landed = _parseUrl(resp.url) || site;
   const html = await _readHead(resp);
 
@@ -360,13 +340,11 @@ async function _lookup(site) {
   return _result(data, TTL.foundUser, TTL.found);
 }
 
-/* ═════════ handlers ═════════ */
 export async function onRequestGet(context) {
   const raw = new URL(context.request.url).searchParams.get('url');
   const site = raw ? _parseUrl(raw.trim()) : null;
   if (!site) return _json({ image: null }, TTL.empty);
 
-  /* ── Cloudflare edge cache ── */
   const cacheKey = new Request(`https://og.cache/${CACHE_VERSION}/${encodeURIComponent(site.href)}`);
   const cache = caches.default;
 
@@ -413,4 +391,4 @@ function _json(data, maxAge) {
       'Cache-Control':               `public, max-age=${maxAge}`,
     },
   });
-       }
+}

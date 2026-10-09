@@ -1,0 +1,259 @@
+/* ════════════════════════════════════════════════════════════════
+visual.css — ATKYN Visual Engine
+Everything is scoped under .atk-vz (a sibling of .bubble inside .msg.bot).
+Uses the existing tokens from search.css/tokens.css; fallbacks only
+matter if tokens fail to load. Theme follows prefers-color-scheme,
+exactly like the rest of the app.
+════════════════════════════════════════════════════════════════ */
+
+.atk-vz {
+  --vz-bg:      var(--color-bg-card, #f1f3f4);
+  --vz-border:  var(--color-border-subtle, rgba(0, 0, 0, 0.08));
+  --vz-text:    var(--color-text, #1a1a1a);
+  --vz-muted:   var(--color-text-muted, #555);
+  --vz-accent:  var(--color-primary, #0077B5);
+  --vz-track:   rgba(0, 0, 0, 0.08);
+  --vz-surface: var(--color-bg, #fff);
+
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  margin: 14px 0 2px;
+  padding: 14px 16px 16px;
+  background: var(--vz-bg);
+  border: 1px solid var(--vz-border);
+  border-radius: 16px;
+  color: var(--vz-text);
+  font-size: 0.92rem;
+  line-height: 1.45;
+  overflow: hidden;
+  text-align: left;
+}
+
+@media (prefers-color-scheme: dark) {
+  .atk-vz {
+    --vz-bg:      var(--color-bg-alt2-dark, #272727);
+    --vz-border:  var(--color-border-dark-medium, rgba(255, 255, 255, 0.08));
+    --vz-text:    var(--color-text-dark-dim, #d4d4d6);
+    --vz-muted:   var(--color-text-dark-muted, #aaa);
+    --vz-accent:  var(--color-link-dark, #4da6ff);
+    --vz-track:   rgba(255, 255, 255, 0.10);
+    --vz-surface: var(--color-bg-dark, #1c1c1e);
+  }
+}
+
+.atk-vz *,
+.atk-vz *::before,
+.atk-vz *::after { box-sizing: border-box; }
+
+.atk-vz ul,
+.atk-vz ol { margin: 0; padding: 0; list-style: none; }
+
+.atk-vz-title {
+  margin: 0 0 12px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--vz-muted);
+}
+
+.atk-vz-in { animation: atkVzIn 0.2s ease-out both; }
+@keyframes atkVzIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .atk-vz-in { animation: none; }
+}
+
+/* ── Steps ─────────────────────────────────────────────────── */
+.atk-vz-steps { display: flex; flex-direction: column; }
+
+.atk-vz-step {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 0 0 14px;
+  min-width: 0;
+}
+.atk-vz-step:last-child { padding-bottom: 0; }
+
+/* connector */
+.atk-vz-step:not(:last-child)::before {
+  content: '';
+  position: absolute;
+  left: 11px;
+  top: 26px;
+  bottom: 2px;
+  width: 1.5px;
+  background: var(--vz-border);
+  background: color-mix(in srgb, var(--vz-accent) 28%, transparent);
+}
+
+.atk-vz-num {
+  flex: none;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.78rem;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--vz-accent);
+  background: var(--vz-surface);
+  border: 1.5px solid var(--vz-accent);
+}
+
+.atk-vz-label {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding-top: 2px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+/* ── Timeline ──────────────────────────────────────────────── */
+.atk-vz-tl { --tl-date: 84px; --tl-gap: 22px; display: flex; flex-direction: column; }
+
+.atk-vz-tl-item {
+  position: relative;
+  display: grid;
+  grid-template-columns: var(--tl-date) minmax(0, 1fr);
+  column-gap: var(--tl-gap);
+  padding: 0 0 14px;
+  min-width: 0;
+}
+.atk-vz-tl-item:last-child { padding-bottom: 0; }
+
+/* dot + rail sit in the middle of the gutter between date and text */
+.atk-vz-tl-item::before {
+  content: '';
+  position: absolute;
+  left: calc(var(--tl-date) + var(--tl-gap) / 2 - 4px);
+  top: 7px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--vz-accent);
+}
+.atk-vz-tl-item:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  left: calc(var(--tl-date) + var(--tl-gap) / 2 - 0.75px);
+  top: 19px;
+  bottom: -2px;
+  width: 1.5px;
+  background: var(--vz-border);
+  background: color-mix(in srgb, var(--vz-accent) 28%, transparent);
+}
+@media (max-width: 420px) {
+  .atk-vz-tl { --tl-date: 64px; --tl-gap: 18px; }
+}
+
+.atk-vz-tl-date {
+  font-weight: 700;
+  color: var(--vz-accent);
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+.atk-vz-tl-text { min-width: 0; overflow-wrap: anywhere; }
+
+/* ── Comparison ────────────────────────────────────────────── */
+.atk-vz-cmp {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.atk-vz-cmp[data-cols="3"] { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+
+@media (max-width: 560px) {
+  .atk-vz-cmp,
+  .atk-vz-cmp[data-cols="3"] { grid-template-columns: minmax(0, 1fr); }
+}
+
+.atk-vz-col {
+  min-width: 0;
+  padding: 12px 14px;
+  background: var(--vz-surface);
+  border: 1px solid var(--vz-border);
+  border-radius: 12px;
+}
+
+.atk-vz-col-title {
+  margin: 0 0 8px;
+  padding-bottom: 8px;
+  font-weight: 700;
+  border-bottom: 1.5px solid var(--vz-accent);
+  overflow-wrap: anywhere;
+}
+
+.atk-vz-col-list li {
+  position: relative;
+  padding: 3px 0 3px 14px;
+  overflow-wrap: anywhere;
+}
+.atk-vz-col-list li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0.82em;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--vz-accent);
+}
+
+/* ── Values (bars) ─────────────────────────────────────────── */
+.atk-vz-bars { display: flex; flex-direction: column; gap: 10px; }
+
+.atk-vz-bar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    "label value"
+    "track track";
+  column-gap: 12px;
+  row-gap: 5px;
+  align-items: baseline;
+  min-width: 0;
+}
+.atk-vz-bar-label { grid-area: label; min-width: 0; font-weight: 600; overflow-wrap: anywhere; }
+.atk-vz-bar-value {
+  grid-area: value;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  color: var(--vz-muted);
+  white-space: nowrap;
+}
+.atk-vz-bar-track {
+  grid-area: track;
+  display: block;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--vz-track);
+  overflow: hidden;
+}
+.atk-vz-bar-fill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--vz-accent);
+}
+
+/* ── Diagram (Mermaid SVG) ─────────────────────────────────── */
+.atk-vz-diagram {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+}
+.atk-vz-diagram svg {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 0 auto;
+}

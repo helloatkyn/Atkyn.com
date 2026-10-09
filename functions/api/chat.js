@@ -5,7 +5,7 @@ import { SYSTEM_PROMPT } from './systemPrompt.js';
 const QWEN_MODEL      = 'qwen3.7-flash';
 const QWEN_ENDPOINT   = 'https://dashscope-intl.aliyuncs.com/compatible-mode/v1/chat/completions';
 const FINNHUB_BASE    = 'https://finnhub.io/api/v1';
-const SERPER_ENDPOINT = 'https://google.serper.dev/sssearch';
+const SERPER_ENDPOINT = 'https://google.serper.dev/search';
 
 const MAX_QUERY_CHARS    = 4_000;
 const MAX_HISTORY_ITEMS  = 10;

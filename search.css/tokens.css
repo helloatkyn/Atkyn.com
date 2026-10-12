@@ -25,13 +25,13 @@ Change a value here → updates everywhere automatically.
 --color-text-placeholder:  #b0bec5;
 
 /* ── Surfaces (light) ──────────────────────────────────────── */
---color-bg:             #FAF9F6;
+--color-bg:             #FEFEFA;
 --color-bg-alt:         #F0F0F0;
 --color-bg-card:        #F1F3F4;
 --color-bg-card-active: #F8F8F8;
---color-bg-code:        #fafafa;
+--color-bg-code:        #FEFEFA;
 --color-bg-thumb:       #E0E0E0;
---color-bg-favicon:     #FAF9F6;
+--color-bg-favicon:     #FEFEFA;
 
 /* ── Surfaces (dark) ────────────────────────────────────────── */
 --color-bg-dark:        #1c1c1e;
@@ -77,10 +77,10 @@ Change a value here → updates everywhere automatically.
 --color-press-dark-md:     rgba(255, 255, 255, 0.09);
 
 /* ── Glassmorphism (plus menu) ──────────────────────────────── */
---color-glass-bg:          rgba(250, 249, 246, 0.72);
---color-glass-border:      rgba(250, 249, 246, 0.55);
+--color-glass-bg:          rgba(254, 254, 250, 0.72);
+--color-glass-border:      rgba(254, 254, 250, 0.55);
 --color-glass-border-dark: rgba(255, 255, 255, 0.10);
---color-tab-bar-bg:        rgba(250, 249, 246, 0.95);
+--color-tab-bar-bg:        rgba(254, 254, 250, 0.95);
 --color-tab-bar-bg-dark:   rgba(28, 28, 30, 0.95);
 
 /* ── Scrollbar / misc ───────────────────────────────────────── */

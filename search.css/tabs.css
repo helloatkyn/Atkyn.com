@@ -1,9 +1,11 @@
 /* ════════════════════════════════════════════════════════════════
-tabs.css — Refined AI Search Tab Bar
-Spacing preserved · Typography refined · Charcoal divider
+tabs.css — Tab bar
+Refined typography · Subtle divider · Original spacing preserved
 ════════════════════════════════════════════════════════════════ */
 
-/* ── TAB BAR ─────────────────────────────────────────────────── */
+/* ────────────────────────────────────────────────────────────────
+TAB BAR
+──────────────────────────────────────────────────────────────── */
 .tab-bar {
   flex-shrink: 0;
   display: flex;
@@ -31,8 +33,8 @@ Spacing preserved · Typography refined · Charcoal divider
 
   transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
 
-  /* Refined charcoal divider */
-  border-bottom: 1px solid #343434;
+  /* Subtle, thin charcoal divider */
+  border-bottom: 1px solid rgba(40, 40, 40, 0.12);
   margin-bottom: 3px;
 
   box-shadow: none;
@@ -41,7 +43,7 @@ Spacing preserved · Typography refined · Charcoal divider
 @media (prefers-color-scheme: dark) {
   .tab-bar {
     background: var(--color-bg-dark);
-    border-bottom-color: rgba(255, 255, 255, 0.16);
+    border-bottom-color: rgba(255, 255, 255, 0.09);
     box-shadow: none;
   }
 }
@@ -60,7 +62,9 @@ Spacing preserved · Typography refined · Charcoal divider
   transform: translateY(-100%) translateZ(0);
 }
 
-/* ── TAB ────────────────────────────────────────────────────── */
+/* ────────────────────────────────────────────────────────────────
+TAB
+──────────────────────────────────────────────────────────────── */
 .tab {
   flex-shrink: 0;
 
@@ -109,7 +113,9 @@ Spacing preserved · Typography refined · Charcoal divider
   transform: scale(0.98);
 }
 
-/* ── DARK MODE ──────────────────────────────────────────────── */
+/* ────────────────────────────────────────────────────────────────
+DARK MODE
+──────────────────────────────────────────────────────────────── */
 @media (prefers-color-scheme: dark) {
   .tab {
     color: rgba(255, 255, 255, 0.58);

@@ -52,8 +52,6 @@
   --cb-menu-rule: rgba(0, 0, 0, 0.06);
   --cb-menu-img-opacity: 1;
 
-  /* aurora layer (animation.js) */
-  --atk-fill: var(--cb-surface);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -661,7 +659,7 @@
   inset: 0;
   z-index: -1;
   border-radius: inherit;
-  background: var(--atk-fill);
+  background: var(--cb-surface);
   pointer-events: none;
 }
 
@@ -781,4 +779,4 @@
     animation: none;
     color: #6b7280;
   }
-                                             }
+}

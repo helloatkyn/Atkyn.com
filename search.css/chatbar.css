@@ -10,6 +10,12 @@
   --cb-font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", system-ui, sans-serif;
   --cb-btn: 40px;
 
+  /* pill geometry: single source of truth. The attach tray bleeds to the pill
+     edges using exactly these values, so it can never overshoot the pill. */
+  --cb-pad-l: 12px;
+  --cb-pad-r: 10px;
+  --cb-pill-r: 28px;   /* pill radius while attachments / notice are shown */
+
   /* pill */
   --cb-surface: #ffffff;
   --cb-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
@@ -109,7 +115,7 @@
   flex-wrap: wrap;
   align-items: center;
   box-sizing: border-box;
-  padding: 0 10px 0 12px;
+  padding: 0 var(--cb-pad-r) 0 var(--cb-pad-l);
   border-radius: 999px;
   background: var(--cb-surface);
   box-shadow: var(--cb-shadow);
@@ -119,7 +125,7 @@
 
 .overlay-pill.has-attach,
 .overlay-pill.has-notice {
-  border-radius: 28px;
+  border-radius: var(--cb-pill-r);
 }
 
 /* --------------------------------------------------------------------------
@@ -290,11 +296,15 @@
    Attachments
    -------------------------------------------------------------------------- */
 
+/* Full-bleed to the pill edges. The bleed is derived from the pill's own
+   padding tokens. It used to be a fixed -12px on both sides, which overshot
+   the pill by (12 - padding-right) px on the right and (12 - padding-left) px
+   on small screens, so scrolled thumbnails were cut flat outside the pill. */
 .attach-tray {
   order: -1;
-  flex: 0 0 calc(100% + 24px);
+  flex: 0 0 calc(100% + var(--cb-pad-l) + var(--cb-pad-r));
   min-width: 0;
-  margin: 0 -12px;
+  margin: 0 calc(-1 * var(--cb-pad-r)) 0 calc(-1 * var(--cb-pad-l));
   display: grid;
   grid-template-rows: 0fr;
   visibility: hidden;
@@ -310,9 +320,11 @@
   transition-delay: 0s;
 }
 
+/* Clip scrolling thumbnails to the pill's own curved top corners. */
 .attach-tray-inner {
   min-height: 0;
   overflow: hidden;
+  border-radius: var(--cb-pill-r) var(--cb-pill-r) 0 0;
 }
 
 .attach-list {
@@ -324,6 +336,7 @@
   overflow-x: auto;
   overflow-y: hidden;
   overscroll-behavior-x: contain;
+  scroll-padding-inline: 12px;
   scrollbar-width: none;
   -webkit-overflow-scrolling: touch;
 }
@@ -674,21 +687,14 @@
 @media (max-width: 360px) {
   :root {
     --cb-btn: 38px;
+    --cb-pad-l: 10px;
+    --cb-pad-r: 8px;
+    --cb-pill-r: 26px;
   }
 
   .chatbar-wrap {
     padding-left: 14px;
     padding-right: 14px;
-  }
-
-  .overlay-pill {
-    padding-left: 10px;
-    padding-right: 8px;
-  }
-
-  .overlay-pill.has-attach,
-  .overlay-pill.has-notice {
-    border-radius: 26px;
   }
 
   .ico-plus svg,
@@ -744,4 +750,4 @@
     animation: none;
     color: #6b7280;
   }
-    }
+     }

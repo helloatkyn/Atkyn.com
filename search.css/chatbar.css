@@ -43,6 +43,9 @@
   --cb-remove-shadow: 0 1px 4px rgba(0, 0, 0, 0.22);
   --cb-error: #b42318;
   --cb-doc-ico: #0077b5;
+  --cb-pdf-ico: #d92d20;
+  --cb-sheet-ico: #1e8e3e;
+  --cb-text-ico: #6b7280;
   --cb-file-rm-bg: #ffffff;
   --cb-file-rm-fg: #1f2937;
 
@@ -84,6 +87,9 @@
     --cb-remove-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
     --cb-error: #ff8a80;
     --cb-doc-ico: #4fa8dc;
+    --cb-pdf-ico: #ff7a6e;
+    --cb-sheet-ico: #4cc275;
+    --cb-text-ico: #9ca3af;
     --cb-file-rm-bg: rgba(255, 255, 255, 0.14);
     --cb-file-rm-fg: #e5e5e7;
 
@@ -388,8 +394,8 @@
 .attach-chip.is-file {
   gap: 8px;
   min-height: 44px;
-  max-width: 240px;
-  padding: 0 10px 0 14px;
+  max-width: 200px;
+  padding: 0 8px 0 12px;
   border: 0;
   border-radius: 999px;
   box-shadow: none;
@@ -403,7 +409,25 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--cb-doc-ico);
+  color: var(--cb-doc-ico);               /* code / default */
+}
+
+.attach-chip.is-pdf .attach-file-ico {
+  color: var(--cb-pdf-ico);
+}
+
+.attach-chip[data-ext="csv"] .attach-file-ico,
+.attach-chip[data-ext="tsv"] .attach-file-ico {
+  color: var(--cb-sheet-ico);
+}
+
+.attach-chip[data-ext="txt"] .attach-file-ico,
+.attach-chip[data-ext="md"] .attach-file-ico,
+.attach-chip[data-ext="markdown"] .attach-file-ico,
+.attach-chip[data-ext="log"] .attach-file-ico,
+.attach-chip[data-ext="ini"] .attach-file-ico,
+.attach-chip[data-ext="toml"] .attach-file-ico {
+  color: var(--cb-text-ico);
 }
 
 .attach-file-ico svg {
@@ -426,8 +450,8 @@
 }
 
 .attach-file-name {
-  max-width: 150px;
-  font-size: 14.5px;
+  max-width: 120px;
+  font-size: 14px;
   font-weight: 500;
   line-height: 1.25;
   color: var(--cb-file-name);
@@ -778,5 +802,4 @@
     animation: none;
     color: #6b7280;
   }
-     }
-   
+   }

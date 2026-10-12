@@ -16,6 +16,7 @@
 
   /* pill */
   --cb-surface: #ffffff;
+  --cb-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);   /* same as .wc-card */
   --cb-text: #1f2937;
   --cb-placeholder: #9ca3af;
   --cb-icon: #5f6368;
@@ -58,6 +59,7 @@
 @media (prefers-color-scheme: dark) {
   :root {
     --cb-surface: #2c2c2e;
+    --cb-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);   /* same as .wc-card dark */
     --cb-text: #e5e5e7;
     --cb-placeholder: #73737a;
     --cb-icon: #a1a1a6;
@@ -117,6 +119,7 @@
   padding: 0 10px 0 12px;
   border-radius: 999px;
   background: var(--cb-surface);
+  box-shadow: var(--cb-shadow);
   -webkit-tap-highlight-color: transparent;
   transition: border-radius 0.18s ease;
 }
@@ -778,5 +781,4 @@
     animation: none;
     color: #6b7280;
   }
-  }
-                   
+}

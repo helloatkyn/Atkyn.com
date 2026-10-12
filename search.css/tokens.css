@@ -16,22 +16,22 @@ Change a value here → updates everywhere automatically.
 --color-primary-dark:   #005f8e;
 --color-primary-link:   #0066cc;
 
-/* ─ Neutral text ───────────────────────────────────────────── */
---color-text:           #1a1a1a;
---color-text-strong:    #111111;
---color-text-muted:     #555555;
---color-text-subtle:    #999;
---color-text-faint:     #444;
---color-text-placeholder: #b0bec5;
+/* ── Neutral text ──────────────────────────────────────────── */
+--color-text:             #1a1a1a;
+--color-text-strong:      #111111;
+--color-text-muted:       #555555;
+--color-text-subtle:      #999;
+--color-text-faint:       #444;
+--color-text-placeholder:#b0bec5;
 
 /* ── Surfaces (light) ──────────────────────────────────────── */
---color-bg:             #ffffff;
---color-bg-alt:         #F0F0F0;   /* user bubble — Gemini exact match */
+--color-bg:             #FFFEFC;
+--color-bg-alt:         #F0F0F0;   /* user bubble */
 --color-bg-card:        #F1F3F4;
 --color-bg-card-active: #F8F8F8;
 --color-bg-code:        #fafafa;
 --color-bg-thumb:       #E0E0E0;
---color-bg-favicon:     #ffffff;
+--color-bg-favicon:     #FFFEFC;
 
 /* ── Surfaces (dark) ────────────────────────────────────────── */
 --color-bg-dark:        #1c1c1e;
@@ -44,14 +44,14 @@ Change a value here → updates everywhere automatically.
 --color-bg-plus-menu-dark: rgba(36, 36, 40, 0.78);
 
 /* ── Dark text ─────────────────────────────────────────────── */
---color-text-dark:      #f0f0f2;
---color-text-dark-alt:  #e5e5e7;
---color-text-dark-dim:  #d4d4d6;
---color-text-dark-muted:#aaa;
---color-text-dark-faint:#8e8e93;
---color-text-dark-code: #c9d1d9;
---color-text-dark-mono: #ececec;
---color-text-code-muted:#9b9bab;
+--color-text-dark:       #f0f0f2;
+--color-text-dark-alt:   #e5e5e7;
+--color-text-dark-dim:   #d4d4d6;
+--color-text-dark-muted: #aaa;
+--color-text-dark-faint: #8e8e93;
+--color-text-dark-code:  #c9d1d9;
+--color-text-dark-mono:  #ececec;
+--color-text-code-muted: #9b9bab;
 
 /* ── UI chrome ──────────────────────────────────────────────── */
 --color-icon-stroke:    #444;
@@ -69,19 +69,19 @@ Change a value here → updates everywhere automatically.
 --color-border-dark-strong:  rgba(255, 255, 255, 0.15);
 
 /* ── Tap / press states ─────────────────────────────────────── */
---color-press-light:    rgba(0, 0, 0, 0.06);
---color-press-light-sm: var(--color-press-light-sm);
---color-press-light-md: var(--color-press-light-md);
---color-press-light-icon: var(--color-press-light-icon);
---color-press-dark:     rgba(255, 255, 255, 0.07);
---color-press-dark-md:  rgba(255, 255, 255, 0.09);
+--color-press-light:       rgba(0, 0, 0, 0.06);
+--color-press-light-sm:    rgba(0, 0, 0, 0.04);
+--color-press-light-md:    rgba(0, 0, 0, 0.08);
+--color-press-light-icon:  rgba(0, 0, 0, 0.06);
+--color-press-dark:        rgba(255, 255, 255, 0.07);
+--color-press-dark-md:     rgba(255, 255, 255, 0.09);
 
 /* ── Glassmorphism (plus menu) ──────────────────────────────── */
---color-glass-bg:       rgba(255, 255, 255, 0.72);
---color-glass-border:   rgba(255, 255, 255, 0.55);
+--color-glass-bg:          rgba(255, 254, 252, 0.72);
+--color-glass-border:      rgba(255, 254, 252, 0.55);
 --color-glass-border-dark: rgba(255, 255, 255, 0.10);
---color-tab-bar-bg:     rgba(255, 255, 255, 0.95);
---color-tab-bar-bg-dark:rgba(28, 28, 30, 0.95);
+--color-tab-bar-bg:        rgba(255, 254, 252, 0.95);
+--color-tab-bar-bg-dark:   rgba(28, 28, 30, 0.95);
 
 /* ── Scrollbar / misc ───────────────────────────────────────── */
 --color-scrollbar-thumb: rgba(128, 128, 128, 0.3);
@@ -95,17 +95,17 @@ Change a value here → updates everywhere automatically.
 --color-web-title-dark:  #4BA8D8;
 
 /* ── Links ──────────────────────────────────────────────────── */
---color-link:            #0066cc;
---color-link-border:     rgba(0, 102, 204, 0.3);
---color-link-dark:       #4da6ff;
---color-link-border-dark:rgba(77, 166, 255, 0.3);
+--color-link:             #0066cc;
+--color-link-border:      rgba(0, 102, 204, 0.3);
+--color-link-dark:        #4da6ff;
+--color-link-border-dark: rgba(77, 166, 255, 0.3);
 
 /* ── State colours ──────────────────────────────────────────── */
---color-like:            #2da44e;
---color-like-dark:       #3fb950;
---color-dislike:         var(--color-primary);
---color-copied:          #19c37d;
---color-shimmer-sweep:   var(--color-primary);
+--color-like:          #2da44e;
+--color-like-dark:     #3fb950;
+--color-dislike:       var(--color-primary);
+--color-copied:        #19c37d;
+--color-shimmer-sweep: var(--color-primary);
 
 /* ── Syntax highlighting (light) ────────────────────────────── */
 --color-tk-kw:   #cf222e;
@@ -117,7 +117,7 @@ Change a value here → updates everywhere automatically.
 --color-tk-prop: #116329;
 --color-tk-bool: #cf222e;
 
-/* ── Syntax highlighting (dark) ────────────────────────────── */
+/* ── Syntax highlighting (dark) ─────────────────────────────── */
 --color-tk-kw-dark:   #ff7b72;
 --color-tk-fn-dark:   #d2a8ff;
 --color-tk-str-dark:  #a5d6ff;
@@ -128,13 +128,13 @@ Change a value here → updates everywhere automatically.
 --color-tk-bool-dark: #ff7b72;
 
 /* ── Code block chrome ──────────────────────────────────────── */
---color-code-lang:      #6e6e80;
---color-code-lang-bg:   rgba(0, 0, 0, 0.07);
---color-code-lang-dark: #9b9bab;
---color-code-lang-bg-dark: rgba(255, 255, 255, 0.08);
---color-code-num:       rgba(0, 0, 0, 0.26);
---color-code-num-dark:  rgba(255, 255, 255, 0.24);
---color-code-content:   #0d0d0d;
---color-inline-code-bg: #F0F0F0;   /* inline code — same as user bubble, Gemini style */
+--color-code-lang:        #6e6e80;
+--color-code-lang-bg:     rgba(0, 0, 0, 0.07);
+--color-code-lang-dark:   #9b9bab;
+--color-code-lang-bg-dark:rgba(255, 255, 255, 0.08);
+--color-code-num:         rgba(0, 0, 0, 0.26);
+--color-code-num-dark:    rgba(255, 255, 255, 0.24);
+--color-code-content:     #0d0d0d;
+--color-inline-code-bg:   #F0F0F0;
 
 }

@@ -36,8 +36,10 @@
   transform: translateY(-100%) translateZ(0);
 }
 
+/* No bottom shadow on scroll */
+
 .tab-bar.scrolled {
-  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.08);
+  box-shadow: none;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -46,7 +48,7 @@
   }
 
   .tab-bar.scrolled {
-    box-shadow: 0 1px 6px rgba(0, 0, 0, 0.3);
+    box-shadow: none;
   }
 }
 

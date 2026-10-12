@@ -15,7 +15,7 @@
   --cb-btn: 40px;
 
   /* pill */
-  --cb-surface: #f5f5f5;
+  --cb-surface: #ffffff;
   --cb-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);   /* same as .wc-card */
   --cb-text: #1f2937;
   --cb-placeholder: #9ca3af;
@@ -779,5 +779,5 @@
     animation: none;
     color: #6b7280;
   }
-                            }
-     
+                                     }
+   

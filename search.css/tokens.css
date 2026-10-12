@@ -17,21 +17,21 @@ Change a value here → updates everywhere automatically.
 --color-primary-link:   #0066cc;
 
 /* ── Neutral text ──────────────────────────────────────────── */
---color-text:             #1a1a1a;
---color-text-strong:      #111111;
---color-text-muted:       #555555;
---color-text-subtle:      #999;
---color-text-faint:       #444;
---color-text-placeholder:#b0bec5;
+--color-text:              #1a1a1a;
+--color-text-strong:       #111111;
+--color-text-muted:        #555555;
+--color-text-subtle:       #999;
+--color-text-faint:        #444;
+--color-text-placeholder:  #b0bec5;
 
 /* ── Surfaces (light) ──────────────────────────────────────── */
---color-bg:             #FFFEFC;
---color-bg-alt:         #F0F0F0;   /* user bubble */
+--color-bg:             #FAF9F6;
+--color-bg-alt:         #F0F0F0;
 --color-bg-card:        #F1F3F4;
 --color-bg-card-active: #F8F8F8;
 --color-bg-code:        #fafafa;
 --color-bg-thumb:       #E0E0E0;
---color-bg-favicon:     #FFFEFC;
+--color-bg-favicon:     #FAF9F6;
 
 /* ── Surfaces (dark) ────────────────────────────────────────── */
 --color-bg-dark:        #1c1c1e;
@@ -77,10 +77,10 @@ Change a value here → updates everywhere automatically.
 --color-press-dark-md:     rgba(255, 255, 255, 0.09);
 
 /* ── Glassmorphism (plus menu) ──────────────────────────────── */
---color-glass-bg:          rgba(255, 254, 252, 0.72);
---color-glass-border:      rgba(255, 254, 252, 0.55);
+--color-glass-bg:          rgba(250, 249, 246, 0.72);
+--color-glass-border:      rgba(250, 249, 246, 0.55);
 --color-glass-border-dark: rgba(255, 255, 255, 0.10);
---color-tab-bar-bg:        rgba(255, 254, 252, 0.95);
+--color-tab-bar-bg:        rgba(250, 249, 246, 0.95);
 --color-tab-bar-bg-dark:   rgba(28, 28, 30, 0.95);
 
 /* ── Scrollbar / misc ───────────────────────────────────────── */
@@ -128,13 +128,13 @@ Change a value here → updates everywhere automatically.
 --color-tk-bool-dark: #ff7b72;
 
 /* ── Code block chrome ──────────────────────────────────────── */
---color-code-lang:        #6e6e80;
---color-code-lang-bg:     rgba(0, 0, 0, 0.07);
---color-code-lang-dark:   #9b9bab;
---color-code-lang-bg-dark:rgba(255, 255, 255, 0.08);
---color-code-num:         rgba(0, 0, 0, 0.26);
---color-code-num-dark:    rgba(255, 255, 255, 0.24);
---color-code-content:     #0d0d0d;
---color-inline-code-bg:   #F0F0F0;
+--color-code-lang:         #6e6e80;
+--color-code-lang-bg:      rgba(0, 0, 0, 0.07);
+--color-code-lang-dark:    #9b9bab;
+--color-code-lang-bg-dark: rgba(255, 255, 255, 0.08);
+--color-code-num:          rgba(0, 0, 0, 0.26);
+--color-code-num-dark:     rgba(255, 255, 255, 0.24);
+--color-code-content:      #0d0d0d;
+--color-inline-code-bg:    #F0F0F0;
 
 }

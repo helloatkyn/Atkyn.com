@@ -1,126 +1,123 @@
-/* ════════════════════════════════════════════════════════════════
-tabs.css — Tab bar
-════════════════════════════════════════════════════════════════ */
+/* tabs.css — Tab bar */
 
-/* ────────────────────────────────────────────────────────────────
-TAB BAR
-──────────────────────────────────────────────────────────────── */
+/* ── Tab bar ─────────────────────────────────────────────────── */
 .tab-bar {
-flex-shrink: 0;
-display: flex;
-align-items: center;
-overflow-x: auto;
-overflow-y: hidden;
+  position: sticky;
+  top: 0;
+  z-index: 20;
 
-padding: 0 12px;
-gap: 0;
-height: 40px;
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  height: 40px;
+  padding: 0 12px;
+  margin-bottom: 3px;
 
--webkit-overflow-scrolling: touch;
-scrollbar-width: none;
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
 
-position: sticky;
-top: 0;
-z-index: 20;
+  background: var(--color-bg);
+  border-bottom: 1px solid rgba(35, 35, 35, 0.10);
 
-background: var(--color-bg);
-
-will-change: transform;
-transform: translateZ(0);
-backface-visibility: hidden;
--webkit-backface-visibility: hidden;
-
-transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
-
-/* Subtle professional divider */
-border-bottom: 1px solid rgba(35, 35, 35, 0.10);
-margin-bottom: 3px;
-
-box-shadow: none;
-}
-
-@media (prefers-color-scheme: dark) {
-.tab-bar {
-background: var(--color-bg-dark);
-border-bottom-color: rgba(255, 255, 255, 0.09);
-box-shadow: none;
-}
+  /* Transform is applied only while hiding, so text stays pixel-sharp at rest */
+  transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .tab-bar::-webkit-scrollbar {
-display: none;
+  display: none;
 }
 
+/* Trailing space so the last tab never touches the edge */
 .tab-bar::after {
-content: '';
-flex-shrink: 0;
-width: 12px;
+  content: '';
+  flex-shrink: 0;
+  width: 12px;
 }
 
 .tab-bar.hide {
-transform: translateY(-100%) translateZ(0);
+  transform: translate3d(0, -100%, 0);
+  will-change: transform;
 }
 
-/* ────────────────────────────────────────────────────────────────
-TAB
-──────────────────────────────────────────────────────────────── */
+/* ── Tab ─────────────────────────────────────────────────────── */
 .tab {
-flex-shrink: 0;
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  height: 100%;
+  padding: 0 14px;
 
-height: 100%;
-padding: 0 14px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
 
-font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
-font-size: 14px;
-font-weight: 450;
-letter-spacing: 0.01em;
+  /* Crisp, high-resolution text rendering */
+  text-rendering: optimizeLegibility;
+  font-kerning: normal;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 
-color: var(--color-text-muted);
+  color: var(--color-text-muted);
+  background: transparent;
+  border: 0;
 
-background: transparent;
-border: 0;
-border-radius: 0;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
 
-cursor: pointer;
-white-space: nowrap;
-
-display: flex;
-align-items: center;
-justify-content: center;
-
-margin: 0;
-
-transition:
-color 0.16s ease,
-opacity 0.16s ease;
-
--webkit-tap-highlight-color: transparent;
+  transition: color 0.16s ease, opacity 0.16s ease;
 }
 
 .tab:hover {
-color: var(--color-text-strong);
+  color: var(--color-text-strong);
 }
 
 .tab.active {
-font-weight: 550;
-color: var(--color-text-strong);
+  font-weight: 600;
+  color: var(--color-text-strong);
 }
 
 .tab:active {
-opacity: 0.65;
-transform: scale(0.98);
+  opacity: 0.65;
 }
 
+.tab:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: -2px;
+  border-radius: 6px;
+}
+
+/* ── Dark mode ───────────────────────────────────────────────── */
 @media (prefers-color-scheme: dark) {
-.tab {
-color: rgba(255, 255, 255, 0.52);
+  .tab-bar {
+    background: var(--color-bg-dark);
+    border-bottom-color: rgba(255, 255, 255, 0.09);
+  }
+
+  .tab {
+    color: rgba(255, 255, 255, 0.52);
+  }
+
+  .tab:hover {
+    color: rgba(255, 255, 255, 0.92);
+  }
+
+  .tab.active {
+    color: rgba(255, 255, 255, 0.96);
+  }
 }
 
-.tab:hover {
-color: rgba(255, 255, 255, 0.92);
-}
-
-.tab.active {
-color: rgba(255, 255, 255, 0.96);
-}
+/* ── Reduced motion ──────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .tab-bar,
+  .tab {
+    transition: none;
+  }
 }

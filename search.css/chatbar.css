@@ -497,10 +497,11 @@
 }
 
 .attach-notice {
-  padding: 7px 14px 3px;
+  padding: 4px 18px 6px;          /* text starts in line with the + icon */
   font-size: 12.5px;
+  font-weight: 500;
   line-height: 1.35;
-  color: var(--cb-error);
+  color: var(--cb-file-meta);     /* neutral: a limit is info, not an alarm */
 }
 
 .attach-notice[hidden] {
@@ -750,4 +751,4 @@
     animation: none;
     color: #6b7280;
   }
-     }
+}

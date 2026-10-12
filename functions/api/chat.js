@@ -2,7 +2,7 @@ import { SYSTEM_PROMPT } from './systemPrompt.js';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const MISTRAL_MODEL    = 'ministral-14b-2512';
+const MISTRAL_MODEL    = 'mistral-small-latest';
 const MISTRAL_ENDPOINT = 'https://api.mistral.ai/v1/chat/completions';
 const FINNHUB_BASE    = 'https://finnhub.io/api/v1';
 const SERPER_ENDPOINT = 'https://google.serper.dev/ssssearch';

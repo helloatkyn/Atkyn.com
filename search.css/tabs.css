@@ -59,7 +59,7 @@
   font-size: 14px;
   font-weight: 500;
   color: var(--color-text-strong);
-  background: #E3D8B7;
+  background: var(--color-bg-alt);
   border-radius: 4px;
   cursor: pointer;
   white-space: nowrap;
@@ -74,7 +74,7 @@
   opacity: 0.75;
 }
 
-/* ── Active Tab — Preserve Existing Styling ──────────────────── */
+/* ── Active Tab ──────────────────────────────────────────────── */
 
 .tab.active {
   background: var(--color-tab-active-bg);
@@ -85,7 +85,7 @@
 
 @media (prefers-color-scheme: dark) {
   .tab {
-    background: #E3D8B7;
+    background: var(--color-bg-alt2-dark);
     color: var(--color-tab-active-bg-dark);
   }
 

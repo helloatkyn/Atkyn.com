@@ -1,60 +1,74 @@
-/* ════════════════════════════════════════════════════════════════
-   table.css — Markdown table inside bot bubble
-════════════════════════════════════════════════════════════════ */
+/* table.css — Markdown table inside bot bubble (clean, horizontally scrollable) */
 
+/* ── Scroll wrapper ──────────────────────────────────────────── */
 .table-wrap {
+  --table-gap: 24px;
+  --table-col: 156px;
+  --table-line: var(--color-border-medium);
+
   width: 100%;
+  margin: 12px 0 16px;
   overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-  margin: 10px 0 14px;
-  border-radius: 12px;
+  overscroll-behavior-x: contain;
   scrollbar-width: none;
-  -ms-overflow-style: none;
 }
-.table-wrap::-webkit-scrollbar { display: none; }
 
-/* Table fits the bubble; text wraps. Only tables with many columns
-   (cells below keep a minimum width) overflow and scroll sideways. */
+.table-wrap::-webkit-scrollbar {
+  display: none;
+}
+
+/* ── Table ───────────────────────────────────────────────────── */
 .msg.bot .bubble table {
-  border-collapse: collapse;
+  width: auto;
   margin: 0;
-  font-size: 0.9rem;
-  width: 100%;
+  border-collapse: collapse;
+  font-family: inherit;
+  font-size: 1rem;
+  color: var(--color-text);
 }
 
-.msg.bot .bubble th {
-  padding: 10px 14px;
-  text-align: left;
-  font-weight: 700;
-  font-size: 0.82rem;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--color-text-muted);
-  border-bottom: 1.5px solid rgba(0, 0, 0, 0.10);
-  min-width: 96px;
-  vertical-align: bottom;
-  line-height: 1.35;
-}
-
+/* Cells: fixed minimum column width, text wraps, tables with many
+   columns overflow and scroll sideways */
+.msg.bot .bubble th,
 .msg.bot .bubble td {
-  padding: 12px 14px;
+  min-width: var(--table-col);
+  padding: 15px var(--table-gap) 15px 0;
   text-align: left;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
-  min-width: 96px;
   vertical-align: top;
-  line-height: 1.55;
+  line-height: 1.5;
   overflow-wrap: break-word;
+  border: 0;
+
+  /* Row divider, stops short of the next column to leave a clean gap */
+  background: linear-gradient(var(--table-line), var(--table-line))
+    0 100% / calc(100% - var(--table-gap)) 1px no-repeat;
 }
 
-.msg.bot .bubble tr:last-child td { border-bottom: none; }
+/* Header: same size as body, just bolder — no caps, no fill */
+.msg.bot .bubble th {
+  padding-top: 0;
+  font-weight: 600;
+  text-transform: none;
+  letter-spacing: normal;
+  vertical-align: bottom;
+}
 
+/* First column acts as the row label */
+.msg.bot .bubble td:first-child {
+  font-weight: 500;
+}
+
+.msg.bot .bubble tr:last-child td {
+  background: none;
+}
+
+/* ── Dark mode ───────────────────────────────────────────────── */
 @media (prefers-color-scheme: dark) {
-  .msg.bot .bubble th {
-    color: var(--color-text-dark-muted);
-    border-bottom-color: var(--color-border-dark-strong);
+  .table-wrap {
+    --table-line: var(--color-border-dark-strong);
   }
-  .msg.bot .bubble td {
-    color: var(--color-text-dark-dim);
-    border-bottom-color: rgba(255, 255, 255, 0.04);
+
+  .msg.bot .bubble table {
+    color: var(--color-text-dark-alt);
   }
 }

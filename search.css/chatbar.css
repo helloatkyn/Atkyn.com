@@ -31,7 +31,7 @@
   --cb-cross: #11110f;
 
   /* attachments */
-  --cb-chip-bg: #f4f4f2;
+  --cb-chip-bg: #efefed;
   --cb-chip-border: rgba(17, 17, 17, 0.055);
   --cb-chip-shadow: 0 1px 2px rgba(0, 0, 0, 0.035);
   --cb-file-name: #1f2937;
@@ -42,6 +42,9 @@
   --cb-remove-fg: #ffffff;
   --cb-remove-shadow: 0 1px 4px rgba(0, 0, 0, 0.22);
   --cb-error: #b42318;
+  --cb-doc-ico: #0077b5;
+  --cb-file-rm-bg: #ffffff;
+  --cb-file-rm-fg: #1f2937;
 
   /* plus menu */
   --cb-menu-bg: #ffffff;
@@ -80,6 +83,9 @@
     --cb-remove-fg: #11110f;
     --cb-remove-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
     --cb-error: #ff8a80;
+    --cb-doc-ico: #4fa8dc;
+    --cb-file-rm-bg: rgba(255, 255, 255, 0.14);
+    --cb-file-rm-fg: #e5e5e7;
 
     --cb-menu-bg: #1c1c1e;
     --cb-menu-ink: #e5e5e7;
@@ -380,35 +386,36 @@
 }
 
 .attach-chip.is-file {
-  gap: 10px;
-  max-width: 220px;
-  padding: 0 13px 0 9px;
+  gap: 8px;
+  min-height: 44px;
+  max-width: 240px;
+  padding: 0 10px 0 14px;
+  border: 0;
+  border-radius: 999px;
+  box-shadow: none;
 }
 
+/* Solid file glyph, no container behind it. */
 .attach-file-ico {
   flex: 0 0 auto;
-  width: 36px;
-  height: 36px;
-  border-radius: 10px;
+  width: 22px;
+  height: 22px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #0077b5;
-  color: #ffffff;
-}
-
-.attach-chip.is-pdf .attach-file-ico {
-  background: #d92d20;
+  color: var(--cb-doc-ico);
 }
 
 .attach-file-ico svg {
-  width: 19px;
-  height: 19px;
-  stroke: currentColor;
-  stroke-width: 1.8;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  fill: none;
+  width: 22px;
+  height: 22px;
+  fill: currentColor;
+  stroke: none;
+}
+
+.attach-file-ico .doc-fold {
+  fill: #ffffff;
+  fill-opacity: 0.45;
 }
 
 .attach-file-text {
@@ -419,8 +426,8 @@
 }
 
 .attach-file-name {
-  max-width: 145px;
-  font-size: 13px;
+  max-width: 150px;
+  font-size: 14.5px;
   font-weight: 500;
   line-height: 1.25;
   color: var(--cb-file-name);
@@ -430,6 +437,7 @@
 }
 
 .attach-file-meta {
+  display: none;              /* name only, like Gemini */
   font-size: 11px;
   line-height: 1.25;
   color: var(--cb-file-meta);
@@ -494,6 +502,25 @@
 
 .attach-remove:active {
   transform: scale(0.90);
+}
+
+/* File chips: remove button sits inline at the end of the pill. */
+.attach-chip.is-file .attach-remove {
+  position: relative;
+  top: auto;
+  right: auto;
+  flex: 0 0 24px;
+  width: 24px;
+  height: 24px;
+  background: var(--cb-file-rm-bg);
+  color: var(--cb-file-rm-fg);
+  box-shadow: none;
+}
+
+.attach-chip.is-file .attach-remove svg {
+  width: 11px;
+  height: 11px;
+  stroke-width: 1.9;
 }
 
 .attach-notice {
@@ -751,4 +778,5 @@
     animation: none;
     color: #6b7280;
   }
-}
+     }
+   

@@ -1,178 +1,228 @@
-/* ════════════════════════════════
-   STOCK CARD
-   ════════════════════════════════ */
+/* ==========================================================================
+   Stock card
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   Design tokens (light defaults, dark overrides below)
+   -------------------------------------------------------------------------- */
 
 .stock-card {
-  background: #f8f8f8;
-  border-radius: 16px;
-  padding: 16px 16px 12px;
-  margin: 0;
-  width: 100%;
-  box-sizing: border-box;
-  border: 1px solid rgba(0,0,0,0.06);
+  --sc-bg: #f8f8f8;
+  --sc-text: #1a1a1a;
+  --sc-muted: #888888;
+  --sc-rule: rgba(0, 0, 0, 0.06);
+  --sc-tab-active: rgba(0, 0, 0, 0.08);
+  --sc-logo-bg: #ffffff;
+  --sc-logo-border: rgba(0, 0, 0, 0.08);
 }
+
 @media (prefers-color-scheme: dark) {
   .stock-card {
-    background: #2c2c2e;
-    border-color: rgba(255,255,255,0.06);
+    --sc-bg: #2c2c2e;
+    --sc-text: #f0f0f2;
+    --sc-rule: rgba(255, 255, 255, 0.06);
+    --sc-tab-active: rgba(255, 255, 255, 0.12);
+    --sc-logo-bg: #3a3a3c;
+    --sc-logo-border: rgba(255, 255, 255, 0.08);
   }
 }
 
-/* Header: logo + name + ticker */
+/* --------------------------------------------------------------------------
+   Card
+   -------------------------------------------------------------------------- */
+
+.stock-card {
+  width: 100%;
+  padding: 16px 16px 12px;
+  border-radius: 16px;
+  background: var(--sc-bg);
+}
+
+/* --------------------------------------------------------------------------
+   Header: logo + name + ticker
+   -------------------------------------------------------------------------- */
+
 .stock-header {
   display: flex;
   align-items: center;
   gap: 10px;
   margin-bottom: 10px;
 }
+
 .stock-logo-wrap {
+  flex-shrink: 0;
   width: 36px;
   height: 36px;
-  flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: center;
 }
+
 .stock-logo {
   width: 32px;
   height: 32px;
   border-radius: 8px;
+  background: var(--sc-logo-bg);
+  border: 1px solid var(--sc-logo-border);
   object-fit: contain;
-  background: #fff;
-  border: 1px solid rgba(0,0,0,0.08);
-}
-@media (prefers-color-scheme: dark) {
-  .stock-logo { background: #3a3a3c; border-color: rgba(255,255,255,0.08); }
-}
-.stock-title-wrap { flex: 1; min-width: 0; }
-.stock-name {
-  font-size: 15px;
-  font-weight: 600;
-  color: #1a1a1a;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-@media (prefers-color-scheme: dark) {
-  .stock-name { color: #f0f0f2; }
-}
-.stock-ticker-exchange {
-  font-size: 12px;
-  color: #888;
-  margin-top: 1px;
 }
 
-/* Price row */
+.stock-title-wrap {
+  flex: 1;
+  min-width: 0;
+}
+
+.stock-name {
+  overflow: hidden;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--sc-text);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.stock-ticker-exchange {
+  margin-top: 1px;
+  font-size: 12px;
+  color: var(--sc-muted);
+}
+
+/* --------------------------------------------------------------------------
+   Price row
+   -------------------------------------------------------------------------- */
+
 .stock-price-row {
   display: flex;
+  flex-wrap: wrap;
   align-items: baseline;
   gap: 10px;
   margin-bottom: 12px;
-  flex-wrap: wrap;
 }
+
 .stock-price {
   font-size: 26px;
   font-weight: 700;
-  color: #1a1a1a;
-  letter-spacing: -0.5px;
   line-height: 1;
+  letter-spacing: -0.5px;
+  color: var(--sc-text);
 }
-@media (prefers-color-scheme: dark) {
-  .stock-price { color: #f0f0f2; }
-}
+
 .stock-change {
   font-size: 13px;
   font-weight: 500;
   line-height: 1;
 }
 
-/* Time range tabs */
+/* --------------------------------------------------------------------------
+   Time range tabs
+   -------------------------------------------------------------------------- */
+
 .stock-tabs {
   display: flex;
   gap: 2px;
   margin-bottom: 8px;
 }
+
 .stock-tab {
   flex: 1;
   padding: 5px 0;
-  background: none;
-  border: none;
+  border: 0;
   border-radius: 8px;
+  background: none;
   font-size: 12px;
   font-weight: 500;
-  color: #888;
-  cursor: pointer;
   text-align: center;
-  transition: background 0.15s, color 0.15s;
-}
-.stock-tab.active {
-  background: rgba(0,0,0,0.08);
-  color: #1a1a1a;
-}
-@media (prefers-color-scheme: dark) {
-  .stock-tab.active {
-    background: rgba(255,255,255,0.12);
-    color: #f0f0f2;
-  }
+  color: var(--sc-muted);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
 }
 
-/* Chart container */
+.stock-tab.active {
+  background: var(--sc-tab-active);
+  color: var(--sc-text);
+}
+
+/* --------------------------------------------------------------------------
+   Chart
+   -------------------------------------------------------------------------- */
+
 .stock-chart-container {
+  position: relative;
   width: 100%;
   height: 180px;
-  border-radius: 8px;
-  overflow: hidden;
   margin-bottom: 12px;
-  position: relative;
+  overflow: hidden;
+  border-radius: 8px;
 }
+
 .stock-chart-loading {
   width: 100%;
   height: 100%;
-  background: linear-gradient(90deg, rgba(128,128,128,0.08) 25%, rgba(128,128,128,0.15) 50%, rgba(128,128,128,0.08) 75%);
+  background: linear-gradient(
+    90deg,
+    rgba(128, 128, 128, 0.08) 25%,
+    rgba(128, 128, 128, 0.15) 50%,
+    rgba(128, 128, 128, 0.08) 75%
+  );
   background-size: 200% 100%;
   animation: stock-shimmer 1.2s infinite;
-  border-radius: 6px;
 }
+
+.stock-chart-nodata {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  color: var(--sc-muted);
+}
+
 @keyframes stock-shimmer {
   0%   { background-position: 200% 0; }
   100% { background-position: -200% 0; }
 }
-.stock-chart-nodata {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 100%;
-  font-size: 13px;
-  color: #888;
-}
 
-/* Stats row */
+/* --------------------------------------------------------------------------
+   Stats row
+   -------------------------------------------------------------------------- */
+
 .stock-stats {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 4px;
-  border-top: 1px solid rgba(0,0,0,0.06);
   padding-top: 10px;
+  border-top: 1px solid var(--sc-rule);
 }
-@media (prefers-color-scheme: dark) {
-  .stock-stats { border-color: rgba(255,255,255,0.06); }
-}
+
 .stock-stat-item {
   display: flex;
   flex-direction: column;
   gap: 2px;
 }
+
 .stock-stat-label {
   font-size: 10px;
-  color: #888;
-  text-transform: uppercase;
   letter-spacing: 0.3px;
+  text-transform: uppercase;
+  color: var(--sc-muted);
 }
+
 .stock-stat-value {
   font-size: 13px;
   font-weight: 600;
-  color: #1a1a1a;
+  color: var(--sc-text);
 }
-@media (prefers-color-scheme: dark) {
-  .stock-stat-value { color: #f0f0f2; }
+
+/* --------------------------------------------------------------------------
+   Reduced motion
+   -------------------------------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .stock-chart-loading {
+    animation: none;
+  }
+
+  .stock-tab {
+    transition: none;
+  }
 }

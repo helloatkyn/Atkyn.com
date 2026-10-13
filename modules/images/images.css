@@ -1,0 +1,462 @@
+/* ==========================================================================
+   Images tab
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   Design tokens (light defaults, dark overrides below)
+   -------------------------------------------------------------------------- */
+
+:root {
+  /* geometry: single source of truth. images.js reads the real column gap from
+     computed style, so changing --im-gap here is all that is ever needed. */
+  --im-gap: 9px;
+  --im-pad: 8px;
+  --im-radius: 10px;
+  --im-radius-hero: 12px;
+  --im-pill-min: 48px;          /* keep equal to PILL_MIN_H in images.js */
+
+  /* surfaces */
+  --im-tile-bg: #f2f2f2;
+  --im-chip-bg: #f2f2f7;
+  --im-chip-hover: #e9e9ee;
+  --im-chip-press: #e5e5ea;
+  --im-ink: #1c1c1e;
+  --im-muted: #8e8e93;
+  --im-focus: #0a66c2;
+
+  /* tile overlay */
+  --im-menu-bg: rgba(0, 0, 0, 0.34);
+  --im-menu-press: rgba(0, 0, 0, 0.52);
+
+  /* bottom sheet */
+  --im-sheet-bg: #ffffff;
+  --im-sheet-media-bg: #f2f2f7;
+  --im-handle: #d1d1d6;
+  --im-scrim: rgba(0, 0, 0, 0.5);
+}
+
+@media (min-width: 600px) {
+  :root {
+    --im-gap: 10px;
+    --im-pad: 10px;
+    --im-radius: 11px;
+    --im-radius-hero: 13px;
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --im-tile-bg: #2c2c2e;
+    --im-chip-bg: #2c2c2e;
+    --im-chip-hover: #343436;
+    --im-chip-press: #3a3a3c;
+    --im-ink: #f2f2f7;
+    --im-focus: #4fa8dc;
+
+    --im-menu-bg: rgba(255, 255, 255, 0.18);
+    --im-menu-press: rgba(255, 255, 255, 0.30);
+
+    --im-sheet-bg: #1c1c1e;
+    --im-sheet-media-bg: #2c2c2e;
+    --im-handle: #48484a;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Layout: grid, hero, columns
+   -------------------------------------------------------------------------- */
+
+.images-grid {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  width: 100%;
+  box-sizing: border-box;
+  gap: var(--im-gap);
+  padding: var(--im-pad) max(var(--im-pad), env(safe-area-inset-right)) 0
+           max(var(--im-pad), env(safe-area-inset-left));
+}
+
+.gallery-hero {
+  width: 100%;
+  min-width: 0;
+}
+
+.gallery-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: start;              /* columns keep their own height (gap-fill relies on it) */
+  gap: var(--im-gap);
+  width: 100%;
+  min-width: 0;
+}
+
+.gallery-col {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--im-gap);
+}
+
+/* --------------------------------------------------------------------------
+   Tile
+   -------------------------------------------------------------------------- */
+
+.img-tile {
+  position: relative;
+  display: block;
+  width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  border-radius: var(--im-radius);
+  background: var(--im-tile-bg);
+  text-decoration: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Height comes from inline padding-bottom (aspect ratio) set by images.js.
+   images.js also paints a cached thumbnail as background-image here while the
+   full-resolution image loads. */
+.img-tile__spacer {
+  position: relative;
+  width: 100%;
+  height: 0;
+  overflow: hidden;
+  border-radius: var(--im-radius);
+  background-color: var(--im-tile-bg);
+}
+
+.img-tile__spacer img {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: center;
+  opacity: 0;
+  transition: opacity 120ms ease-out;
+  -webkit-user-drag: none;
+}
+
+.img-tile__spacer img.img-loaded {
+  opacity: 1;
+}
+
+.gallery-hero .img-tile,
+.gallery-hero .img-tile__spacer {
+  border-radius: var(--im-radius-hero);
+}
+
+/* --------------------------------------------------------------------------
+   Tile overlay: title + menu button
+   -------------------------------------------------------------------------- */
+
+.img-tile__overlay {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 8px;
+  pointer-events: none;
+}
+
+.img-tile__title {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.3;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.55);   /* readable on bright images too */
+}
+
+.gallery-hero .img-tile__title {
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.img-tile__menu {
+  position: relative;
+  flex: 0 0 29px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 29px;
+  height: 29px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--im-menu-bg);
+  color: #fff;
+  cursor: pointer;
+  pointer-events: auto;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Visible button stays 29px; the tappable area grows to ~45px. */
+.img-tile__menu::after {
+  content: "";
+  position: absolute;
+  inset: -8px;
+  border-radius: 50%;
+}
+
+/* --------------------------------------------------------------------------
+   Suggestion pills + gap-fill wrapper
+   -------------------------------------------------------------------------- */
+
+.sugg-pill {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-width: 0;
+  min-height: var(--im-pill-min);
+  box-sizing: border-box;
+  padding: 10px 14px;
+  border: 0;
+  border-radius: var(--im-radius);
+  background: var(--im-chip-bg);
+  color: var(--im-ink);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.3;
+  text-align: center;
+  word-break: break-word;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 80ms ease-out;
+}
+
+/* Injected into the shorter column. images.js sets only its height (the exact
+   gap); layout, spacing and pill sizing all live here. */
+.sugg-gap-fill {
+  display: flex;
+  flex-direction: column;
+  flex: 0 0 auto;
+  gap: var(--im-gap);
+  width: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+/* Pills inside the wrapper share the available height equally. */
+.sugg-pill--gap {
+  flex: 1 1 0;
+  min-height: var(--im-pill-min);
+}
+
+/* --------------------------------------------------------------------------
+   Bottom sheet
+   -------------------------------------------------------------------------- */
+
+.img-sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 900;
+  background: rgba(0, 0, 0, 0);
+  pointer-events: none;
+  transition: background 240ms ease;
+}
+
+.img-sheet-backdrop--open {
+  background: var(--im-scrim);
+  pointer-events: auto;
+}
+
+/* visibility keeps the closed sheet out of the tab order and away from screen
+   readers; it flips after the slide-out finishes. */
+.img-sheet {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 901;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  overflow: hidden;
+  padding: 0 0 env(safe-area-inset-bottom, 16px);
+  border-radius: 20px 20px 0 0;
+  background: var(--im-sheet-bg);
+  max-height: 88vh;                /* fallback for WebViews without svh */
+  max-height: 88svh;
+  transform: translateY(100%);
+  visibility: hidden;
+  transition:
+    transform 300ms cubic-bezier(0.32, 0.72, 0, 1),
+    visibility 0s linear 300ms;
+}
+
+.img-sheet--open {
+  transform: translateY(0);
+  visibility: visible;
+  transition-delay: 0s;
+}
+
+.img-sheet__handle {
+  flex: 0 0 auto;
+  width: 36px;
+  height: 4px;
+  margin: 12px auto 8px;
+  border-radius: 2px;
+  background: var(--im-handle);
+}
+
+.img-sheet__img-wrap {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--im-sheet-media-bg);
+}
+
+.img-sheet__img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: center;
+}
+
+.img-sheet__info {
+  flex: 0 0 auto;
+  padding: 12px 16px 4px;
+}
+
+.img-sheet__text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.img-sheet__title {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--im-ink);
+}
+
+.img-sheet__host {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--im-muted);
+}
+
+.img-sheet__actions {
+  flex: 0 0 auto;
+  display: flex;
+  gap: 10px;
+  padding: 12px 16px 16px;
+}
+
+.img-sheet__btn {
+  flex: 1 1 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 48px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--im-chip-bg);
+  color: var(--im-ink);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 80ms ease-out;
+}
+
+/* --------------------------------------------------------------------------
+   Empty / error state (markup comes from images.js)
+   -------------------------------------------------------------------------- */
+
+.tab-empty__retry {
+  min-height: 44px;
+  margin-top: 12px;
+  padding: 0 22px;
+  border: 0;
+  border-radius: 22px;
+  background: var(--im-chip-bg);
+  color: var(--im-ink);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 80ms ease-out;
+}
+
+/* --------------------------------------------------------------------------
+   Interaction states (hover only on real pointers, press always wins)
+   -------------------------------------------------------------------------- */
+
+@media (hover: hover) {
+  .sugg-pill:hover,
+  .img-sheet__btn:hover,
+  .tab-empty__retry:hover {
+    background: var(--im-chip-hover);
+  }
+
+  .img-tile__menu:hover {
+    background: var(--im-menu-press);
+  }
+}
+
+.sugg-pill:active,
+.img-sheet__btn:active,
+.tab-empty__retry:active {
+  background: var(--im-chip-press);
+}
+
+.img-tile__menu:active {
+  background: var(--im-menu-press);
+}
+
+.img-tile:focus-visible,
+.img-tile__menu:focus-visible,
+.sugg-pill:focus-visible,
+.img-sheet__btn:focus-visible,
+.tab-empty__retry:focus-visible {
+  outline: 2px solid var(--im-focus);
+  outline-offset: 2px;
+}
+
+/* The gap wrapper clips overflow, so keep the ring inside it. */
+.sugg-pill--gap:focus-visible {
+  outline-offset: -2px;
+}
+
+/* --------------------------------------------------------------------------
+   Reduced motion
+   -------------------------------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .img-tile__spacer img,
+  .img-sheet,
+  .img-sheet-backdrop,
+  .sugg-pill,
+  .img-sheet__btn,
+  .tab-empty__retry {
+    transition: none;
+  }
+  }

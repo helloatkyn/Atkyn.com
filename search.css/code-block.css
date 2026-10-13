@@ -1,132 +1,216 @@
-/* ════════════════════════════════════════════════════════════════
-   code-block.css
-════════════════════════════════════════════════════════════════ */
+/* ==========================================================================
+   Code block
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   Container
+   -------------------------------------------------------------------------- */
 
 .code-block {
-  margin: 12px 0 16px;
-  border-radius: 22px;
-  overflow: hidden;
-  background: #fafafa;
-  border: none;
-  box-shadow: none;
-  width: 100%;
   position: relative;
-  box-sizing: border-box;
+  width: 100%;
+  margin: 12px 0 16px;
+  overflow: hidden;
+  border-radius: 22px;
+  background: #fafafa;
 }
+
 @media (prefers-color-scheme: dark) {
-  .code-block { background: #1e1e1e; }
+  .code-block {
+    background: #1e1e1e;
+  }
 }
 
-.code-block-header { display: none; }
-.code-block-lang   { display: none; }
-.code-line-num     { display: none; }
+/* Legacy markup the renderer may still emit: never shown. */
+.code-block-header,
+.code-block-lang,
+.code-line-num {
+  display: none;
+}
 
-/* ── Copy button ── */
+/* --------------------------------------------------------------------------
+   Copy button
+   -------------------------------------------------------------------------- */
+
 .code-copy-btn {
   position: absolute;
   top: 10px;
   right: 12px;
+  z-index: 2;
   display: flex;
   align-items: center;
   justify-content: center;
-  border: none;
-  background: none;
-  cursor: pointer;
-  color: #57606a;
   padding: 6px;
+  border: 0;
   border-radius: 6px;
+  background: none;
+  color: #57606a;
   font-size: 0;
-  -webkit-tap-highlight-color: transparent;
+  cursor: pointer;
   opacity: 0;
   transition: opacity 0.15s ease;
-  z-index: 2;
-}
-.code-block:hover .code-copy-btn,
-.code-block:focus-within .code-copy-btn { opacity: 1; }
-@media (hover: none) { .code-copy-btn { opacity: 1; } }
-.code-copy-btn svg { width: 20px; height: 20px; stroke-width: 1.75; }
-.code-copy-btn:active { opacity: 0.4 !important; }
-.code-copy-btn.copied { color: #3fb950; }
-@media (prefers-color-scheme: dark) {
-  .code-copy-btn        { color: #8b949e; }
-  .code-copy-btn.copied { color: #3fb950; }
 }
 
-/* ── Pre ── */
+.code-copy-btn svg {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.75;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.code-block:hover .code-copy-btn,
+.code-block:focus-within .code-copy-btn {
+  opacity: 1;
+}
+
+@media (hover: none) {
+  .code-copy-btn {
+    opacity: 1;
+  }
+}
+
+.code-block .code-copy-btn:active {
+  opacity: 0.4;
+}
+
+/* Copied state: the tick is drawn by CSS, so it shows whatever icon the
+   script left inside the button. */
+.code-copy-btn.copied {
+  color: #3fb950;
+  opacity: 1;
+}
+
+.code-copy-btn.copied svg {
+  display: none;
+}
+
+.code-copy-btn.copied::after {
+  content: "";
+  width: 20px;
+  height: 20px;
+  background: currentColor;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12.5l4.5 4.5L19 7.5'/%3E%3C/svg%3E") center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12.5l4.5 4.5L19 7.5'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+
+@media (prefers-color-scheme: dark) {
+  .code-copy-btn {
+    color: #8b949e;
+  }
+
+  .code-copy-btn.copied {
+    color: #3fb950;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Pre + code
+   -------------------------------------------------------------------------- */
+
 .code-block pre {
   margin: 0;
-  padding: 20px 20px 16px 20px;  /* top 20 — copy btn se door */
-  overflow-x: scroll;
+  padding: 20px 20px 16px;            /* extra top space keeps text clear of the copy button */
+  overflow-x: auto;
   overflow-y: hidden;
   background: transparent;
-  -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
-  -ms-overflow-style: none;
 }
-.code-block pre::-webkit-scrollbar        { display: none; width: 0; height: 0; }
-.code-block pre::-webkit-scrollbar-track  { display: none; }
-.code-block pre::-webkit-scrollbar-thumb  { display: none; }
-.code-block     ::-webkit-scrollbar       { display: none; width: 0; height: 0; }
-.code-block     ::-webkit-scrollbar-track { display: none; }
-.code-block     ::-webkit-scrollbar-thumb { display: none; }
 
-/* ── Code ── */
+.code-block pre::-webkit-scrollbar {
+  display: none;
+}
+
 .code-block pre code {
+  display: block;
+  padding: 0;
+  background: none;
+  color: #1f2328;
   font-family: 'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace;
   font-size: 13px;
   line-height: 1.7;
-  font-weight: 400;
   white-space: pre;
-  color: #1f2328;
-  background: none;
-  display: block;
-  padding: 0;
   tab-size: 2;
-  -webkit-font-smoothing: antialiased;
-}
-@media (prefers-color-scheme: dark) {
-  .code-block pre code { color: #d4d4d4; }
 }
 
-/* ════ SYNTAX TOKENS — hljs override ════ */
+.code-block .hljs {
+  padding: 0;
+  background: transparent;
+}
+
+@media (prefers-color-scheme: dark) {
+  .code-block pre code {
+    color: #d4d4d4;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Syntax tokens (override the hljs theme)
+   -------------------------------------------------------------------------- */
 
 /* Light */
 .code-block .hljs-keyword,
-.code-block .hljs-built_in          { color: #1a7f1a !important; font-weight: 500; }
-.code-block .hljs-title,
-.code-block .hljs-title.class_,
-.code-block .hljs-title.function_   { color: #2e7d2e !important; }
-.code-block .hljs-number            { color: #2e7d2e !important; }
-.code-block .hljs-comment           { color: #6a9955 !important; font-style: italic; }
-.code-block .hljs-string            { color: #a31515 !important; }
-.code-block .hljs-attr,
-.code-block .hljs-property          { color: #2e7d2e !important; }
-.code-block .hljs-literal           { color: #0070c1 !important; }
-.code-block .hljs-variable          { color: #001080 !important; }
-.code-block .hljs-params            { color: #2e7d2e !important; }
-
-/* Dark */
-@media (prefers-color-scheme: dark) {
-  .code-block .hljs-keyword,
-  .code-block .hljs-built_in          { color: #4ec9b0 !important; font-weight: 400; }
-  .code-block .hljs-title,
-  .code-block .hljs-title.class_,
-  .code-block .hljs-title.function_   { color: #b5cea8 !important; }
-  .code-block .hljs-number            { color: #b5cea8 !important; }
-  .code-block .hljs-comment           { color: #6a9955 !important; font-style: italic; }
-  .code-block .hljs-string            { color: #ce9178 !important; }
-  .code-block .hljs-attr,
-  .code-block .hljs-property          { color: #b5cea8 !important; }
-  .code-block .hljs-literal           { color: #569cd6 !important; }
-  .code-block .hljs-variable          { color: #9cdcfe !important; }
-  .code-block .hljs-params            { color: #b5cea8 !important; }
+.code-block .hljs-built_in {
+  color: #1a7f1a !important;
+  font-weight: 500;
 }
 
-/* ── hljs base sync ── */
-.code-block .hljs {
-  background: transparent;
-  padding: 0;
-  font-family: 'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace;
-  font-size: 13px;
-  line-height: 1.7;
+.code-block .hljs-title,
+.code-block .hljs-title.class_,
+.code-block .hljs-title.function_,
+.code-block .hljs-number,
+.code-block .hljs-attr,
+.code-block .hljs-property,
+.code-block .hljs-params {
+  color: #2e7d2e !important;
+}
+
+.code-block .hljs-comment {
+  color: #6a9955 !important;
+  font-style: italic;
+}
+
+.code-block .hljs-string {
+  color: #a31515 !important;
+}
+
+.code-block .hljs-literal {
+  color: #0070c1 !important;
+}
+
+.code-block .hljs-variable {
+  color: #001080 !important;
+}
+
+/* Dark (comment colour is the same in both themes) */
+@media (prefers-color-scheme: dark) {
+  .code-block .hljs-keyword,
+  .code-block .hljs-built_in {
+    color: #4ec9b0 !important;
+    font-weight: 400;
+  }
+
+  .code-block .hljs-title,
+  .code-block .hljs-title.class_,
+  .code-block .hljs-title.function_,
+  .code-block .hljs-number,
+  .code-block .hljs-attr,
+  .code-block .hljs-property,
+  .code-block .hljs-params {
+    color: #b5cea8 !important;
+  }
+
+  .code-block .hljs-string {
+    color: #ce9178 !important;
+  }
+
+  .code-block .hljs-literal {
+    color: #569cd6 !important;
+  }
+
+  .code-block .hljs-variable {
+    color: #9cdcfe !important;
+  }
 }

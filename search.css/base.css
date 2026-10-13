@@ -1,69 +1,67 @@
-/* ════════════════════════════════════════════════════════════════
-base.css — Reset · Body · Scroll host
-════════════════════════════════════════════════════════════════ */
+/* ==========================================================================
+   Base
+   ========================================================================== */
 
-*, *::before, *::after {
-box-sizing: border-box;
-margin: 0;
-padding: 0;
-font-family: inherit;
--webkit-tap-highlight-color: transparent;
+/* --------------------------------------------------------------------------
+   Reset
+   -------------------------------------------------------------------------- */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  font-family: inherit;
+  -webkit-tap-highlight-color: transparent;
 }
 
-html {
-height: 100%;
-}
+/* --------------------------------------------------------------------------
+   Body (fixed app shell, only .scroll-host scrolls)
+   -------------------------------------------------------------------------- */
 
 body {
-position: fixed;
-inset: 0;
-height: 100%;
-overflow: hidden;
-overscroll-behavior: none;
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  overscroll-behavior: none;
 
-background: var(--color-bg);
-color: var(--color-text);
+  background: var(--color-bg);
+  color: var(--color-text);
 
-/* Normal system/default font — no Google Sans */
-font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
-Roboto, Helvetica, Arial, sans-serif;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+               Roboto, Helvetica, Arial, sans-serif;
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 1.6;
 
-font-size: 16px;
-line-height: 1.6;
-font-weight: 400;
-
-display: flex;
-flex-direction: column;
-
--webkit-font-smoothing: antialiased;
--moz-osx-font-smoothing: grayscale;
-text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
 }
 
 @media (prefers-color-scheme: dark) {
-body {
-background: var(--color-bg-dark);
-color: var(--color-text-dark);
-}
+  body {
+    background: var(--color-bg-dark);
+    color: var(--color-text-dark);
+  }
 }
 
-/* ────────────────────────────────────────────────────────────────
-SCROLL HOST
-──────────────────────────────────────────────────────────────── */
+/* --------------------------------------------------------------------------
+   Scroll host
+   -------------------------------------------------------------------------- */
 
 .scroll-host {
-flex: 1;
-min-height: 0;
-
-overflow-y: auto;
-overflow-x: hidden;
-
--webkit-overflow-scrolling: touch;
-overscroll-behavior-y: none;
-
-scroll-behavior: auto;
+  flex: 1;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior-y: none;
+  scrollbar-width: none;
 }
 
 .scroll-host::-webkit-scrollbar {
-display: none;
+  display: none;
 }

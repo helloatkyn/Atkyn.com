@@ -379,7 +379,7 @@
 .attach-chip.is-file {
   gap: 8px;
   min-height: 44px;
-  max-width: 200px;
+  max-width: 220px;
   padding: 0 8px 0 12px;
   border-radius: 999px;
 }
@@ -427,11 +427,19 @@
 
 .attach-file-text {
   min-width: 0;
+  flex: 1 1 auto;
   display: flex;
+  align-items: center;
+}
+
+/* size / ext meta hidden: only the file name is shown */
+.attach-file-text > *:not(.attach-file-name) {
+  display: none !important;
 }
 
 .attach-file-name {
-  max-width: 120px;
+  min-width: 0;
+  max-width: 140px;
   font-size: 14px;
   font-weight: 500;
   line-height: 1.25;
@@ -752,4 +760,3 @@
     color: #6b7280;
   }
    }
-   

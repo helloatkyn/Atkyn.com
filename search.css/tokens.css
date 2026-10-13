@@ -1,18 +1,28 @@
-/* tokens.css — Atkyn Search PWA design tokens (single source of truth) */
-
-@import url('https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&display=swap');
+/* ==========================================================================
+   Design tokens (single source of truth)
+   ========================================================================== */
 
 :root {
 
-  /* Typography */
-  --font-primary: 'Google Sans', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  /* --------------------------------------------------------------------------
+     Typography
+     -------------------------------------------------------------------------- */
 
-  /* Brand */
+  --font-primary: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+                  Roboto, Helvetica, Arial, sans-serif;
+
+  /* --------------------------------------------------------------------------
+     Brand
+     -------------------------------------------------------------------------- */
+
   --color-primary: #0077B5;
   --color-primary-dark: #005f8e;
   --color-primary-link: var(--color-link);
 
-  /* Text (light) */
+  /* --------------------------------------------------------------------------
+     Text (light)
+     -------------------------------------------------------------------------- */
+
   --color-text: #1a1a1a;
   --color-text-strong: #111111;
   --color-text-muted: #555555;
@@ -20,7 +30,10 @@
   --color-text-faint: #444444;
   --color-text-placeholder: #b0bec5;
 
-  /* Surfaces (light) */
+  /* --------------------------------------------------------------------------
+     Surfaces (light)
+     -------------------------------------------------------------------------- */
+
   --color-bg: #ffffff;
   --color-bg-alt: #F0F0F0;
   --color-bg-card: #F1F3F4;
@@ -29,7 +42,10 @@
   --color-bg-thumb: #E0E0E0;
   --color-bg-favicon: var(--color-bg);
 
-  /* Surfaces (dark) */
+  /* --------------------------------------------------------------------------
+     Surfaces (dark)
+     -------------------------------------------------------------------------- */
+
   --color-bg-dark: #1c1c1e;
   --color-bg-alt-dark: #2c2c2e;
   --color-bg-alt2-dark: #272727;
@@ -39,7 +55,10 @@
   --color-bg-card-active-dark: #28282A;
   --color-bg-plus-menu-dark: rgba(36, 36, 40, 0.78);
 
-  /* Text (dark) */
+  /* --------------------------------------------------------------------------
+     Text (dark)
+     -------------------------------------------------------------------------- */
+
   --color-text-dark: #f0f0f2;
   --color-text-dark-alt: #e5e5e7;
   --color-text-dark-dim: #d4d4d6;
@@ -49,7 +68,10 @@
   --color-text-dark-mono: #ececec;
   --color-text-code-muted: #9b9bab;
 
-  /* UI chrome */
+  /* --------------------------------------------------------------------------
+     UI chrome
+     -------------------------------------------------------------------------- */
+
   --color-icon-stroke: #444444;
   --color-icon-dark: #bbbbbb;
   --color-tab-active-bg: #111111;
@@ -57,14 +79,20 @@
   --color-tab-active-bg-dark: #f1f1f1;
   --color-tab-active-text-dark: #111111;
 
-  /* Borders & dividers */
+  /* --------------------------------------------------------------------------
+     Borders and dividers
+     -------------------------------------------------------------------------- */
+
   --color-border-subtle: rgba(0, 0, 0, 0.08);
   --color-border-medium: rgba(0, 0, 0, 0.12);
   --color-border-dark-subtle: rgba(255, 255, 255, 0.07);
   --color-border-dark-medium: rgba(255, 255, 255, 0.08);
   --color-border-dark-strong: rgba(255, 255, 255, 0.15);
 
-  /* Press states */
+  /* --------------------------------------------------------------------------
+     Press states
+     -------------------------------------------------------------------------- */
+
   --color-press-light: rgba(0, 0, 0, 0.06);
   --color-press-light-sm: rgba(0, 0, 0, 0.04);
   --color-press-light-md: rgba(0, 0, 0, 0.08);
@@ -72,14 +100,20 @@
   --color-press-dark: rgba(255, 255, 255, 0.07);
   --color-press-dark-md: rgba(255, 255, 255, 0.09);
 
-  /* Glass (plus menu, tab bar) */
+  /* --------------------------------------------------------------------------
+     Glass (plus menu, tab bar)
+     -------------------------------------------------------------------------- */
+
   --color-glass-bg: rgba(255, 255, 255, 0.72);
   --color-glass-border: rgba(255, 255, 255, 0.55);
   --color-glass-border-dark: rgba(255, 255, 255, 0.10);
   --color-tab-bar-bg: rgba(255, 255, 255, 0.95);
   --color-tab-bar-bg-dark: rgba(28, 28, 30, 0.95);
 
-  /* Cards, scrollbar & misc */
+  /* --------------------------------------------------------------------------
+     Cards, scrollbar and misc
+     -------------------------------------------------------------------------- */
+
   --color-scrollbar-thumb: rgba(128, 128, 128, 0.3);
   --color-card-meta-muted: #BDBDBD;
   --color-card-meta-dark: #555557;
@@ -90,20 +124,29 @@
   --color-web-title: #000080;
   --color-web-title-dark: #4BA8D8;
 
-  /* Links */
+  /* --------------------------------------------------------------------------
+     Links
+     -------------------------------------------------------------------------- */
+
   --color-link: #0066cc;
   --color-link-border: rgba(0, 102, 204, 0.3);
   --color-link-dark: #4da6ff;
   --color-link-border-dark: rgba(77, 166, 255, 0.3);
 
-  /* State */
+  /* --------------------------------------------------------------------------
+     State
+     -------------------------------------------------------------------------- */
+
   --color-like: #2da44e;
   --color-like-dark: #3fb950;
   --color-dislike: var(--color-primary);
   --color-copied: #19c37d;
   --color-shimmer-sweep: var(--color-primary);
 
-  /* Syntax highlighting (light) */
+  /* --------------------------------------------------------------------------
+     Syntax highlighting (light)
+     -------------------------------------------------------------------------- */
+
   --color-tk-kw: #cf222e;
   --color-tk-fn: #8250df;
   --color-tk-str: #0a3069;
@@ -113,7 +156,10 @@
   --color-tk-prop: #116329;
   --color-tk-bool: var(--color-tk-kw);
 
-  /* Syntax highlighting (dark) */
+  /* --------------------------------------------------------------------------
+     Syntax highlighting (dark)
+     -------------------------------------------------------------------------- */
+
   --color-tk-kw-dark: #ff7b72;
   --color-tk-fn-dark: #d2a8ff;
   --color-tk-str-dark: #a5d6ff;
@@ -123,7 +169,10 @@
   --color-tk-prop-dark: #7ee787;
   --color-tk-bool-dark: var(--color-tk-kw-dark);
 
-  /* Code block chrome */
+  /* --------------------------------------------------------------------------
+     Code block chrome
+     -------------------------------------------------------------------------- */
+
   --color-code-lang: #6e6e80;
   --color-code-lang-bg: rgba(0, 0, 0, 0.07);
   --color-code-lang-dark: #9b9bab;
@@ -132,5 +181,4 @@
   --color-code-num-dark: rgba(255, 255, 255, 0.24);
   --color-code-content: #0d0d0d;
   --color-inline-code-bg: var(--color-bg-alt);
-
 }

@@ -1,16 +1,20 @@
-/* ════════════════════════════════════════════════════════════════
-   web-cards.css — Web result cards
-   Wrapper · Scroll track · Card · Thumbnail · Text · Meta · Dark
-════════════════════════════════════════════════════════════════ */
+/* ==========================================================================
+   Web result cards
+   ========================================================================== */
 
-/* ── WRAPPER ── */
+/* --------------------------------------------------------------------------
+   Wrapper
+   -------------------------------------------------------------------------- */
+
 .web-cards-shadow-wrap {
   width: 100%;
   padding: 6px 0 18px;
 }
 
+/* --------------------------------------------------------------------------
+   Scroll track (preview + carousel)
+   -------------------------------------------------------------------------- */
 
-/* ── SCROLL TRACK (preview + carousel) ── */
 .web-results-preview,
 .web-results-carousel-wrap {
   display: flex;
@@ -22,9 +26,6 @@
   overscroll-behavior-x: contain;
   scrollbar-width: none;
   contain: layout style;
-  transform: translateZ(0);
-  -webkit-backface-visibility: hidden;
-  backface-visibility: hidden;
   animation: wcFadeIn 0.2s ease both;
 }
 
@@ -38,38 +39,35 @@
   scroll-behavior: smooth;
 }
 
-/* Preview bubble: bubble ka default padding/background hatao */
+/* Preview bubble: drop the bubble's default background and border. */
 .bubble.web-results-preview {
   max-width: 100%;
+  border: 0;
   background: none;
-  border: none;
 }
 
+/* --------------------------------------------------------------------------
+   Card
+   -------------------------------------------------------------------------- */
 
-/* ── CARD ── */
 .web-card {
   display: flex;
-  flex-direction: column;
   flex: 0 0 300px;
+  flex-direction: column;
   width: 300px;
-  box-sizing: border-box;
   padding: 16px;
   border-radius: 18px;
   background: var(--color-bg-card);
   text-decoration: none;
   scroll-snap-align: start;
   contain: layout style;
-  transform: translateZ(0);
-  -webkit-backface-visibility: hidden;
-  backface-visibility: hidden;
-  -webkit-tap-highlight-color: transparent;
 }
 
 .web-card:active {
   background: var(--color-bg-card-active);
 }
 
-/* Bubble ke link style (underline, arrow, color) ko card par lagne se roko */
+/* Keep the bubble's link styling (underline, arrow, colour) off the card. */
 .msg.bot .bubble a.web-card,
 .msg.bot .bubble a.web-card:active,
 .msg.bot .bubble a.web-card:visited {
@@ -78,8 +76,10 @@
   opacity: 1;
 }
 
+/* --------------------------------------------------------------------------
+   Preview (compact)
+   -------------------------------------------------------------------------- */
 
-/* ── PREVIEW (compact) ── */
 .web-results-preview .web-card {
   flex-basis: 240px;
   width: 240px;
@@ -105,14 +105,16 @@
   display: none;
 }
 
+/* --------------------------------------------------------------------------
+   Body
+   -------------------------------------------------------------------------- */
 
-/* ── BODY ── */
 .web-card-body {
   display: flex;
   flex: 1;
+  align-items: flex-start;
   gap: 12px;
   min-height: 0;
-  align-items: flex-start;
   contain: layout;
 }
 
@@ -125,20 +127,24 @@
   overflow: hidden;
 }
 
+/* --------------------------------------------------------------------------
+   Thumbnail
+   -------------------------------------------------------------------------- */
 
-/* ── THUMBNAIL ── */
 .web-card-thumb {
   display: block;
   flex-shrink: 0;
   width: 92px;
   height: 92px;
   border-radius: 12px;
-  object-fit: cover;
   background: var(--color-bg-thumb);
+  object-fit: cover;
 }
 
+/* --------------------------------------------------------------------------
+   Title + snippet
+   -------------------------------------------------------------------------- */
 
-/* ── TITLE + SNIPPET ── */
 .web-card-title,
 .web-card-snippet {
   display: -webkit-box;
@@ -148,23 +154,24 @@
 }
 
 .web-card-title {
+  -webkit-line-clamp: 2;
+  color: var(--color-web-title);
   font-size: 18px;
   font-weight: 700;
   line-height: 1.3;
-  color: var(--color-web-title);
-  -webkit-line-clamp: 2;
 }
 
 .web-card-snippet {
-  font-size: 14px;
-  font-weight: 400;
-  line-height: 1.55;
-  color: var(--color-text-strong);
   -webkit-line-clamp: 3;
+  color: var(--color-text-strong);
+  font-size: 14px;
+  line-height: 1.55;
 }
 
+/* --------------------------------------------------------------------------
+   Meta row
+   -------------------------------------------------------------------------- */
 
-/* ── META ROW ── */
 .web-card-meta {
   display: flex;
   flex-shrink: 0;
@@ -182,8 +189,8 @@
   justify-content: center;
   width: 22px;
   height: 22px;
-  border-radius: 50%;
   overflow: hidden;
+  border-radius: 50%;
   background: var(--color-bg);
 }
 
@@ -199,16 +206,15 @@
 .web-card-domain,
 .web-card-url-text {
   min-width: 0;
+  overflow: hidden;
   font-size: 13px;
   white-space: nowrap;
-  overflow: hidden;
   text-overflow: ellipsis;
 }
 
 .web-card-domain {
-  flex-shrink: 1;
-  font-weight: 500;
   color: var(--color-card-domain);
+  font-weight: 500;
 }
 
 .web-card-url-text {
@@ -218,9 +224,9 @@
 
 .web-card-sep {
   flex-shrink: 0;
+  color: var(--color-card-meta-muted);
   font-size: 13px;
   line-height: 1;
-  color: var(--color-card-meta-muted);
 }
 
 .web-card-dots {
@@ -237,23 +243,19 @@
   fill: var(--color-card-meta-muted);
 }
 
+/* --------------------------------------------------------------------------
+   Animation
+   -------------------------------------------------------------------------- */
 
-/* ── ANIMATION ── */
 @keyframes wcFadeIn {
   from { opacity: 0; }
   to   { opacity: 1; }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .web-results-preview,
-  .web-results-carousel-wrap {
-    animation: none;
-    scroll-behavior: auto;
-  }
-}
+/* --------------------------------------------------------------------------
+   Dark mode
+   -------------------------------------------------------------------------- */
 
-
-/* ── DARK MODE ── */
 @media (prefers-color-scheme: dark) {
   .web-card              { background: var(--color-bg-alt-dark); }
   .web-card:active       { background: var(--color-bg-card-active-dark); }
@@ -265,4 +267,16 @@
   .web-card-sep          { color: var(--color-card-meta-dark); }
   .web-card-url-text     { color: var(--color-card-url-dark); }
   .web-card-dots svg     { fill: var(--color-card-meta-dark); }
+}
+
+/* --------------------------------------------------------------------------
+   Reduced motion
+   -------------------------------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .web-results-preview,
+  .web-results-carousel-wrap {
+    animation: none;
+    scroll-behavior: auto;
+  }
 }

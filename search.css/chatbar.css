@@ -32,16 +32,13 @@
 
   /* attachments */
   --cb-chip-bg: #efefed;
-  --cb-chip-border: rgba(17, 17, 17, 0.055);
-  --cb-chip-shadow: 0 1px 2px rgba(0, 0, 0, 0.035);
   --cb-file-name: #1f2937;
-  --cb-file-meta: #6b7280;
   --cb-spin-track: rgba(17, 17, 15, 0.14);
   --cb-spin-head: #11110f;
   --cb-remove-bg: rgba(25, 25, 25, 0.94);
   --cb-remove-fg: #ffffff;
   --cb-remove-shadow: 0 1px 4px rgba(0, 0, 0, 0.22);
-  --cb-error: #b42318;
+  --cb-notice: #6b7280;
   --cb-doc-ico: #0077b5;
   --cb-pdf-ico: #d92d20;
   --cb-sheet-ico: #1e8e3e;
@@ -76,16 +73,13 @@
     --cb-cross: #9ca3af;
 
     --cb-chip-bg: #363638;
-    --cb-chip-border: rgba(255, 255, 255, 0.07);
-    --cb-chip-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
     --cb-file-name: #e5e5e7;
-    --cb-file-meta: #9ca3af;
     --cb-spin-track: rgba(255, 255, 255, 0.18);
     --cb-spin-head: #ffffff;
     --cb-remove-bg: rgba(238, 236, 233, 0.96);
     --cb-remove-fg: #11110f;
     --cb-remove-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
-    --cb-error: #ff8a80;
+    --cb-notice: #9ca3af;
     --cb-doc-ico: #4fa8dc;
     --cb-pdf-ico: #ff7a6e;
     --cb-sheet-ico: #4cc275;
@@ -332,11 +326,21 @@
   transition-delay: 0s;
 }
 
-/* Clip scrolling thumbnails to the pill's own curved top corners. */
+/* Clip scrolling thumbnails to the pill's own curved top corners.
+   Content fades out fast when the tray closes, so no sliver of the last chip
+   (e.g. its remove button) is left visible while the height collapses. */
 .attach-tray-inner {
   min-height: 0;
   overflow: hidden;
   border-radius: var(--cb-pill-r) var(--cb-pill-r) 0 0;
+  opacity: 0;
+  transition: opacity 0.1s ease;
+}
+
+.overlay-pill.has-attach .attach-tray-inner,
+.overlay-pill.has-notice .attach-tray-inner {
+  opacity: 1;
+  transition-duration: 0.16s;
 }
 
 .attach-list {
@@ -361,34 +365,15 @@
   display: none;
 }
 
+/* Image chips are sized and styled inline by attachments.js (_styleImageChip). */
 .attach-chip {
   position: relative;
   flex: 0 0 auto;
   min-width: 0;
-  min-height: 56px;
   display: flex;
   align-items: center;
   box-sizing: border-box;
-  border-radius: 14px;
   background: var(--cb-chip-bg);
-  border: 1px solid var(--cb-chip-border);
-  box-shadow: var(--cb-chip-shadow);
-  animation: attachChipIn 0.20s cubic-bezier(0.22, 1, 0.36, 1) both;
-}
-
-.attach-chip.is-image {
-  max-width: 180px;
-  max-height: 110px;
-  padding: 0;
-}
-
-.attach-chip.is-image img {
-  display: block;
-  max-width: 180px;
-  max-height: 96px;
-  object-fit: contain;
-  border-radius: 13px;
-  vertical-align: middle;
 }
 
 .attach-chip.is-file {
@@ -396,9 +381,7 @@
   min-height: 44px;
   max-width: 200px;
   padding: 0 8px 0 12px;
-  border: 0;
   border-radius: 999px;
-  box-shadow: none;
 }
 
 /* Solid file glyph, no container behind it. */
@@ -445,8 +428,6 @@
 .attach-file-text {
   min-width: 0;
   display: flex;
-  flex-direction: column;
-  gap: 2px;
 }
 
 .attach-file-name {
@@ -458,14 +439,6 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-}
-
-.attach-file-meta {
-  display: none;              /* name only, like Gemini */
-  font-size: 11px;
-  line-height: 1.25;
-  color: var(--cb-file-meta);
-  white-space: nowrap;
 }
 
 .attach-chip.is-loading > *:not(.attach-spin):not(.attach-remove) {
@@ -488,8 +461,8 @@
 
 .attach-remove {
   position: absolute;
-  top: -7px;
-  right: -7px;
+  top: 5px;
+  right: 5px;
   z-index: 5;
   width: 21px;
   height: 21px;
@@ -552,7 +525,7 @@
   font-size: 12.5px;
   font-weight: 500;
   line-height: 1.35;
-  color: var(--cb-file-meta);     /* neutral: a limit is info, not an alarm */
+  color: var(--cb-notice);        /* neutral: a limit is info, not an alarm */
 }
 
 .attach-notice[hidden] {
@@ -569,17 +542,6 @@
   }
 }
 
-@keyframes attachChipIn {
-  from {
-    opacity: 0;
-    transform: scale(0.94) translateY(3px);
-  }
-
-  to {
-    opacity: 1;
-    transform: scale(1) translateY(0);
-  }
-}
 
 /* --------------------------------------------------------------------------
    Plus menu
@@ -760,16 +722,6 @@
     padding-right: 10px;
   }
 
-  .attach-chip.is-image {
-    max-width: 150px;
-    max-height: 90px;
-  }
-
-  .attach-chip.is-image img {
-    max-width: 150px;
-    max-height: 82px;
-  }
-
   .plus-menu {
     left: 10px;
     right: 10px;
@@ -786,12 +738,9 @@
   .ico-wave,
   .send-btn,
   .plus-menu,
-  .attach-tray {
+  .attach-tray,
+  .attach-tray-inner {
     transition: none;
-  }
-
-  .attach-chip {
-    animation: none;
   }
 
   .attach-spin {
@@ -803,3 +752,4 @@
     color: #6b7280;
   }
    }
+   

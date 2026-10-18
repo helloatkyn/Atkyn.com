@@ -102,13 +102,23 @@
    Wrapper + pill
    -------------------------------------------------------------------------- */
 
+/* Google-style: fixed to the bottom of the layout viewport. With
+   interactive-widget=resizes-content the viewport ends at the keyboard,
+   so bottom:0 is always directly above it. Wrapper ignores taps, pill takes them. */
 .chatbar-wrap {
-  flex: 0 0 auto;
-  position: relative;
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
   z-index: 10;
-  width: 100%;
   box-sizing: border-box;
   padding: 10px 18px calc(12px + env(safe-area-inset-bottom, 0px));
+  pointer-events: none;
+}
+
+/* Non-chat tabs have no #chatSpacer: keep their last content above the bar */
+#pageContent {
+  padding-bottom: var(--cb-bar-h, 82px);
 }
 
 /* Keyboard open: no home-indicator gap needed. */
@@ -130,6 +140,7 @@ body:has(.search-input:focus) .chatbar-wrap {
   background: var(--cb-surface);
   box-shadow: var(--cb-shadow);
   -webkit-tap-highlight-color: transparent;
+  pointer-events: auto;
   transition: border-radius 0.18s ease;
 }
 

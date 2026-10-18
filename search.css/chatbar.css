@@ -114,16 +114,22 @@
   box-sizing: border-box;
   padding: 10px 18px calc(12px + env(safe-area-inset-bottom, 0px));
   pointer-events: none;
+  /* transform (compositor-only) instead of `bottom`: no layout per frame.
+     env() is 0 when the keyboard API is unsupported. */
+  transform: translateY(calc(-1 * env(keyboard-inset-height, 0px)));
+  transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: transform;
+}
+
+/* Keyboard overlays the page: keep scrollable content clear of it, in step with the bar */
+.scroll-host {
+  padding-bottom: env(keyboard-inset-height, 0px);
+  transition: padding-bottom 0.28s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 /* Non-chat tabs have no #chatSpacer: keep their last content above the bar */
 #pageContent {
   padding-bottom: var(--cb-bar-h, 82px);
-}
-
-/* Keyboard open: no home-indicator gap needed. */
-body:has(.search-input:focus) .chatbar-wrap {
-  padding-bottom: 12px;
 }
 
 .overlay-pill {
@@ -580,7 +586,7 @@ body:has(.search-input:focus) .chatbar-wrap {
   position: fixed;
   left: 14px;
   right: 14px;
-  bottom: calc(var(--pill-h, 60px) + 16px + env(safe-area-inset-bottom, 0px));
+  bottom: calc(var(--pill-h, 60px) + 16px + env(safe-area-inset-bottom, 0px) + env(keyboard-inset-height, 0px));
   z-index: 101;
   box-sizing: border-box;
   padding: 6px;
@@ -725,6 +731,8 @@ body:has(.search-input:focus) .chatbar-wrap {
   .ico-wave,
   .send-btn,
   .plus-menu,
+  .chatbar-wrap,
+  .scroll-host,
   .attach-tray,
   .attach-tray-inner {
     transition: none;
@@ -738,4 +746,4 @@ body:has(.search-input:focus) .chatbar-wrap {
     animation: none;
     color: #6b7280;
   }
-   }
+}

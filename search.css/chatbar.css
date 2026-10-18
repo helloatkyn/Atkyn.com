@@ -19,9 +19,10 @@
   --cb-gap-closed: 12px;   /* below the pill, keyboard closed (+ safe area) */
   --cb-kb-gap: 12px;       /* below the pill, keyboard open (no safe area) */
   --cb-pad-b: calc(var(--cb-gap-closed) + env(safe-area-inset-bottom, 0px));
-  /* extra scrollable space between the last content and the composer box;
-     the wrapper's own 10px top padding adds to it */
-  --cb-content-gap: 16px;
+  /* Scrollable space between the last chat content (action row / disclaimer)
+     and the composer box. The wrapper's own 10px top padding adds to it, so the
+     visible separation to the pill's top edge is ~--cb-content-gap + 12px. */
+  --cb-content-gap: 36px;
 
   /* pill geometry: single source of truth. The attach tray bleeds to the pill
      edges using exactly these values, so it can never overshoot the pill. */
@@ -145,10 +146,14 @@ html[data-kb="open"] {
 
 /* Space after the last chat message: composer height + deliberate gap.
    --cb-bar-h is published by core.js (_syncSpacer) from the real wrapper height,
-   which already includes the safe area / keyboard-open padding. */
+   which already includes the safe area / keyboard-open padding.
+   --cb-tail-min (core.js, _updateTail) is only >0 right after a message is sent:
+   it lets that message sit near the top of the screen while the answer is still
+   short, and shrinks to nothing as the answer grows. max() keeps the normal
+   bar + gap as the floor, so nothing is counted twice. */
 #chatSpacer {
   flex: none;
-  height: calc(var(--cb-bar-h, 82px) + var(--cb-content-gap));
+  height: max(calc(var(--cb-bar-h, 82px) + var(--cb-content-gap)), var(--cb-tail-min, 0px));
 }
 
 /* Non-chat tabs have no #chatSpacer: keep their last content above the bar */
@@ -770,4 +775,5 @@ html[data-kb="open"] {
     animation: none;
     color: #6b7280;
   }
-}
+   }
+   

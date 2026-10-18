@@ -1,8 +1,10 @@
 /* ==========================================================================
    Chatbar
-   Keyboard behaviour: relies on <meta name="viewport" ...interactive-widget=resizes-content>
-   plus body being a flex column (see search.css). The wrapper is the last
-   flex item, so it always sits directly above the keyboard. No JS needed.
+   Keyboard behaviour: <meta viewport ...interactive-widget=resizes-content>
+   shrinks the layout viewport to end at the keyboard (body is a fixed shell,
+   see base.css), so the fixed .chatbar-wrap at bottom:0 sits directly above it.
+   core.js (_syncViewport) only adds --cb-kb-offset for browsers that do not
+   resize the layout viewport, and html[data-kb="open"] for spacing.
    ========================================================================== */
 
 /* --------------------------------------------------------------------------
@@ -12,6 +14,14 @@
 :root {
   --cb-font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", system-ui, sans-serif;
   --cb-btn: 40px;
+
+  /* spacing around the composer */
+  --cb-gap-closed: 12px;   /* below the pill, keyboard closed (+ safe area) */
+  --cb-kb-gap: 12px;       /* below the pill, keyboard open (no safe area) */
+  --cb-pad-b: calc(var(--cb-gap-closed) + env(safe-area-inset-bottom, 0px));
+  /* extra scrollable space between the last content and the composer box;
+     the wrapper's own 10px top padding adds to it */
+  --cb-content-gap: 16px;
 
   /* pill geometry: single source of truth. The attach tray bleeds to the pill
      edges using exactly these values, so it can never overshoot the pill. */
@@ -59,6 +69,12 @@
   --cb-menu-img-opacity: 1;
 }
 
+/* Keyboard open: the bar sits on the keyboard, so the bottom safe area is not
+   added again (set by core.js on <html>). */
+html[data-kb="open"] {
+  --cb-pad-b: var(--cb-kb-gap);
+}
+
 @media (prefers-color-scheme: dark) {
   :root {
     --cb-surface: #2c2c2e;
@@ -102,9 +118,13 @@
    Wrapper + pill
    -------------------------------------------------------------------------- */
 
-/* Google-style: fixed to the bottom of the layout viewport. With
-   interactive-widget=resizes-content the viewport ends at the keyboard,
-   so bottom:0 is always directly above it. Wrapper ignores taps, pill takes them. */
+/* Fixed to the bottom of the layout viewport. With interactive-widget=
+   resizes-content that viewport ends at the keyboard, so bottom:0 is always
+   directly above it. No transition: the browser already animates the keyboard,
+   and an easing here would trail it. Wrapper ignores taps, pill takes them.
+   `translate` is only non-zero in browsers that do not resize the layout
+   viewport; it is separate from `transform` so the entrance animation in
+   core.js can keep using transform. */
 .chatbar-wrap {
   position: fixed;
   left: 0;
@@ -112,24 +132,28 @@
   bottom: 0;
   z-index: 10;
   box-sizing: border-box;
-  padding: 10px 18px calc(12px + env(safe-area-inset-bottom, 0px));
+  padding: 10px 18px var(--cb-pad-b);
   pointer-events: none;
-  /* transform (compositor-only) instead of `bottom`: no layout per frame.
-     env() is 0 when the keyboard API is unsupported. */
-  transform: translateY(calc(-1 * env(keyboard-inset-height, 0px)));
-  transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1);
-  will-change: transform;
+  translate: 0 calc(-1 * var(--cb-kb-offset, 0px));
 }
 
-/* Keyboard overlays the page: keep scrollable content clear of it, in step with the bar */
+/* Non-resizing browsers only (offset is 0 otherwise): keep scrollable content
+   clear of the covered area. */
 .scroll-host {
-  padding-bottom: env(keyboard-inset-height, 0px);
-  transition: padding-bottom 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+  padding-bottom: var(--cb-kb-offset, 0px);
+}
+
+/* Space after the last chat message: composer height + deliberate gap.
+   --cb-bar-h is published by core.js (_syncSpacer) from the real wrapper height,
+   which already includes the safe area / keyboard-open padding. */
+#chatSpacer {
+  flex: none;
+  height: calc(var(--cb-bar-h, 82px) + var(--cb-content-gap));
 }
 
 /* Non-chat tabs have no #chatSpacer: keep their last content above the bar */
 #pageContent {
-  padding-bottom: var(--cb-bar-h, 82px);
+  padding-bottom: calc(var(--cb-bar-h, 82px) + var(--cb-content-gap));
 }
 
 .overlay-pill {
@@ -582,11 +606,13 @@
   display: block;
 }
 
+/* Sits 4px above the pill: pill height + the wrapper's bottom padding. Same
+   --cb-pad-b and --cb-kb-offset as the wrapper, so the two never disagree. */
 .plus-menu {
   position: fixed;
   left: 14px;
   right: 14px;
-  bottom: calc(var(--pill-h, 60px) + 16px + env(safe-area-inset-bottom, 0px) + env(keyboard-inset-height, 0px));
+  bottom: calc(var(--pill-h, 60px) + 4px + var(--cb-pad-b) + var(--cb-kb-offset, 0px));
   z-index: 101;
   box-sizing: border-box;
   padding: 6px;
@@ -731,8 +757,6 @@
   .ico-wave,
   .send-btn,
   .plus-menu,
-  .chatbar-wrap,
-  .scroll-host,
   .attach-tray,
   .attach-tray-inner {
     transition: none;

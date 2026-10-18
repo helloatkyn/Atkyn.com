@@ -185,6 +185,87 @@ html[data-kb="open"] {
 }
 
 /* --------------------------------------------------------------------------
+   Aurora layer (driven by animation.js)
+   Both layers sit inside the pill's isolated stacking context (isolation:
+   isolate above), so the negative z-index values never reach the page.
+   -------------------------------------------------------------------------- */
+
+.atk-fill {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background: var(--cb-surface);
+  pointer-events: none;
+}
+
+.atk-aurora {
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  border-radius: inherit;
+  opacity: 0;
+  pointer-events: none;
+  contain: layout style;
+}
+
+.atk-aurora-blur {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  overflow: hidden;
+  filter: blur(1px);
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  --atk-clip: conic-gradient(from var(--atk-a-mask), black 30%, transparent 50%, black 70%);
+}
+
+.atk-aurora-mask {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  scale: 7 1.5;
+  -webkit-mask-composite: source-in;
+  mask-composite: intersect;
+}
+
+.atk-aurora-blur:nth-child(1) .atk-aurora-mask {
+  -webkit-mask-image:
+    conic-gradient(from var(--atk-a-mask), transparent 0, transparent 50%, black 68%, black 75%, transparent 89%),
+    var(--atk-clip);
+  mask-image:
+    conic-gradient(from var(--atk-a-mask), transparent 0, transparent 50%, black 68%, black 75%, transparent 89%),
+    var(--atk-clip);
+}
+
+.atk-aurora-blur:nth-child(2) .atk-aurora-mask {
+  -webkit-mask-image:
+    conic-gradient(from var(--atk-a-mask), transparent 0, transparent 62%, black 82%, transparent 89%),
+    var(--atk-clip);
+  mask-image:
+    conic-gradient(from var(--atk-a-mask), transparent 0, transparent 62%, black 82%, transparent 89%),
+    var(--atk-clip);
+}
+
+.atk-aurora-wheel {
+  position: absolute;
+  inset: 0;
+  inset-block-start: 50%;
+  aspect-ratio: 1 / 1;
+  border-radius: 50%;
+  translate: 0 -50%;
+  rotate: var(--atk-a-grad);
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  /* royal blue → indigo → violet → sky → cyan → blue */
+  background: conic-gradient(
+    rgb(37, 99, 235) 34%, rgb(67, 56, 202) 38%, rgb(79, 70, 229) 42%,
+    rgb(124, 58, 237) 48%, rgb(79, 70, 229) 53%, rgb(37, 99, 235) 58%,
+    rgb(2, 132, 199) 64%, rgb(6, 182, 212) 70%, rgb(37, 99, 235) 73%,
+    rgb(37, 99, 235) 100%
+  );
+}
+/* --------------------------------------------------------------------------
    Input + animated placeholder
    -------------------------------------------------------------------------- */
 
@@ -774,6 +855,10 @@ html[data-kb="open"] {
   .shimmer-overlay span {
     animation: none;
     color: #6b7280;
+  }
+
+  .atk-aurora {
+    display: none;
   }
    }
    

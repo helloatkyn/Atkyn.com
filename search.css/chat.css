@@ -1,0 +1,972 @@
+/* ==========================================================================
+   Chat: area, bubbles, attachments, actions, sources, visual strip
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   Chat area + message layout
+   -------------------------------------------------------------------------- */
+
+.chat-area {
+  display: flex;
+  flex-direction: column;
+  padding: 14px 16px 0;
+}
+
+#chatSpacer {
+  flex-shrink: 0;
+  width: 100%;
+}
+
+.msg-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  contain: layout;
+}
+
+.msg {
+  display: flex;
+  flex-direction: column;
+}
+
+.msg.user {
+  align-items: flex-end;
+}
+
+.msg.bot {
+  align-items: center;
+}
+
+/* --------------------------------------------------------------------------
+   Animations
+   -------------------------------------------------------------------------- */
+
+@keyframes bubbleIn {
+  from { opacity: 0; transform: translateY(5px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* First appearance of a streamed block: opacity only, once, never on repaint */
+@keyframes streamFresh {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.msg.bot .bubble > .stream-fresh {
+  animation: streamFresh 0.16s ease-out both;
+}
+
+@keyframes botIn {
+  from { transform: translateY(5px); }
+  to   { transform: translateY(0); }
+}
+
+@keyframes fadeUp {
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes disclaimerIn {
+  from { opacity: 0; transform: translateY(3px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes attShimmer {
+  from { background-position: 200% 0; }
+  to   { background-position: -200% 0; }
+}
+
+@keyframes tPulse {
+  0%, 100% { transform: scale(1);    opacity: 0.55; }
+  45%      { transform: scale(1.35); opacity: 1; }
+}
+
+@keyframes vsIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* --------------------------------------------------------------------------
+   User bubble
+   -------------------------------------------------------------------------- */
+
+.msg.user .bubble {
+  max-width: 78%;
+  padding: 9px 14px;
+  border-radius: 18px;
+  border-bottom-right-radius: 4px;
+  background: var(--color-bg-alt);
+  color: var(--color-text);
+  font-size: 0.97rem;
+  line-height: 1.45;
+  animation: bubbleIn 0.18s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
+}
+
+@media (prefers-color-scheme: dark) {
+  .msg.user .bubble {
+    background: var(--color-bg-alt-dark);
+    color: var(--color-text-dark);
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Attachments shown in a sent user message
+   -------------------------------------------------------------------------- */
+
+.msg.user .msg-attachments {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;          /* chips stay compact, right-aligned */
+  gap: 6px;
+  width: 100%;
+}
+
+.msg.user .msg-attachments + .bubble {
+  margin-top: 6px;
+}
+
+/* Image attachment: the image is the card and the box follows the real ratio.
+   --w / --h are the natural pixel size, set by JS (4/3 placeholder until known).
+   The height cap is a fixed px value, never vh/dvh: with the keyboard open the
+   viewport shrinks and a vh-based size would resize the image. */
+.msg-att-image {
+  position: relative;
+  flex: none;
+  display: block;
+  width: min(100%, 480px, calc(var(--att-max-h, 240px) * var(--w, 4) / var(--h, 3)));
+  aspect-ratio: var(--w, 4) / var(--h, 3);
+  overflow: hidden;
+  border-radius: 16px;
+  background: var(--color-bg-thumb);     /* transparent PNGs stay transparent over it */
+  line-height: 0;
+  cursor: zoom-in;
+}
+
+.msg-att-image .msg-att-img {
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  max-height: none;
+  border-radius: 0;
+  object-fit: contain;                   /* box already matches the ratio: no crop, no distortion */
+  opacity: 0;
+  transition: opacity 0.18s ease;
+}
+
+.msg-att-image.is-loaded .msg-att-img {
+  opacity: 1;
+}
+
+/* Loading shimmer (space is already reserved, so no layout jump). */
+.msg-att-image:not(.is-loaded):not(.is-error)::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(100deg, transparent 30%, rgba(128, 128, 128, 0.14) 50%, transparent 70%);
+  background-size: 200% 100%;
+  animation: attShimmer 1.2s linear infinite;
+}
+
+/* Error: compact chip instead of a broken-image icon or a giant empty box. */
+.msg-att-image.is-error {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  width: auto;
+  aspect-ratio: auto;
+  padding: 8px 12px;
+  background: var(--color-bg-alt);
+  color: var(--color-text);
+  font-size: 0.85rem;
+  line-height: 1.3;
+  cursor: default;
+}
+
+.msg-att-image.is-error .msg-att-img {
+  display: none;
+}
+
+/* Fallback for a bare <img class="msg-att-img"> from the existing renderer:
+   natural ratio, no crop, no fixed size. */
+.msg-att-img {
+  display: block;
+  width: auto;
+  height: auto;
+  max-width: min(100%, 480px);
+  max-height: var(--att-max-h, 240px);
+  border-radius: 16px;
+  background: var(--color-bg-thumb);
+  object-fit: contain;
+  cursor: zoom-in;
+}
+
+.msg-att-file {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 100%;
+  padding: 8px 12px;
+  border-radius: 14px;
+  background: var(--color-bg-alt);
+  color: var(--color-text);
+  font-size: 0.85rem;
+  line-height: 1.3;
+}
+
+.msg-att-file svg {
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.msg-att-file span {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+@media (prefers-color-scheme: dark) {
+  .msg-att-img,
+  .msg-att-image {
+    background: var(--color-bg-thumb-dark);
+  }
+
+  .msg-att-file,
+  .msg-att-image.is-error {
+    background: var(--color-bg-alt-dark);
+    color: var(--color-text-dark);
+  }
+}
+/* --------------------------------------------------------------------------
+   Bot bubble
+   -------------------------------------------------------------------------- */
+
+.msg.bot .bubble {
+  width: 100%;
+  max-width: 100%;
+  padding: 1px 2px;
+  border: 0;
+  background: none;
+  color: var(--color-text);
+  font-size: 1.05rem;
+  line-height: 1.75;
+  animation: botIn 0.18s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@media (prefers-color-scheme: dark) {
+  .msg.bot .bubble {
+    color: var(--color-text-dark-dim);
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Typing indicator
+   -------------------------------------------------------------------------- */
+
+.typing {
+  position: relative;
+  width: 54px;
+  height: 40px;
+  margin: 2px 0;
+  padding: 0;
+}
+
+.typing span {
+  position: absolute;
+  border-radius: 50%;
+  background: #000000;
+  animation: tPulse 1.4s ease-in-out infinite;
+}
+
+.typing span:nth-child(1) { width: 16px; height: 16px; left: 0;    top: 6px;  animation-delay: 0s; }
+.typing span:nth-child(2) { width: 11px; height: 11px; left: 20px; top: 22px; animation-delay: 0.2s; }
+.typing span:nth-child(3) { width: 8px;  height: 8px;  left: 34px; top: 10px; animation-delay: 0.35s; }
+.typing span:nth-child(4) { width: 6px;  height: 6px;  left: 46px; top: 13px; animation-delay: 0.5s; }
+
+@media (prefers-color-scheme: dark) {
+  .typing span {
+    background: #ffffff;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Bot action bar
+   -------------------------------------------------------------------------- */
+
+.bot-actions {
+  display: flex;
+  align-items: center;
+  align-self: flex-start;
+  gap: 1px;
+  padding: 3px 0 0;
+  opacity: 0;
+  transform: translateY(4px);
+  animation: fadeUp 0.22s ease 0.1s forwards;
+}
+
+.bot-actions button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: var(--color-text-subtle);
+  cursor: pointer;
+  transition: background 0.13s ease, color 0.13s ease;
+}
+
+.bot-actions button svg {
+  flex-shrink: 0;
+  display: block;
+  width: 20px;
+  height: 20px;
+}
+
+.bot-actions button:active {
+  background: var(--color-press-light-md);
+  color: var(--color-text-faint);
+}
+
+.bot-actions button.active-like {
+  color: var(--color-like);
+}
+
+.bot-actions button.active-dislike {
+  color: var(--color-dislike);
+}
+
+@media (prefers-color-scheme: dark) {
+  .bot-actions button {
+    color: var(--color-text-dark-faint);
+  }
+
+  .bot-actions button:active {
+    background: var(--color-press-dark-md);
+    color: var(--color-text-dark-muted);
+  }
+
+  .bot-actions button.active-like {
+    color: var(--color-like-dark);
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Source chips
+   -------------------------------------------------------------------------- */
+
+.chip-group {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 3px;
+  margin: 0 2px;
+  vertical-align: middle;
+  line-height: 1;
+}
+
+.source-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 8px 3px 4px;
+  border: 0;
+  border-radius: 100px;
+  background: #f1f3f4;
+  color: #202124;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  appearance: none;
+  transition: background 0.15s ease;
+}
+
+.source-chip:hover  { background: #e8eaed; }
+.source-chip:active { background: #dadce0; }
+
+/* !important: has to beat the bubble link styles in markdown.css. */
+.source-chip:any-link {
+  color: #202124 !important;
+  text-decoration: none !important;
+}
+
+.source-chip img {
+  flex-shrink: 0;
+  display: block;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  object-fit: contain;
+}
+
+.chip-fallback {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #bdc1c6;
+  color: #ffffff;
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.source-chip-overflow {
+  gap: 0;
+  padding: 3px 8px;
+  color: #5f6368;
+  font-size: 11px;
+}
+
+@media (prefers-color-scheme: dark) {
+  .source-chip          { background: #303134; color: #e8eaed; }
+  .source-chip:hover    { background: #3c4043; }
+  .source-chip:active   { background: #444749; }
+  .source-chip:any-link { color: #e8eaed !important; }
+  .chip-fallback        { background: #5f6368; }
+  .source-chip-overflow { color: #9aa0a6; }
+}
+/* --------------------------------------------------------------------------
+   Source bottom sheet
+   -------------------------------------------------------------------------- */
+
+#chipSheetBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 999;
+  background: rgba(0, 0, 0, 0.4);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.22s ease;
+}
+
+#chipSheetCard {
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 1000;
+  max-height: 80vh;
+  padding: 0 0 40px;
+  overflow-y: auto;
+  border-radius: 20px 20px 0 0;
+  background: #ffffff;
+  transform: translateY(100%);
+  transition: transform 0.28s cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+#chipSheet.open #chipSheetBackdrop {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+#chipSheet.open #chipSheetCard {
+  transform: translateY(0);
+}
+
+/* Drag handle */
+#chipSheetCard::before {
+  content: "";
+  display: block;
+  width: 36px;
+  height: 4px;
+  margin: 10px auto 8px;
+  border-radius: 2px;
+  background: #dadce0;
+}
+
+/* Result card */
+.csi {
+  position: relative;
+  display: block;
+  margin: 4px 8px 0;
+  padding: 13px 14px 15px;
+  border-radius: 16px;
+  background: #ffffff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+  color: inherit;
+  text-decoration: none;
+  transition: background 0.15s ease;
+}
+
+.csi:active {
+  background: #f5f5f5;
+}
+
+/* Meta row */
+.csi-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.csi-favicon-wrap {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  overflow: hidden;
+  border-radius: 50%;
+  background: #f1f1f1;
+}
+
+.csi-favicon {
+  display: block;
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+}
+
+/* Domain + path stack */
+.csi-site {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.csi-domain {
+  overflow: hidden;
+  color: #222222;
+  font-size: 0.875rem;
+  font-weight: 600;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.csi-url {
+  overflow: hidden;
+  color: #999999;
+  font-size: 0.7rem;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* Title: 2-line clamp */
+.csi-title {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  margin: 0 0 6px;
+  overflow: hidden;
+  color: var(--color-web-title);
+  font-size: 1.05rem;
+  font-weight: 700;
+  line-height: 1.4;
+  word-break: break-word;
+}
+
+/* Snippet: 3-line clamp */
+.csi-snippet {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  margin: 0;
+  overflow: hidden;
+  color: #3a3a3a;
+  font-size: 0.9rem;
+  line-height: 1.55;
+  word-break: break-word;
+}
+
+@media (prefers-color-scheme: dark) {
+  #chipSheetCard         { background: #000000; }
+  #chipSheetCard::before { background: #3a3a3c; }
+
+  .csi        { background: #1c1c1e; box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3); }
+  .csi:active { background: #2a2a2c; }
+
+  .csi-favicon-wrap { background: #2c2c2e; }
+  .csi-domain       { color: rgba(255, 255, 255, 0.75); }
+  .csi-url          { color: rgba(255, 255, 255, 0.3); }
+  .csi-title        { color: var(--color-web-title-dark); }
+  .csi-snippet      { color: #d4d4d6; }
+}
+
+/* --------------------------------------------------------------------------
+   Sheet OG images
+   -------------------------------------------------------------------------- */
+
+/* Landscape: full-width banner below the title. */
+.csi-og-full-wrap {
+  width: 100%;
+  margin: 8px 0 4px;
+  overflow: hidden;
+  border-radius: 10px;
+  background: #f1f1f1;
+  line-height: 0;
+}
+
+.csi-og-full {
+  display: block;
+  width: 100%;
+  height: auto;
+  object-fit: cover;
+}
+
+/* Portrait / square: inline row with the snippet on the left, thumbnail on the right. */
+.csi-og-inline-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.csi-og-inline-row .csi-snippet {
+  flex: 1;
+  min-width: 0;
+}
+
+.csi-og-thumb-wrap {
+  flex-shrink: 0;
+  width: 72px;
+  height: 72px;
+  overflow: hidden;
+  border-radius: 8px;
+  background: #f1f1f1;
+  line-height: 0;
+}
+
+.csi-og-thumb {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+@media (prefers-color-scheme: dark) {
+  .csi-og-full-wrap,
+  .csi-og-thumb-wrap {
+    background: #2c2c2e;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   AI disclaimer
+   -------------------------------------------------------------------------- */
+
+.ai-disclaimer {
+  display: flex;
+  align-items: center;
+  align-self: flex-start;
+  gap: 6px;
+  padding: 8px 2px 2px;
+  color: #6e6e6e;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.4;
+  letter-spacing: 0.01em;
+  animation: disclaimerIn 0.3s ease-out both;
+}
+
+/* Legacy markup the renderer may still emit: never shown. */
+.ai-disclaimer-logo {
+  display: none;
+}
+
+@media (prefers-color-scheme: dark) {
+  .ai-disclaimer {
+    color: #8e8e8e;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Image full-screen viewer (attachment-image-viewer.js)
+   -------------------------------------------------------------------------- */
+
+#imgViewer {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.94);
+  opacity: 0;
+  transition: opacity 0.18s ease;
+  touch-action: none;
+  overscroll-behavior: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+#imgViewer.open {
+  opacity: 1;
+}
+
+#imgViewer .iv-stage {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  touch-action: none;
+}
+
+#imgViewer img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  transform-origin: 50% 50%;
+  will-change: transform;
+  pointer-events: auto;
+  -webkit-user-drag: none;
+}
+
+#imgViewer .iv-close {
+  position: absolute;
+  top: calc(env(safe-area-inset-top, 0px) + 12px);
+  left: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.16);
+  color: #ffffff;
+  cursor: pointer;
+}
+
+#imgViewer .iv-close svg {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+
+/* --------------------------------------------------------------------------
+   Answer visual strip (renderer.js, injectVisualStrip)
+
+   Borderless horizontal image strip. Every card has the same height and its
+   width follows the image's own ratio, clamped between --vs-min and --vs-max.
+   Extreme ratios are cover-fitted inside that box, so there is never an empty
+   area around an image. No shadow, no blur, no border.
+   -------------------------------------------------------------------------- */
+
+.vstrip {
+  --vs-h: clamp(210px, 60vw, 270px);     /* image height */
+  --vs-min: calc(var(--vs-h) * 0.72);    /* narrowest card (tall images) */
+  --vs-max: min(88vw, 460px);            /* widest card; the next one still peeks */
+  --vs-r: 14px;
+  --vs-cap: 460px;                       /* px ceiling of --vs-max, shared by the vw fallback and the cqw rule */
+
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  margin: 14px 0 16px;
+  padding: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
+  touch-action: pan-x pan-y;
+  scroll-snap-type: x proximity;
+  scrollbar-width: none;
+  animation: vsIn 0.24s ease both;     /* opacity only, no movement */
+}
+
+.vstrip[hidden] {
+  display: none;
+}
+
+.vstrip::-webkit-scrollbar {
+  display: none;
+}
+
+@media (min-width: 700px) {
+  .vstrip {
+    --vs-h: 300px;
+    --vs-max: 520px;
+    --vs-cap: 520px;
+    --vs-r: 16px;
+    gap: 14px;
+  }
+}
+
+/* Container-relative sizing: cqw is the width of .vstrip itself (the real content
+   box), so the card cap follows the container instead of the viewport. A lone card
+   may use the full width; in a multi-card strip the cap stays at 88% so the next
+   card still peeks. Browsers without container units keep the vw values above. */
+@supports (width: 1cqw) {
+  .vstrip {
+    container-type: inline-size;
+    --vs-max: min(88cqw, var(--vs-cap));
+  }
+
+  .vstrip-card:only-child {
+    --vs-max: min(100cqw, var(--vs-cap));
+  }
+}
+
+.vstrip-card {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  width: fit-content;
+  min-width: var(--vs-min);
+  max-width: var(--vs-max);
+  color: inherit;
+  text-decoration: none;
+  scroll-snap-align: start;
+}
+
+.vstrip-card:any-link {
+  color: inherit;
+  text-decoration: none;
+}
+
+/* Auto margins on the ends centre the group while it fits and collapse to 0 once it
+   overflows, so scrolling and snap-start behave normally. */
+.vstrip-card:first-child {
+  margin-inline-start: auto;
+}
+
+.vstrip-card:last-child {
+  margin-inline-end: auto;
+}
+
+/* Narrow screens: one card per scroll position.
+   Every card is exactly as wide as the strip's content box, so at any snap position
+   one complete card fills the strip and the neighbours (plus the gap) sit fully
+   outside the clipped viewport: no previous/next sliver. Side space comes from the
+   existing boundary (.chat-area 16px + .bubble 2px); the media is centred by the grid
+   track, so both sides are equal. 700px and up keeps the multi-card strip. */
+@media (max-width: 699.98px) {
+  .vstrip {
+    scroll-snap-type: x mandatory;
+  }
+
+  .vstrip-card {
+    flex: 0 0 100%;
+    display: grid;
+    grid-template-columns: minmax(0, max-content);   /* track = the image's own width, never wider than the card */
+    justify-content: center;                         /* portrait images sit centred; wide ones fill the card */
+    align-content: start;
+    row-gap: 7px;
+    min-width: 0;
+    max-width: 100%;
+    scroll-snap-align: start;
+    scroll-snap-stop: always;                        /* one swipe = one image */
+  }
+
+  .vstrip-meta {
+    contain: inline-size;                            /* long domain text must not widen the track */
+  }
+}
+
+@supports (width: 1cqw) {
+  @media (max-width: 699.98px) {
+    .vstrip-card {
+      --vs-max: min(100cqw, var(--vs-cap));
+    }
+  }
+}
+
+.vstrip-media {
+  position: relative;
+  display: block;
+  overflow: hidden;
+  border-radius: var(--vs-r);
+  background: var(--color-bg-thumb);     /* flat placeholder while loading */
+  line-height: 0;
+  transition: opacity 0.15s ease;
+}
+
+.vstrip-img {
+  display: block;
+  width: auto;
+  min-width: var(--vs-min);
+  max-width: var(--vs-max);
+  height: var(--vs-h);
+  border-radius: 0;
+  object-fit: cover;                     /* box = image ratio, so only extreme ratios trim a little, never empty space */
+  object-position: center;
+  -webkit-user-drag: none;
+}
+
+.vstrip-meta {
+  overflow: hidden;
+  padding: 0 2px;
+  color: var(--color-text-subtle);
+  font-size: 12px;
+  line-height: 1.25;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.vstrip-card:active .vstrip-media {
+  opacity: 0.85;
+}
+
+.vstrip-card:focus-visible {
+  outline: none;
+}
+
+.vstrip-card:focus-visible .vstrip-media {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+@media (prefers-color-scheme: dark) {
+  .vstrip-media {
+    background: var(--color-bg-thumb-dark);
+  }
+
+  .vstrip-meta {
+    color: #8e8e8e;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Reduced motion
+   -------------------------------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .msg.user .bubble,
+  .msg.bot .bubble,
+  .msg.bot .bubble > .stream-fresh,
+  .typing span,
+  .ai-disclaimer,
+  .vstrip,
+  .msg-att-image:not(.is-loaded):not(.is-error)::after {
+    animation: none;
+  }
+
+  /* The action bar starts hidden and is revealed by its animation: show it directly. */
+  .bot-actions {
+    opacity: 1;
+    transform: none;
+    animation: none;
+  }
+
+  .msg-att-image .msg-att-img,
+  .vstrip-media {
+    transition: none;
+  }
+                           }
+
+  

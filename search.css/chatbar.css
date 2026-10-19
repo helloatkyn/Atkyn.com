@@ -363,7 +363,9 @@ html[data-kb="open"] {
   align-items: center;
   box-sizing: border-box;
   background: var(--cb-chip-bg);
-}.attach-chip.is-file {
+}
+
+.attach-chip.is-file {
   gap: 8px;
   min-height: 44px;
   max-width: 220px;
@@ -694,4 +696,4 @@ html[data-kb="open"] {
   .attach-spin {
     animation-duration: 1.6s;
   }
-   }
+}

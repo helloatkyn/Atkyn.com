@@ -1,36 +1,20 @@
-/* ==========================================================================
-   Chatbar
-   Keyboard behaviour: <meta viewport ...interactive-widget=resizes-content>
-   shrinks the layout viewport to end at the keyboard (body is a fixed shell,
-   see base.css), so the fixed .chatbar-wrap at bottom:0 sits directly above it.
-   core.js (_syncViewport) only adds --cb-kb-offset for browsers that do not
-   resize the layout viewport, and html[data-kb="open"] for spacing.
-   ========================================================================== */
-
-/* --------------------------------------------------------------------------
-   Design tokens (light defaults, dark overrides below)
-   -------------------------------------------------------------------------- */
-
+/* Keyboard: interactive-widget=resizes-content shrinks the layout viewport, so the fixed
+   bar at bottom:0 sits on the keyboard. core.js sets --cb-kb-offset only where the layout
+   viewport does not resize (iOS). */
 :root {
   --cb-font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", system-ui, sans-serif;
   --cb-btn: 40px;
 
-  /* spacing around the composer */
-  --cb-gap-closed: 12px;   /* below the pill, keyboard closed (+ safe area) */
-  --cb-kb-gap: 12px;       /* below the pill, keyboard open (no safe area) */
+  --cb-gap-closed: 12px;
+  --cb-kb-gap: 12px;
   --cb-pad-b: calc(var(--cb-gap-closed) + env(safe-area-inset-bottom, 0px));
-  /* Scrollable space between the last chat content (action row / disclaimer)
-     and the composer box. The wrapper's own 10px top padding adds to it, so the
-     visible separation to the pill's top edge is ~--cb-content-gap + 12px. */
+
   --cb-content-gap: 36px;
 
-  /* pill geometry: single source of truth. The attach tray bleeds to the pill
-     edges using exactly these values, so it can never overshoot the pill. */
   --cb-pad-l: 12px;
   --cb-pad-r: 10px;
   --cb-pill-r: 28px;
 
-  /* pill */
   --cb-surface: #ffffff;
   --cb-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
   --cb-text: #1f2937;
@@ -38,13 +22,11 @@
   --cb-icon: #5f6368;
   --cb-press: rgba(0, 0, 0, 0.055);
 
-  /* send button */
   --cb-send-bg: #11110f;
   --cb-send-fg: #ffffff;
   --cb-send-edge: none;
   --cb-cross: #11110f;
 
-  /* attachments */
   --cb-chip-bg: #efefed;
   --cb-file-name: #1f2937;
   --cb-spin-track: rgba(17, 17, 15, 0.14);
@@ -60,7 +42,6 @@
   --cb-file-rm-bg: #ffffff;
   --cb-file-rm-fg: #1f2937;
 
-  /* plus menu */
   --cb-menu-bg: #ffffff;
   --cb-menu-ink: #111110;
   --cb-menu-icon: #44433f;
@@ -70,8 +51,6 @@
   --cb-menu-img-opacity: 1;
 }
 
-/* Keyboard open: the bar sits on the keyboard, so the bottom safe area is not
-   added again (set by core.js on <html>). */
 html[data-kb="open"] {
   --cb-pad-b: var(--cb-kb-gap);
 }
@@ -115,17 +94,7 @@ html[data-kb="open"] {
   }
 }
 
-/* --------------------------------------------------------------------------
-   Wrapper + pill
-   -------------------------------------------------------------------------- */
-
-/* Fixed to the bottom of the layout viewport. With interactive-widget=
-   resizes-content that viewport ends at the keyboard, so bottom:0 is always
-   directly above it. No transition: the browser already animates the keyboard,
-   and an easing here would trail it. Wrapper ignores taps, pill takes them.
-   `translate` is only non-zero in browsers that do not resize the layout
-   viewport; it is separate from `transform` so the entrance animation in
-   core.js can keep using transform. */
+/* --cb-kb-offset has no fallback on purpose: unset => translate is none. */
 .chatbar-wrap {
   position: fixed;
   left: 0;
@@ -135,35 +104,25 @@ html[data-kb="open"] {
   box-sizing: border-box;
   padding: 10px 18px var(--cb-pad-b);
   pointer-events: none;
-  translate: 0 calc(-1 * var(--cb-kb-offset, 0px));
+  translate: 0 calc(-1 * var(--cb-kb-offset));
 }
 
-/* Non-resizing browsers only (offset is 0 otherwise): keep scrollable content
-   clear of the covered area. */
 .scroll-host {
   padding-bottom: var(--cb-kb-offset, 0px);
 }
 
-/* Space after the last chat message: composer height + deliberate gap.
-   --cb-bar-h is published by core.js (_syncSpacer) from the real wrapper height,
-   which already includes the safe area / keyboard-open padding.
-   --cb-tail-min (core.js, _updateTail) is only >0 right after a message is sent:
-   it lets that message sit near the top of the screen while the answer is still
-   short, and shrinks to nothing as the answer grows. max() keeps the normal
-   bar + gap as the floor, so nothing is counted twice. */
+/* --cb-bar-h is published by core.js; --cb-tail-min grows the spacer right after a send. */
 #chatSpacer {
   flex: none;
   height: max(calc(var(--cb-bar-h, 82px) + var(--cb-content-gap)), var(--cb-tail-min, 0px));
 }
 
-/* Non-chat tabs have no #chatSpacer: keep their last content above the bar */
 #pageContent {
   padding-bottom: calc(var(--cb-bar-h, 82px) + var(--cb-content-gap));
 }
 
 .overlay-pill {
   position: relative;
-  isolation: isolate;
   width: 100%;
   min-height: 60px;
   display: flex;
@@ -183,10 +142,6 @@ html[data-kb="open"] {
 .overlay-pill.has-notice {
   border-radius: var(--cb-pill-r);
 }
-
-/* --------------------------------------------------------------------------
-   Input + animated placeholder
-   -------------------------------------------------------------------------- */
 
 .overlay-input-wrap {
   flex: 1 1 auto;
@@ -246,10 +201,6 @@ html[data-kb="open"] {
 .search-input:not(:placeholder-shown) + .shimmer-overlay {
   display: none;
 }
-
-/* --------------------------------------------------------------------------
-   Buttons: plus / wave / send
-   -------------------------------------------------------------------------- */
 
 .ico-plus,
 .ico-wave,
@@ -348,11 +299,6 @@ html[data-kb="open"] {
   display: flex;
 }
 
-/* --------------------------------------------------------------------------
-   Attachments
-   -------------------------------------------------------------------------- */
-
-/* Full-bleed to the pill edges, derived from the pill's own padding tokens. */
 .attach-tray {
   order: -1;
   flex: 0 0 calc(100% + var(--cb-pad-l) + var(--cb-pad-r));
@@ -373,8 +319,6 @@ html[data-kb="open"] {
   transition-delay: 0s;
 }
 
-/* Clips scrolling thumbnails to the pill's curved top corners. Content fades
-   out quickly on close so no chip sliver is left while the height collapses. */
 .attach-tray-inner {
   min-height: 0;
   overflow: hidden;
@@ -411,7 +355,6 @@ html[data-kb="open"] {
   display: none;
 }
 
-/* Image chips are sized and styled inline by attachment.js. */
 .attach-chip {
   position: relative;
   flex: 0 0 auto;
@@ -420,9 +363,7 @@ html[data-kb="open"] {
   align-items: center;
   box-sizing: border-box;
   background: var(--cb-chip-bg);
-}
-
-.attach-chip.is-file {
+}.attach-chip.is-file {
   gap: 8px;
   min-height: 44px;
   max-width: 220px;
@@ -477,7 +418,6 @@ html[data-kb="open"] {
   align-items: center;
 }
 
-/* Only the file name is shown; size / ext meta stays hidden. */
 .attach-file-text > *:not(.attach-file-name) {
   display: none !important;
 }
@@ -533,7 +473,6 @@ html[data-kb="open"] {
   -webkit-tap-highlight-color: transparent;
 }
 
-/* Larger invisible tap target. */
 .attach-remove::after {
   content: "";
   position: absolute;
@@ -555,7 +494,6 @@ html[data-kb="open"] {
   transform: scale(0.90);
 }
 
-/* File chips: remove button sits inline at the end of the chip. */
 .attach-chip.is-file .attach-remove {
   position: relative;
   top: auto;
@@ -596,10 +534,6 @@ html[data-kb="open"] {
   }
 }
 
-/* --------------------------------------------------------------------------
-   Plus menu
-   -------------------------------------------------------------------------- */
-
 .plus-menu-backdrop {
   position: fixed;
   inset: 0;
@@ -611,8 +545,6 @@ html[data-kb="open"] {
   display: block;
 }
 
-/* Sits 4px above the pill: pill height + the wrapper's bottom padding. Same
-   --cb-pad-b and --cb-kb-offset as the wrapper, so the two never disagree. */
 .plus-menu {
   position: fixed;
   left: 14px;
@@ -718,10 +650,6 @@ html[data-kb="open"] {
   color: var(--cb-menu-muted);
 }
 
-/* --------------------------------------------------------------------------
-   Small screens
-   -------------------------------------------------------------------------- */
-
 @media (max-width: 360px) {
   :root {
     --cb-btn: 38px;
@@ -752,10 +680,6 @@ html[data-kb="open"] {
   }
 }
 
-/* --------------------------------------------------------------------------
-   Reduced motion
-   -------------------------------------------------------------------------- */
-
 @media (prefers-reduced-motion: reduce) {
   .overlay-pill,
   .ico-plus,
@@ -770,10 +694,4 @@ html[data-kb="open"] {
   .attach-spin {
     animation-duration: 1.6s;
   }
-
-  .shimmer-overlay span {
-    animation: none;
-    color: #6b7280;
-  }
    }
-   

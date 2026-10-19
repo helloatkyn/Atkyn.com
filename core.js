@@ -432,79 +432,16 @@ function _cancelChatbarEntrance() {
    ════════════════════════════════ */
 
 /* ── Bottom anchor (single rule for "stay at the bottom") ──
-   scrollHost is the only scroller. Ordinary streaming keeps the established near-bottom
-   heuristic; a keyboard session snapshots the user's exact bottom intent before focus changes
-   the viewport. That keeps an intentional upward scroll out of keyboard anchor restoration,
-   without changing the established streaming behavior when the keyboard is not involved. */
+   scrollHost is the only scroller. Rule: if the user is within NEAR_BOTTOM_PX of
+   the bottom, any resize that would hide the latest content (keyboard opening,
+   composer growing for an attachment) keeps the same distance from the bottom,
+   so the content moves in step with the composer. If the user is reading older
+   messages, nothing is touched. Runs inside ResizeObserver / the viewport sync,
+   i.e. after layout and before paint, so there is no visible correction frame. */
 const NEAR_BOTTOM_PX = 64;
-const KEYBOARD_BOTTOM_EPSILON = 2;
 let _bottomDist = 0;
 let _stickBottom = true;
 let _anchorRelease = 0;
-
-/* Capture scroll intent before focus can change viewport geometry. Keyboard anchoring uses
-   an exact-bottom decision, independent of the 64px threshold used for normal streaming. */
-let _keyboardScrollSession = null;
-let _keyboardSessionEndRaf = 0;
-
-function _beginKeyboardScrollSession() {
-  if (!scrollHost || !_chatVisible()) {
-    _keyboardScrollSession = null;
-    return;
-  }
-
-  if (_keyboardSessionEndRaf) {
-    cancelAnimationFrame(_keyboardSessionEndRaf);
-    _keyboardSessionEndRaf = 0;
-  }
-
-  const maxTop = Math.max(0, scrollHost.scrollHeight - scrollHost.clientHeight);
-  const dist = Math.max(0, maxTop - scrollHost.scrollTop);
-  const atBottom = dist <= KEYBOARD_BOTTOM_EPSILON;
-  _keyboardScrollSession = {
-    followBottom: atBottom,
-    bottomDist: atBottom ? 0 : dist,
-    sawKeyboard: _vpOpen,
-    userMovedUp: false
-  };
-}
-
-function _syncKeyboardScrollSession(open, editing) {
-  const session = _keyboardScrollSession;
-  if (!session) return;
-
-  if (open) {
-    session.sawKeyboard = true;
-    if (_keyboardSessionEndRaf) {
-      cancelAnimationFrame(_keyboardSessionEndRaf);
-      _keyboardSessionEndRaf = 0;
-    }
-    return;
-  }
-
-  /* Initial focus precedes the first viewport-resize event. Keep its snapshot until the
-     keyboard opens, or focus is genuinely abandoned. */
-  if (!session.sawKeyboard && editing) return;
-  if (_keyboardSessionEndRaf) return;
-
-  _keyboardSessionEndRaf = requestAnimationFrame(() => {
-    _keyboardSessionEndRaf = 0;
-    const current = _keyboardScrollSession;
-    if (!current || _vpOpen) return;
-    const stillEditing = _isEditableElement(document.activeElement);
-    if (stillEditing && !current.sawKeyboard) return;
-
-    _keyboardScrollSession = null;
-    if (current.followBottom) {
-      /* Preserve the keyboard session's captured intent. Measuring the spacer here can
-         mistake an intentional blank turn-tail for a user who left the bottom. */
-      _stickBottom = true;
-      _bottomDist = current.bottomDist;
-    } else {
-      _stickBottom = false;
-    }
-  });
-}
 
 /* Layout-induced scroll (browser clamp). When the scroller's max scroll position shrinks
    (keyboard opens, composer loses its safe-area padding, spacer shrinks) the browser clamps
@@ -535,10 +472,7 @@ function _trackBottom() {
 
 /* The one place anchor/follow code writes scrollTop. Ownership is released
    after the resulting scroll event has been dispatched. */
-let _dbgWrites = 0;   /* number of anchor/follow scroll writes (see ?kbdebug=1 trace) */
-
 function _writeScrollTop(top) {
-  _dbgWrites++;
   _setScrollOwner('keyboard', true);
   scrollHost.scrollTop = top;
   _lastScrollY = top;
@@ -569,16 +503,11 @@ function _anchorTarget(maxTop, dist) {
 }
 
 function _restoreBottomAnchor() {
-  if (!scrollHost || !_chatVisible()) return;
+  if (!scrollHost || !_stickBottom || !_chatVisible()) return;
   if (_scrollOwners.message || _scrollOwners.tab) return;
 
-  const session = _keyboardScrollSession;
-  const followBottom = session ? session.followBottom : _stickBottom;
-  if (!followBottom) return;
-
   const maxTop = Math.max(0, scrollHost.scrollHeight - scrollHost.clientHeight);
-  const distance = session ? session.bottomDist : _bottomDist;
-  const top = _anchorTarget(maxTop, distance);
+  const top = _anchorTarget(maxTop, _bottomDist);
   if (Math.abs(top - scrollHost.scrollTop) < 1) return;
   _writeScrollTop(top);
 }
@@ -619,17 +548,14 @@ function _followContent() {
   if (!scrollHost || !_chatVisible()) return;
   _updateTail();
 
-  const session = _keyboardScrollSession;
-  if (!(session ? session.followBottom : _stickBottom) ||
-      _scrollOwners.message || _scrollOwners.tab) return;
-
+  if (!_stickBottom || _scrollOwners.message || _scrollOwners.tab) return;
   const maxTop = Math.max(0, scrollHost.scrollHeight - scrollHost.clientHeight);
-  const distance = session ? session.bottomDist : 0;
-  const target = _anchorTarget(maxTop, distance);
+  const target = _anchorTarget(maxTop, 0);
   if (target - scrollHost.scrollTop > 1) {
     _writeScrollTop(target);
+    /* We are now at the bottom: the stored distance must say so, otherwise the next
+       keyboard/composer anchor restore re-applies a stale (older) distance. */
     _bottomDist = 0;
-    if (session) session.bottomDist = 0;
   }
 }
 
@@ -650,32 +576,10 @@ if (scrollHost) {
      updated from scrolls we did not write. _scrollOwners.keyboard stays true from the
      write until the frame after its scroll event (see _writeScrollTop). */
   scrollHost.addEventListener('scroll', () => {
-    const previousTop = _sampleTop;
     _sampleScroll();                 /* always: keeps the clamp reference current */
-    const wasClamp = _scrollWasClamp;
     if (_scrollOwners.keyboard) return;
-
+    if (_scrollWasClamp) return;     /* browser clamp: keep the captured intent */
     _trackBottom();
-
-    /* A real scroll away from the bottom is stronger intent than the 64px near-bottom
-       streaming heuristic. Browser clamps and message/tab-owned scrolls are excluded. */
-    const session = _keyboardScrollSession;
-    const changed = Math.abs(scrollHost.scrollTop - previousTop) > 1;
-    if (session && changed && !wasClamp &&
-        !_scrollOwners.message && !_scrollOwners.tab) {
-      const top = scrollHost.scrollTop;
-      const maxTop = Math.max(0, scrollHost.scrollHeight - scrollHost.clientHeight);
-      const dist = Math.max(0, maxTop - top);
-      session.bottomDist = dist <= KEYBOARD_BOTTOM_EPSILON ? 0 : dist;
-      if (dist <= KEYBOARD_BOTTOM_EPSILON) {
-        session.followBottom = true;
-        session.userMovedUp = false;
-      } else {
-        session.followBottom = false;
-        if (top < previousTop - 1) session.userMovedUp = true;
-      }
-      if (session.userMovedUp) _stickBottom = false;
-    }
   }, { passive: true });
   _trackBottom();
   _sampleTop = scrollHost.scrollTop;
@@ -687,15 +591,11 @@ if (scrollHost) {
       const shrank = h < _hostH;
       _hostH = h;
       _updateTail();
-      /* Growing (keyboard closing): the browser has already clamped scrollTop during layout.
-         Re-derive the intent from that settled position so the next keyboard open anchors
-         to where the page really is. Not a write, so it cannot add a scroll correction. */
-      if (!shrank && !_scrollOwners.message && !_scrollOwners.tab) _trackBottom();
+      /* Growing needs nothing: the browser clamps scrollTop to the new maximum */
       if (shrank) {
         /* chatbarWrap's RO runs after this one; without this the restore below would use the
            previous spacer height and be corrected again by _syncSpacer. Publish first. */
         _syncSpacer();
-        _restoreBottomAnchor();
       }
     }).observe(scrollHost);
 
@@ -740,20 +640,38 @@ _syncSpacer();
 
 _startChatbarEntrance();
 
-/* ── Viewport adapter: one positioning authority per environment ──
-   LAYOUT mode is used on Android browsers configured to resize the layout viewport
-   (interactive-widget=resizes-content): the fixed bar follows the resized viewport and JS
-   does not add a keyboard offset. VISUAL mode is used where the layout viewport stays still;
-   in that case the measured covered height lifts the bar. These modes stay mutually exclusive
-   to prevent browser-native resize and JavaScript translation from compensating twice. */
+/* ── Viewport adapter: ONE positioning authority per environment ──
+   The authority is chosen once, at load, and never switched during a keyboard
+   animation.
+
+   LAYOUT mode (Android: Chrome, Samsung Internet, Firefox — they honour
+   <meta viewport interactive-widget=resizes-content>): the keyboard shrinks the
+   layout viewport, the fixed shell (base.css body) shrinks with it and the fixed
+   .chatbar-wrap (bottom:0) rides on that boundary. Layout IS the positioning;
+   JS writes NO --cb-kb-offset, so `translate` on the bar stays `none` and the
+   same keyboard movement can never be compensated twice. The visual viewport is
+   not read at all here: it can shrink a frame before the layout viewport, and
+   mixing the two was what produced the overshoot (a temporary offset = keyboard
+   height was still applied when the layout viewport caught up). The only job left
+   is html[data-kb="open"] (drops the bottom safe-area padding while the bar sits
+   on the keyboard); it is derived from the LAYOUT viewport height, i.e. from the
+   same coordinate system the bar is positioned in, and re-run on `resize`, which
+   fires in the same frame as the layout change and before rAF callbacks, so
+   padding and layout change are painted together.
+
+   VISUAL mode (iOS Safari and anything that only shrinks/pans the visual
+   viewport; the layout viewport never changes there, so there is no second
+   measurement to be out of phase with): the covered part of the layout viewport
+   is layoutHeight - (vvp.offsetTop + vvp.height); chatbar.css lifts the bar by
+   it via --cb-kb-offset. Only applied while an editable element is focused. */
 const _LAYOUT_RESIZES = /Android/i.test(navigator.userAgent) || 'virtualKeyboard' in navigator;
 
 let _vpRaf = 0;
 let _vpOffset = 0;
 let _vpOpen = false;
-let _stableH = 0;        /* VISUAL mode: visual viewport height before the keyboard session */
+let _stableH = 0;        /* VISUAL mode: visual viewport height while no editable is focused */
 let _stableW = 0;
-let _stableLayoutH = 0;  /* LAYOUT mode: layout viewport height before the keyboard session */
+let _stableLayoutH = 0;  /* LAYOUT mode: layout viewport height before the keyboard opened */
 let _stableLayoutW = 0;
 
 function _setKbFlag(open) {
@@ -763,67 +681,54 @@ function _setKbFlag(open) {
   else document.documentElement.removeAttribute('data-kb');
 }
 
-/* LAYOUT mode: let fixed positioning follow the layout viewport. Hold the keyboard flag
-   through the closing resize so the composer's bottom padding does not change mid-animation. */
+/* LAYOUT mode: flag only, no geometry is written */
 function _syncKeyboardLayout() {
   const root = document.documentElement;
   const editing = _isEditableElement(document.activeElement);
   const lh = root.clientHeight;
   const lw = root.clientWidth;
+
+  /* Rotation / window change: old reference is meaningless */
   const resized = _stableLayoutW && Math.abs(lw - _stableLayoutW) > 50;
 
+  /* The reference is frozen for the whole keyboard session (open, closing) and
+     only refreshed while the keyboard is not considered open, so a closing
+     keyboard or a later reopen is never compared against a half-shrunk height. */
   if (resized || !_stableLayoutH || (!_vpOpen && !editing)) {
     _stableLayoutH = lh;
     _stableLayoutW = lw;
   }
 
-  const shrink = Math.max(0, _stableLayoutH - lh);
-  const opening = editing && shrink > KB_OPEN_MIN;
-  const closing = _vpOpen && shrink > 1;
-  const open = opening || closing;
-  _setKbFlag(open);
-  _syncKeyboardScrollSession(open, editing);
+  const shrink = _stableLayoutH - lh;
+  _setKbFlag(shrink > KB_OPEN_MIN && (_vpOpen || editing));
 }
 
-/* VISUAL mode: retain the offset until the visual viewport has actually returned, even if
-   blur fires first. Keep the closed-height reference frozen throughout that same interval. */
+/* VISUAL mode: flag + the single --cb-kb-offset writer */
 function _syncKeyboardVisual() {
+  /* Reads (once per frame, always the newest values) */
   const editing = _isEditableElement(document.activeElement);
   const vh = vvp.height;
   const vw = vvp.width;
-  const root = document.documentElement;
-  const layoutH = root.clientHeight;
-  const covered = Math.max(0, layoutH - (vvp.offsetTop + vh));
+  const layoutH = document.documentElement.clientHeight;
+  const covered = layoutH - (vvp.offsetTop + vh);
   const zoomed = vvp.scale > 1.01;
 
-  if (!editing && !_vpOpen) {
-    _stableH = vh;
-    _stableW = vw;
-  }
+  /* Reference size for the "layout viewport shrank" case; refreshed only
+     while the keyboard cannot be up, so toolbar changes never look like one. */
+  if (!editing) { _stableH = vh; _stableW = vw; }
 
-  const keyboardSession = editing || _vpOpen;
-  const offset = keyboardSession && !zoomed && covered > 1 ? Math.round(covered) : 0;
-  const shrink = _stableH && Math.abs(vw - _stableW) <= 50
-    ? Math.max(0, _stableH - vh)
-    : 0;
-  const opening = editing && !zoomed && (offset > KB_OPEN_MIN || shrink > KB_OPEN_MIN);
-  const closing = _vpOpen && !zoomed && (offset > 1 || shrink > 1);
-  const open = opening || closing;
+  const offset = editing && !zoomed && covered > 1 ? Math.round(covered) : 0;
+  const shrink = editing && _stableH && Math.abs(vw - _stableW) <= 50 ? _stableH - vh : 0;
+  const open = editing && !zoomed && (offset > KB_OPEN_MIN || shrink > KB_OPEN_MIN);
 
+  /* Writes (only when changed) */
   _setKbFlag(open);
-  _syncKeyboardScrollSession(open, editing);
 
   if (offset !== _vpOffset) {
     _vpOffset = offset;
-    if (offset > 0) root.style.setProperty('--cb-kb-offset', offset + 'px');
-    else root.style.removeProperty('--cb-kb-offset');
-    _restoreBottomAnchor();
-  }
-
-  /* The closed baseline may be refreshed only after the close has actually settled. */
-  if (!open && !editing) {
-    _stableH = vh;
-    _stableW = vw;
+    /* 0 removes the property: translate computes to `none`, no residual transform */
+    if (offset > 0) document.documentElement.style.setProperty('--cb-kb-offset', offset + 'px');
+    else document.documentElement.style.removeProperty('--cb-kb-offset');
   }
 }
 
@@ -839,60 +744,20 @@ function _scheduleViewportSync() {
 }
 
 if (scrollHost) {
+  /* `resize` fires when the layout viewport changes, before the rAF callbacks of
+     that same frame: the sync always sees the new layout and its writes are
+     painted with it. In VISUAL mode it is only a safety net. */
   window.addEventListener('resize', _scheduleViewportSync, { passive: true });
-  document.addEventListener('focusin', (event) => {
-    if (input && event.target === input && !_keyboardScrollSession) {
-      _beginKeyboardScrollSession();
-    }
-    _scheduleViewportSync();
-  }, { passive: true });
+  document.addEventListener('focusin', _scheduleViewportSync, { passive: true });
   document.addEventListener('focusout', _scheduleViewportSync, { passive: true });
 
+  /* Visual-viewport events only matter when the visual viewport is the only thing
+     that moves; in LAYOUT mode they would be pure per-frame JS during the animation. */
   if (vvp && !_LAYOUT_RESIZES) {
     vvp.addEventListener('resize', _scheduleViewportSync, { passive: true });
     vvp.addEventListener('scroll', _scheduleViewportSync, { passive: true });
   }
   _scheduleViewportSync();
-}
-
-/* Measurement trace for real-device testing: open the page with ?kbdebug=1.
-   Each timestamped line captures visual/layout viewport height, scroll-host dimensions, scroll
-   position and bottom distance, composer position, spacer height, anchor-write count, captured
-   keyboard intent, and keyboard flag. Some writes are expected as a resizing viewport animates;
-   inspect for more than one conflicting correction at the same geometry step and for stability
-   after the keyboard and viewport have fully settled. */
-if (scrollHost && /[?&]kbdebug=1/.test(location.search)) {
-  const box = document.createElement('pre');
-  box.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99999;margin:0;padding:4px;' +
-    'font:10px/1.25 monospace;background:rgba(0,0,0,.8);color:#0f0;pointer-events:none;' +
-    'white-space:pre-wrap;max-height:42vh;overflow:hidden';
-  document.body.appendChild(box);
-  const lines = [];
-  let prev = '';
-  const t0 = performance.now();
-  const tick = () => {
-    const top = scrollHost.scrollTop;
-    const dist = scrollHost.scrollHeight - scrollHost.clientHeight - top;
-    const root = document.documentElement;
-    const cur = 'vv=' + (vvp ? Math.round(vvp.height) : '-') +
-      ' vh=' + Math.round(root.clientHeight) + ' ch=' + Math.round(scrollHost.clientHeight) +
-      ' sh=' + Math.round(scrollHost.scrollHeight) + ' top=' + Math.round(top) +
-      ' dist=' + Math.round(dist) +
-      ' pill=' + (pill ? Math.round(pill.getBoundingClientRect().top) : '-') +
-      ' bar=' + (chatbarWrap ? Math.round(chatbarWrap.getBoundingClientRect().top) : '-') +
-      ' sp=' + (chatSpacer ? Math.round(chatSpacer.getBoundingClientRect().height) : '-') +
-      ' w=' + _dbgWrites + ' stick=' + (_stickBottom ? 1 : 0) +
-      ' kfollow=' + (_keyboardScrollSession && _keyboardScrollSession.followBottom ? 1 : 0) +
-      ' kb=' + (_vpOpen ? 1 : 0);
-    if (cur !== prev) {
-      prev = cur;
-      lines.push(String(Math.round(performance.now() - t0)).padStart(6) + ' ' + cur);
-      if (lines.length > 16) lines.shift();
-      box.textContent = lines.join('\n');
-    }
-    requestAnimationFrame(tick);
-  };
-  requestAnimationFrame(tick);
 }
 
 /* Kept so any other script that still calls it does not throw */
@@ -1119,14 +984,8 @@ if (pill && input) {
       return;
     }
 
-    if (document.activeElement === input) {
-      /* Android can dismiss the IME without blurring the input. Refresh intent before a
-         subsequent tap reopens it, but never recapture while the keyboard is already up. */
-      if (!_vpOpen) _beginKeyboardScrollSession();
-      return;
-    }
+    if (document.activeElement === input) return;
 
-    _beginKeyboardScrollSession();
     e.preventDefault();
 
     requestAnimationFrame(() => {
